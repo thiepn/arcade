@@ -5,6 +5,7 @@ on:
     branches: [audit-p0-p1-production-cleanup]
     paths:
       - '.audit-fix/**'
+      - '.audit-repair/**'
       - '.github/workflows/apply-audit-fixes.yml'
 
 permissions:
@@ -23,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          head -c 9000 .audit-fix/part-00 > /tmp/part-00
+          cat .audit-repair/p00-* > /tmp/part-00
           echo "bfde18e53059521955dea49ce4bc2a0312642110b69f12bd74ffdc13b34c3856  /tmp/part-00" | sha256sum -c -
           cat /tmp/part-00 .audit-fix/part-01 .audit-fix/part-02 .audit-fix/part-03 | base64 -d > /tmp/fixes.patch
           echo "89250c3ec816d66921f18c93467eb17e770ef258e92d8501c8128fa7fa83d5be  /tmp/fixes.patch" | sha256sum -c -
@@ -37,6 +38,7 @@ jobs:
 
           rm -rf \
             .audit-fix \
+            .audit-repair \
             .github/workflows/apply-audit-fixes.yml \
             .env.example \
             metadata.json \
