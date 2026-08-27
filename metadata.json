@@ -1,0 +1,6 @@
+{
+  "name": "MICRO ARCADE",
+  "description": "A collection of 30 instant-play, ultra-responsive mini-games crafted with satisfying physics, synthesized audio feedback, competitive global rankings, and achievement badges.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
