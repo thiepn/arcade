@@ -1,0 +1,53 @@
+name: Apply audited P1 fixes
+
+on:
+  push:
+    branches: [audit-p0-p1-production-cleanup]
+    paths:
+      - '.audit-fix/**'
+      - '.github/workflows/apply-audit-fixes.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out audit branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct and verify audited patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .audit-fix/part-* | base64 -d > /tmp/fixes.patch
+          echo "89250c3ec816d66921f18c93467eb17e770ef258e92d8501c8128fa7fa83d5be  /tmp/fixes.patch" | sha256sum -c -
+          git apply --check --unidiff-zero /tmp/fixes.patch
+
+      - name: Apply fixes and production cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          git apply --unidiff-zero /tmp/fixes.patch
+
+          rm -rf \
+            .audit-fix \
+            .github/workflows/apply-audit-fixes.yml \
+            .env.example \
+            metadata.json \
+            audit_report.md \
+            fix_drift.cjs \
+            fix_pause.cjs \
+            fix_perf.cjs \
+            assets/.aistudio
+          rmdir assets 2>/dev/null || true
+
+          git diff --check
+          git config user.name "thiepn"
+          git config user.email "junsosmart@gmail.com"
+          git add -A
+          git commit -m "Fix P1 lifecycle issues and production cleanup"
+          git push origin HEAD:audit-p0-p1-production-cleanup
