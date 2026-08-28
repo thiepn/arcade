@@ -1,0 +1,10 @@
+# Default ownership for all changes.
+* @thiepn
+
+# Release-critical surfaces.
+/.github/ @thiepn
+/scripts/ @thiepn
+/worker/ @thiepn
+/src/data/games.ts @thiepn
+/package.json @thiepn
+/bun.lock @thiepn
