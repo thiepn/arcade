@@ -14,6 +14,17 @@ import {
   getLaserRopeArenaMetrics,
   getLaserRopeBeamColor,
 } from '../lib/laserRopePresentation';
+import {
+  drawLaserRopeFeedbackBanner,
+  drawLaserRopeFeedbackBursts,
+  drawLaserRopeScreenFlash,
+  drawLaserRopeSpawnTelegraph,
+  drawLaserRopeSweepTelegraph,
+  getLaserRopeApproachIntensity,
+  isLaserRopeNearMiss,
+  type LaserRopeFeedbackBanner,
+  type LaserRopeFeedbackBurst,
+} from '../lib/laserRopeFeedback';
 
 interface OrbItem {
   id: number;
@@ -81,6 +92,16 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
 
     particles: [] as { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number }[],
     popups: [] as { id: number; x: number; y: number; text: string; color: string; life: number }[],
+    feedbackBursts: [] as LaserRopeFeedbackBurst[],
+    feedbackBanner: null as LaserRopeFeedbackBanner | null,
+    screenShake: 0,
+    screenFlashAlpha: 0,
+    screenFlashColor: '#FFFFFF',
+    pendingLaserMode: null as null | 'LOW' | 'HIGH' | 'DUAL',
+    pendingBeamsCount: 1,
+    telegraphTimer: 0,
+    telegraphDuration: 0.9,
+    deathPresentationTimer: 0,
     nextId: 1,
   });
 
@@ -214,26 +235,45 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
           state.speedTarget = Math.min(5.4, 2.2 + state.jumpStreak * 0.1);
         }
 
-        // Mode change (Low jump vs High slide vs Dual)
-        state.modeChangeTimer -= dt;
-        if (state.modeChangeTimer <= 0) {
-          state.modeChangeTimer = Math.random() * 4.5 + 4.0;
-          if (state.jumpStreak > 6 && Math.random() < 0.4) {
-            state.laserMode = 'HIGH';
-            state.popups.push({
-              id: state.nextId++,
-              x: centerX,
-              y: groundY - 150,
-              text: '⚠️ HIGH BEAM - SLIDE / DUCK!',
-              color: '#A855F7',
-              life: 1.2,
-            });
-          } else if (state.jumpStreak >= 12 && Math.random() < 0.35) {
-            state.laserMode = 'DUAL';
-            state.beamsCount = 2;
-          } else {
-            state.laserMode = 'LOW';
-            state.beamsCount = 1;
+        // Mode changes are announced before activation so every new beam pattern is readable.
+        if (state.pendingLaserMode) {
+          state.telegraphTimer -= dt;
+          if (state.telegraphTimer <= 0) {
+            state.laserMode = state.pendingLaserMode;
+            state.beamsCount = state.pendingBeamsCount;
+            state.feedbackBanner = {
+              title: state.laserMode === 'HIGH' ? 'HIGH BEAM ACTIVE' : state.laserMode === 'DUAL' ? 'DUAL SWEEP ACTIVE' : 'LOW SWEEP ACTIVE',
+              detail: state.laserMode === 'HIGH' ? 'SLIDE / DUCK' : 'JUMP THE SWEEP',
+              color: state.laserMode === 'HIGH' ? '#C084FC' : '#F43F5E',
+              life: 0.52,
+              maxLife: 0.52,
+            };
+            state.pendingLaserMode = null;
+            state.telegraphTimer = 0;
+          }
+        } else {
+          state.modeChangeTimer -= dt;
+          if (state.modeChangeTimer <= 0) {
+            state.modeChangeTimer = Math.random() * 4.5 + 4.0;
+            let nextMode: 'LOW' | 'HIGH' | 'DUAL' = 'LOW';
+            let nextBeamsCount = 1;
+            if (state.jumpStreak > 6 && Math.random() < 0.4) {
+              nextMode = 'HIGH';
+            } else if (state.jumpStreak >= 12 && Math.random() < 0.35) {
+              nextMode = 'DUAL';
+              nextBeamsCount = 2;
+            }
+
+            state.pendingLaserMode = nextMode;
+            state.pendingBeamsCount = nextBeamsCount;
+            state.telegraphTimer = state.telegraphDuration;
+            state.feedbackBanner = {
+              title: nextMode === 'HIGH' ? 'INCOMING HIGH BEAM' : nextMode === 'DUAL' ? 'INCOMING DUAL SWEEP' : 'INCOMING LOW SWEEP',
+              detail: nextMode === 'HIGH' ? 'PREPARE TO SLIDE' : 'PREPARE TO JUMP',
+              color: nextMode === 'HIGH' ? '#C084FC' : '#FB7185',
+              life: state.telegraphDuration,
+              maxLife: state.telegraphDuration,
+            };
           }
         }
 
@@ -362,6 +402,14 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
             }
 
             if (evaded) {
+              const nearMiss = isLaserRopeNearMiss(
+                state.laserMode,
+                state.playerY,
+                state.isSliding,
+                state.slideTimer,
+              );
+              const previousMultiplier = state.multiplier;
+
               // Successfully cleared laser!
               state.jumpStreak++;
               state.feverCharge = Math.min(100, state.feverCharge + 15);
@@ -390,6 +438,49 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
               onScoreUpdate(state.score);
               if (soundEnabled) sounds.playScore();
 
+              const comboAdvanced = state.multiplier > previousMultiplier;
+              const successColor = nearMiss ? '#67E8F9' : '#34D399';
+              state.feedbackBursts.push({
+                id: state.nextId++,
+                x: 0,
+                y: -state.playerY + 10,
+                color: successColor,
+                life: nearMiss ? 0.46 : 0.34,
+                maxLife: nearMiss ? 0.46 : 0.34,
+                strength: nearMiss ? 1.05 : 0.78,
+                kind: nearMiss ? 'near-miss' : 'success',
+              });
+              state.screenShake = Math.max(state.screenShake, nearMiss ? 4.2 : 2.3);
+
+              if (nearMiss) {
+                state.feedbackBanner = {
+                  title: 'NEAR MISS',
+                  detail: '+' + earnedPts + '  •  STREAK ' + state.jumpStreak,
+                  color: '#67E8F9',
+                  life: 0.68,
+                  maxLife: 0.68,
+                };
+                if (soundEnabled) sounds.playWhoosh();
+              } else if (comboAdvanced) {
+                state.feedbackBanner = {
+                  title: 'COMBO x' + state.multiplier,
+                  detail: 'STREAK ' + state.jumpStreak + '  •  +' + earnedPts,
+                  color: '#FACC15',
+                  life: 0.82,
+                  maxLife: 0.82,
+                };
+                state.screenFlashColor = '#FACC15';
+                state.screenFlashAlpha = Math.max(state.screenFlashAlpha, 0.09);
+              } else {
+                state.feedbackBanner = {
+                  title: evasionText,
+                  detail: '+' + earnedPts + '  •  STREAK ' + state.jumpStreak,
+                  color: '#34D399',
+                  life: 0.48,
+                  maxLife: 0.48,
+                };
+              }
+
               state.popups.push({
                 id: state.nextId++,
                 x: centerX,
@@ -415,6 +506,26 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
               // Hit laser!
               if (state.hasShield) {
                 state.hasShield = false;
+                state.screenShake = Math.max(state.screenShake, 8);
+                state.screenFlashColor = '#A855F7';
+                state.screenFlashAlpha = Math.max(state.screenFlashAlpha, 0.17);
+                state.feedbackBursts.push({
+                  id: state.nextId++,
+                  x: 0,
+                  y: -state.playerY + 10,
+                  color: '#C084FC',
+                  life: 0.52,
+                  maxLife: 0.52,
+                  strength: 1.2,
+                  kind: 'shield',
+                });
+                state.feedbackBanner = {
+                  title: 'SHIELD DEFLECT',
+                  detail: 'IMPACT ABSORBED',
+                  color: '#C084FC',
+                  life: 0.78,
+                  maxLife: 0.78,
+                };
                 if (soundEnabled) sounds.playShockwave();
                 state.popups.push({
                   id: state.nextId++,
@@ -426,6 +537,27 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
                 });
               } else {
                 state.isAlive = false;
+                state.deathPresentationTimer = 0.45;
+                state.screenShake = Math.max(state.screenShake, 18);
+                state.screenFlashColor = '#EF4444';
+                state.screenFlashAlpha = Math.max(state.screenFlashAlpha, 0.38);
+                state.feedbackBursts.push({
+                  id: state.nextId++,
+                  x: 0,
+                  y: -state.playerY + 10,
+                  color: '#EF4444',
+                  life: 0.52,
+                  maxLife: 0.52,
+                  strength: 1.65,
+                  kind: 'collision',
+                });
+                state.feedbackBanner = {
+                  title: 'LASER HIT',
+                  detail: 'RUN ENDED',
+                  color: '#FB7185',
+                  life: 0.62,
+                  maxLife: 0.62,
+                };
                 if (soundEnabled) sounds.playExplosion();
 
                 for (let i = 0; i < 20; i++) {
@@ -464,6 +596,23 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
         }
       }
 
+      // Presentation feedback continues briefly after a fatal collision so the hit reads visually.
+      if (!isPausedRef.current) {
+        state.screenShake = Math.max(0, state.screenShake - 34 * dt);
+        state.screenFlashAlpha = Math.max(0, state.screenFlashAlpha - 1.7 * dt);
+        if (state.feedbackBanner) {
+          state.feedbackBanner.life -= dt;
+          if (state.feedbackBanner.life <= 0) state.feedbackBanner = null;
+        }
+        for (let index = state.feedbackBursts.length - 1; index >= 0; index--) {
+          state.feedbackBursts[index].life -= dt;
+          if (state.feedbackBursts[index].life <= 0) state.feedbackBursts.splice(index, 1);
+        }
+        if (!state.isAlive && state.deathPresentationTimer > 0) {
+          state.deathPresentationTimer = Math.max(0, state.deathPresentationTimer - dt);
+        }
+      }
+
       // ==========================================
       // PHASE A — NEON ARENA PRESENTATION
       // ==========================================
@@ -483,7 +632,9 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
       );
 
       ctx.save();
-      ctx.translate(arenaMetrics.centerX, arenaMetrics.groundY);
+      const shakeX = state.screenShake > 0 ? (Math.random() - 0.5) * state.screenShake : 0;
+      const shakeY = state.screenShake > 0 ? (Math.random() - 0.5) * state.screenShake * 0.65 : 0;
+      ctx.translate(arenaMetrics.centerX + shakeX, arenaMetrics.groundY + shakeY);
       drawLaserRopeArenaFrame(
         ctx,
         arenaMetrics,
@@ -505,6 +656,25 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
         state.beamsCount === 1
           ? [state.sweepAngle]
           : [state.sweepAngle, state.sweepAngle + Math.PI];
+      const approachIntensity = getLaserRopeApproachIntensity(activeBeams);
+      drawLaserRopeSweepTelegraph(
+        ctx,
+        arenaMetrics,
+        state.laserMode,
+        approachIntensity,
+        presentationTime,
+      );
+      if (state.pendingLaserMode && state.telegraphTimer > 0) {
+        const telegraphProgress = 1 - state.telegraphTimer / state.telegraphDuration;
+        drawLaserRopeSpawnTelegraph(
+          ctx,
+          arenaMetrics,
+          state.pendingLaserMode,
+          telegraphProgress,
+          presentationTime,
+        );
+      }
+
       const laserHeightOffset =
         state.laserMode === 'HIGH'
           ? -Math.max(24, arenaMetrics.radiusY * 0.5)
@@ -545,6 +715,8 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
         });
       }
 
+      drawLaserRopeFeedbackBursts(ctx, state.feedbackBursts, presentationTime);
+
       for (const particle of state.particles) {
         const alpha = Math.max(0, Math.min(1, particle.life / particle.maxLife));
         ctx.globalAlpha = alpha;
@@ -572,6 +744,15 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
       }
       ctx.globalAlpha = 1;
       ctx.shadowBlur = 0;
+
+      drawLaserRopeFeedbackBanner(ctx, w, h, state.feedbackBanner);
+      drawLaserRopeScreenFlash(
+        ctx,
+        w,
+        h,
+        state.screenFlashColor,
+        state.screenFlashAlpha,
+      );
 
       // Sync HUD
       setHudState((prev) => {
@@ -604,7 +785,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
         };
       });
 
-      return state.isAlive;
+      return state.isAlive || state.deathPresentationTimer > 0;
     },
   });
 
