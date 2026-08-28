@@ -28,6 +28,7 @@ jobs:
       - run: bun run quality:rope
       - run: bun run quality:rope-feedback
       - run: bun run quality:rope-phase-c
+      - run: bun run quality:blockdrop
       - run: bunx tsc --noEmit
       - run: bun run d1:migrate:local
       - name: Smoke-test Worker API
