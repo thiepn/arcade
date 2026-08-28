@@ -5,6 +5,7 @@ class SoundEngine {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
   private masterGain: GainNode | null = null;
+  private volume: number = 1;
 
   constructor() {
     // Lazy initialize on first interaction
@@ -16,7 +17,8 @@ class SoundEngine {
       if (AudioContextClass) {
         this.ctx = new AudioContextClass();
         this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+        const initialGain = this.isMuted ? 0 : this.volume * 0.3;
+        this.masterGain.gain.setValueAtTime(initialGain, this.ctx.currentTime);
         this.masterGain.connect(this.ctx.destination);
       }
     }
@@ -28,13 +30,14 @@ class SoundEngine {
   public setMuted(muted: boolean) {
     this.isMuted = muted;
     if (this.masterGain && this.ctx) {
-      this.masterGain.gain.setValueAtTime(muted ? 0 : 0.25, this.ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(muted ? 0 : this.volume * 0.3, this.ctx.currentTime);
     }
   }
 
   public setVolume(vol: number) {
+    this.volume = Math.max(0, Math.min(1, vol));
     if (this.masterGain && this.ctx) {
-      const safeVol = Math.max(0, Math.min(1, vol)) * 0.3;
+      const safeVol = this.volume * 0.3;
       this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : safeVol, this.ctx.currentTime);
     }
   }

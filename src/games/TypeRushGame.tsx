@@ -33,6 +33,8 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
 }) => {
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
   const setSafeTimeout = useSafeTimeout();
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -167,7 +169,7 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
       setLaserBeam({ targetX: target.x, targetY: target.y });
       setSafeTimeout(() => setLaserBeam(null), 120);
 
-      if (soundEnabled) sounds.playLaser();
+      if (soundEnabledRef.current) sounds.playLaser();
 
       // Completed word!
       if (target.typedIndex >= target.word.length) {
@@ -179,18 +181,18 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
           state.words = [];
           state.activeWordId = null;
           setActiveWordId(null);
-          if (soundEnabled) sounds.playExplosion();
+          if (soundEnabledRef.current) sounds.playExplosion();
         } else if (target.type === 'freeze') {
           state.freezeTimer = 4.5;
           state.words = state.words.filter((w) => w.id !== target?.id);
           state.activeWordId = null;
           setActiveWordId(null);
-          if (soundEnabled) sounds.playChime(900);
+          if (soundEnabledRef.current) sounds.playChime(900);
         } else {
           state.words = state.words.filter((w) => w.id !== target?.id);
           state.activeWordId = null;
           setActiveWordId(null);
-          if (soundEnabled) sounds.playScore();
+          if (soundEnabledRef.current) sounds.playScore();
         }
 
         state.score += pts;
@@ -203,7 +205,7 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
       // Mistype
       state.streak = 0;
       setStreak(0);
-      if (soundEnabled) sounds.playHit();
+      if (soundEnabledRef.current) sounds.playHit();
     }
   };
 
@@ -218,7 +220,7 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
 
     window.addEventListener('keydown', handleWindowKeyDown);
     return () => window.removeEventListener('keydown', handleWindowKeyDown);
-  }, [soundEnabled]);
+  }, []);
 
   useEffect(() => {
     const state = gameStateRef.current;
@@ -282,11 +284,11 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
           state.streak = 0;
           setStreak(0);
           setLives(state.lives);
-          if (soundEnabled) sounds.playBuzz();
+          if (soundEnabledRef.current) sounds.playBuzz();
 
           if (state.lives <= 0) {
             state.isAlive = false;
-            if (soundEnabled) sounds.playGameOver();
+            if (soundEnabledRef.current) sounds.playGameOver();
             setSafeTimeout(() => {
               onGameOver(state.score);
             }, 800);
@@ -302,7 +304,7 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
 
     animationId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animationId);
-  }, [onGameOver, onScoreUpdate, soundEnabled]);
+  }, [onGameOver, onScoreUpdate, setSafeTimeout]);
 
   return (
     <div

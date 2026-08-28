@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useLayoutEffect, RefObject } from 'react';
+import React, { useCallback, useEffect, useRef, useLayoutEffect, RefObject } from 'react';
 
 // Polyfill for useEvent to keep callbacks fresh without triggering re-effects
 function useLatestCallback<T extends (...args: any[]) => any>(callback: T) {
@@ -23,7 +23,7 @@ export const useGameLoop = ({ canvasRef, isPaused, onUpdate, onResize }: UseGame
   const dimensionsRef = useRef({ width: 0, height: 0 });
 
   const onUpdateRef = useLatestCallback(onUpdate);
-  const onResizeRef = onResize ? useLatestCallback(onResize) : null;
+  const onResizeRef = useLatestCallback(onResize ?? (() => {}));
 
   useEffect(() => {
     isPausedRef.current = isPaused;
@@ -55,9 +55,7 @@ export const useGameLoop = ({ canvasRef, isPaused, onUpdate, onResize }: UseGame
         dimensionsRef.current = { width: w, height: h };
         hasDrawnPaused.current = false; // Force redraw if resized while paused
         
-        if (onResizeRef?.current) {
-          onResizeRef.current(w, h);
-        }
+        onResizeRef.current(w, h);
       }
     };
 
@@ -114,11 +112,14 @@ export const useSafeTimeout = () => {
     };
   }, []);
 
-  const setSafeTimeout = (fn: () => void, delay: number) => {
-    const id = setTimeout(fn, delay);
+  const setSafeTimeout = useCallback((fn: () => void, delay: number) => {
+    const id = setTimeout(() => {
+      timeouts.current = timeouts.current.filter((timeoutId) => timeoutId !== id);
+      fn();
+    }, delay);
     timeouts.current.push(id);
     return id;
-  };
+  }, []);
 
   return setSafeTimeout;
 };
@@ -132,11 +133,11 @@ export const useSafeInterval = () => {
     };
   }, []);
 
-  const setSafeInterval = (fn: () => void, delay: number) => {
+  const setSafeInterval = useCallback((fn: () => void, delay: number) => {
     const id = setInterval(fn, delay);
     intervals.current.push(id);
     return id;
-  };
+  }, []);
 
   return setSafeInterval;
 };

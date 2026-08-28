@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
+import { useSafeTimeout } from '../hooks/useGameLoop';
 import { haptics } from '../lib/haptics';
 import { Hammer, RefreshCw, Sparkles } from 'lucide-react';
 
@@ -51,6 +52,7 @@ export const MergeGame: React.FC<GameComponentProps> = ({
   const [score, setScore] = useState(0);
   const [isGameOver, setIsGameOver] = useState(false);
   const nextTileId = useRef(1);
+  const setSafeTimeout = useSafeTimeout();
 
   const getNewTileValue = () => {
     const choices = [2, 2, 4, 4, 8, 16];
@@ -188,7 +190,7 @@ export const MergeGame: React.FC<GameComponentProps> = ({
       setIsGameOver(true);
       haptics.gameOver();
       if (soundEnabled) sounds.playGameOver();
-      setTimeout(() => {
+      setSafeTimeout(() => {
         onGameOver(currentScore);
       }, 700);
       return;

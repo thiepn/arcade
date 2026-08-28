@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { Heart, Zap, Sparkles, RefreshCw, Terminal, CheckCircle2, Flame, Award } from 'lucide-react';
+import { useSafeTimeout } from '../hooks/useGameLoop';
 
 interface MatrixNode {
   id: number;
@@ -31,6 +32,9 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
 }) => {
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
+  const setSafeTimeout = useSafeTimeout();
 
   const [sequence, setSequence] = useState<number[]>([]);
   const [playerStep, setPlayerStep] = useState<number>(0);
@@ -56,18 +60,29 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
     isInputLocked: true,
   });
 
+  const scheduleWhenActive = useCallback((fn: () => void, delay: number) => {
+    const run = () => {
+      if (!gameStateRef.current.isAlive) return;
+      if (isPausedRef.current) {
+        setSafeTimeout(run, 100);
+        return;
+      }
+      fn();
+    };
+    setSafeTimeout(run, delay);
+  }, [setSafeTimeout]);
+
   const playSequencePlayback = useCallback((seq: number[], speedMs = 320) => {
     setIsShowingSequence(true);
     gameStateRef.current.isInputLocked = true;
     setStatusMessage('TRANSMITTING SEQUENCE...');
 
     seq.forEach((nodeIdx, step) => {
-      setTimeout(() => {
-        if (!gameStateRef.current.isAlive || isPausedRef.current) return;
+      scheduleWhenActive(() => {
         setActiveNode(nodeIdx);
-        if (soundEnabled) sounds.playMatrixNode(nodeIdx);
+        if (soundEnabledRef.current) sounds.playMatrixNode(nodeIdx);
 
-        setTimeout(() => {
+        scheduleWhenActive(() => {
           setActiveNode(null);
           if (step === seq.length - 1) {
             setIsShowingSequence(false);
@@ -79,7 +94,7 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
         }, speedMs * 0.7);
       }, (step + 1) * speedMs);
     });
-  }, [soundEnabled]);
+  }, [scheduleWhenActive]);
 
   const startNewRound = useCallback((round: number) => {
     const state = gameStateRef.current;
@@ -108,7 +123,7 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
 
     setActiveNode(nodeIdx);
     if (soundEnabled) sounds.playMatrixNode(nodeIdx);
-    setTimeout(() => setActiveNode(null), 180);
+    scheduleWhenActive(() => setActiveNode(null), 180);
 
     const expected = state.sequence[state.playerStep];
 
@@ -132,7 +147,7 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
         onScoreUpdate(state.score);
         if (soundEnabled) sounds.playSuccess();
 
-        setTimeout(() => {
+        scheduleWhenActive(() => {
           state.round++;
           startNewRound(state.round);
         }, 800);
@@ -153,14 +168,14 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
       } else {
         // Replay pattern for another chance
         state.isInputLocked = true;
-        setTimeout(() => {
+        scheduleWhenActive(() => {
           state.playerStep = 0;
           setPlayerStep(0);
           playSequencePlayback(state.sequence);
         }, 1000);
       }
     }
-  }, [onGameOver, onScoreUpdate, playSequencePlayback, soundEnabled, startNewRound]);
+  }, [onGameOver, onScoreUpdate, playSequencePlayback, scheduleWhenActive, soundEnabled, startNewRound]);
 
   const handleReplayPattern = useCallback(() => {
     const state = gameStateRef.current;
@@ -200,7 +215,7 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
           onGameOver(state.score);
         } else {
           state.isInputLocked = true;
-          setTimeout(() => {
+          scheduleWhenActive(() => {
             state.playerStep = 0;
             setPlayerStep(0);
             playSequencePlayback(state.sequence);
@@ -210,7 +225,7 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
     }, 100);
 
     return () => clearInterval(timer);
-  }, [onGameOver, playSequencePlayback, soundEnabled]);
+  }, [onGameOver, playSequencePlayback, scheduleWhenActive, soundEnabled]);
 
   // Keyboard shortcut bindings
   useEffect(() => {

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useSafeTimeout } from '../hooks/useGameLoop';
 import { UserStats, AppTheme } from '../types';
 import { GAMES_REGISTRY, GameEntry } from '../data/games';
 import {
@@ -110,6 +111,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   const [divisionFilter, setDivisionFilter] = useState<'all' | LeaderboardDivision>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
+  const setSafeTimeout = useSafeTimeout();
 
   // Achievement filters & search
   const [achievementFilter, setAchievementFilter] = useState<
@@ -290,7 +292,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
     sounds.playPop();
     setIsRefreshing(true);
     simulateLiveCompetition(selectedGame.id);
-    setTimeout(() => {
+    setSafeTimeout(() => {
       setRefreshTick((t) => t + 1);
       setIsRefreshing(false);
       sounds.playScore();
