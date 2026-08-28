@@ -1,7 +1,7 @@
-import React from 'react';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 interface ErrorBoundaryProps {
-  children: React.ReactNode;
+  children: ReactNode;
   onReset?: () => void;
 }
 
@@ -9,15 +9,15 @@ interface ErrorBoundaryState {
   hasError: boolean;
 }
 
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(): ErrorBoundaryState {
     return { hasError: true };
   }
 
-  componentDidCatch(error: unknown) {
-    console.error('Micro Arcade runtime error:', error);
+  componentDidCatch(error: unknown, info: ErrorInfo) {
+    console.error('Micro Arcade runtime error:', error, info.componentStack);
   }
 
   private handleReset = () => {
