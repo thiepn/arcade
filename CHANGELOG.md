@@ -15,7 +15,8 @@
 - Upgraded Laser Rope Reflex Phase A with a layered neon perspective backdrop, responsive framed arena, multi-layer animated laser beams, reactor-style hub, energy-node player rendering, glowing collectibles, and a compact responsive command-deck HUD without changing its core jump/slide mechanics.
 - Added Laser Rope Reflex Phase B feedback polish with staged incoming-beam telegraphs, approach warnings, near-miss detection, animated success/shield/collision bursts, combo and streak callouts, controlled screen shake and flash, and a readable post-hit death presentation.
 - Finished Laser Rope Reflex Phase C with a dedicated animated start briefing, explicit LOW/DUAL jump and HIGH slide guidance, themed pause and game-over states, score-based Reflex Grades, responsive labeled touch controls, and a longer readable transition from fatal impact into the results screen.
-- Enlarged Cyber Block Drop with a responsive desktop board that grows beyond the former fixed 22 px cells, added flanking Hold and Next previews, one-hold-per-piece `C`/`Shift` swap semantics, and a six-button mobile control deck with a disabled-state Hold button.
+- Enlarged Cyber Block Drop on desktop with responsive cell sizing and added a standard one-hold-per-piece Hold/Swap system with Hold and Next previews, C/Shift keyboard bindings, and a dedicated mobile Hold control.
+- Repaired Knife Target aiming so pointer/touch input captures an exact world-space impact point, the flying knife follows that line, rotating-core collision checks use the same local-angle coordinate system as rendered knives/crystals/shields, and embedded knives appear exactly where the shot lands.
 
 ## 1.0.0 — 2026-08-28
 
