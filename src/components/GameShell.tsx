@@ -490,7 +490,7 @@ export const GameShell: React.FC<GameShellProps> = ({
       {/* Main Game Stage Area */}
       <main
         ref={gameStageRef}
-        className={`relative flex-1 w-full flex items-center justify-center overflow-hidden transition-all duration-150 ${
+        className={`relative flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden transition-all duration-150 ${
           isFullscreen
             ? 'h-full max-w-none max-h-none p-0 pt-12'
             : 'max-w-4xl p-1.5 sm:p-3'
@@ -498,7 +498,7 @@ export const GameShell: React.FC<GameShellProps> = ({
         style={{ touchAction: 'none', overscrollBehavior: 'none' }}
       >
         <div
-          className={`relative w-full h-full bg-[#0A0A0B] overflow-hidden flex items-center justify-center transition-all ${
+          className={`relative w-full h-full min-h-0 bg-[#0A0A0B] overflow-hidden flex items-center justify-center transition-all ${
             isFullscreen
               ? 'rounded-none border-0 max-h-none'
               : 'max-h-[660px] rounded-2xl border border-[#27272A] shadow-2xl'
