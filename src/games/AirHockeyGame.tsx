@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
-import { clamp, rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
+import { clamp } from '../lib/gameCoordinates';
+import { getAirHockeyTableLayout } from '../lib/airHockeyLayout';
 
 interface Mallet {
   x: number;
@@ -100,20 +101,48 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
     viewportHeight: 500,
   });
 
-  const handlePointerMove = (e: React.PointerEvent) => {
+  const updatePointerTarget = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
+    gameStateRef.current.targetPlayerX = e.clientX - rect.left;
+    gameStateRef.current.targetPlayerY = e.clientY - rect.top;
+  };
 
-    gameStateRef.current.targetPlayerX = mx;
-    gameStateRef.current.targetPlayerY = my;
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    updatePointerTarget(e);
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    updatePointerTarget(e);
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+      e.currentTarget.releasePointerCapture?.(e.pointerId);
+    }
   };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const state = gameStateRef.current;
-      const speed = 25 * clamp(state.viewportWidth / 400, 0.85, 1.8);
+      const speed = 25 * getAirHockeyTableLayout(
+        state.viewportWidth,
+        state.viewportHeight,
+      ).motionScale;
+      if (
+        e.code === 'ArrowLeft' ||
+        e.code === 'ArrowRight' ||
+        e.code === 'ArrowUp' ||
+        e.code === 'ArrowDown' ||
+        e.code === 'KeyA' ||
+        e.code === 'KeyD' ||
+        e.code === 'KeyW' ||
+        e.code === 'KeyS'
+      ) {
+        e.preventDefault();
+      }
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') state.targetPlayerX -= speed;
       if (e.code === 'ArrowRight' || e.code === 'KeyD') state.targetPlayerX += speed;
       if (e.code === 'ArrowUp' || e.code === 'KeyW') state.targetPlayerY -= speed;
@@ -148,66 +177,117 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
     isPaused,
     onResize: (w, h) => {
       const state = gameStateRef.current;
-      const scaleX = w / Math.max(1, state.viewportWidth);
-      const scaleY = h / Math.max(1, state.viewportHeight);
+      const oldTable = getAirHockeyTableLayout(
+        state.viewportWidth,
+        state.viewportHeight,
+      );
+      const newTable = getAirHockeyTableLayout(w, h);
+      const scaleX = newTable.width / Math.max(1, oldTable.width);
+      const scaleY = newTable.height / Math.max(1, oldTable.height);
       const uniformScale = Math.min(scaleX, scaleY);
 
-      rescalePoint(state.puck, scaleX, scaleY);
-      rescaleVelocity(state.puck, scaleX, scaleY);
-      state.puck.radius = clamp(state.puck.radius * uniformScale, 10, 20);
+      const remapPoint = (point: { x: number; y: number }) => {
+        point.x = newTable.left + (point.x - oldTable.left) * scaleX;
+        point.y = newTable.top + (point.y - oldTable.top) * scaleY;
+      };
+      const remapVelocity = (velocity: { vx: number; vy: number }) => {
+        velocity.vx *= scaleX;
+        velocity.vy *= scaleY;
+      };
+
+      remapPoint(state.puck);
+      remapVelocity(state.puck);
+      state.puck.radius = clamp(state.puck.radius * uniformScale, 10, 18);
 
       for (const mallet of [state.playerMallet, state.aiMallet]) {
-        rescalePoint(mallet, scaleX, scaleY);
-        rescaleVelocity(mallet, scaleX, scaleY);
-        mallet.radius = clamp(mallet.radius * uniformScale, 20, 34);
+        remapPoint(mallet);
+        remapVelocity(mallet);
+        mallet.radius = clamp(mallet.radius * uniformScale, 20, 32);
       }
 
-      state.targetPlayerX *= scaleX;
-      state.targetPlayerY *= scaleY;
-      rescaleTrail(state.puckTrail, scaleX, scaleY);
+      const target = { x: state.targetPlayerX, y: state.targetPlayerY };
+      remapPoint(target);
+      state.targetPlayerX = target.x;
+      state.targetPlayerY = target.y;
+
+      for (const trail of state.puckTrail) remapPoint(trail);
       for (const particle of state.particles) {
-        rescalePoint(particle, scaleX, scaleY);
-        rescaleVelocity(particle, scaleX, scaleY);
+        remapPoint(particle);
+        remapVelocity(particle);
         particle.size *= uniformScale;
       }
-      for (const popup of state.popups) rescalePoint(popup, scaleX, scaleY);
+      for (const popup of state.popups) remapPoint(popup);
 
-      state.goalWidth = clamp(state.goalWidth * scaleX, 110, Math.min(210, w * 0.3));
+      state.goalWidth = newTable.goalWidth;
       state.viewportWidth = w;
       state.viewportHeight = h;
 
-      state.puck.x = clamp(state.puck.x, state.puck.radius + 16, w - state.puck.radius - 16);
-      state.puck.y = clamp(state.puck.y, state.puck.radius + 16, h - state.puck.radius - 16);
-      state.playerMallet.x = clamp(state.playerMallet.x, state.playerMallet.radius + 16, w - state.playerMallet.radius - 16);
-      state.playerMallet.y = clamp(state.playerMallet.y, h / 2 + state.playerMallet.radius, h - state.playerMallet.radius - 16);
-      state.aiMallet.x = clamp(state.aiMallet.x, state.aiMallet.radius + 16, w - state.aiMallet.radius - 16);
-      state.aiMallet.y = clamp(state.aiMallet.y, state.aiMallet.radius + 16, h / 2 - state.aiMallet.radius);
-      state.targetPlayerX = clamp(state.targetPlayerX, state.playerMallet.radius + 16, w - state.playerMallet.radius - 16);
-      state.targetPlayerY = clamp(state.targetPlayerY, h / 2 + state.playerMallet.radius, h - state.playerMallet.radius - 16);
+      state.puck.x = clamp(
+        state.puck.x,
+        newTable.left + state.puck.radius,
+        newTable.right - state.puck.radius,
+      );
+      state.puck.y = clamp(
+        state.puck.y,
+        newTable.top + state.puck.radius,
+        newTable.bottom - state.puck.radius,
+      );
+      state.playerMallet.x = clamp(
+        state.playerMallet.x,
+        newTable.left + state.playerMallet.radius,
+        newTable.right - state.playerMallet.radius,
+      );
+      state.playerMallet.y = clamp(
+        state.playerMallet.y,
+        newTable.centerY + state.playerMallet.radius + 4,
+        newTable.bottom - state.playerMallet.radius,
+      );
+      state.aiMallet.x = clamp(
+        state.aiMallet.x,
+        newTable.left + state.aiMallet.radius,
+        newTable.right - state.aiMallet.radius,
+      );
+      state.aiMallet.y = clamp(
+        state.aiMallet.y,
+        newTable.top + state.aiMallet.radius,
+        newTable.centerY - state.aiMallet.radius - 4,
+      );
+      state.targetPlayerX = clamp(
+        state.targetPlayerX,
+        newTable.left + state.playerMallet.radius,
+        newTable.right - state.playerMallet.radius,
+      );
+      state.targetPlayerY = clamp(
+        state.targetPlayerY,
+        newTable.centerY + state.playerMallet.radius + 4,
+        newTable.bottom - state.playerMallet.radius,
+      );
     },
     onUpdate: (ctx, dt, w, h) => {
       const state = gameStateRef.current;
 
       ctx.clearRect(0, 0, w, h);
 
-      const tableMarginX = 16;
-      const tableMarginY = 16;
-      const tableW = w - tableMarginX * 2;
-      const tableH = h - tableMarginY * 2;
-      const tableLeft = tableMarginX;
-      const tableRight = tableLeft + tableW;
-      const tableTop = tableMarginY;
-      const tableBottom = tableTop + tableH;
-      const centerY = tableTop + tableH / 2;
-      const centerX = tableLeft + tableW / 2;
+      const table = getAirHockeyTableLayout(w, h);
+      const tableW = table.width;
+      const tableH = table.height;
+      const tableLeft = table.left;
+      const tableRight = table.right;
+      const tableTop = table.top;
+      const tableBottom = table.bottom;
+      const centerY = table.centerY;
+      const centerX = table.centerX;
+      state.goalWidth = table.goalWidth;
 
       const resetPuck = (toPlayer: boolean) => {
         state.isGoalResetting = true;
         state.goalTimer = 0.8;
         state.puck.x = centerX;
-        state.puck.y = toPlayer ? centerY + 60 : centerY - 60;
-        state.puck.vx = (Math.random() - 0.5) * 60;
-        state.puck.vy = toPlayer ? 80 : -80;
+        state.puck.y = toPlayer
+          ? centerY + 60 * table.motionScale
+          : centerY - 60 * table.motionScale;
+        state.puck.vx = (Math.random() - 0.5) * 60 * table.motionScale;
+        state.puck.vy = (toPlayer ? 80 : -80) * table.motionScale;
       };
 
       if (!isPausedRef.current && state.isAlive) {
@@ -270,7 +350,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
         aiTargetX = Math.max(aiMinX, Math.min(aiMaxX, aiTargetX));
         aiTargetY = Math.max(aiMinY, Math.min(aiMaxY, aiTargetY));
 
-        const aiSpeed = diffConfig.aiSpeed;
+        const aiSpeed = diffConfig.aiSpeed * table.motionScale;
         const aiDX = aiTargetX - state.aiMallet.x;
         const aiDY = aiTargetY - state.aiMallet.y;
         const aiDist = Math.hypot(aiDX, aiDY);
@@ -291,11 +371,12 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
         puck.x += puck.vx * dt;
         puck.y += puck.vy * dt;
 
-        puck.vx *= 0.993;
-        puck.vy *= 0.993;
+        const drag = Math.pow(0.993, dt * 60);
+        puck.vx *= drag;
+        puck.vy *= drag;
 
         const pSpeed = Math.hypot(puck.vx, puck.vy);
-        const maxSpeed = 680;
+        const maxSpeed = 680 * table.motionScale;
         if (pSpeed > maxSpeed) {
           puck.vx = (puck.vx / pSpeed) * maxSpeed;
           puck.vy = (puck.vy / pSpeed) * maxSpeed;
@@ -590,7 +671,9 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
       ref={containerRef}
       id="air-hockey-container"
       onPointerMove={handlePointerMove}
-      className="relative w-full h-full min-h-[440px] flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none"
+      onPointerDown={handlePointerDown}
+      onPointerCancel={handlePointerCancel}
+      className="relative w-full h-full min-h-0 flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none"
     >
       {/* Top HUD */}
       <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 pointer-events-none gap-2 flex-wrap">
