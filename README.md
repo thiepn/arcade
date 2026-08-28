@@ -104,16 +104,16 @@ VITE_LEADERBOARD_API_URL=https://micro-arcade-leaderboards.<your-subdomain>.work
 
 Without `VITE_LEADERBOARD_API_URL`, the application never fabricates leaderboard competitors; live ranking/profile surfaces remain offline while local gameplay continues to work.
 
+## Version 1.1 release status
 
-## Version 1.0 release status
+Version 1.1 completes the 32-game roster and carries the permanent `quality:release32` release/regression gate alongside the MA3/MA4 hardening baseline.
 
-MA4 completes the product-hardening roadmap:
-
-- every game implementation is code-split and loaded only when opened
+- all 32 game implementations are code-split and loaded only when opened
+- frontend registry and Cloudflare Worker accepted-game rules remain in exact 32-game parity
 - large statistics, profile, leaderboard, game-shell, and developer surfaces are deferred
 - the PWA build manifest lets the service worker cache every lazy game chunk for complete offline play
 - root and per-game error boundaries provide recoverable failure isolation
 - keyboard-operable game cards, skip navigation, visible focus, modal focus trapping, zoom support, reduced motion, and safe-area handling form the accessibility baseline
-- CI enforces game parity, Worker behavior, root and Pages builds, PWA integrity, lazy-loading structure, accessibility structure, and a per-chunk size ceiling
+- CI enforces game parity, targeted gameplay regressions, Worker behavior, root and Pages builds, PWA integrity, lazy-loading structure, accessibility structure, and the per-chunk size ceiling
 
 The public frontend is release-ready. Live ranking surfaces still require the documented one-time Cloudflare D1/Worker provisioning and frontend API URL configuration.
