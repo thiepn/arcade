@@ -23,7 +23,7 @@ const pkg = JSON.parse(read('package.json'));
 
 const lazyGameCount = (games.match(/component:\s*lazyGame\(/g) ?? []).length;
 const staticGameImports = (games.match(/from ['"]\.\.\/games\//g) ?? []).length;
-if (lazyGameCount !== 31) errors.push(`Expected 31 lazy game components, found ${lazyGameCount}`);
+if (lazyGameCount !== 32) errors.push(`Expected 32 lazy game components, found ${lazyGameCount}`);
 if (staticGameImports !== 0) errors.push(`Found ${staticGameImports} static game imports in the registry`);
 for (const surface of ['GameShell', 'StatsModal', 'OverallLeaderboardModal', 'PlayerProfileModal', 'StressTester']) {
   if (!app.includes(`const ${surface} = lazy(`)) errors.push(`${surface} is not deferred with React.lazy`);
@@ -52,7 +52,7 @@ if (!existsSync(manifestPath)) {
 } else {
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   const gameEntries = Object.keys(manifest).filter((key) => key.startsWith('src/games/') && key.endsWith('.tsx'));
-  if (gameEntries.length !== 31) errors.push(`${dist}: expected 31 built game entries, found ${gameEntries.length}`);
+  if (gameEntries.length !== 32) errors.push(`${dist}: expected 32 built game entries, found ${gameEntries.length}`);
   const entryKey = Object.keys(manifest).find((key) => manifest[key]?.isEntry === true);
   const entry = entryKey ? manifest[entryKey] : null;
   if (!entryKey || !entry) {
@@ -93,4 +93,4 @@ if (errors.length) {
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
-console.log(`MA4 audit passed: 31 lazy games, deferred secondary surfaces, accessible interaction/focus, recoverable runtime boundaries, complete offline chunk precache, and <=350 KB chunks in ${dist}.`);
+console.log(`MA4 audit passed: 32 lazy games, deferred secondary surfaces, accessible interaction/focus, recoverable runtime boundaries, complete offline chunk precache, and <=350 KB chunks in ${dist}.`);

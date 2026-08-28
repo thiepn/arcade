@@ -19,6 +19,8 @@
 - Repaired Knife Target aiming so pointer/touch input captures an exact world-space impact point, the flying knife follows that line, rotating-core collision checks use the same local-angle coordinate system as rendered knives/crystals/shields, and embedded knives appear exactly where the shot lands.
 - Reworked Neon Puck Smash around a bounded portrait table instead of stretching the arena to the full canvas: desktop width is capped, tall and short mobile layouts stay inside the rendered stage, HUD/difficulty controls get reserved clearance, game state remaps relative to the table on resize, AI/puck motion scales with arena size, touch dragging uses pointer capture, and puck drag is frame-rate normalized.
 
+- Added Neon Rail Shift as the 32nd game: a responsive three-rail reflex runner with certified reachable barrier sequences, safe-lane core guidance, streak scoring, progressive speed, touch/keyboard lane switching, and a cooldown-based Phase shield.
+
 ## 1.0.0 — 2026-08-28
 
 ### Added

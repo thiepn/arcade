@@ -31,7 +31,8 @@
     "d1:migrate:remote": "wrangler d1 migrations apply micro-arcade-leaderboards --remote",
     "build:pages": "VITE_BASE_PATH=/arcade/ vite build",
     "quality:ma3": "bun scripts/audit-ma3.mjs",
-    "quality:ma4": "bun scripts/audit-ma4.mjs"
+    "quality:ma4": "bun scripts/audit-ma4.mjs",
+    "quality:rail": "bun scripts/audit-neon-rail-shift.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
@@ -52,6 +53,6 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0"
   },
-  "description": "A polished, installable collection of 31 instant-play browser arcade games.",
+  "description": "A polished, installable collection of 32 instant-play browser arcade games.",
   "license": "Apache-2.0"
 }

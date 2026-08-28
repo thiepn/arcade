@@ -16,7 +16,7 @@ const gameFiles = readdirSync('src/games')
   .filter((file) => file.endsWith('Game.tsx'))
   .sort();
 
-assert(gameFiles.length === 31, `expected 31 game modules, found ${gameFiles.length}`);
+assert(gameFiles.length === 32, `expected 32 game modules, found ${gameFiles.length}`);
 
 const main = read('src/main.tsx');
 const runtime = read('src/lib/mobileRuntime.ts');
