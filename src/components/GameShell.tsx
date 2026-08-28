@@ -291,8 +291,19 @@ export const GameShell: React.FC<GameShellProps> = ({
         if (e.target instanceof HTMLInputElement) return;
         e.preventDefault();
         onToggleSound();
-      } else if (e.key === 'f' || e.key === 'F') {
-        if (e.target instanceof HTMLInputElement) return;
+      } else if (
+        e.altKey &&
+        e.code === 'Enter' &&
+        !e.ctrlKey &&
+        !e.metaKey
+      ) {
+        if (
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement ||
+          (e.target instanceof HTMLElement && e.target.isContentEditable)
+        ) {
+          return;
+        }
         e.preventDefault();
         toggleFullscreen();
       }
@@ -420,7 +431,7 @@ export const GameShell: React.FC<GameShellProps> = ({
               e.stopPropagation();
               toggleFullscreen();
             }}
-            title={isFullscreen ? 'Exit Fullscreen (F)' : 'Fullscreen Immersive (F)'}
+            title={isFullscreen ? 'Exit Fullscreen (Alt+Enter)' : 'Fullscreen Immersive (Alt+Enter)'}
             className={`p-1.5 sm:p-2 rounded-lg transition-colors cursor-pointer border inline-flex shrink-0 ${
               isFullscreen
                 ? 'bg-[#38BDF8]/20 text-[#38BDF8] border-[#38BDF8]/40 shadow-[0_0_10px_rgba(56,189,248,0.3)]'
@@ -677,7 +688,7 @@ export const GameShell: React.FC<GameShellProps> = ({
       {!isFullscreen && (
         <footer className="w-full max-w-4xl px-4 py-1.5 flex items-center justify-between text-[10px] sm:text-[11px] font-mono-arcade text-[#52525B] pointer-events-none">
           <span>{gamepad.connected ? (gamepad.pointerMode ? 'Gamepad: Stick cursor • A hold/click • B pause/back' : 'Gamepad: Stick/D-pad move • A action • B pause/back') : `Controls: ${game.controlsHint}`}</span>
-          <span className="hidden sm:inline">F: Fullscreen • Esc: Pause • R: Restart</span>
+          <span className="hidden sm:inline">Alt+Enter: Fullscreen • Esc: Pause • R: Restart</span>
         </footer>
       )}
     </div>
