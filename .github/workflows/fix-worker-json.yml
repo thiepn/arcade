@@ -1,0 +1,38 @@
+name: Fix Worker JSON typing
+
+on:
+  push:
+    branches: [cloudflare-leaderboards]
+    paths:
+      - '.worker-json-fix/**'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fix Request JSON typing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('worker/src/index.ts')
+          text = path.read_text()
+          old = '  return request.json<T>();\n'
+          new = '  return request.json() as Promise<T>;\n'
+          assert old in text
+          path.write_text(text.replace(old, new, 1))
+          PY
+          rm -rf .worker-json-fix
+          git diff --check
+          git config user.name "thiepn"
+          git config user.email "junsosmart@gmail.com"
+          git add worker/src/index.ts .worker-json-fix
+          git commit -m "Fix Worker request JSON typing"
+          git push origin HEAD:cloudflare-leaderboards
