@@ -19,5 +19,29 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bunx tsc --noEmit
       - run: bun run d1:migrate:local
+      - name: Smoke-test Worker API
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'CREDENTIAL_PEPPER=ci-smoke-test-pepper-not-for-production\n' > .dev.vars
+          bunx wrangler dev --local --port 8787 > /tmp/micro-arcade-worker.log 2>&1 &
+          worker_pid=$!
+          cleanup() {
+            kill "$worker_pid" 2>/dev/null || true
+            wait "$worker_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8787/v1/health >/dev/null 2>&1; then
+              break
+            fi
+            if ! kill -0 "$worker_pid" 2>/dev/null; then
+              cat /tmp/micro-arcade-worker.log
+              exit 1
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8787/v1/health >/dev/null
+          bun worker/smoke-test.mjs
       - run: bun run worker:check
       - run: bun run build
