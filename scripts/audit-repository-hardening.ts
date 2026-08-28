@@ -70,11 +70,18 @@ assert(!ci.includes('contents: write'), 'CI unexpectedly grants contents: write'
 assert(!ci.includes('pull_request_target'), 'CI uses unsafe pull_request_target execution');
 assert(ci.includes('cancel-in-progress: true'), 'CI does not cancel stale in-progress runs');
 assert(ci.includes('timeout-minutes:'), 'CI job has no execution timeout');
+assert(ci.includes('persist-credentials: false'), 'CI checkout persists GitHub credentials unnecessarily');
 
 assert(pages.includes('contents: read'), 'Pages workflow does not restrict repository contents to read');
 assert(pages.includes('pages: write'), 'Pages deployment lacks explicit pages permission');
 assert(pages.includes('id-token: write'), 'Pages deployment lacks explicit OIDC permission');
 assert(!pages.includes('pull_request_target'), 'Pages workflow uses unsafe pull_request_target execution');
+assert(pages.includes('workflow_run:'), 'Pages deployment is not chained to CI completion');
+assert(pages.includes('workflows: [CI]'), 'Pages deployment is not chained specifically to CI');
+assert(pages.includes("github.event.workflow_run.conclusion == 'success'"), 'Pages can deploy after a failed CI run');
+assert(pages.includes('ref: ${{ github.event.workflow_run.head_sha }}'), 'Pages does not build the exact CI-certified commit');
+assert(!/\n\s*push:\s*\n/.test(pages), 'Pages still deploys independently on raw pushes');
+assert(pages.includes('persist-credentials: false'), 'Pages checkout persists GitHub credentials unnecessarily');
 
 const workflowSources = [
   ['ci.yml', ci],
@@ -95,4 +102,4 @@ if (errors.length) {
 }
 
 console.log('REPOSITORY HARDENING AUDIT — PASS');
-console.log('Ownership, PR/release policy, dependency maintenance, disclosure policy, least-privilege workflows, stale-run cancellation, and SHA-pinned Actions are certified.');
+console.log('Ownership, PR/release policy, dependency maintenance, disclosure policy, read-only checkout, CI-gated Pages deployment, stale-run cancellation, and SHA-pinned Actions are certified.');
