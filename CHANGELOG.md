@@ -13,6 +13,7 @@
 - Added a cross-game mobile runtime layer that tracks the visual viewport, avoids zero-size canvas initialization, caps backing-canvas memory, polyfills rounded canvas rectangles for older mobile browsers, and replaces silent animation-loop crashes with a visible recovery panel.
 - Repaired Cyber Drift on mobile with responsive road geometry, live resize remapping, shrink-safe layout, compact touch controls, and pointer-captured steering.
 - Upgraded Laser Rope Reflex Phase A with a layered neon perspective backdrop, responsive framed arena, multi-layer animated laser beams, reactor-style hub, energy-node player rendering, glowing collectibles, and a compact responsive command-deck HUD without changing its core jump/slide mechanics.
+- Added Laser Rope Reflex Phase B feedback polish with staged incoming-beam telegraphs, approach warnings, near-miss detection, animated success/shield/collision bursts, combo and streak callouts, controlled screen shake and flash, and a readable post-hit death presentation.
 
 ## 1.0.0 — 2026-08-28
 
