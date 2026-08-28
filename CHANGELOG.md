@@ -17,6 +17,7 @@
 - Finished Laser Rope Reflex Phase C with a dedicated animated start briefing, explicit LOW/DUAL jump and HIGH slide guidance, themed pause and game-over states, score-based Reflex Grades, responsive labeled touch controls, and a longer readable transition from fatal impact into the results screen.
 - Enlarged Cyber Block Drop on desktop with responsive cell sizing and added a standard one-hold-per-piece Hold/Swap system with Hold and Next previews, C/Shift keyboard bindings, and a dedicated mobile Hold control.
 - Repaired Knife Target aiming so pointer/touch input captures an exact world-space impact point, the flying knife follows that line, rotating-core collision checks use the same local-angle coordinate system as rendered knives/crystals/shields, and embedded knives appear exactly where the shot lands.
+- Reworked Neon Puck Smash around a bounded portrait table instead of stretching the arena to the full canvas: desktop width is capped, tall and short mobile layouts stay inside the rendered stage, HUD/difficulty controls get reserved clearance, game state remaps relative to the table on resize, AI/puck motion scales with arena size, touch dragging uses pointer capture, and puck drag is frame-rate normalized.
 
 ## 1.0.0 — 2026-08-28
 
