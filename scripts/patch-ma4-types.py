@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 Path('src/hooks/useModalFocus.ts').write_text("""import { useEffect, type RefObject } from 'react';
 
@@ -57,5 +58,11 @@ export function useModalFocus(dialogRef: RefObject<HTMLElement | null>): void {
   }, [dialogRef]);
 }
 """, encoding='utf-8')
+
+package_path = Path('package.json')
+package = json.loads(package_path.read_text(encoding='utf-8'))
+package.setdefault('devDependencies', {})['@types/react'] = '^19.0.0'
+package.setdefault('devDependencies', {})['@types/react-dom'] = '^19.0.0'
+package_path.write_text(json.dumps(package, indent=2) + '\n', encoding='utf-8')
 
 print('MA4 TypeScript compatibility patch applied')
