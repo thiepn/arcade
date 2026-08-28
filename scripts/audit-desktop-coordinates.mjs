@@ -17,6 +17,7 @@ assert(loop.includes('getBoundingClientRect'), 'game loop must measure the rende
 const responsiveGames = [
   'AirHockeyGame.tsx',
   'AstroBlasterGame.tsx',
+  'BladeGame.tsx',
   'BreakoutGame.tsx',
   'ChainGame.tsx',
   'DodgeGame.tsx',
@@ -37,6 +38,11 @@ assert(airHockey.includes('state.playerMallet.y = clamp'), 'Air Hockey mallets a
 const astro = read('src/games/AstroBlasterGame.tsx');
 assert(astro.includes('rescalePoint(state.ship'), 'Astro Blaster ship is not remapped');
 assert(astro.includes('asteroid.vertices'), 'Astro Blaster asteroid geometry is not resized');
+
+const blade = read('src/games/BladeGame.tsx');
+assert(blade.includes('createBladeLaunchTrajectory'), 'Blade does not use the certified height-aware launcher');
+assert(blade.includes('flightTimeScale'), 'Blade active trajectories are not preserved through resize');
+assert(blade.includes('getBladeGravity(h)'), 'Blade gravity is not arena-height-aware');
 
 const breakout = read('src/games/BreakoutGame.tsx');
 assert(breakout.includes('rescaleTrail(ball.trail'), 'Breakout ball trails are not remapped');

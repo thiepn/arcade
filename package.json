@@ -12,6 +12,7 @@
     "lint": "tsc --noEmit",
     "quality:games": "bun scripts/audit-games.ts",
     "quality:desktop": "node scripts/audit-desktop-coordinates.mjs",
+    "quality:blade": "bun scripts/audit-blade-trajectories.ts",
     "worker:dev": "wrangler dev",
     "worker:check": "tsc -p worker/tsconfig.json --noEmit && wrangler deploy --dry-run --outdir .wrangler-dist",
     "worker:deploy": "wrangler deploy",

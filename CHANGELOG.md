@@ -3,7 +3,8 @@
 ## Unreleased
 
 ### Changed
-- Added a shared `ResizeObserver`-driven canvas coordinate layer and migrated Air Hockey, Astro Blaster, Breakout, Chain, Dodge, Stack, and Gravity Tower to remap live game state across desktop resizing, fullscreen changes, and device orientation changes.
+- Added a shared `ResizeObserver`-driven canvas coordinate layer and migrated Air Hockey, Astro Blaster, Breakout, Chain, Dodge, Laser Blade, Stack, and Gravity Tower to remap live game state across desktop resizing, fullscreen changes, and device orientation changes.
+- Replaced Laser Blade's fixed launch velocity with a certified height-aware parabola that places every target apex in the upper 12–32% of mobile and desktop arenas.
 
 ## 1.0.0 — 2026-08-28
 
