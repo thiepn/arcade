@@ -10,6 +10,7 @@ interface HeaderProps {
   soundEnabled: boolean;
   onToggleSound: () => void;
   onOpenStats: (tab?: 'stats' | 'achievements' | 'leaderboards') => void;
+  onOpenProfile: () => void;
   searchOpen: boolean;
   onToggleSearch: () => void;
   favoriteCount: number;
@@ -22,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   soundEnabled,
   onToggleSound,
   onOpenStats,
+  onOpenProfile,
   searchOpen,
   onToggleSearch,
   favoriteCount,
@@ -161,14 +163,14 @@ export const Header: React.FC<HeaderProps> = ({
             id="header-rank-badge-btn"
             onClick={() => {
               sounds.playClick();
-              onOpenStats('achievements');
+              onOpenProfile();
             }}
             className="px-1.5 sm:px-3 py-1 rounded-xl bg-[#121215] hover:bg-[#1A1A1E] border transition-all cursor-pointer flex items-center gap-1 sm:gap-2 group relative select-none shadow-sm hover:scale-105 active:scale-95 shrink-0 max-w-[110px] sm:max-w-none overflow-hidden"
             style={{
               borderColor: `${rankProfile.color}60`,
               boxShadow: `0 0 12px ${rankProfile.glowColor}`,
             }}
-            title={`Rank Tier: ${rankProfile.rankTierName} • ${rankProfile.title} (${rankProfile.badgeCount}/${rankProfile.totalBadges} Badges Unlocked)`}
+            title={`Open Player Profile • ${rankProfile.rankTierName} • ${rankProfile.title}`}
           >
             {/* Level Orb */}
             <div
