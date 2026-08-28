@@ -25,6 +25,7 @@ jobs:
           set -euo pipefail
           python scripts/apply-ma4-final.py
           python scripts/patch-ma1-audit-for-lazy.py
+          python scripts/patch-ma4-types.py
           bun install --frozen-lockfile
           bun run quality:games
           bunx tsc --noEmit
