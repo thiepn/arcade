@@ -127,14 +127,14 @@ for (const file of files) {
     }
   }
 
-  const intervals = count(source, /(?<!clear)Interval\s*\(/g);
-  const intervalClears = count(source, /clearInterval\s*\(/g);
+  const intervals = count(source, /\bsetInterval\s*\(/g);
+  const intervalClears = count(source, /\bclearInterval\s*\(/g);
   if (intervals > intervalClears && !source.includes('useSafeInterval')) {
     warnings.push(`${file}: ${intervals} interval allocation(s) but ${intervalClears} explicit clear(s).`);
   }
 
-  const timeouts = count(source, /(?<!clear)Timeout\s*\(/g);
-  const timeoutClears = count(source, /clearTimeout\s*\(/g);
+  const timeouts = count(source, /\bsetTimeout\s*\(/g);
+  const timeoutClears = count(source, /\bclearTimeout\s*\(/g);
   if (timeouts > timeoutClears && !source.includes('useSafeTimeout')) {
     warnings.push(`${file}: ${timeouts} timeout allocation(s) but ${timeoutClears} explicit clear(s).`);
   }
