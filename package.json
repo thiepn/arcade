@@ -15,6 +15,7 @@
     "quality:blade": "bun scripts/audit-blade-trajectories.ts",
     "quality:pinball": "bun scripts/audit-pinball-physics.ts",
     "quality:chrono": "bun scripts/audit-chrono-reachability.ts",
+    "quality:shortcuts": "bun scripts/audit-rhythm-shortcuts.ts",
     "worker:dev": "wrangler dev",
     "worker:check": "tsc -p worker/tsconfig.json --noEmit && wrangler deploy --dry-run --outdir .wrangler-dist",
     "worker:deploy": "wrangler deploy",
