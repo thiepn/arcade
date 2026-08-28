@@ -121,7 +121,7 @@ function parseLimit(url: URL): number {
 async function readJson<T>(request: Request): Promise<T> {
   const contentType = request.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) throw new Error('Expected application/json');
-  return request.json<T>();
+  return request.json() as Promise<T>;
 }
 
 interface PlayerRow {
