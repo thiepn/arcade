@@ -131,7 +131,8 @@ for (const height of heights) {
 
     if (Math.abs(measuredApexY - trajectory.apexY) > tolerancePx) {
       errors.push(
-        `${height}px sample ${apexSample}: measured apex ${measuredApexY.toFixed(2)} != requested ${trajectory.apexY.toFixed(2)}`,
+        height + 'px sample ' + apexSample + ': measured apex ' + measuredApexY.toFixed(2) +
+          ' != requested ' + trajectory.apexY.toFixed(2),
       );
     }
 
@@ -141,19 +142,21 @@ for (const height of heights) {
       measuredRatio > BLADE_APEX_MAX_RATIO + 0.002
     ) {
       errors.push(
-        `${height}px sample ${apexSample}: apex ratio ${measuredRatio.toFixed(4)} is outside the certified upper band`,
+        height + 'px sample ' + apexSample + ': apex ratio ' + measuredRatio.toFixed(4) +
+          ' is outside the certified upper band',
       );
     }
 
     const minLandingX = width * BLADE_LANDING_MARGIN_RATIO;
     const maxLandingX = width * (1 - BLADE_LANDING_MARGIN_RATIO);
     if (trajectory.landingX < minLandingX || trajectory.landingX > maxLandingX) {
-      errors.push(`${height}px sample ${apexSample}: projected landing is outside the arena`);
+      errors.push(height + 'px sample ' + apexSample + ': projected landing is outside the arena');
     }
 
     if (trajectory.framesToApex < 45 || trajectory.framesToApex > 75) {
       errors.push(
-        `${height}px sample ${apexSample}: ${trajectory.framesToApex.toFixed(1)} frames to apex is outside the playable range`,
+        height + 'px sample ' + apexSample + ': ' + trajectory.framesToApex.toFixed(1) +
+          ' frames to apex is outside the playable range',
       );
     }
   }
@@ -161,12 +164,14 @@ for (const height of heights) {
 
 if (errors.length) {
   console.error('Laser Blade trajectory audit failed:');
-  for (const error of errors) console.error(`- ${error}`);
+  for (const error of errors) console.error('- ' + error);
   process.exit(1);
 }
 
 console.log(
-  `Laser Blade trajectory audit passed: every certified mobile/desktop height reaches the ${(BLADE_APEX_MIN_RATIO * 100).toFixed(0)}–${(BLADE_APEX_MAX_RATIO * 100).toFixed(0)}% upper arena band.`,
+  'Laser Blade trajectory audit passed: every certified mobile/desktop height reaches the ' +
+    (BLADE_APEX_MIN_RATIO * 100).toFixed(0) + '–' +
+    (BLADE_APEX_MAX_RATIO * 100).toFixed(0) + '% upper arena band.',
 );
 `,
 );
