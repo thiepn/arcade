@@ -352,11 +352,15 @@ const OVERALL_CTE = `WITH totals AS (
   FROM rated
 )`;
 
-const WEEKLY_OVERALL_CTE = `WITH weekly_best AS (
-  SELECT player_id, game_id, MAX(score) AS score, MIN(created_at) AS achieved_at
+const WEEKLY_OVERALL_CTE = `WITH ranked_weekly_submissions AS (
+  SELECT player_id, game_id, score, created_at,
+         ROW_NUMBER() OVER (PARTITION BY player_id, game_id ORDER BY score DESC, created_at ASC) AS game_rank
   FROM score_submissions
   WHERE created_at >= ? AND created_at < ?
-  GROUP BY player_id, game_id
+), weekly_best AS (
+  SELECT player_id, game_id, score, created_at AS achieved_at
+  FROM ranked_weekly_submissions
+  WHERE game_rank = 1
 ), totals AS (
   SELECT p.id, p.display_name AS name, p.country_code,
          SUM(wb.score) AS total_score,
