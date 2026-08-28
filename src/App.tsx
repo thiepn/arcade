@@ -25,9 +25,11 @@ import { GameCard } from './components/GameCard';
 import { GameShell } from './components/GameShell';
 import { RecentlyPlayedSection } from './components/RecentlyPlayedSection';
 import { StatsModal } from './components/StatsModal';
+import { OverallLeaderboardModal } from './components/OverallLeaderboardModal';
+import { PlayerProfileModal } from './components/PlayerProfileModal';
 import { StressTester } from './components/StressTester';
 import { AnimatePresence, motion } from "motion/react";
-import { Sparkles, Gamepad2, Shuffle, Heart, BarChart2, Globe, Trophy, Medal, Activity } from 'lucide-react';
+import { Sparkles, Gamepad2, Shuffle, Heart, BarChart2, Globe, Trophy, Medal, Activity, UserRound } from 'lucide-react';
 
 export default function App() {
   const [stats, setStats] = useState<UserStats>(() => getStoredStats());
@@ -37,6 +39,8 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
   const [statsModalOpen, setStatsModalOpen] = useState<boolean>(false);
+  const [overallLeaderboardOpen, setOverallLeaderboardOpen] = useState<boolean>(false);
+  const [profileOpen, setProfileOpen] = useState<boolean>(false);
   const [stressTesterOpen, setStressTesterOpen] = useState<boolean>(false);
   const [statsModalTab, setStatsModalTab] = useState<'stats' | 'achievements' | 'leaderboards'>('stats');
   const [statsModalGameId, setStatsModalGameId] = useState<string | undefined>(undefined);
@@ -91,11 +95,13 @@ export default function App() {
       } else if (e.key === 'Escape') {
         if (searchOpen) setSearchOpen(false);
         if (statsModalOpen) setStatsModalOpen(false);
+        if (overallLeaderboardOpen) setOverallLeaderboardOpen(false);
+        if (profileOpen) setProfileOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeGameId, searchOpen, statsModalOpen]);
+  }, [activeGameId, searchOpen, statsModalOpen, overallLeaderboardOpen, profileOpen]);
 
   // Launch a game
   const handleLaunchGame = useCallback((gameId: string) => {
@@ -107,6 +113,10 @@ export default function App() {
 
   const handleOpenStats = useCallback((tab: 'stats' | 'achievements' | 'leaderboards' = 'stats', gameId?: string) => {
     haptics.light();
+    if (tab === 'leaderboards' && !gameId) {
+      setOverallLeaderboardOpen(true);
+      return;
+    }
     setStatsModalTab(tab);
     setStatsModalGameId(gameId);
     setStatsModalOpen(true);
@@ -244,6 +254,7 @@ export default function App() {
           soundEnabled={stats.soundEnabled}
           onToggleSound={handleToggleSound}
           onOpenStats={handleOpenStats}
+          onOpenProfile={() => setProfileOpen(true)}
           searchOpen={searchOpen}
           onToggleSearch={() => setSearchOpen((prev) => !prev)}
           favoriteCount={stats.favorites.length}
@@ -363,6 +374,13 @@ export default function App() {
             </button>
             <button
               type="button"
+              onClick={() => setProfileOpen(true)}
+              className="hover:text-violet-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <UserRound className="w-3.5 h-3.5 text-violet-400" /> Profile
+            </button>
+            <button
+              type="button"
               onClick={() => handleOpenStats('stats')}
               className="hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer"
             >
@@ -383,6 +401,14 @@ export default function App() {
 
       {import.meta.env.DEV && stressTesterOpen && (
         <StressTester onClose={() => setStressTesterOpen(false)} />
+      )}
+
+      {overallLeaderboardOpen && (
+        <OverallLeaderboardModal stats={stats} onClose={() => setOverallLeaderboardOpen(false)} />
+      )}
+
+      {profileOpen && (
+        <PlayerProfileModal stats={stats} onClose={() => setProfileOpen(false)} />
       )}
 
       {/* Statistics Modal Overlay */}

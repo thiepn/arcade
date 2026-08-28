@@ -42,23 +42,36 @@ export interface LeaderboardPlaySession {
   expiresAt: number;
 }
 
-interface GameLeaderboardData {
+export interface GameLeaderboardData {
   topEntries: LeaderboardEntry[];
   userRank: number | null;
   userEntry: LeaderboardEntry | null;
   totalCompetitors: number;
 }
 
-interface OverallLeaderboardData {
+export interface OverallLeaderboardData {
   topEntries: GlobalOverallEntry[];
   userRank: number | null;
   userEntry: GlobalOverallEntry;
   totalWorldCompetitors: number;
+  weekStart?: number;
+  weekEnd?: number;
+}
+
+export interface GuestProfileData {
+  id: string;
+  name: string;
+  countryCode: string;
+  createdAt: number;
+  submissions: number;
+  rankedGames: number;
 }
 
 interface LeaderboardCache {
   games: Record<string, GameLeaderboardData>;
   overall?: OverallLeaderboardData;
+  weeklyOverall?: OverallLeaderboardData;
+  profile?: GuestProfileData;
   updatedAt: number;
 }
 
@@ -244,6 +257,35 @@ function normalizeOverallRow(row: ServerOverallRow): GlobalOverallEntry {
   };
 }
 
+function emptyOverall(stats?: UserStats, weekly = false): OverallLeaderboardData {
+  const totalScore = weekly || !stats
+    ? 0
+    : (Object.values(stats.highScores) as number[]).reduce((sum, value) => sum + (value || 0), 0);
+  const gamesPlayed = weekly || !stats
+    ? 0
+    : Object.values(stats.playCounts).filter((count) => (count || 0) > 0).length;
+  return {
+    topEntries: [],
+    userRank: null,
+    totalWorldCompetitors: 0,
+    userEntry: {
+      id: 'local-user',
+      rank: 0,
+      name: weekly ? 'YOU (not ranked this week)' : 'YOU (pending sync)',
+      ratingScore: gamesPlayed * 1000,
+      totalScore,
+      badgesUnlocked: 0,
+      country: '🌐',
+      countryCode: 'XX',
+      badgeTitle: 'Arcade Challenger',
+      division: 'bronze',
+      level: Math.max(1, Math.min(10, 1 + Math.floor(gamesPlayed / 3))),
+      isUser: true,
+      timestamp: weekly ? 'No weekly score yet' : 'Local profile',
+    },
+  };
+}
+
 export async function refreshGameLeaderboard(gameId: string): Promise<GameLeaderboardData> {
   const data = await apiRequest<{
     entries: ServerGameRow[];
@@ -268,16 +310,12 @@ export async function refreshOverallLeaderboard(): Promise<OverallLeaderboardDat
     entries: ServerOverallRow[];
     userEntry: ServerOverallRow | null;
     totalCompetitors: number;
-  }>('/v1/leaderboards/overall?limit=10');
-  const userEntry = data.userEntry ? normalizeOverallRow({ ...data.userEntry, isUser: true }) : {
-    id: 'local-user', rank: 0, name: 'YOU', ratingScore: 0, totalScore: 0, badgesUnlocked: 0,
-    country: '🌐', countryCode: 'XX', badgeTitle: 'Arcade Challenger', division: 'bronze' as const,
-    level: 1, isUser: true, timestamp: 'Not ranked yet',
-  };
+  }>('/v1/leaderboards/overall?limit=20');
+  const fallback = emptyOverall();
   const normalized: OverallLeaderboardData = {
     topEntries: data.entries.map(normalizeOverallRow),
     userRank: data.userEntry?.rank ?? null,
-    userEntry,
+    userEntry: data.userEntry ? normalizeOverallRow({ ...data.userEntry, isUser: true }) : fallback.userEntry,
     totalWorldCompetitors: data.totalCompetitors,
   };
   const cache = loadCache();
@@ -285,6 +323,54 @@ export async function refreshOverallLeaderboard(): Promise<OverallLeaderboardDat
   cache.updatedAt = Date.now();
   saveCache(cache);
   return normalized;
+}
+
+export async function refreshWeeklyOverallLeaderboard(): Promise<OverallLeaderboardData> {
+  const data = await apiRequest<{
+    entries: ServerOverallRow[];
+    userEntry: ServerOverallRow | null;
+    totalCompetitors: number;
+    weekStart: number;
+    weekEnd: number;
+  }>('/v1/leaderboards/weekly?limit=20');
+  const fallback = emptyOverall(undefined, true);
+  const normalized: OverallLeaderboardData = {
+    topEntries: data.entries.map(normalizeOverallRow),
+    userRank: data.userEntry?.rank ?? null,
+    userEntry: data.userEntry ? normalizeOverallRow({ ...data.userEntry, isUser: true }) : fallback.userEntry,
+    totalWorldCompetitors: data.totalCompetitors,
+    weekStart: data.weekStart,
+    weekEnd: data.weekEnd,
+  };
+  const cache = loadCache();
+  cache.weeklyOverall = normalized;
+  cache.updatedAt = Date.now();
+  saveCache(cache);
+  return normalized;
+}
+
+export async function getGuestProfile(): Promise<GuestProfileData> {
+  const data = await apiRequest<{
+    player: { id: string; name: string; countryCode: string; createdAt: number };
+    activity: { submissions: number; rankedGames: number };
+  }>('/v1/me');
+  const profile: GuestProfileData = {
+    id: data.player.id,
+    name: data.player.name,
+    countryCode: data.player.countryCode,
+    createdAt: data.player.createdAt,
+    submissions: data.activity.submissions,
+    rankedGames: data.activity.rankedGames,
+  };
+  const cache = loadCache();
+  cache.profile = profile;
+  cache.updatedAt = Date.now();
+  saveCache(cache);
+  return profile;
+}
+
+export function getCachedGuestProfile(): GuestProfileData | null {
+  return loadCache().profile ?? null;
 }
 
 export function getGlobalLeaderboardForGame(gameId: string, userHighScore: number): GameLeaderboardData {
@@ -299,26 +385,20 @@ export function getGlobalLeaderboardForGame(gameId: string, userHighScore: numbe
 }
 
 export function getOverallArcadeLeaderboard(stats: UserStats): OverallLeaderboardData {
-  const cached = loadCache().overall;
-  if (cached) return cached;
-  const totalScore = (Object.values(stats.highScores) as number[]).reduce((sum, value) => sum + (value || 0), 0);
-  const gamesPlayed = Object.values(stats.playCounts).filter((count) => (count || 0) > 0).length;
-  return {
-    topEntries: [],
-    userRank: null,
-    totalWorldCompetitors: 0,
-    userEntry: {
-      id: 'local-user', rank: 0, name: 'YOU (pending sync)', ratingScore: gamesPlayed * 1000,
-      totalScore, badgesUnlocked: 0, country: '🌐', countryCode: 'XX', badgeTitle: 'Arcade Challenger',
-      division: 'bronze', level: Math.max(1, Math.min(10, 1 + Math.floor(gamesPlayed / 3))),
-      isUser: true, timestamp: 'Local profile',
-    },
-  };
+  return loadCache().overall ?? emptyOverall(stats);
+}
+
+export function getWeeklyOverallLeaderboard(stats?: UserStats): OverallLeaderboardData {
+  return loadCache().weeklyOverall ?? emptyOverall(stats, true);
 }
 
 export async function simulateLiveCompetition(gameId: string): Promise<void> {
   if (!isLiveLeaderboardConfigured()) return;
-  await Promise.allSettled([refreshGameLeaderboard(gameId), refreshOverallLeaderboard()]);
+  await Promise.allSettled([
+    refreshGameLeaderboard(gameId),
+    refreshOverallLeaderboard(),
+    refreshWeeklyOverallLeaderboard(),
+  ]);
 }
 
 export function resetAllLeaderboards(): void {
@@ -349,7 +429,12 @@ export async function submitLeaderboardScore(session: LeaderboardPlaySession, sc
         durationMs: Math.max(0, Date.now() - session.clientStartedAt),
       }),
     });
-    await Promise.allSettled([refreshGameLeaderboard(session.gameId), refreshOverallLeaderboard()]);
+    await Promise.allSettled([
+      refreshGameLeaderboard(session.gameId),
+      refreshOverallLeaderboard(),
+      refreshWeeklyOverallLeaderboard(),
+      getGuestProfile(),
+    ]);
     return true;
   } catch (error) {
     console.warn('Live leaderboard score submission failed:', error);
@@ -362,5 +447,7 @@ export async function updateGuestDisplayName(name: string): Promise<void> {
   const cache = loadCache();
   cache.games = {};
   delete cache.overall;
+  delete cache.weeklyOverall;
+  delete cache.profile;
   saveCache(cache);
 }
