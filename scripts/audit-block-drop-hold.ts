@@ -5,6 +5,8 @@ import {
   resolveBlockDropHold,
 } from '../src/lib/blockDropSupport';
 
+type Piece = 'I' | 'J' | 'L' | 'O' | 'S' | 'T' | 'Z';
+
 const errors: string[] = [];
 const assert = (condition: boolean, message: string) => {
   if (!condition) errors.push(message);
@@ -34,7 +36,7 @@ assert(desktop.cellSize <= BLOCK_DROP_DESKTOP_CELL_MAX, 'desktop cell cap is ign
 assert(desktop.boardW >= 280 && desktop.boardH >= 560, 'desktop board is still prototype-sized');
 
 let draws = 0;
-const firstHold = resolveBlockDropHold(
+const firstHold = resolveBlockDropHold<Piece>(
   { current: 'T', next: 'I', hold: null, canHold: true },
   () => {
     draws++;
@@ -48,11 +50,11 @@ assert(firstHold.hold === 'T', 'first hold should store the outgoing piece');
 assert(!firstHold.canHold, 'hold must lock until the current piece is placed');
 assert(draws === 1, 'first hold should consume exactly one next-piece draw');
 
-const blockedHold = resolveBlockDropHold(firstHold, () => 'Z');
+const blockedHold = resolveBlockDropHold<Piece>(firstHold, () => 'Z');
 assert(!blockedHold.changed, 'second hold before lock must be rejected');
 assert(blockedHold.current === 'I' && blockedHold.hold === 'T', 'blocked hold mutated pieces');
 
-const swapHold = resolveBlockDropHold(
+const swapHold = resolveBlockDropHold<Piece>(
   { current: 'L', next: 'S', hold: 'J', canHold: true },
   () => 'Z',
 );
