@@ -30,6 +30,7 @@ import { LaserRopeGame } from '../games/LaserRopeGame';
 import { BlockDropGame } from '../games/BlockDropGame';
 import { AirHockeyGame } from '../games/AirHockeyGame';
 import { AstroBlasterGame } from '../games/AstroBlasterGame';
+import { KnifeTargetGame } from '../games/KnifeTargetGame';
 
 export interface GameEntry extends GameDefinition {
   component: React.FC<any>;
@@ -470,6 +471,21 @@ export const GAMES_REGISTRY: GameEntry[] = [
     controlsHint: 'Arrows / WASD • Space: Hard Drop',
     icon: 'Grid3X3',
     component: BlockDropGame,
+  },
+  {
+    id: 'knifetarget',
+    title: 'Knife Target',
+    tagline: 'Thread blades into a spinning cyber core.',
+    description: 'Throw blades into a rotating target without striking embedded knives or deflector shields. Slice crystals, build multipliers, and survive escalating stages.',
+    category: 'Timing',
+    sessionLength: '1–3 min',
+    accentColor: '#38bdf8',
+    accentGlow: 'rgba(56, 189, 248, 0.4)',
+    accentBg: 'rgba(56, 189, 248, 0.1)',
+    instructions: 'Tap, click, or press Space to throw. Avoid embedded blades and red deflector shields.',
+    controlsHint: 'Click / Tap / Space',
+    icon: 'Target',
+    component: KnifeTargetGame,
   },
   {
     id: 'airhockey',

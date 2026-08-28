@@ -207,9 +207,19 @@ export const GameShell: React.FC<GameShellProps> = ({
     return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
 
+  // Backgrounding or locking a device must never let a live run advance unseen.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && !gameOverHandledRef.current) setIsPaused(true);
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   // Global game shell keyboard shortcuts
   useEffect(() => {
     const handleGlobalKey = (e: KeyboardEvent) => {
+      if (e.repeat) return;
       if (gameOverData) {
         if (e.code === 'Space' || e.code === 'Enter') {
           e.preventDefault();
@@ -424,6 +434,7 @@ export const GameShell: React.FC<GameShellProps> = ({
             ? 'h-full max-w-none max-h-none p-0 pt-12'
             : 'max-w-4xl p-1.5 sm:p-3'
         }`}
+        style={{ touchAction: 'none', overscrollBehavior: 'none' }}
       >
         <div
           className={`relative w-full h-full bg-[#0A0A0B] overflow-hidden flex items-center justify-center transition-all ${
