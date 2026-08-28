@@ -1,0 +1,35 @@
+name: Apply MA2 wiring
+
+on:
+  push:
+    branches: [ma2-weekly-overall-profile]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ github.event.head_commit.message == 'Apply MA2 shell wiring' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ma2-weekly-overall-profile
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - name: Apply UI wiring and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/apply-ma2-wiring.mjs
+          rm -f scripts/apply-ma2-wiring.mjs .github/workflows/apply-ma2-wiring.yml
+          bun install --frozen-lockfile
+          bun run quality:games
+          bunx tsc --noEmit
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Wire MA2 weekly leaderboard and player profile UI'
+          git push origin HEAD:ma2-weekly-overall-profile
