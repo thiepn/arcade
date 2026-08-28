@@ -22,6 +22,7 @@ jobs:
       - run: bun run quality:blade
       - run: bun run quality:pinball
       - run: bun run quality:chrono
+      - run: bun run quality:shortcuts
       - run: bunx tsc --noEmit
       - run: bun run d1:migrate:local
       - name: Smoke-test Worker API
