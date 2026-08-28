@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, Check, Edit3, Globe2, Medal, Save, Trophy, UserRound, X } from 'lucide-react';
 import { UserStats } from '../types';
+import { useModalFocus } from '../hooks/useModalFocus';
 import { GAMES_REGISTRY } from '../data/games';
 import { ACHIEVEMENTS_REGISTRY, getTotalPlayCount, getUniqueGamesCount } from '../lib/achievements';
 import {
@@ -32,6 +33,9 @@ function countryFlag(code: string): string {
 }
 
 export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ stats, onClose }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocus(dialogRef);
+
   const live = isLiveLeaderboardConfigured();
   const [profile, setProfile] = useState<GuestProfileData | null>(() => getCachedGuestProfile());
   const [globalBoard, setGlobalBoard] = useState<OverallLeaderboardData>(() => getOverallArcadeLeaderboard(stats));
@@ -115,7 +119,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ stats, o
     : 'Local only';
 
   return (
-    <div className="fixed inset-0 z-[85] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Player profile">
+    <div ref={dialogRef} tabIndex={-1} className="fixed inset-0 z-[85] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 outline-none" role="dialog" aria-modal="true" aria-label="Player profile">
       <div className="w-full max-w-2xl max-h-[90vh] overflow-auto rounded-2xl border border-[#27272A] bg-[#0A0A0B] shadow-2xl">
         <div className="px-4 sm:px-5 py-4 border-b border-[#27272A] flex items-center justify-between gap-3 sticky top-0 bg-[#0A0A0B]/95 backdrop-blur z-10">
           <div className="flex items-center gap-3 min-w-0">

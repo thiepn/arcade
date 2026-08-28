@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GameEntry } from '../data/games';
 import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { beginLeaderboardSession, submitLeaderboardScore, type LeaderboardPlaySession } from '../lib/leaderboards';
 import { useGamepadBridge } from '../hooks/useGamepadBridge';
-import confetti from 'canvas-confetti';
+import { ErrorBoundary } from './ErrorBoundary';
 import {
   ArrowLeft,
   RotateCcw,
@@ -188,14 +188,16 @@ export const GameShell: React.FC<GameShellProps> = ({
       if (isNewHighScore && safeFinalScore > 0) {
         // High score celebratory vibration pattern
         haptics.highScore();
-        try {
-          confetti({
-            particleCount: 75,
-            spread: 60,
-            origin: { y: 0.6 },
-            colors: [game.accentColor, '#facc15', '#ffffff'],
-          });
-        } catch {}
+        void import('canvas-confetti')
+          .then(({ default: confetti }) => {
+            confetti({
+              particleCount: 75,
+              spread: 60,
+              origin: { y: 0.6 },
+              colors: [game.accentColor, '#facc15', '#ffffff'],
+            });
+          })
+          .catch(() => {});
       } else {
         // Session loss / game over tactile pulse
         haptics.gameOver();
@@ -502,14 +504,27 @@ export const GameShell: React.FC<GameShellProps> = ({
           />
 
           {/* Active Mini-Game Component */}
-          <GameComponent
-            key={gameSessionKey}
-            onGameOver={sessionCallbacks.onGameOver}
-            onScoreUpdate={sessionCallbacks.onScoreUpdate}
-            isPaused={isPaused || gameOverData !== null}
-            soundEnabled={soundEnabled}
-            onRestartRequest={handleRestart}
-          />
+          <ErrorBoundary key={`game-${game.id}-${gameSessionKey}`} onReset={handleRestart}>
+            <Suspense
+              fallback={(
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#0A0A0B]" role="status" aria-live="polite" aria-busy="true">
+                  <div className="flex items-center gap-2 rounded-xl border border-[#27272A] bg-[#111114] px-4 py-3 text-xs font-mono-arcade text-zinc-300">
+                    <span className="h-3 w-3 animate-pulse rounded-full" style={{ backgroundColor: game.accentColor }} aria-hidden="true" />
+                    Loading {game.title}…
+                  </div>
+                </div>
+              )}
+            >
+              <GameComponent
+                key={gameSessionKey}
+                onGameOver={sessionCallbacks.onGameOver}
+                onScoreUpdate={sessionCallbacks.onScoreUpdate}
+                isPaused={isPaused || gameOverData !== null}
+                soundEnabled={soundEnabled}
+                onRestartRequest={handleRestart}
+              />
+            </Suspense>
+          </ErrorBoundary>
 
           {/* Pause Modal Overlay */}
           {isPaused && !gameOverData && (

@@ -45,51 +45,49 @@ interface GameCardProps {
 
 const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
   Orbit: Compass,
-  Layers: Layers,
-  Zap: Zap,
-  ShieldAlert: ShieldAlert,
-  Radio: Radio,
-  Grid: Grid,
-  Keyboard: Keyboard,
-  PenTool: PenTool,
-  Boxes: Boxes,
-  Crosshair: Crosshair,
-  Sparkles: Sparkles,
-  Compass: Compass,
-  Sword: Sword,
-  Disc: Disc,
-  Hexagon: Hexagon,
-  Terminal: Terminal,
-  Flame: Flame,
-  Rocket: Rocket,
-  Pickaxe: Pickaxe,
-  Ghost: Ghost,
-  Wind: Wind,
-  Footprints: Footprints,
-  CircleDot: CircleDot,
-  Target: Target,
-  Activity: Activity,
-  Grid3X3: Grid3X3,
-  Trophy: Trophy,
+  Layers,
+  Zap,
+  ShieldAlert,
+  Radio,
+  Grid,
+  Keyboard,
+  PenTool,
+  Boxes,
+  Crosshair,
+  Sparkles,
+  Compass,
+  Sword,
+  Disc,
+  Hexagon,
+  Terminal,
+  Flame,
+  Rocket,
+  Pickaxe,
+  Ghost,
+  Wind,
+  Footprints,
+  CircleDot,
+  Target,
+  Activity,
+  Grid3X3,
+  Trophy,
 };
 
 export const GameCard: React.FC<GameCardProps> = ({
   game,
   highScore,
+  playCount,
   isFavorite,
   onSelect,
   onToggleFavorite,
   index = 0,
 }) => {
   const IconComponent = ICON_MAP[game.icon] || Zap;
-
-  const handleCardClick = () => {
-    sounds.playClick();
-    onSelect(game.id);
-  };
+  const titleId = `game-title-${game.id}`;
+  const descriptionId = `game-description-${game.id}`;
 
   return (
-    <motion.div
+    <motion.article
       id={`game-card-${game.id}`}
       layout
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -99,90 +97,79 @@ export const GameCard: React.FC<GameCardProps> = ({
         duration: 0.3,
         delay: Math.min(index * 0.035, 0.35),
         ease: [0.22, 1, 0.36, 1],
-        layout: {
-          duration: 0.28,
-          ease: [0.22, 1, 0.36, 1],
-        },
+        layout: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
       }}
       whileHover={{ y: -4, transition: { duration: 0.18, ease: 'easeOut' } }}
-      whileTap={{ scale: 0.98 }}
-      onClick={handleCardClick}
-      className="group relative flex flex-col justify-between p-4 rounded-xl bg-[#18181B] border border-[#27272A] hover:border-[#F43F5E] transition-colors duration-200 cursor-pointer overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
+      className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-[#27272A] bg-[#18181B] p-4 transition-colors duration-200 hover:border-[#F43F5E] hover:shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
     >
-      {/* Top Header Row: Category Badge & Favorite Button */}
-      <div className="flex items-center justify-between z-10">
+      <button
+        type="button"
+        id={`play-btn-${game.id}`}
+        onClick={() => {
+          sounds.playClick();
+          onSelect(game.id);
+        }}
+        className="absolute inset-0 z-10 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0B]"
+        aria-label={`Play ${game.title}. ${game.tagline}`}
+      />
+
+      <div className="relative z-20 flex items-center justify-between pointer-events-none">
         <div className="flex items-center gap-2">
           <span
-            className="text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider"
-            style={{
-              backgroundColor: `${game.accentColor}18`,
-              color: game.accentColor,
-            }}
+            className="rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+            style={{ backgroundColor: `${game.accentColor}18`, color: game.accentColor }}
           >
             {game.category}
           </span>
-          <span className="text-[10px] text-[#71717A]">
-            • {game.sessionLength}
-          </span>
+          <span className="text-[10px] text-[#71717A]">• {game.sessionLength}</span>
         </div>
 
         <button
           type="button"
           id={`fav-btn-${game.id}`}
-          onClick={(e) => {
-            e.stopPropagation();
+          onClick={(event) => {
+            event.stopPropagation();
             sounds.playPop();
-            onToggleFavorite(game.id, e);
+            onToggleFavorite(game.id, event);
           }}
-          className={`p-1.5 rounded-lg transition-all ${
-            isFavorite
-              ? 'text-[#F43F5E] bg-[#F43F5E]/10'
-              : 'text-[#52525B] hover:text-[#A1A1AA]'
+          className={`pointer-events-auto relative z-30 rounded-lg p-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 ${
+            isFavorite ? 'bg-[#F43F5E]/10 text-[#F43F5E]' : 'text-[#52525B] hover:text-[#A1A1AA]'
           }`}
-          title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+          aria-label={isFavorite ? `Remove ${game.title} from favorites` : `Add ${game.title} to favorites`}
+          aria-pressed={isFavorite}
         >
-          <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-[#F43F5E]' : ''}`} />
+          <Heart className={`h-3.5 w-3.5 ${isFavorite ? 'fill-[#F43F5E]' : ''}`} />
         </button>
       </div>
 
-      {/* Middle Thumbnail Visual Graphic */}
-      <div className="relative my-3.5 w-full h-28 rounded-lg bg-[#0A0A0B] border border-[#27272A]/70 flex items-center justify-center overflow-hidden">
-        {/* Dynamic Abstract Game Icon */}
+      <div className="pointer-events-none relative z-0 my-3.5 flex h-28 w-full items-center justify-center overflow-hidden rounded-lg border border-[#27272A]/70 bg-[#0A0A0B]">
         <div
-          className="w-12 h-12 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-sm"
-          style={{
-            backgroundColor: `${game.accentColor}14`,
-            color: game.accentColor,
-          }}
+          className="flex h-12 w-12 items-center justify-center rounded-xl shadow-sm transition-transform duration-300 group-hover:scale-110"
+          style={{ backgroundColor: `${game.accentColor}14`, color: game.accentColor }}
         >
-          <IconComponent className="w-6 h-6" />
+          <IconComponent className="h-6 w-6" />
         </div>
-
-        {/* Hover "PLAY" Overlay */}
-        <div className="absolute inset-0 bg-[#0A0A0B]/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 backdrop-blur-[1px]">
-          <span className="px-3.5 py-1 rounded-md font-bold text-xs bg-white text-black flex items-center gap-1.5 shadow-md">
-            <Play className="w-3 h-3 fill-current" /> PLAY
+        <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-[#0A0A0B]/80 opacity-0 backdrop-blur-[1px] transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+          <span className="flex items-center gap-1.5 rounded-md bg-white px-3.5 py-1 text-xs font-bold text-black shadow-md">
+            <Play className="h-3 w-3 fill-current" /> PLAY
           </span>
         </div>
       </div>
 
-      {/* Bottom Title, Tagline & High Score */}
-      <div className="z-10 flex flex-col gap-1">
+      <div className="pointer-events-none relative z-0 flex flex-col gap-1">
         <div className="flex items-baseline justify-between gap-2">
-          <h3 className="font-bold text-base text-white group-hover:text-white transition-colors truncate">
-            {game.title}
-          </h3>
+          <h3 id={titleId} className="truncate text-base font-bold text-white">{game.title}</h3>
           {highScore > 0 && (
-            <span className="text-[10px] font-mono-arcade text-amber-400 font-bold bg-amber-950/30 px-1.5 py-0.5 rounded border border-amber-500/20 shrink-0">
+            <span className="shrink-0 rounded border border-amber-500/20 bg-amber-950/30 px-1.5 py-0.5 text-[10px] font-bold text-amber-400 font-mono-arcade">
               BEST {highScore.toLocaleString()}
             </span>
           )}
         </div>
-        <p className="text-xs text-[#71717A] line-clamp-1">
-          {game.tagline}
-        </p>
+        <p id={descriptionId} className="line-clamp-1 text-xs text-[#71717A]">{game.tagline}</p>
+        <span className="sr-only">Played {playCount.toLocaleString()} times.</span>
       </div>
-    </motion.div>
+    </motion.article>
   );
 };
-

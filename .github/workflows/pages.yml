@@ -28,6 +28,7 @@ jobs:
       - run: bunx tsc --noEmit
       - run: bun run build:pages
       - run: MA3_EXPECT_BASE=/arcade/ bun run quality:ma3
+      - run: MA4_EXPECT_BASE=/arcade/ bun run quality:ma4
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

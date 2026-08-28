@@ -85,6 +85,9 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
     lasers: [] as LaserShot[],
     floatingTexts: [] as FloatingText[],
     laserTimeRemaining: 0,
+    laserCooldown: 0,
+    wideTimeRemaining: 0,
+    fireballTimeRemaining: 0,
     shake: 0,
     score: 0,
     combo: 0,
@@ -162,6 +165,9 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
     state.powerUps = [];
     state.floatingTexts = [];
     state.laserTimeRemaining = 0;
+    state.laserCooldown = 0;
+    state.wideTimeRemaining = 0;
+    state.fireballTimeRemaining = 0;
     state.balls = [
       {
         x: 200,

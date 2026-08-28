@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useSafeTimeout } from '../hooks/useGameLoop';
+import { useModalFocus } from '../hooks/useModalFocus';
 import { UserStats, AppTheme } from '../types';
 import { GAMES_REGISTRY, GameEntry } from '../data/games';
 import {
@@ -100,6 +101,9 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   initialTab = 'stats',
   initialGameId,
 }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocus(dialogRef);
+
   const [activeTab, setActiveTab] = useState<'stats' | 'achievements' | 'leaderboards'>(initialTab);
   const [leaderboardScope, setLeaderboardScope] = useState<'perGame' | 'overall'>('overall');
   const [selectedGameId, setSelectedGameId] = useState<string>(
@@ -382,8 +386,13 @@ export const StatsModal: React.FC<StatsModalProps> = ({
       }}
     >
       <div
+        ref={dialogRef}
         id="stats-modal-container"
-        className="w-full max-w-4xl rounded-2xl bg-[#111114] border border-[#27272A] shadow-2xl flex flex-col max-h-[92vh] overflow-hidden my-auto animate-in fade-in zoom-in-98 duration-200"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Arcade statistics, achievements, leaderboards and settings"
+        tabIndex={-1}
+        className="w-full max-w-4xl rounded-2xl bg-[#111114] border border-[#27272A] shadow-2xl flex flex-col max-h-[92vh] overflow-hidden my-auto animate-in fade-in zoom-in-98 duration-200 outline-none"
       >
         {/* MODAL STICKY HEADER */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#27272A] bg-[#141418] shrink-0">
