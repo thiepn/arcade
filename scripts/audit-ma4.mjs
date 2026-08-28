@@ -43,7 +43,7 @@ for (const [name, source] of [['Stats', statsModal], ['Overall', overallModal], 
 if (!vite.includes("manifest: 'asset-manifest.json'")) errors.push('Vite asset manifest is not enabled');
 if (!vite.includes("return 'react-vendor'")) errors.push('Stable vendor chunking is missing');
 if (!serviceWorker.includes("scopeUrl('asset-manifest.json')") || !serviceWorker.includes('discoverManifestAssets')) errors.push('Service worker does not precache lazy build chunks');
-if (pkg.version !== '1.0.0' || pkg.license !== 'Apache-2.0') errors.push('Release package metadata is incomplete');
+if (pkg.version !== '1.1.0' || pkg.license !== 'Apache-2.0') errors.push('Release package metadata is incomplete');
 for (const path of ['CHANGELOG.md', 'LICENSE']) if (!existsSync(join(root, path))) errors.push(`${path} is missing`);
 
 const manifestPath = join(root, dist, 'asset-manifest.json');
@@ -77,8 +77,8 @@ if (!existsSync(assetsDir)) {
   const jsFiles = readdirSync(assetsDir).filter((name) => name.endsWith('.js'));
   if (jsFiles.length < 10) errors.push(`${dist}: expected code-split JavaScript output, found ${jsFiles.length} chunks`);
   for (const file of jsFiles) {
-    const size = statSync(join(assetsDir, file)).size;
-    if (size > 350_000) errors.push(`${dist}: ${file} is ${size} bytes; expected <= 350000`);
+    const size = statSync(join(root, dist, 'assets', file)).size;
+    if (size > 350_000) errors.push(`${dist}: ${file} is ${size} bytes; expected <=350000`);
   }
 }
 
