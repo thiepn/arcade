@@ -48,6 +48,7 @@ Object.assign(GAME_RULES, {
 const encoder = new TextEncoder();
 const SESSION_TTL_MS = 30 * 60 * 1000;
 const MAX_LEADERBOARD_LIMIT = 50;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function json(data: unknown, status = 200, headers: HeadersInit = {}): Response {
   return new Response(JSON.stringify(data), {
@@ -119,6 +120,13 @@ function parseLimit(url: URL): number {
   return Math.max(1, Math.min(MAX_LEADERBOARD_LIMIT, parsed));
 }
 
+function utcWeekBounds(now = Date.now()): { start: number; end: number } {
+  const date = new Date(now);
+  const mondayOffset = (date.getUTCDay() + 6) % 7;
+  const start = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - mondayOffset, 0, 0, 0, 0);
+  return { start, end: start + WEEK_MS };
+}
+
 async function readJson<T>(request: Request): Promise<T> {
   const contentType = request.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) throw new Error('Expected application/json');
@@ -129,6 +137,7 @@ interface PlayerRow {
   id: string;
   display_name: string;
   country_code: string;
+  created_at: number;
 }
 
 async function authenticate(request: Request, env: Env, optional = false): Promise<PlayerRow | null> {
@@ -142,7 +151,7 @@ async function authenticate(request: Request, env: Env, optional = false): Promi
   const [, playerId, secret] = match;
   const hash = await credentialHash(env, secret);
   const player = await env.DB.prepare(
-    'SELECT id, display_name, country_code FROM players WHERE id = ? AND credential_hash = ?'
+    'SELECT id, display_name, country_code, created_at FROM players WHERE id = ? AND credential_hash = ?'
   ).bind(playerId, hash).first<PlayerRow>();
   if (!player) throw new Response('Unauthorized', { status: 401 });
   void env.DB.prepare('UPDATE players SET last_seen_at = ? WHERE id = ?').bind(Date.now(), player.id).run();
@@ -168,14 +177,27 @@ async function createGuest(request: Request, env: Env): Promise<Response> {
   ).bind(id, hash, name, country, now, now).run();
   return response(request, env, {
     credential: `${id}.${secret}`,
-    player: { id, name, countryCode: country },
+    player: { id, name, countryCode: country, createdAt: now },
   }, 201);
 }
 
 async function getMe(request: Request, env: Env): Promise<Response> {
   const player = await authenticate(request, env);
+  const activity = await env.DB.prepare(
+    `SELECT COUNT(*) AS submissions, COUNT(DISTINCT game_id) AS ranked_games
+     FROM score_submissions WHERE player_id = ?`
+  ).bind(player!.id).first<{ submissions: number; ranked_games: number }>();
   return response(request, env, {
-    player: { id: player!.id, name: player!.display_name, countryCode: player!.country_code },
+    player: {
+      id: player!.id,
+      name: player!.display_name,
+      countryCode: player!.country_code,
+      createdAt: player!.created_at,
+    },
+    activity: {
+      submissions: activity?.submissions ?? 0,
+      rankedGames: activity?.ranked_games ?? 0,
+    },
   });
 }
 
@@ -188,7 +210,9 @@ async function updateMe(request: Request, env: Env): Promise<Response> {
   }
   await env.DB.prepare('UPDATE players SET display_name = ?, last_seen_at = ? WHERE id = ?')
     .bind(name, Date.now(), player!.id).run();
-  return response(request, env, { player: { id: player!.id, name, countryCode: player!.country_code } });
+  return response(request, env, {
+    player: { id: player!.id, name, countryCode: player!.country_code, createdAt: player!.created_at },
+  });
 }
 
 async function createSession(request: Request, env: Env): Promise<Response> {
@@ -328,6 +352,26 @@ const OVERALL_CTE = `WITH totals AS (
   FROM rated
 )`;
 
+const WEEKLY_OVERALL_CTE = `WITH weekly_best AS (
+  SELECT player_id, game_id, MAX(score) AS score, MIN(created_at) AS achieved_at
+  FROM score_submissions
+  WHERE created_at >= ? AND created_at < ?
+  GROUP BY player_id, game_id
+), totals AS (
+  SELECT p.id, p.display_name AS name, p.country_code,
+         SUM(wb.score) AS total_score,
+         COUNT(*) AS games_played,
+         MAX(wb.achieved_at) AS last_achieved_at
+  FROM players p JOIN weekly_best wb ON wb.player_id = p.id
+  GROUP BY p.id
+), rated AS (
+  SELECT *, games_played * 1000 + MIN(CAST(total_score / 10000 AS INTEGER), 999) AS rating_score
+  FROM totals
+), ranked AS (
+  SELECT *, ROW_NUMBER() OVER (ORDER BY rating_score DESC, total_score DESC, last_achieved_at ASC) AS rank
+  FROM rated
+)`;
+
 async function overallLeaderboard(request: Request, env: Env, url: URL): Promise<Response> {
   const player = await authenticate(request, env, true);
   const limit = parseLimit(url);
@@ -351,6 +395,33 @@ async function overallLeaderboard(request: Request, env: Env, url: URL): Promise
   });
 }
 
+async function weeklyOverallLeaderboard(request: Request, env: Env, url: URL): Promise<Response> {
+  const player = await authenticate(request, env, true);
+  const limit = parseLimit(url);
+  const { start, end } = utcWeekBounds();
+  const rows = await env.DB.prepare(
+    `${WEEKLY_OVERALL_CTE} SELECT id, name, country_code, total_score, games_played, rating_score, last_achieved_at, rank
+     FROM ranked ORDER BY rank LIMIT ?`
+  ).bind(start, end, limit).all<OverallRow>();
+  const count = await env.DB.prepare(
+    'SELECT COUNT(DISTINCT player_id) AS count FROM score_submissions WHERE created_at >= ? AND created_at < ?'
+  ).bind(start, end).first<{ count: number }>();
+  let userEntry: OverallRow | null = null;
+  if (player) {
+    userEntry = await env.DB.prepare(
+      `${WEEKLY_OVERALL_CTE} SELECT id, name, country_code, total_score, games_played, rating_score, last_achieved_at, rank
+       FROM ranked WHERE id = ?`
+    ).bind(start, end, player.id).first<OverallRow>();
+  }
+  return response(request, env, {
+    entries: rows.results.map((row) => ({ ...row, isUser: row.id === player?.id })),
+    userEntry,
+    totalCompetitors: count?.count ?? 0,
+    weekStart: start,
+    weekEnd: end,
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(request, env) });
@@ -365,6 +436,7 @@ export default {
       if (url.pathname === '/v1/sessions' && request.method === 'POST') return createSession(request, env);
       if (url.pathname === '/v1/scores' && request.method === 'POST') return submitScore(request, env);
       if (url.pathname === '/v1/leaderboards/overall' && request.method === 'GET') return overallLeaderboard(request, env, url);
+      if (url.pathname === '/v1/leaderboards/weekly' && request.method === 'GET') return weeklyOverallLeaderboard(request, env, url);
       const gameMatch = /^\/v1\/leaderboards\/([a-z0-9-]+)$/.exec(url.pathname);
       if (gameMatch && request.method === 'GET') return gameLeaderboard(request, env, gameMatch[1], url);
       return response(request, env, { error: 'Not found' }, 404);
