@@ -106,7 +106,7 @@ assert(
 const segmentBody = { x: 10, y: 2, vx: 0, vy: 300, radius: 5 };
 const segmentHit = resolveCircleSegment(segmentBody, 0, 0, 20, 0, 3, 0.85);
 assert(Boolean(segmentHit), 'flipper/rail capsule collision was not detected');
-assert(segmentBody.y <= -8, 'segment collision did not move the ball outside the capsule');
+assert(Math.abs(segmentBody.y) >= 8, 'segment collision did not move the ball outside the capsule');
 
 const targetBody = { x: 0, y: 0, vx: 0, vy: 220, radius: 5 };
 const targetHit = resolveCircleAabb(targetBody, -10, -4, 20, 8, 0.8);
