@@ -24,6 +24,17 @@ const auth = { authorization: `Bearer ${guest.credential}` };
 
 const meResponse = await request('/v1/me', { headers: auth });
 assert(meResponse.ok, `me failed: ${meResponse.status}`);
+const me = await meResponse.json();
+assert(me.player?.id, 'profile player id missing');
+assert(Number.isFinite(me.player?.createdAt), 'profile creation timestamp missing');
+assert(me.activity?.submissions === 0, 'new profile should start with zero submissions');
+
+const renameResponse = await request('/v1/me', {
+  method: 'PATCH',
+  headers: auth,
+  body: JSON.stringify({ name: 'Smoke Player' }),
+});
+assert(renameResponse.ok, `profile rename failed: ${renameResponse.status}`);
 
 const sessionStartedAt = Date.now();
 const sessionResponse = await request('/v1/sessions', {
@@ -62,5 +73,25 @@ const overallResponse = await request('/v1/leaderboards/overall?limit=10', { hea
 assert(overallResponse.ok, `overall leaderboard failed: ${overallResponse.status}`);
 const overall = await overallResponse.json();
 assert(overall.userEntry?.rank === 1, 'overall authenticated user should rank first');
+assert(overall.userEntry?.total_score === 500, 'overall score should use best score');
 
-console.log('Cloudflare leaderboard API smoke test passed');
+const weeklyResponse = await request('/v1/leaderboards/weekly?limit=10', { headers: auth });
+assert(weeklyResponse.ok, `weekly leaderboard failed: ${weeklyResponse.status}`);
+const weekly = await weeklyResponse.json();
+assert(weekly.userEntry?.rank === 1, 'weekly authenticated user should rank first');
+assert(weekly.userEntry?.total_score === 500, 'weekly combined score should include weekly best score');
+assert(weekly.entries?.length === 1, 'weekly leaderboard should contain one overall player row');
+assert(Number.isFinite(weekly.weekStart) && Number.isFinite(weekly.weekEnd), 'weekly boundary metadata missing');
+assert(weekly.weekEnd - weekly.weekStart === 7 * 24 * 60 * 60 * 1000, 'weekly window should be seven days');
+
+const invalidWeeklyGameResponse = await request('/v1/leaderboards/weekly/reaction', { headers: auth });
+assert(invalidWeeklyGameResponse.status === 404, 'per-game weekly leaderboard endpoint must not exist');
+
+const meAfterResponse = await request('/v1/me', { headers: auth });
+assert(meAfterResponse.ok, `updated profile failed: ${meAfterResponse.status}`);
+const meAfter = await meAfterResponse.json();
+assert(meAfter.player?.name === 'Smoke Player', 'profile rename did not persist');
+assert(meAfter.activity?.submissions === 1, 'profile submission count should reflect accepted run');
+assert(meAfter.activity?.rankedGames === 1, 'profile ranked game count should reflect accepted run');
+
+console.log('Cloudflare leaderboard + MA2 weekly/profile API smoke test passed');
