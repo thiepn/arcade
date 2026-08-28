@@ -8,12 +8,19 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
@@ -33,6 +40,7 @@ jobs:
       - run: bun run quality:puck
       - run: bun run quality:rail
       - run: bun run quality:release32
+      - run: bun run quality:hardening
       - run: bunx tsc --noEmit
       - run: bun run d1:migrate:local
       - name: Smoke-test Worker API
