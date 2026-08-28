@@ -1,0 +1,52 @@
+name: Apply MA3 wiring
+
+on:
+  push:
+    branches: [ma3-pwa-offline-gamepad-mobile]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ github.event.head_commit.message == 'Apply MA3 shell wiring' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ma3-pwa-offline-gamepad-mobile
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - name: Apply MA3 wiring and certify
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/components/GameShell.tsx')
+          text = path.read_text()
+          text = text.replace('            <span className="hidden sm:inline">ARCADE</span>\n          </button>', '              <span className="hidden sm:inline">ARCADE</span>\n          </button>')
+          path.write_text(text)
+          PY
+          bun scripts/apply-ma3-wiring.mjs
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/components/GameShell.tsx')
+          text = path.read_text().replace('              <span className="hidden sm:inline">ARCADE</span>\n          </button>', '            <span className="hidden sm:inline">ARCADE</span>\n          </button>')
+          path.write_text(text)
+          PY
+          rm -f scripts/apply-ma3-wiring.mjs .github/workflows/apply-ma3-wiring.yml
+          bun install --frozen-lockfile
+          bun run quality:games
+          bunx tsc --noEmit
+          bun run build
+          MA3_EXPECT_BASE=/ bun run quality:ma3
+          bun run build:pages
+          MA3_EXPECT_BASE=/arcade/ bun run quality:ma3
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Wire MA3 PWA gamepad and mobile shell'
+          git push origin HEAD:ma3-pwa-offline-gamepad-mobile
