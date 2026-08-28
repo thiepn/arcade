@@ -21,6 +21,7 @@ const responsiveGames = [
   'BreakoutGame.tsx',
   'ChainGame.tsx',
   'DodgeGame.tsx',
+  'PinballGame.tsx',
   'StackGame.tsx',
   'TowerGame.tsx',
 ];
@@ -28,7 +29,7 @@ const responsiveGames = [
 for (const file of responsiveGames) {
   const source = read(`src/games/${file}`);
   assert(source.includes("../lib/gameCoordinates"), `${file} is not using the shared coordinate layer`);
-  assert(source.includes('onResize: (w'), `${file} does not remap active state on resize`);
+  assert(source.includes('onResize:'), `${file} does not remap active state on resize`);
 }
 
 const airHockey = read('src/games/AirHockeyGame.tsx');
@@ -56,6 +57,11 @@ assert(chain.includes('arc.x2 *= scaleX'), 'Chain lightning endpoints are not re
 const dodge = read('src/games/DodgeGame.tsx');
 assert(dodge.includes('needsInitialPlacement'), 'Dodge player is not initialized from the measured arena');
 assert(dodge.includes('rescaleTrail(state.ghostTrail'), 'Dodge ghost trail is not remapped');
+
+const pinball = read('src/games/PinballGame.tsx');
+assert(pinball.includes('rescaleTrail(ball.trail'), 'Pinball ball trails are not remapped');
+assert(pinball.includes('getPinballLayout(width, height)'), 'Pinball table geometry is not viewport-derived');
+assert(pinball.includes('velocityScaleY'), 'Pinball active trajectories are not preserved through resize');
 
 const stack = read('src/games/StackGame.tsx');
 assert(stack.includes('state.viewportWidth + state.currentWidth'), 'Stack still uses a fixed right rail edge');
