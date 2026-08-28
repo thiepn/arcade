@@ -51,9 +51,15 @@ replaceOnce(
 
 replaceOnce(
   'src/games/RhythmGame.tsx',
-  `        if (LANE_KEYS[i].includes(e.code)) {
+  `    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.repeat) return;
+      for (let i = 0; i < 4; i++) {
+        if (LANE_KEYS[i].includes(e.code)) {
           setActiveLanes((prev) => {`,
-  `        if (LANE_KEYS[i].includes(e.code)) {
+  `    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.repeat) return;
+      for (let i = 0; i < 4; i++) {
+        if (LANE_KEYS[i].includes(e.code)) {
           e.preventDefault();
           setActiveLanes((prev) => {`,
   'rhythm keydown browser suppression',
@@ -61,15 +67,15 @@ replaceOnce(
 
 replaceOnce(
   'src/games/RhythmGame.tsx',
-  `        if (LANE_KEYS[i].includes(e.code)) {
-          setActiveLanes((prev) => {
-            const next = [...prev];
-            next[i] = false;`,
-  `        if (LANE_KEYS[i].includes(e.code)) {
+  `    const handleKeyUp = (e: KeyboardEvent) => {
+      for (let i = 0; i < 4; i++) {
+        if (LANE_KEYS[i].includes(e.code)) {
+          setActiveLanes((prev) => {`,
+  `    const handleKeyUp = (e: KeyboardEvent) => {
+      for (let i = 0; i < 4; i++) {
+        if (LANE_KEYS[i].includes(e.code)) {
           e.preventDefault();
-          setActiveLanes((prev) => {
-            const next = [...prev];
-            next[i] = false;`,
+          setActiveLanes((prev) => {`,
   'rhythm keyup browser suppression',
 );
 
