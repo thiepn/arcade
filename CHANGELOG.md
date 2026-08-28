@@ -15,6 +15,7 @@
 - Upgraded Laser Rope Reflex Phase A with a layered neon perspective backdrop, responsive framed arena, multi-layer animated laser beams, reactor-style hub, energy-node player rendering, glowing collectibles, and a compact responsive command-deck HUD without changing its core jump/slide mechanics.
 - Added Laser Rope Reflex Phase B feedback polish with staged incoming-beam telegraphs, approach warnings, near-miss detection, animated success/shield/collision bursts, combo and streak callouts, controlled screen shake and flash, and a readable post-hit death presentation.
 - Finished Laser Rope Reflex Phase C with a dedicated animated start briefing, explicit LOW/DUAL jump and HIGH slide guidance, themed pause and game-over states, score-based Reflex Grades, responsive labeled touch controls, and a longer readable transition from fatal impact into the results screen.
+- Enlarged Cyber Block Drop with a responsive desktop board that grows beyond the former fixed 22 px cells, added flanking Hold and Next previews, one-hold-per-piece `C`/`Shift` swap semantics, and a six-button mobile control deck with a disabled-state Hold button.
 
 ## 1.0.0 — 2026-08-28
 
