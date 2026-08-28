@@ -1,0 +1,41 @@
+{
+  "id": "./",
+  "name": "Micro Arcade",
+  "short_name": "Arcade",
+  "description": "Thirty-one instant-play arcade mini-games with offline play, local progress, global rankings, and gamepad support.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
+  "background_color": "#0A0A0B",
+  "theme_color": "#0A0A0B",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Open Micro Arcade",
+      "short_name": "Play",
+      "url": "./"
+    }
+  ]
+}

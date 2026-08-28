@@ -3,6 +3,7 @@ import { GameEntry } from '../data/games';
 import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { beginLeaderboardSession, submitLeaderboardScore, type LeaderboardPlaySession } from '../lib/leaderboards';
+import { useGamepadBridge } from '../hooks/useGamepadBridge';
 import confetti from 'canvas-confetti';
 import {
   ArrowLeft,
@@ -18,6 +19,7 @@ import {
   Minimize2,
   Globe,
   Smartphone,
+  Gamepad2,
 } from 'lucide-react';
 
 interface GameShellProps {
@@ -49,6 +51,8 @@ export const GameShell: React.FC<GameShellProps> = ({
   const [isPaused, setIsPaused] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const shellRef = useRef<HTMLDivElement>(null);
+  const gameStageRef = useRef<HTMLElement>(null);
+  const gamepadCursorRef = useRef<HTMLDivElement>(null);
   const prevScoreRef = useRef(0);
   const activeSessionKeyRef = useRef(1);
   const gameOverHandledRef = useRef(false);
@@ -65,6 +69,43 @@ export const GameShell: React.FC<GameShellProps> = ({
     best: number;
     isNewHigh: boolean;
   } | null>(null);
+
+  const gamepad = useGamepadBridge({
+    gameId: game.id,
+    targetRef: gameStageRef,
+    cursorRef: gamepadCursorRef,
+    paused: isPaused,
+    gameOver: Boolean(gameOverData),
+  });
+
+  // Keep mobile displays awake during active gameplay when the browser permits it.
+  useEffect(() => {
+    if (isPaused || gameOverData || !("wakeLock" in navigator)) return;
+    let released = false;
+    let sentinel = null;
+    const acquire = async () => {
+      if (released || document.hidden) return;
+      try {
+        sentinel = await navigator.wakeLock.request('screen');
+      } catch {}
+    };
+    const onVisibility = () => {
+      if (!document.hidden && !released) void acquire();
+    };
+    void acquire();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      released = true;
+      document.removeEventListener('visibilitychange', onVisibility);
+      if (sentinel) void sentinel.release().catch(() => {});
+    };
+  }, [gameOverData, isPaused]);
+
+  // Lock background page scrolling/pull-to-refresh while the full-screen game shell is active.
+  useEffect(() => {
+    document.body.classList.add('game-active');
+    return () => document.body.classList.remove('game-active');
+  }, []);
 
   // Key to force-remount the mini-game component upon instant restart
   const [gameSessionKey, setGameSessionKey] = useState(1);
@@ -272,7 +313,7 @@ export const GameShell: React.FC<GameShellProps> = ({
   return (
     <div
       ref={shellRef}
-      className={`fixed inset-0 z-50 bg-[#0A0A0B] flex flex-col items-center justify-between text-[#E4E4E7] overflow-hidden select-none ${
+      className={`game-shell fixed inset-0 z-50 bg-[#0A0A0B] flex flex-col items-center justify-between text-[#E4E4E7] overflow-hidden select-none ${
         isFullscreen ? 'p-0' : ''
       }`}
     >
@@ -310,6 +351,12 @@ export const GameShell: React.FC<GameShellProps> = ({
           <div className="flex flex-col min-w-0">
             <h1 className="font-bold text-xs sm:text-base flex items-center gap-1 sm:gap-2 text-white min-w-0">
               <span className="truncate max-w-[90px] xs:max-w-[130px] sm:max-w-[200px] md:max-w-none">{game.title}</span>
+              {gamepad.connected && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 text-[8px] font-mono-arcade font-black text-cyan-300 shrink-0" title={gamepad.controllerName ?? 'Gamepad connected'}>
+                  <Gamepad2 className="w-3 h-3" />
+                  <span className="hidden md:inline">{gamepad.pointerMode ? 'CURSOR' : 'PAD'}</span>
+                </span>
+              )}
               <span
                 className="text-[8px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded uppercase shrink-0 hidden xs:inline-block"
                 style={{
@@ -429,6 +476,7 @@ export const GameShell: React.FC<GameShellProps> = ({
 
       {/* Main Game Stage Area */}
       <main
+        ref={gameStageRef}
         className={`relative flex-1 w-full flex items-center justify-center overflow-hidden transition-all duration-150 ${
           isFullscreen
             ? 'h-full max-w-none max-h-none p-0 pt-12'
@@ -445,6 +493,13 @@ export const GameShell: React.FC<GameShellProps> = ({
         >
           {/* Subtle grid background */}
           <div className="absolute inset-0 opacity-15 arcade-grid-bg pointer-events-none" />
+
+          <div
+            ref={gamepadCursorRef}
+            id="gamepad-virtual-cursor"
+            className="gamepad-virtual-cursor"
+            aria-hidden="true"
+          />
 
           {/* Active Mini-Game Component */}
           <GameComponent
@@ -606,7 +661,7 @@ export const GameShell: React.FC<GameShellProps> = ({
       {/* Bottom Hint (hidden in Fullscreen mode for maximum vertical gameplay room) */}
       {!isFullscreen && (
         <footer className="w-full max-w-4xl px-4 py-1.5 flex items-center justify-between text-[10px] sm:text-[11px] font-mono-arcade text-[#52525B] pointer-events-none">
-          <span>Controls: {game.controlsHint}</span>
+          <span>{gamepad.connected ? (gamepad.pointerMode ? 'Gamepad: Stick cursor • A hold/click • B pause/back' : 'Gamepad: Stick/D-pad move • A action • B pause/back') : `Controls: ${game.controlsHint}`}</span>
           <span className="hidden sm:inline">F: Fullscreen • Esc: Pause • R: Restart</span>
         </footer>
       )}

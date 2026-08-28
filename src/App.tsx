@@ -28,6 +28,7 @@ import { StatsModal } from './components/StatsModal';
 import { OverallLeaderboardModal } from './components/OverallLeaderboardModal';
 import { PlayerProfileModal } from './components/PlayerProfileModal';
 import { StressTester } from './components/StressTester';
+import { PwaStatus } from './components/PwaStatus';
 import { AnimatePresence, motion } from "motion/react";
 import { Sparkles, Gamepad2, Shuffle, Heart, BarChart2, Globe, Trophy, Medal, Activity, UserRound } from 'lucide-react';
 
@@ -398,6 +399,8 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      <PwaStatus activeGame={Boolean(activeGame)} />
 
       {import.meta.env.DEV && stressTesterOpen && (
         <StressTester onClose={() => setStressTesterOpen(false)} />

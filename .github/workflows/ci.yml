@@ -46,3 +46,6 @@ jobs:
           bun worker/smoke-test.mjs
       - run: bun run worker:check
       - run: bun run build
+      - run: MA3_EXPECT_BASE=/ bun run quality:ma3
+      - run: bun run build:pages
+      - run: MA3_EXPECT_BASE=/arcade/ bun run quality:ma3
