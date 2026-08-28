@@ -36,10 +36,12 @@ jobs:
           set -euo pipefail
           git apply --unidiff-zero /tmp/fixes.patch
 
+          # CI is added after this source commit through the GitHub connector,
+          # because the Actions token is intentionally not allowed to alter workflows.
+          rm -f .github/workflows/ci.yml
           rm -rf \
             .audit-fix \
             .audit-repair \
-            .github/workflows/apply-audit-fixes.yml \
             .env.example \
             metadata.json \
             audit_report.md \
