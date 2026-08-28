@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { Zap, AlertTriangle, Play, Award, Gauge } from 'lucide-react';
+import { useSafeTimeout } from '../hooks/useGameLoop';
 
 type StateMode = 'WAITING' | 'READY' | 'TOO_EARLY' | 'RESULT';
 
@@ -19,6 +20,11 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
   const [falseStarts, setFalseStarts] = useState(0);
 
   const startTimeRef = useRef<number>(0);
+  const isPausedRef = useRef(isPaused);
+  isPausedRef.current = isPaused;
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
+  const setSafeTimeout = useSafeTimeout();
   const timerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lightsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const maxRounds = 5;
@@ -34,24 +40,30 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
     let currentLight = 0;
     // Step 5 F1 start lights quickly (240ms each = 1.2s total)
     lightsIntervalRef.current = setInterval(() => {
+      if (isPausedRef.current) return;
       currentLight++;
       setLightsCount(currentLight);
-      if (soundEnabled) sounds.playTick();
+      if (soundEnabledRef.current) sounds.playTick();
 
       if (currentLight >= 5) {
         if (lightsIntervalRef.current) clearInterval(lightsIntervalRef.current);
 
         // Random reaction trigger delay (700ms to 1900ms)
         const randomDelay = 700 + Math.random() * 1200;
-        timerTimeoutRef.current = setTimeout(() => {
+        const revealReadyState = () => {
+          if (isPausedRef.current) {
+            timerTimeoutRef.current = setTimeout(revealReadyState, 100);
+            return;
+          }
           setMode('READY');
           setLightsCount(0); // Lights out! GO!
           startTimeRef.current = performance.now();
-          if (soundEnabled) sounds.playChime(1200);
-        }, randomDelay);
+          if (soundEnabledRef.current) sounds.playChime(1200);
+        };
+        timerTimeoutRef.current = setTimeout(revealReadyState, randomDelay);
       }
     }, 240);
-  }, [soundEnabled]);
+  }, []);
 
   // Auto-start round 1 on mount
   useEffect(() => {
@@ -71,7 +83,7 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
       if (timerTimeoutRef.current) clearTimeout(timerTimeoutRef.current);
       setMode('TOO_EARLY');
       setFalseStarts((prev) => prev + 1);
-      if (soundEnabled) sounds.playBuzz();
+      if (soundEnabledRef.current) sounds.playBuzz();
     } else if (mode === 'READY') {
       // Valid reflex!
       const timeMs = Math.round(performance.now() - startTimeRef.current);
@@ -89,17 +101,22 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
       onScoreUpdate(totalScore);
 
       if (timeMs < 200) {
-        if (soundEnabled) sounds.playLaser();
+        if (soundEnabledRef.current) sounds.playLaser();
       } else if (timeMs < 280) {
-        if (soundEnabled) sounds.playSuccess();
+        if (soundEnabledRef.current) sounds.playSuccess();
       } else {
-        if (soundEnabled) sounds.playPop();
+        if (soundEnabledRef.current) sounds.playPop();
       }
 
       if (round >= maxRounds) {
-        setTimeout(() => {
+        const finishRound = () => {
+          if (isPausedRef.current) {
+            setSafeTimeout(finishRound, 100);
+            return;
+          }
           onGameOver(totalScore);
-        }, 1400);
+        };
+        setSafeTimeout(finishRound, 1400);
       }
     } else if (mode === 'TOO_EARLY' || mode === 'RESULT') {
       if (round < maxRounds) {

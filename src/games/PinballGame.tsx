@@ -350,7 +350,7 @@ export const PinballGame: React.FC<GameComponentProps> = ({
       canvas.removeEventListener('mousedown', handlePointerDown);
       window.removeEventListener('mouseup', handlePointerUp);
       canvas.removeEventListener('touchstart', handlePointerDown);
-      canvas.removeEventListener('touchend', handlePointerUp);
+      window.removeEventListener('touchend', handlePointerUp);
     };
   }, [setLeftFlipper, setRightFlipper]);
 

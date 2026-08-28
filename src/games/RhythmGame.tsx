@@ -56,6 +56,8 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
   const setSafeTimeout = useSafeTimeout();
 
   const [selectedSongIndex, setSelectedSongIndex] = useState(0);
@@ -207,10 +209,10 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       if (state.combo >= 15 && !state.isOverdrive) {
         state.isOverdrive = true;
         state.overdriveTimer = 400; // ~7 seconds
-        if (soundEnabled) sounds.playFeverMode();
+        if (soundEnabledRef.current) sounds.playFeverMode();
       }
 
-      if (soundEnabled) {
+      if (soundEnabledRef.current) {
         sounds.playRhythmHit(laneIndex, rating);
       }
 
@@ -259,9 +261,9 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
         life: 0.4,
         maxLife: 0.3,
       });
-      if (soundEnabled) sounds.playPop();
+      if (soundEnabledRef.current) sounds.playPop();
     }
-  }, [onScoreUpdate, soundEnabled]);
+  }, [onScoreUpdate]);
 
   // Initialize song notes & audio
   useEffect(() => {
@@ -283,14 +285,13 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       isMissed: false,
     }));
 
-    if (soundEnabled) {
-      musicEngine.playSong(song, -4);
-    }
+    musicEngine.setMuted(!soundEnabledRef.current);
+    musicEngine.playSong(song, -4);
 
     return () => {
       musicEngine.stop();
     };
-  }, [selectedSongIndex, soundEnabled]);
+  }, [selectedSongIndex]);
 
   // Sync mute state to music engine
   useEffect(() => {
@@ -381,13 +382,13 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
               maxLife: 0.5,
             });
 
-            if (soundEnabled) sounds.playBuzz();
+            if (soundEnabledRef.current) sounds.playBuzz();
 
             // Game over check if health depleted
             if (state.grooveHealth <= 0) {
               state.isAlive = false;
               musicEngine.stop();
-              if (soundEnabled) sounds.playGameOver();
+              if (soundEnabledRef.current) sounds.playGameOver();
               setSafeTimeout(() => {
                 onGameOver(state.score);
               }, 400);
@@ -399,7 +400,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
         if (state.currentBeat > state.song.durationBeats) {
           state.score += 5000;
           onScoreUpdate(state.score);
-          if (soundEnabled) sounds.playSongFinish();
+          if (soundEnabledRef.current) sounds.playSongFinish();
           state.currentBeat = 0; // seamless loop
           state.notes.forEach((n) => {
             n.isHit = false;

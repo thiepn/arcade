@@ -111,6 +111,8 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
 
   const [lives, setLives] = useState(3);
   const [level, setLevel] = useState(1);
@@ -261,9 +263,9 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
       }
 
       addPopup(`WAVE ${lvl} ENGAGED`, w / 2, h / 2, '#38BDF8');
-      if (soundEnabled) sounds.playPowerUp();
+      if (soundEnabledRef.current) sounds.playPowerUp();
     },
-    [addPopup, soundEnabled, spawnAsteroid]
+    [addPopup, spawnAsteroid]
   );
 
   // Shoot Plasma Cannon

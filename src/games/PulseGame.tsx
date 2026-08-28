@@ -43,6 +43,8 @@ export const PulseGame: React.FC<GameComponentProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
   const setSafeTimeout = useSafeTimeout();
 
   const [lives, setLives] = useState(3);
@@ -137,12 +139,12 @@ export const PulseGame: React.FC<GameComponentProps> = ({
       });
       state.shake = 8;
       haptics.impact();
-      if (soundEnabled) sounds.playBuzz();
+      if (soundEnabledRef.current) sounds.playBuzz();
 
       if (state.lives <= 0) {
         state.isAlive = false;
         haptics.gameOver();
-        if (soundEnabled) sounds.playGameOver();
+        if (soundEnabledRef.current) sounds.playGameOver();
         setSafeTimeout(() => {
           onGameOver(state.score);
         }, 650);
@@ -163,12 +165,12 @@ export const PulseGame: React.FC<GameComponentProps> = ({
       });
       state.shake = 8;
       haptics.impact();
-      if (soundEnabled) sounds.playBuzz();
+      if (soundEnabledRef.current) sounds.playBuzz();
 
       if (state.lives <= 0) {
         state.isAlive = false;
         haptics.gameOver();
-        if (soundEnabled) sounds.playGameOver();
+        if (soundEnabledRef.current) sounds.playGameOver();
         setSafeTimeout(() => {
           onGameOver(state.score);
         }, 650);
@@ -208,7 +210,7 @@ export const PulseGame: React.FC<GameComponentProps> = ({
         color: isFever ? 'text-amber-400' : 'text-[#38BDF8]',
       });
 
-      if (soundEnabled) {
+      if (soundEnabledRef.current) {
         const scale = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
         const note = scale[state.combo % scale.length];
         sounds.playChime(note);
@@ -224,7 +226,7 @@ export const PulseGame: React.FC<GameComponentProps> = ({
         subtext: `${diff > 0 ? 'LATE' : 'EARLY'} • +${pts}`,
         color: 'text-[#34D399]',
       });
-      if (soundEnabled) sounds.playSuccess();
+      if (soundEnabledRef.current) sounds.playSuccess();
     } else if (absDiff <= 28) {
       // GOOD (gives points, combo resets to 1)
       state.combo = 1;
@@ -235,7 +237,7 @@ export const PulseGame: React.FC<GameComponentProps> = ({
         subtext: `${diff > 0 ? 'SLIGHT LATE' : 'SLIGHT EARLY'} • +50`,
         color: 'text-[#FACC15]',
       });
-      if (soundEnabled) sounds.playPop();
+      if (soundEnabledRef.current) sounds.playPop();
     } else {
       // MISS
       state.combo = 0;
@@ -248,12 +250,12 @@ export const PulseGame: React.FC<GameComponentProps> = ({
         subtext: 'OFF BEAT',
         color: 'text-[#F43F5E]',
       });
-      if (soundEnabled) sounds.playBuzz();
+      if (soundEnabledRef.current) sounds.playBuzz();
 
       if (state.lives <= 0) {
         state.isAlive = false;
         haptics.gameOver();
-        if (soundEnabled) sounds.playGameOver();
+        if (soundEnabledRef.current) sounds.playGameOver();
         setSafeTimeout(() => {
           onGameOver(state.score);
         }, 700);
@@ -294,7 +296,7 @@ export const PulseGame: React.FC<GameComponentProps> = ({
 
     // Advance to next beat
     nextBeat();
-  }, [nextBeat, onGameOver, onScoreUpdate, setSafeTimeout, soundEnabled]);
+  }, [nextBeat, onGameOver, onScoreUpdate, setSafeTimeout]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -390,11 +392,11 @@ export const PulseGame: React.FC<GameComponentProps> = ({
           setFeverMode(false);
           setLastFeedback({ text: 'MISSED BEAT', subtext: 'TOO LATE', color: 'text-[#F43F5E]' });
           state.shake = 10;
-          if (soundEnabled) sounds.playBuzz();
+          if (soundEnabledRef.current) sounds.playBuzz();
 
           if (state.lives <= 0) {
             state.isAlive = false;
-            if (soundEnabled) sounds.playGameOver();
+            if (soundEnabledRef.current) sounds.playGameOver();
             setSafeTimeout(() => {
               onGameOver(state.score);
             }, 700);

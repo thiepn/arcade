@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GameEntry } from '../data/games';
 import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
@@ -49,6 +49,8 @@ export const GameShell: React.FC<GameShellProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const shellRef = useRef<HTMLDivElement>(null);
   const prevScoreRef = useRef(0);
+  const activeSessionKeyRef = useRef(1);
+  const gameOverHandledRef = useRef(false);
 
   // Sync haptics enabled state with global haptics engine
   useEffect(() => {
@@ -63,15 +65,7 @@ export const GameShell: React.FC<GameShellProps> = ({
 
   // Key to force-remount the mini-game component upon instant restart
   const [gameSessionKey, setGameSessionKey] = useState(1);
-
-  // Reset shell state when switching to a different game
-  useEffect(() => {
-    setCurrentScore(0);
-    prevScoreRef.current = 0;
-    setGameOverData(null);
-    setIsPaused(false);
-    setGameSessionKey((prev) => prev + 1);
-  }, [game.id]);
+  activeSessionKeyRef.current = gameSessionKey;
 
   const handleRestart = useCallback(() => {
     sounds.playClick();
@@ -80,10 +74,16 @@ export const GameShell: React.FC<GameShellProps> = ({
     prevScoreRef.current = 0;
     setGameOverData(null);
     setIsPaused(false);
-    setGameSessionKey((prev) => prev + 1);
+    gameOverHandledRef.current = false;
+    const nextSessionKey = activeSessionKeyRef.current + 1;
+    activeSessionKeyRef.current = nextSessionKey;
+    setGameSessionKey(nextSessionKey);
   }, []);
 
-  const handleScoreUpdate = useCallback((newScore: number) => {
+  const handleScoreUpdate = useCallback((sessionKey: number, newScore: number) => {
+    if (sessionKey !== activeSessionKeyRef.current || gameOverHandledRef.current) return;
+    if (!Number.isFinite(newScore)) return;
+
     setCurrentScore(newScore);
 
     // Tactile haptic feedback on scoring increments
@@ -100,17 +100,21 @@ export const GameShell: React.FC<GameShellProps> = ({
   }, []);
 
   const handleGameOver = useCallback(
-    (finalScore: number) => {
-      const { isNewHighScore } = onSaveScore(game.id, finalScore);
-      const newBest = Math.max(bestScore, finalScore);
+    (sessionKey: number, finalScore: number) => {
+      if (sessionKey !== activeSessionKeyRef.current || gameOverHandledRef.current) return;
+      gameOverHandledRef.current = true;
+
+      const safeFinalScore = Number.isFinite(finalScore) ? Math.max(0, finalScore) : 0;
+      const { isNewHighScore } = onSaveScore(game.id, safeFinalScore);
+      const newBest = Math.max(bestScore, safeFinalScore);
 
       setGameOverData({
-        score: finalScore,
+        score: safeFinalScore,
         best: newBest,
         isNewHigh: isNewHighScore,
       });
 
-      if (isNewHighScore && finalScore > 0) {
+      if (isNewHighScore && safeFinalScore > 0) {
         // High score celebratory vibration pattern
         haptics.highScore();
         try {
@@ -129,6 +133,14 @@ export const GameShell: React.FC<GameShellProps> = ({
     [bestScore, game.accentColor, game.id, onSaveScore]
   );
 
+  const sessionCallbacks = useMemo(() => {
+    const sessionKey = gameSessionKey;
+    return {
+      onGameOver: (finalScore: number) => handleGameOver(sessionKey, finalScore),
+      onScoreUpdate: (newScore: number) => handleScoreUpdate(sessionKey, newScore),
+    };
+  }, [gameSessionKey, handleGameOver, handleScoreUpdate]);
+
   const togglePause = useCallback(() => {
     sounds.playPop();
     haptics.light();
@@ -138,33 +150,28 @@ export const GameShell: React.FC<GameShellProps> = ({
   const toggleFullscreen = useCallback(() => {
     sounds.playClick();
     haptics.light();
-    setIsFullscreen((prev) => {
-      const nextState = !prev;
-      if (nextState) {
-        try {
-          if (shellRef.current && shellRef.current.requestFullscreen) {
-            shellRef.current.requestFullscreen().catch(() => {});
-          } else if (document.documentElement.requestFullscreen) {
-            document.documentElement.requestFullscreen().catch(() => {});
-          }
-        } catch {}
-      } else {
-        try {
-          if (document.fullscreenElement && document.exitFullscreen) {
-            document.exitFullscreen().catch(() => {});
-          }
-        } catch {}
+
+    const syncFullscreenState = () => setIsFullscreen(Boolean(document.fullscreenElement));
+
+    try {
+      if (document.fullscreenElement) {
+        document.exitFullscreen?.().catch(syncFullscreenState);
+        return;
       }
-      return nextState;
-    });
+
+      const target = shellRef.current ?? document.documentElement;
+      if (target.requestFullscreen) {
+        target.requestFullscreen().catch(syncFullscreenState);
+      }
+    } catch {
+      syncFullscreenState();
+    }
   }, []);
 
   // Listen for browser fullscreen exit (e.g. Esc in native fullscreen)
   useEffect(() => {
     const handleFsChange = () => {
-      if (!document.fullscreenElement) {
-        // When user exits native fullscreen, keep UI responsive
-      }
+      setIsFullscreen(Boolean(document.fullscreenElement));
     };
     document.addEventListener('fullscreenchange', handleFsChange);
     return () => document.removeEventListener('fullscreenchange', handleFsChange);
@@ -401,8 +408,8 @@ export const GameShell: React.FC<GameShellProps> = ({
           {/* Active Mini-Game Component */}
           <GameComponent
             key={gameSessionKey}
-            onGameOver={handleGameOver}
-            onScoreUpdate={handleScoreUpdate}
+            onGameOver={sessionCallbacks.onGameOver}
+            onScoreUpdate={sessionCallbacks.onScoreUpdate}
             isPaused={isPaused || gameOverData !== null}
             soundEnabled={soundEnabled}
             onRestartRequest={handleRestart}

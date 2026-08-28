@@ -368,18 +368,22 @@ export default function App() {
             >
               <BarChart2 className="w-3.5 h-3.5 text-[#F43F5E]" /> Statistics
             </button>
-            <button
-              type="button"
-              onClick={() => setStressTesterOpen(true)}
-              className="hover:text-emerald-300 transition-colors flex items-center gap-1.5 cursor-pointer text-emerald-500/80"
-            >
-              <Activity className="w-3.5 h-3.5 text-emerald-400" /> Stress Test
-            </button>
+            {import.meta.env.DEV && (
+              <button
+                type="button"
+                onClick={() => setStressTesterOpen(true)}
+                className="hover:text-emerald-300 transition-colors flex items-center gap-1.5 cursor-pointer text-emerald-500/80"
+              >
+                <Activity className="w-3.5 h-3.5 text-emerald-400" /> Stress Test
+              </button>
+            )}
           </div>
         </div>
       </footer>
 
-      {stressTesterOpen && <StressTester onClose={() => setStressTesterOpen(false)} />}
+      {import.meta.env.DEV && stressTesterOpen && (
+        <StressTester onClose={() => setStressTesterOpen(false)} />
+      )}
 
       {/* Statistics Modal Overlay */}
       {statsModalOpen && (
