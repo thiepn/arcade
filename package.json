@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist .wrangler-dist",
     "lint": "tsc --noEmit",
+    "quality:games": "bun scripts/audit-games.ts",
     "worker:dev": "wrangler dev",
     "worker:check": "tsc -p worker/tsconfig.json --noEmit && wrangler deploy --dry-run --outdir .wrangler-dist",
     "worker:deploy": "wrangler deploy",
