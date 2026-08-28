@@ -3,6 +3,7 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { clamp, rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
 import {
   RotateCcw,
   RotateCw,
@@ -408,12 +409,48 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
     canvasRef,
     isPaused,
     onResize: (w, h) => {
-      gameStateRef.current.width = w;
-      gameStateRef.current.height = h;
-      if (gameStateRef.current.ship.x === 0 && gameStateRef.current.ship.y === 0) {
-        gameStateRef.current.ship.x = w / 2;
-        gameStateRef.current.ship.y = h / 2;
+      const state = gameStateRef.current;
+      const scaleX = w / Math.max(1, state.width);
+      const scaleY = h / Math.max(1, state.height);
+      const uniformScale = Math.min(scaleX, scaleY);
+
+      rescalePoint(state.ship, scaleX, scaleY);
+      rescaleVelocity(state.ship, scaleX, scaleY);
+      state.ship.radius = clamp(state.ship.radius * uniformScale, 11, 21);
+
+      for (const bullet of state.bullets) {
+        rescalePoint(bullet, scaleX, scaleY);
+        rescaleVelocity(bullet, scaleX, scaleY);
       }
+      for (const asteroid of state.asteroids) {
+        rescalePoint(asteroid, scaleX, scaleY);
+        rescaleVelocity(asteroid, scaleX, scaleY);
+        asteroid.radius *= uniformScale;
+        for (const vertex of asteroid.vertices) {
+          vertex.x *= uniformScale;
+          vertex.y *= uniformScale;
+        }
+      }
+      for (const ufo of state.ufos) {
+        rescalePoint(ufo, scaleX, scaleY);
+        rescaleVelocity(ufo, scaleX, scaleY);
+        ufo.radius *= uniformScale;
+      }
+      for (const stardust of state.stardustList) {
+        rescalePoint(stardust, scaleX, scaleY);
+        rescaleVelocity(stardust, scaleX, scaleY);
+      }
+      for (const particle of state.particles) {
+        rescalePoint(particle, scaleX, scaleY);
+        rescaleVelocity(particle, scaleX, scaleY);
+        particle.size *= uniformScale;
+      }
+      for (const text of state.floatingTexts) rescalePoint(text, scaleX, scaleY);
+
+      state.width = w;
+      state.height = h;
+      state.ship.x = ((state.ship.x % w) + w) % w;
+      state.ship.y = ((state.ship.y % h) + h) % h;
     },
     onUpdate: (ctx, dt, width, height) => {
       const state = gameStateRef.current;

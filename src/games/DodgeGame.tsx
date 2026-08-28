@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { clamp, rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
 
 interface Hazard {
   id: number;
@@ -84,6 +85,8 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
     combo: 1,
     keys: { left: false, right: false, up: false, down: false },
     nextHazardId: 1,
+    viewportWidth: 400,
+    viewportHeight: 600,
   });
 
   const triggerDash = () => {
@@ -189,14 +192,52 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
     isPaused,
     onResize: (w, h) => {
       const state = gameStateRef.current;
-      if (state.stars.length === 0) {
-        state.stars = Array.from({ length: 50 }, () => ({
-          x: Math.random() * w,
-          y: Math.random() * h,
-          speed: 1 + Math.random() * 3,
-          size: 1 + Math.random() * 2,
-          alpha: 0.2 + Math.random() * 0.7,
-        }));
+      const scaleX = w / Math.max(1, state.viewportWidth);
+      const scaleY = h / Math.max(1, state.viewportHeight);
+      const uniformScale = Math.min(scaleX, scaleY);
+      const needsInitialPlacement =
+        state.playerX === 0 && state.playerY === 0 && state.targetPlayerX === 0;
+
+      if (!needsInitialPlacement) {
+        state.playerX *= scaleX;
+        state.playerY *= scaleY;
+        state.targetPlayerX *= scaleX;
+      }
+      state.playerRadius = clamp(state.playerRadius * uniformScale, 11, 21);
+      rescaleTrail(state.ghostTrail, scaleX, scaleY);
+
+      for (const hazard of state.hazards) {
+        rescalePoint(hazard, scaleX, scaleY);
+        rescaleVelocity(hazard, scaleX, scaleY);
+        hazard.width *= scaleX;
+        hazard.height *= scaleY;
+      }
+      for (const collectible of state.collectibles) {
+        rescalePoint(collectible, scaleX, scaleY);
+        collectible.vy *= scaleY;
+        collectible.radius *= uniformScale;
+      }
+      for (const particle of state.particles) {
+        rescalePoint(particle, scaleX, scaleY);
+        rescaleVelocity(particle, scaleX, scaleY);
+        particle.size *= uniformScale;
+      }
+      for (const star of state.stars) {
+        rescalePoint(star, scaleX, scaleY);
+        star.speed *= scaleY;
+        star.size *= uniformScale;
+      }
+
+      state.viewportWidth = w;
+      state.viewportHeight = h;
+      if (needsInitialPlacement) {
+        state.playerX = w / 2;
+        state.targetPlayerX = w / 2;
+        state.playerY = h * 0.82;
+      } else {
+        state.playerX = clamp(state.playerX, state.playerRadius, w - state.playerRadius);
+        state.targetPlayerX = clamp(state.targetPlayerX, state.playerRadius, w - state.playerRadius);
+        state.playerY = clamp(state.playerY, state.playerRadius, h - state.playerRadius);
       }
     },
     onUpdate: (ctx, deltaSec, curW, curH) => {
@@ -261,11 +302,12 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
         state.ghostTrail.forEach((t) => (t.alpha *= 0.8));
 
         // Keyboard Movement
-        const speed = 7;
-        if (state.keys.left) state.targetPlayerX -= speed;
-        if (state.keys.right) state.targetPlayerX += speed;
-        if (state.keys.up) state.playerY = Math.max(30, state.playerY - speed);
-        if (state.keys.down) state.playerY = Math.min(curH - 30, state.playerY + speed);
+        const horizontalSpeed = 7 * clamp(curW / 400, 0.85, 1.8);
+        const verticalSpeed = 7 * clamp(curH / 600, 0.85, 1.35);
+        if (state.keys.left) state.targetPlayerX -= horizontalSpeed;
+        if (state.keys.right) state.targetPlayerX += horizontalSpeed;
+        if (state.keys.up) state.playerY = Math.max(30, state.playerY - verticalSpeed);
+        if (state.keys.down) state.playerY = Math.min(curH - 30, state.playerY + verticalSpeed);
 
         state.targetPlayerX = Math.max(20, Math.min(curW - 20, state.targetPlayerX));
         state.playerX += (state.targetPlayerX - state.playerX) * 0.25;

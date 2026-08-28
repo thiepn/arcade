@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { clamp, rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
 
 interface Mallet {
   x: number;
@@ -95,6 +96,8 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
     particles: [] as { x: number; y: number; vx: number; vy: number; life: number; color: string; size: number }[],
     popups: [] as { id: number; x: number; y: number; text: string; color: string; life: number }[],
     nextId: 1,
+    viewportWidth: 400,
+    viewportHeight: 500,
   });
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -110,7 +113,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const state = gameStateRef.current;
-      const speed = 25;
+      const speed = 25 * clamp(state.viewportWidth / 400, 0.85, 1.8);
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') state.targetPlayerX -= speed;
       if (e.code === 'ArrowRight' || e.code === 'KeyD') state.targetPlayerX += speed;
       if (e.code === 'ArrowUp' || e.code === 'KeyW') state.targetPlayerY -= speed;
@@ -143,6 +146,45 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
   useGameLoop({
     canvasRef,
     isPaused,
+    onResize: (w, h) => {
+      const state = gameStateRef.current;
+      const scaleX = w / Math.max(1, state.viewportWidth);
+      const scaleY = h / Math.max(1, state.viewportHeight);
+      const uniformScale = Math.min(scaleX, scaleY);
+
+      rescalePoint(state.puck, scaleX, scaleY);
+      rescaleVelocity(state.puck, scaleX, scaleY);
+      state.puck.radius = clamp(state.puck.radius * uniformScale, 10, 20);
+
+      for (const mallet of [state.playerMallet, state.aiMallet]) {
+        rescalePoint(mallet, scaleX, scaleY);
+        rescaleVelocity(mallet, scaleX, scaleY);
+        mallet.radius = clamp(mallet.radius * uniformScale, 20, 34);
+      }
+
+      state.targetPlayerX *= scaleX;
+      state.targetPlayerY *= scaleY;
+      rescaleTrail(state.puckTrail, scaleX, scaleY);
+      for (const particle of state.particles) {
+        rescalePoint(particle, scaleX, scaleY);
+        rescaleVelocity(particle, scaleX, scaleY);
+        particle.size *= uniformScale;
+      }
+      for (const popup of state.popups) rescalePoint(popup, scaleX, scaleY);
+
+      state.goalWidth = clamp(state.goalWidth * scaleX, 110, Math.min(210, w * 0.3));
+      state.viewportWidth = w;
+      state.viewportHeight = h;
+
+      state.puck.x = clamp(state.puck.x, state.puck.radius + 16, w - state.puck.radius - 16);
+      state.puck.y = clamp(state.puck.y, state.puck.radius + 16, h - state.puck.radius - 16);
+      state.playerMallet.x = clamp(state.playerMallet.x, state.playerMallet.radius + 16, w - state.playerMallet.radius - 16);
+      state.playerMallet.y = clamp(state.playerMallet.y, h / 2 + state.playerMallet.radius, h - state.playerMallet.radius - 16);
+      state.aiMallet.x = clamp(state.aiMallet.x, state.aiMallet.radius + 16, w - state.aiMallet.radius - 16);
+      state.aiMallet.y = clamp(state.aiMallet.y, state.aiMallet.radius + 16, h / 2 - state.aiMallet.radius);
+      state.targetPlayerX = clamp(state.targetPlayerX, state.playerMallet.radius + 16, w - state.playerMallet.radius - 16);
+      state.targetPlayerY = clamp(state.targetPlayerY, h / 2 + state.playerMallet.radius, h - state.playerMallet.radius - 16);
+    },
     onUpdate: (ctx, dt, w, h) => {
       const state = gameStateRef.current;
 
