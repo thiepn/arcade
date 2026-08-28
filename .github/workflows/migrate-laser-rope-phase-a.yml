@@ -6,6 +6,9 @@ on:
       - fix/desktop-gameplay-32
     paths:
       - scripts/migrate-laser-rope-phase-a.mjs
+      - scripts/audit-laser-rope-presentation.ts
+      - src/lib/laserRopePresentation.ts
+      - src/components/LaserRopeHud.tsx
       - .github/workflows/migrate-laser-rope-phase-a.yml
 
 permissions:
