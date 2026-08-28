@@ -23,6 +23,7 @@
     "quality:rope-phase-c": "bun scripts/audit-laser-rope-phase-c.ts",
     "quality:blockdrop": "bun scripts/audit-block-drop-hold.ts",
     "quality:knife": "bun scripts/audit-knife-target-aim.ts",
+    "quality:puck": "bun scripts/audit-air-hockey-layout.ts",
     "worker:dev": "wrangler dev",
     "worker:check": "tsc -p worker/tsconfig.json --noEmit && wrangler deploy --dry-run --outdir .wrangler-dist",
     "worker:deploy": "wrangler deploy",
