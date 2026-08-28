@@ -72,9 +72,9 @@ for (const token of [
   "e.code === 'KeyC'",
   "e.code === 'ShiftLeft'",
   "e.code === 'ShiftRight'",
-  "drawPreview('HOLD'",
-  "drawPreview('NEXT'",
-  'HOLD / SWAP',
+  "        'HOLD',",
+  "        'NEXT',",
+  'aria-label="Hold or swap piece"',
   'C / SHIFT',
 ]) {
   assert(source.includes(token), `BlockDropGame is missing hold/layout token: ${token}`);
