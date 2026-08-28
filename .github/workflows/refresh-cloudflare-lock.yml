@@ -1,0 +1,42 @@
+name: Refresh Cloudflare leaderboard lockfile
+
+on:
+  push:
+    branches: [cloudflare-leaderboards]
+    paths:
+      - '.cloudflare-lock/**'
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - name: Regenerate lockfile
+        run: bun install --lockfile-only
+      - name: Verify frozen install
+        run: bun install --frozen-lockfile
+      - name: Frontend typecheck
+        run: bunx tsc --noEmit
+      - name: Worker typecheck and bundle
+        run: bun run worker:check
+      - name: Production frontend build
+        run: bun run build
+      - name: Commit regenerated lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .cloudflare-lock
+          git diff --check
+          git config user.name "thiepn"
+          git config user.email "junsosmart@gmail.com"
+          git add bun.lock .cloudflare-lock
+          git commit -m "Regenerate lockfile for Cloudflare leaderboard backend"
+          git push origin HEAD:cloudflare-leaderboards
