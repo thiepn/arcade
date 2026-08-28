@@ -25,6 +25,7 @@ jobs:
       - run: bun run quality:shortcuts
       - run: bun run quality:pac
       - run: bun run quality:mobile
+      - run: bun run quality:rope
       - run: bunx tsc --noEmit
       - run: bun run d1:migrate:local
       - name: Smoke-test Worker API
