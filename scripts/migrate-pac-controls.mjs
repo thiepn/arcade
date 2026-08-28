@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
+// One-shot branch migration; removed after the generated game patch is committed.
 function replaceOnce(path, search, replacement, label) {
   const source = readFileSync(path, 'utf8');
   let count = 0;
