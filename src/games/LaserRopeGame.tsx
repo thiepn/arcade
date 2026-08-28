@@ -4,6 +4,7 @@ import { sounds } from '../lib/sound';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { LaserRopeHud } from '../components/LaserRopeHud';
+import { LaserRopeStartPanel } from '../components/LaserRopeStartPanel';
 import {
   drawLaserRopeArenaFrame,
   drawLaserRopeBackground,
@@ -45,6 +46,8 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
+  const hasStartedRef = useRef(false);
+  const [hasStarted, setHasStarted] = useState(false);
 
   const [hudState, setHudState] = useState({
     score: 0,
@@ -105,9 +108,30 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
     nextId: 1,
   });
 
+  const startRun = () => {
+    if (hasStartedRef.current || isPausedRef.current) return;
+    hasStartedRef.current = true;
+    setHasStarted(true);
+    const state = gameStateRef.current;
+    state.feedbackBanner = {
+      title: 'SYSTEM LIVE',
+      detail: 'LOW / DUAL = JUMP  •  HIGH = SLIDE',
+      color: '#67E8F9',
+      life: 0.85,
+      maxLife: 0.85,
+    };
+    state.screenFlashColor = '#38BDF8';
+    state.screenFlashAlpha = Math.max(state.screenFlashAlpha, 0.055);
+    if (soundEnabled) sounds.playClick();
+  };
+
   const triggerJump = () => {
     const state = gameStateRef.current;
     if (!state.isAlive || isPausedRef.current) return;
+    if (!hasStartedRef.current) {
+      startRun();
+      return;
+    }
 
     if (state.jumpCount < 2) {
       state.isSliding = false;
@@ -134,6 +158,10 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
   const triggerSlide = () => {
     const state = gameStateRef.current;
     if (!state.isAlive || isPausedRef.current) return;
+    if (!hasStartedRef.current) {
+      startRun();
+      return;
+    }
 
     if (state.isGrounded) {
       state.isSliding = true;
@@ -162,6 +190,11 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!hasStartedRef.current && e.code === 'Enter') {
+        e.preventDefault();
+        startRun();
+        return;
+      }
       if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
         e.preventDefault();
         triggerJump();
@@ -188,7 +221,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
       const centerX = w / 2;
       const groundY = h * 0.72;
 
-      if (!isPausedRef.current && state.isAlive) {
+      if (!isPausedRef.current && state.isAlive && hasStartedRef.current) {
         // Fever state
         if (state.isFeverActive) {
           state.feverDuration -= dt;
@@ -537,7 +570,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
                 });
               } else {
                 state.isAlive = false;
-                state.deathPresentationTimer = 0.45;
+                state.deathPresentationTimer = 0.7;
                 state.screenShake = Math.max(state.screenShake, 18);
                 state.screenFlashColor = '#EF4444';
                 state.screenFlashAlpha = Math.max(state.screenFlashAlpha, 0.38);
@@ -573,7 +606,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
                   });
                 }
 
-                setSafeTimeout(() => onGameOver(state.score), 400);
+                setSafeTimeout(() => onGameOver(state.score), 650);
               }
             }
           }
@@ -800,19 +833,24 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
 
       <canvas ref={canvasRef} className="w-full h-full min-h-0 block touch-none" />
 
+      {!hasStarted && <LaserRopeStartPanel onStart={startRun} />}
+
       {/* On-screen Jump & Slide Controls */}
-      <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between pointer-events-auto z-10">
+      <div className="absolute bottom-2.5 left-2.5 right-2.5 sm:bottom-3 sm:left-4 sm:right-4 flex items-center justify-between gap-2 pointer-events-auto z-10">
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             triggerSlide();
           }}
-          className="px-6 h-12 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-purple-500/50 text-purple-300 font-black flex items-center justify-center gap-1.5 active:scale-95 shadow-lg cursor-pointer"
-          aria-label="Slide / Duck"
+          className="h-12 min-w-0 flex-1 sm:flex-none sm:min-w-[150px] sm:px-5 rounded-xl bg-[#090D18]/92 hover:bg-purple-500/10 border border-purple-400/45 text-purple-200 font-black flex items-center justify-center gap-2 active:scale-[0.97] shadow-lg shadow-purple-950/25 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300"
+          aria-label="Slide under high beams. Keyboard S or Arrow Down."
         >
-          <ArrowDown className="w-5 h-5" />
-          <span className="font-mono text-xs font-black">SLIDE / DUCK</span>
+          <ArrowDown className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+          <span className="flex flex-col items-start font-mono-arcade leading-none">
+            <span className="text-[10px] sm:text-xs font-black">SLIDE</span>
+            <span className="mt-1 text-[7px] font-bold text-purple-300/55">S / ↓ · HIGH</span>
+          </span>
         </button>
 
         <button
@@ -821,11 +859,14 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
             e.stopPropagation();
             triggerJump();
           }}
-          className="px-7 h-12 rounded-xl bg-pink-500 hover:bg-pink-400 text-white font-black flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-pink-500/30 cursor-pointer"
-          aria-label="Jump / Double Jump"
+          className="h-12 min-w-0 flex-1 sm:flex-none sm:min-w-[150px] sm:px-5 rounded-xl bg-cyan-300 hover:bg-cyan-200 text-slate-950 font-black flex items-center justify-center gap-2 active:scale-[0.97] shadow-lg shadow-cyan-500/20 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+          aria-label="Jump over low and dual beams. Keyboard Space, W, or Arrow Up."
         >
-          <ArrowUp className="w-5 h-5" />
-          <span className="font-mono text-xs font-black">JUMP</span>
+          <ArrowUp className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+          <span className="flex flex-col items-start font-mono-arcade leading-none">
+            <span className="text-[10px] sm:text-xs font-black">JUMP</span>
+            <span className="mt-1 text-[7px] font-black text-slate-700/65">SPACE / ↑ · LOW</span>
+          </span>
         </button>
       </div>
     </div>
