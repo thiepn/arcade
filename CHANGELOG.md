@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+- Added repository governance and release-hardening files: CODEOWNERS, pull-request validation template, Dependabot maintenance, security disclosure policy, contribution workflow, production release checklist, and the permanent `quality:hardening` audit.
+
+### Changed
+- Hardened GitHub Actions with read-only checkout credentials, full-SHA action pinning, stale-CI cancellation, job timeouts, and a Pages deployment chain that builds the exact `main` commit only after its CI run succeeds.
+
 ## 1.1.0 — 2026-08-29
 
 ### Added
