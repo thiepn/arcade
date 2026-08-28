@@ -71,7 +71,7 @@ function faceMapping(gameId: string, paused: boolean, gameOver: boolean): Array<
   if (gameOver) return ['Space', 'Escape', 'KeyN', 'KeyL'];
   if (paused) return ['Escape', 'Escape', 'KeyR', null];
   if (gameId === 'merge') return ['Digit1', 'Digit2', 'Digit3', 'Digit4'];
-  if (gameId === 'rhythm') return ['KeyF', 'KeyJ', 'KeyA', 'KeyK'];
+  if (gameId === 'rhythm') return ['KeyF', 'KeyJ', 'KeyD', 'KeyK'];
   if (gameId === 'astroblaster') return ['Space', 'Escape', 'ShiftLeft', null];
   return ['Space', 'Escape', 'ShiftLeft', 'KeyG'];
 }
@@ -141,6 +141,8 @@ export function useGamepadBridge({
     let cursorX = 0;
     let cursorY = 0;
     let cursorInitialized = false;
+    let reportedConnected = false;
+    let reportedName: string | null = null;
     const heldKeys = new Set<KeyCode>();
     const previousButtons = new Map<number, boolean>();
 
@@ -170,8 +172,16 @@ export function useGamepadBridge({
       const active = activeIndex !== null ? pads.find((pad) => pad.index === activeIndex) : pads[0];
       const next = active ?? pads[0] ?? null;
       activeIndex = next?.index ?? null;
-      setConnected(Boolean(next));
-      setControllerName(next?.id || null);
+      const nextConnected = Boolean(next);
+      const nextName = next?.id || null;
+      if (nextConnected !== reportedConnected) {
+        reportedConnected = nextConnected;
+        setConnected(nextConnected);
+      }
+      if (nextName !== reportedName) {
+        reportedName = nextName;
+        setControllerName(nextName);
+      }
       return next;
     };
 
