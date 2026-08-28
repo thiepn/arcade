@@ -33,3 +33,4 @@ jobs:
           git add -A
           git commit -m 'Wire MA2 weekly leaderboard and player profile UI'
           git push origin HEAD:ma2-weekly-overall-profile
+# retry after profile typing correction
