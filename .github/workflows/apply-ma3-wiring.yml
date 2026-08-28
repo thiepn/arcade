@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   apply:
-    if: ${{ github.event.head_commit.message == 'Apply MA3 shell wiring' }}
+    if: ${{ github.event.head_commit.message == 'Apply MA3 shell wiring retry' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +37,6 @@ jobs:
           text = path.read_text().replace('              <span className="hidden sm:inline">ARCADE</span>\n          </button>', '            <span className="hidden sm:inline">ARCADE</span>\n          </button>')
           path.write_text(text)
           PY
-          rm -f scripts/apply-ma3-wiring.mjs .github/workflows/apply-ma3-wiring.yml
           bun install --frozen-lockfile
           bun run quality:games
           bunx tsc --noEmit
@@ -45,8 +44,9 @@ jobs:
           MA3_EXPECT_BASE=/ bun run quality:ma3
           bun run build:pages
           MA3_EXPECT_BASE=/arcade/ bun run quality:ma3
+          git checkout -- .github/workflows/ci.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
+          git add index.html package.json vite.config.ts src/App.tsx src/components/GameShell.tsx src/hooks/useGamepadBridge.ts src/index.css
           git commit -m 'Wire MA3 PWA gamepad and mobile shell'
           git push origin HEAD:ma3-pwa-offline-gamepad-mobile
