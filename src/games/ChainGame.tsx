@@ -3,6 +3,7 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { Sparkles, Bomb, Zap, Snowflake, Shield, AlertTriangle, BatteryCharging } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { clamp, rescalePoint, rescaleVelocity } from '../lib/gameCoordinates';
 
 interface ParticleNode {
   id: number;
@@ -96,6 +97,8 @@ export const ChainGame: React.FC<GameComponentProps> = ({
     isFinished: false,
     shake: 0,
     selectedTool: 'plasma' as DetonatorTool,
+    viewportWidth: 400,
+    viewportHeight: 600,
   });
 
   const initParticles = useCallback((w: number, h: number, waveNum: number) => {
@@ -112,6 +115,8 @@ export const ChainGame: React.FC<GameComponentProps> = ({
 
     const nodes: ParticleNode[] = [];
     const colors = ['#F43F5E', '#38BDF8', '#34D399', '#FACC15', '#A855F7', '#FB923C'];
+    const horizontalScale = clamp(w / 400, 0.85, 1.8);
+    const verticalScale = clamp(h / 600, 0.85, 1.35);
 
     for (let i = 0; i < total; i++) {
       const baseSpeed = 1.3 + Math.min(1.8, waveNum * 0.15) + Math.random() * 1.0;
@@ -154,8 +159,8 @@ export const ChainGame: React.FC<GameComponentProps> = ({
         id: i,
         x: 45 + Math.random() * (w - 90),
         y: 45 + Math.random() * (h - 90),
-        vx: Math.cos(angle) * spd,
-        vy: Math.sin(angle) * spd,
+        vx: Math.cos(angle) * spd * horizontalScale,
+        vy: Math.sin(angle) * spd * verticalScale,
         radius: type === 'shielded' ? 9 : type === 'dampener' ? 8 : type === 'supernova' ? 9 : 7,
         color:
           type === 'shielded'
@@ -350,9 +355,38 @@ export const ChainGame: React.FC<GameComponentProps> = ({
     isPaused,
     onResize: (w, h) => {
       const state = gameStateRef.current;
-      if (state.particles.length === 0) {
-        state.particles = initParticles(w, h, state.wave);
+      const scaleX = w / Math.max(1, state.viewportWidth);
+      const scaleY = h / Math.max(1, state.viewportHeight);
+      const uniformScale = Math.min(scaleX, scaleY);
+
+      for (const particle of state.particles) {
+        rescalePoint(particle, scaleX, scaleY);
+        rescaleVelocity(particle, scaleX, scaleY);
+        particle.radius *= uniformScale;
+        particle.explosionRadius *= uniformScale;
+        particle.maxExplosionRadius *= uniformScale;
       }
+      for (const vortex of state.vortexes) {
+        rescalePoint(vortex, scaleX, scaleY);
+        vortex.radius *= uniformScale;
+        vortex.pullStrength *= uniformScale;
+      }
+      for (const arc of state.lightningArcs) {
+        arc.x1 *= scaleX;
+        arc.y1 *= scaleY;
+        arc.x2 *= scaleX;
+        arc.y2 *= scaleY;
+      }
+      for (const spark of state.sparks) {
+        rescalePoint(spark, scaleX, scaleY);
+        rescaleVelocity(spark, scaleX, scaleY);
+        spark.size *= uniformScale;
+      }
+      for (const text of state.floatingTexts) rescalePoint(text, scaleX, scaleY);
+
+      state.viewportWidth = w;
+      state.viewportHeight = h;
+      if (state.particles.length === 0) state.particles = initParticles(w, h, state.wave);
     },
     onUpdate: (ctx, dt, curW, curH) => {
       const state = gameStateRef.current;

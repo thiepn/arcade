@@ -72,7 +72,8 @@ export const DriftGame: React.FC<GameComponentProps> = ({
     isPausedRef.current = isPaused;
   }, [isPaused]);
 
-  const ROAD_WIDTH = 300;
+  const getDriftRoadWidth = (width: number) =>
+    Math.max(160, Math.min(360, width - 24));
 
   const gameStateRef = useRef({
     score: 0,
@@ -108,6 +109,8 @@ export const DriftGame: React.FC<GameComponentProps> = ({
     steerInput: 0,
     soundCooldown: 0,
     spawnTimer: 0,
+    viewportWidth: 0,
+    viewportHeight: 0,
   });
 
   const setSafeTimeout = useSafeTimeout();
@@ -198,17 +201,75 @@ export const DriftGame: React.FC<GameComponentProps> = ({
   useGameLoop({
     canvasRef,
     isPaused,
-    onResize: (w, h) => {
+    onResize: (w, h, resize) => {
       const state = gameStateRef.current;
-      state.carX = w / 2;
-      state.carY = h * 0.76;
-      if (state.streetlights.length === 0) {
+      const roadWidth = getDriftRoadWidth(w);
+      const isInitial =
+        resize.isInitial || state.viewportWidth <= 0 || state.viewportHeight <= 0;
+
+      if (isInitial) {
+        state.carX = w / 2;
+        state.carY = h * 0.76;
+      } else {
+        const scaleX = w / state.viewportWidth;
+        const scaleY = h / state.viewportHeight;
+        state.carX *= scaleX;
+        state.carY = h * 0.76;
+        state.carVx *= scaleX;
+
+        for (const segment of state.segments) {
+          segment.y *= scaleY;
+          if (segment.hazardX !== undefined) segment.hazardX *= scaleX;
+          if (segment.nitroX !== undefined) segment.nitroX *= scaleX;
+          if (segment.rivalX !== undefined) segment.rivalX *= scaleX;
+        }
+        for (const light of state.streetlights) light.y *= scaleY;
+        for (const mark of state.skidmarks) {
+          mark.x1 *= scaleX;
+          mark.x2 *= scaleX;
+          mark.y1 *= scaleY;
+          mark.y2 *= scaleY;
+        }
+        for (const particle of state.particles) {
+          particle.x *= scaleX;
+          particle.y *= scaleY;
+          particle.vx *= scaleX;
+          particle.vy *= scaleY;
+        }
+        for (const line of state.speedlines) {
+          line.x *= scaleX;
+          line.y *= scaleY;
+          line.len *= scaleY;
+          line.speed *= scaleY;
+        }
+        for (const popup of state.popups) {
+          popup.x *= scaleX;
+          popup.y *= scaleY;
+        }
+      }
+
+      state.viewportWidth = w;
+      state.viewportHeight = h;
+      const minX = w / 2 - roadWidth / 2 + 20;
+      const maxX = w / 2 + roadWidth / 2 - 20;
+      state.carX = Math.max(minX, Math.min(maxX, state.carX));
+
+      if (
+        state.streetlights.length === 0 ||
+        Math.abs(resize.scaleY - 1) > 0.3
+      ) {
+        state.streetlights = [];
         for (let y = -200; y < h + 400; y += 120) {
           state.streetlights.push({ y, side: -1 });
           state.streetlights.push({ y: y + 60, side: 1 });
         }
       }
-      if (state.speedlines.length === 0) {
+      if (
+        state.speedlines.length === 0 ||
+        Math.abs(resize.scaleX - 1) > 0.3 ||
+        Math.abs(resize.scaleY - 1) > 0.3
+      ) {
+        state.speedlines = [];
         for (let i = 0; i < 25; i++) {
           state.speedlines.push({
             x: Math.random() * w,
@@ -225,6 +286,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
       
       ctx.save();
       const roadCenterX = w / 2;
+      const roadWidth = getDriftRoadWidth(w);
 
       if (!isPausedRef.current && st.isAlive) {
         if (st.invulnerableTime > 0) st.invulnerableTime--;
@@ -273,8 +335,8 @@ export const DriftGame: React.FC<GameComponentProps> = ({
         st.carX += st.carVx;
 
         // Road Boundaries
-        const minX = roadCenterX - ROAD_WIDTH / 2 + 20;
-        const maxX = roadCenterX + ROAD_WIDTH / 2 - 20;
+        const minX = roadCenterX - roadWidth / 2 + 20;
+        const maxX = roadCenterX + roadWidth / 2 - 20;
 
         if (st.carX < minX) {
           st.carX = minX;
@@ -421,7 +483,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
             });
           } else if (rand < 0.6) {
             // Nitro Energy Cell
-            const nx = roadCenterX + (Math.random() - 0.5) * (ROAD_WIDTH - 80);
+            const nx = roadCenterX + (Math.random() - 0.5) * (roadWidth - 80);
             st.segments.push({
               y: -80,
               curve: st.roadCurve,
@@ -431,7 +493,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
             });
           } else if (rand < 0.82) {
             // Rival Traffic Car
-            const rx = roadCenterX + (Math.random() - 0.5) * (ROAD_WIDTH - 90);
+            const rx = roadCenterX + (Math.random() - 0.5) * (roadWidth - 90);
             const rivalColors = ['#8B5CF6', '#10B981', '#F59E0B', '#6366F1'];
             st.segments.push({
               y: -100,
@@ -444,7 +506,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
             });
           } else {
             // Hazard (Oil slick or EMP barrier)
-            const hx = roadCenterX + (Math.random() - 0.5) * (ROAD_WIDTH - 80);
+            const hx = roadCenterX + (Math.random() - 0.5) * (roadWidth - 80);
             st.segments.push({
               y: -80,
               curve: st.roadCurve,
@@ -470,8 +532,8 @@ export const DriftGame: React.FC<GameComponentProps> = ({
           if (seg.hasGate && !seg.gatePassed && Math.abs(seg.y - st.carY) < 30) {
             const gateX =
               seg.gateSide === 'left'
-                ? roadCenterX - ROAD_WIDTH / 2 + 40
-                : roadCenterX + ROAD_WIDTH / 2 - 40;
+                ? roadCenterX - roadWidth / 2 + 40
+                : roadCenterX + roadWidth / 2 - 40;
 
             if (Math.abs(st.carX - gateX) < 50) {
               seg.gatePassed = true;
@@ -653,8 +715,8 @@ export const DriftGame: React.FC<GameComponentProps> = ({
       }
 
       // --- DRAW HIGHWAY ROAD ---
-      const roadLeft = roadCenterX - ROAD_WIDTH / 2;
-      const roadRight = roadCenterX + ROAD_WIDTH / 2;
+      const roadLeft = roadCenterX - roadWidth / 2;
+      const roadRight = roadCenterX + roadWidth / 2;
 
       // Road Asphalt with subtle dark gradient
       const roadGrad = ctx.createLinearGradient(roadLeft, 0, roadRight, 0);
@@ -662,7 +724,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
       roadGrad.addColorStop(0.5, '#1C1C24');
       roadGrad.addColorStop(1, '#16161D');
       ctx.fillStyle = roadGrad;
-      ctx.fillRect(roadLeft, 0, ROAD_WIDTH, h);
+      ctx.fillRect(roadLeft, 0, roadWidth, h);
 
       // Outer Neon Guardrails with glowing chevrons
       ctx.lineWidth = 4;
@@ -940,23 +1002,35 @@ export const DriftGame: React.FC<GameComponentProps> = ({
     },
   });
 
-  const handleSteerStart = (dir: -1 | 1) => {
+  const handleSteerStart = (
+    event: React.PointerEvent<HTMLButtonElement>,
+    dir: -1 | 1,
+  ) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     haptics.light();
     gameStateRef.current.steerInput = dir;
     if (dir === -1) setSteerLeft(true);
     if (dir === 1) setSteerRight(true);
   };
 
-  const handleSteerEnd = () => {
+  const handleSteerEnd = (event?: React.PointerEvent<HTMLButtonElement>) => {
+    event?.preventDefault();
+    if (
+      event &&
+      event.currentTarget.hasPointerCapture?.(event.pointerId)
+    ) {
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    }
     gameStateRef.current.steerInput = 0;
     setSteerLeft(false);
     setSteerRight(false);
   };
 
   return (
-    <div className="relative w-full h-full min-h-[420px] flex flex-col bg-[#09090B] overflow-hidden select-none">
+    <div className="relative w-full h-full min-h-0 flex flex-col bg-[#09090B] overflow-hidden select-none touch-none">
       {/* Top HUD */}
-      <div className="absolute top-3 left-4 right-4 flex items-center justify-between z-10 pointer-events-none">
+      <div className="absolute top-2 left-2 right-2 flex items-center justify-between gap-1 z-10 pointer-events-none">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 bg-[#18181B]/90 border border-zinc-800 px-3 py-1.5 rounded-lg backdrop-blur-md">
             <Shield className="w-4 h-4 text-rose-500" />
@@ -1005,18 +1079,19 @@ export const DriftGame: React.FC<GameComponentProps> = ({
 
       {/* Main Canvas Viewport */}
       <div className="flex-1 relative w-full h-full">
-        <canvas ref={canvasRef} className="w-full h-full block" />
+        <canvas ref={canvasRef} className="w-full h-full min-h-0 block touch-none" />
       </div>
 
       {/* Responsive Touch Steer Paddles & Nitro */}
-      <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between z-10 pointer-events-auto">
+      <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between gap-2 z-10 pointer-events-auto">
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onPointerDown={() => handleSteerStart(-1)}
+            onPointerDown={(event) => handleSteerStart(event, -1)}
             onPointerUp={handleSteerEnd}
+            onPointerCancel={handleSteerEnd}
             onPointerLeave={handleSteerEnd}
-            className={`w-16 h-14 rounded-xl border font-mono-arcade text-base font-bold flex items-center justify-center select-none transition-all active:scale-95 cursor-pointer ${
+            className={`w-14 sm:w-16 h-12 sm:h-14 rounded-xl border font-mono-arcade text-[10px] sm:text-base font-bold flex items-center justify-center select-none transition-all active:scale-95 cursor-pointer ${
               steerLeft
                 ? 'bg-rose-500 text-white border-rose-400 shadow-lg shadow-rose-500/40'
                 : 'bg-[#18181B]/90 hover:bg-[#27272A] text-zinc-300 border-zinc-700'
@@ -1026,10 +1101,11 @@ export const DriftGame: React.FC<GameComponentProps> = ({
           </button>
           <button
             type="button"
-            onPointerDown={() => handleSteerStart(1)}
+            onPointerDown={(event) => handleSteerStart(event, 1)}
             onPointerUp={handleSteerEnd}
+            onPointerCancel={handleSteerEnd}
             onPointerLeave={handleSteerEnd}
-            className={`w-16 h-14 rounded-xl border font-mono-arcade text-base font-bold flex items-center justify-center select-none transition-all active:scale-95 cursor-pointer ${
+            className={`w-14 sm:w-16 h-12 sm:h-14 rounded-xl border font-mono-arcade text-[10px] sm:text-base font-bold flex items-center justify-center select-none transition-all active:scale-95 cursor-pointer ${
               steerRight
                 ? 'bg-rose-500 text-white border-rose-400 shadow-lg shadow-rose-500/40'
                 : 'bg-[#18181B]/90 hover:bg-[#27272A] text-zinc-300 border-zinc-700'
@@ -1043,7 +1119,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
           type="button"
           onClick={triggerNitro}
           disabled={nitroEnergy < 25 || isBoosting}
-          className={`px-6 py-4 rounded-xl font-mono-arcade text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 select-none backdrop-blur-md ${
+          className={`px-3 sm:px-6 py-3 sm:py-4 rounded-xl font-mono-arcade text-[10px] sm:text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 select-none backdrop-blur-md ${
             nitroEnergy >= 25 && !isBoosting
               ? 'bg-cyan-600/90 hover:bg-cyan-500 text-white border-cyan-400 shadow-lg shadow-cyan-500/40 active:scale-95'
               : 'bg-zinc-800/60 text-zinc-500 border-zinc-700 cursor-not-allowed'

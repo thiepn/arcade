@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { clamp } from '../lib/gameCoordinates';
+import { getAirHockeyTableLayout } from '../lib/airHockeyLayout';
 
 interface Mallet {
   x: number;
@@ -95,22 +97,52 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
     particles: [] as { x: number; y: number; vx: number; vy: number; life: number; color: string; size: number }[],
     popups: [] as { id: number; x: number; y: number; text: string; color: string; life: number }[],
     nextId: 1,
+    viewportWidth: 400,
+    viewportHeight: 500,
   });
 
-  const handlePointerMove = (e: React.PointerEvent) => {
+  const updatePointerTarget = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
+    gameStateRef.current.targetPlayerX = e.clientX - rect.left;
+    gameStateRef.current.targetPlayerY = e.clientY - rect.top;
+  };
 
-    gameStateRef.current.targetPlayerX = mx;
-    gameStateRef.current.targetPlayerY = my;
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    updatePointerTarget(e);
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    updatePointerTarget(e);
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+      e.currentTarget.releasePointerCapture?.(e.pointerId);
+    }
   };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const state = gameStateRef.current;
-      const speed = 25;
+      const speed = 25 * getAirHockeyTableLayout(
+        state.viewportWidth,
+        state.viewportHeight,
+      ).motionScale;
+      if (
+        e.code === 'ArrowLeft' ||
+        e.code === 'ArrowRight' ||
+        e.code === 'ArrowUp' ||
+        e.code === 'ArrowDown' ||
+        e.code === 'KeyA' ||
+        e.code === 'KeyD' ||
+        e.code === 'KeyW' ||
+        e.code === 'KeyS'
+      ) {
+        e.preventDefault();
+      }
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') state.targetPlayerX -= speed;
       if (e.code === 'ArrowRight' || e.code === 'KeyD') state.targetPlayerX += speed;
       if (e.code === 'ArrowUp' || e.code === 'KeyW') state.targetPlayerY -= speed;
@@ -143,29 +175,119 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
   useGameLoop({
     canvasRef,
     isPaused,
+    onResize: (w, h) => {
+      const state = gameStateRef.current;
+      const oldTable = getAirHockeyTableLayout(
+        state.viewportWidth,
+        state.viewportHeight,
+      );
+      const newTable = getAirHockeyTableLayout(w, h);
+      const scaleX = newTable.width / Math.max(1, oldTable.width);
+      const scaleY = newTable.height / Math.max(1, oldTable.height);
+      const uniformScale = Math.min(scaleX, scaleY);
+
+      const remapPoint = (point: { x: number; y: number }) => {
+        point.x = newTable.left + (point.x - oldTable.left) * scaleX;
+        point.y = newTable.top + (point.y - oldTable.top) * scaleY;
+      };
+      const remapVelocity = (velocity: { vx: number; vy: number }) => {
+        velocity.vx *= scaleX;
+        velocity.vy *= scaleY;
+      };
+
+      remapPoint(state.puck);
+      remapVelocity(state.puck);
+      state.puck.radius = clamp(state.puck.radius * uniformScale, 10, 18);
+
+      for (const mallet of [state.playerMallet, state.aiMallet]) {
+        remapPoint(mallet);
+        remapVelocity(mallet);
+        mallet.radius = clamp(mallet.radius * uniformScale, 20, 32);
+      }
+
+      const target = { x: state.targetPlayerX, y: state.targetPlayerY };
+      remapPoint(target);
+      state.targetPlayerX = target.x;
+      state.targetPlayerY = target.y;
+
+      for (const trail of state.puckTrail) remapPoint(trail);
+      for (const particle of state.particles) {
+        remapPoint(particle);
+        remapVelocity(particle);
+        particle.size *= uniformScale;
+      }
+      for (const popup of state.popups) remapPoint(popup);
+
+      state.goalWidth = newTable.goalWidth;
+      state.viewportWidth = w;
+      state.viewportHeight = h;
+
+      state.puck.x = clamp(
+        state.puck.x,
+        newTable.left + state.puck.radius,
+        newTable.right - state.puck.radius,
+      );
+      state.puck.y = clamp(
+        state.puck.y,
+        newTable.top + state.puck.radius,
+        newTable.bottom - state.puck.radius,
+      );
+      state.playerMallet.x = clamp(
+        state.playerMallet.x,
+        newTable.left + state.playerMallet.radius,
+        newTable.right - state.playerMallet.radius,
+      );
+      state.playerMallet.y = clamp(
+        state.playerMallet.y,
+        newTable.centerY + state.playerMallet.radius + 4,
+        newTable.bottom - state.playerMallet.radius,
+      );
+      state.aiMallet.x = clamp(
+        state.aiMallet.x,
+        newTable.left + state.aiMallet.radius,
+        newTable.right - state.aiMallet.radius,
+      );
+      state.aiMallet.y = clamp(
+        state.aiMallet.y,
+        newTable.top + state.aiMallet.radius,
+        newTable.centerY - state.aiMallet.radius - 4,
+      );
+      state.targetPlayerX = clamp(
+        state.targetPlayerX,
+        newTable.left + state.playerMallet.radius,
+        newTable.right - state.playerMallet.radius,
+      );
+      state.targetPlayerY = clamp(
+        state.targetPlayerY,
+        newTable.centerY + state.playerMallet.radius + 4,
+        newTable.bottom - state.playerMallet.radius,
+      );
+    },
     onUpdate: (ctx, dt, w, h) => {
       const state = gameStateRef.current;
 
       ctx.clearRect(0, 0, w, h);
 
-      const tableMarginX = 16;
-      const tableMarginY = 16;
-      const tableW = w - tableMarginX * 2;
-      const tableH = h - tableMarginY * 2;
-      const tableLeft = tableMarginX;
-      const tableRight = tableLeft + tableW;
-      const tableTop = tableMarginY;
-      const tableBottom = tableTop + tableH;
-      const centerY = tableTop + tableH / 2;
-      const centerX = tableLeft + tableW / 2;
+      const table = getAirHockeyTableLayout(w, h);
+      const tableW = table.width;
+      const tableH = table.height;
+      const tableLeft = table.left;
+      const tableRight = table.right;
+      const tableTop = table.top;
+      const tableBottom = table.bottom;
+      const centerY = table.centerY;
+      const centerX = table.centerX;
+      state.goalWidth = table.goalWidth;
 
       const resetPuck = (toPlayer: boolean) => {
         state.isGoalResetting = true;
         state.goalTimer = 0.8;
         state.puck.x = centerX;
-        state.puck.y = toPlayer ? centerY + 60 : centerY - 60;
-        state.puck.vx = (Math.random() - 0.5) * 60;
-        state.puck.vy = toPlayer ? 80 : -80;
+        state.puck.y = toPlayer
+          ? centerY + 60 * table.motionScale
+          : centerY - 60 * table.motionScale;
+        state.puck.vx = (Math.random() - 0.5) * 60 * table.motionScale;
+        state.puck.vy = (toPlayer ? 80 : -80) * table.motionScale;
       };
 
       if (!isPausedRef.current && state.isAlive) {
@@ -200,7 +322,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
         const diffConfig = DIFFICULTY_CONFIG[state.difficulty] || DIFFICULTY_CONFIG.MEDIUM;
         const tableCenterX = (tableLeft + tableRight) / 2;
         const aiHomeX = tableCenterX;
-        const aiHomeY = tableTop + 55;
+        const aiHomeY = tableTop + 55 * table.motionScale;
 
         let aiTargetX = aiHomeX;
         let aiTargetY = aiHomeY;
@@ -212,8 +334,10 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
 
         if (state.puck.y < centerY + 20) {
           if (state.puck.y < state.aiMallet.y - 4) {
-            aiTargetX = state.puck.x > tableCenterX ? aiMinX + 25 : aiMaxX - 25;
-            aiTargetY = Math.max(aiMinY, state.puck.y - 10);
+            aiTargetX = state.puck.x > tableCenterX
+              ? aiMinX + 25 * table.motionScale
+              : aiMaxX - 25 * table.motionScale;
+            aiTargetY = Math.max(aiMinY, state.puck.y - 10 * table.motionScale);
           } else {
             const predX = state.puck.x + state.puck.vx * diffConfig.predFactor;
             aiTargetX = Math.max(aiMinX, Math.min(aiMaxX, predX));
@@ -221,14 +345,14 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
           }
         } else {
           const guardFactor = (state.puck.x - tableCenterX) / (tableRight - tableLeft);
-          aiTargetX = tableCenterX + guardFactor * 50;
+          aiTargetX = tableCenterX + guardFactor * 50 * table.motionScale;
           aiTargetY = aiHomeY;
         }
 
         aiTargetX = Math.max(aiMinX, Math.min(aiMaxX, aiTargetX));
         aiTargetY = Math.max(aiMinY, Math.min(aiMaxY, aiTargetY));
 
-        const aiSpeed = diffConfig.aiSpeed;
+        const aiSpeed = diffConfig.aiSpeed * table.motionScale;
         const aiDX = aiTargetX - state.aiMallet.x;
         const aiDY = aiTargetY - state.aiMallet.y;
         const aiDist = Math.hypot(aiDX, aiDY);
@@ -249,11 +373,12 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
         puck.x += puck.vx * dt;
         puck.y += puck.vy * dt;
 
-        puck.vx *= 0.993;
-        puck.vy *= 0.993;
+        const drag = Math.pow(0.993, dt * 60);
+        puck.vx *= drag;
+        puck.vy *= drag;
 
         const pSpeed = Math.hypot(puck.vx, puck.vy);
-        const maxSpeed = 680;
+        const maxSpeed = 680 * table.motionScale;
         if (pSpeed > maxSpeed) {
           puck.vx = (puck.vx / pSpeed) * maxSpeed;
           puck.vy = (puck.vy / pSpeed) * maxSpeed;
@@ -548,7 +673,9 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
       ref={containerRef}
       id="air-hockey-container"
       onPointerMove={handlePointerMove}
-      className="relative w-full h-full min-h-[440px] flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none"
+      onPointerDown={handlePointerDown}
+      onPointerCancel={handlePointerCancel}
+      className="relative w-full h-full min-h-0 flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none"
     >
       {/* Top HUD */}
       <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 pointer-events-none gap-2 flex-wrap">
@@ -581,7 +708,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
       <canvas ref={canvasRef} className="w-full h-full block cursor-none" />
 
       {/* Difficulty Selection Pills at Bottom */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 p-1 bg-zinc-900/90 border border-zinc-800 rounded-2xl backdrop-blur-md z-20 pointer-events-auto shadow-2xl">
+      <div className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 flex max-w-[calc(100%-12px)] items-center gap-1 sm:gap-1.5 p-1 bg-zinc-900/90 border border-zinc-800 rounded-2xl backdrop-blur-md z-20 pointer-events-auto shadow-2xl">
         {(['EASY', 'MEDIUM', 'HARD'] as DifficultyLevel[]).map((lvl) => {
           const cfg = DIFFICULTY_CONFIG[lvl];
           const isSelected = selectedDifficulty === lvl;
@@ -590,14 +717,14 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
               key={lvl}
               type="button"
               onClick={() => changeDifficulty(lvl)}
-              className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer ${
+              className={`min-w-0 px-2 sm:px-3 py-1.5 rounded-xl font-mono text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
                 isSelected
                   ? 'bg-zinc-800 text-white shadow-md border border-zinc-600'
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
               }`}
             >
               <span style={{ color: isSelected ? cfg.color : undefined }}>{cfg.label}</span>
-              <span className="ml-1 text-[10px] opacity-75">{cfg.multiplierBadge}</span>
+              <span className="ml-1 hidden text-[10px] opacity-75 sm:inline">{cfg.multiplierBadge}</span>
             </button>
           );
         })}

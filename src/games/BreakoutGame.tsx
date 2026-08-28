@@ -3,6 +3,7 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { clamp, rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
 
 interface Brick {
   x: number;
@@ -95,6 +96,8 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
     round: 1,
     keys: { left: false, right: false, space: false },
     lastLaserFire: 0,
+    viewportWidth: 400,
+    viewportHeight: 600,
   });
 
   const initBricks = (w: number, round: number) => {
@@ -239,9 +242,51 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
     isPaused,
     onResize: (w, h) => {
       const state = gameStateRef.current;
-      if (state.bricks.length === 0) {
-        state.bricks = initBricks(w, state.round);
+      const scaleX = w / Math.max(1, state.viewportWidth);
+      const scaleY = h / Math.max(1, state.viewportHeight);
+      const uniformScale = Math.min(scaleX, scaleY);
+
+      state.paddleX = state.paddleX > 0 ? state.paddleX * scaleX : w / 2;
+      state.targetPaddleX = state.targetPaddleX > 0 ? state.targetPaddleX * scaleX : w / 2;
+      state.paddleW = clamp(state.paddleW * scaleX, 72, Math.min(180, w * 0.32));
+      state.paddleTargetW = clamp(state.paddleTargetW * scaleX, 72, Math.min(180, w * 0.32));
+      state.paddleH = clamp(state.paddleH * uniformScale, 12, 22);
+
+      for (const brick of state.bricks) {
+        brick.x *= scaleX;
+        brick.y *= scaleY;
+        brick.w *= scaleX;
+        brick.h *= scaleY;
       }
+      for (const ball of state.balls) {
+        rescalePoint(ball, scaleX, scaleY);
+        rescaleVelocity(ball, scaleX, scaleY);
+        rescaleTrail(ball.trail, scaleX, scaleY);
+        ball.radius = clamp(ball.radius * uniformScale, 5, 10);
+        ball.x = clamp(ball.x, ball.radius, w - ball.radius);
+        ball.y = clamp(ball.y, ball.radius, h + ball.radius);
+      }
+      for (const particle of state.particles) {
+        rescalePoint(particle, scaleX, scaleY);
+        rescaleVelocity(particle, scaleX, scaleY);
+        particle.size *= uniformScale;
+      }
+      for (const powerUp of state.powerUps) {
+        rescalePoint(powerUp, scaleX, scaleY);
+        powerUp.vy *= scaleY;
+      }
+      for (const laser of state.lasers) {
+        rescalePoint(laser, scaleX, scaleY);
+        laser.vy *= scaleY;
+      }
+      for (const text of state.floatingTexts) rescalePoint(text, scaleX, scaleY);
+
+      state.viewportWidth = w;
+      state.viewportHeight = h;
+      state.paddleX = clamp(state.paddleX, state.paddleW / 2, w - state.paddleW / 2);
+      state.targetPaddleX = clamp(state.targetPaddleX, state.paddleW / 2, w - state.paddleW / 2);
+
+      if (state.bricks.length === 0) state.bricks = initBricks(w, state.round);
     },
     onUpdate: (ctx, dt, curW, curH) => {
       const delta = Math.min(32, dt * 1000);
@@ -291,7 +336,7 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
         if (state.wideTimeRemaining > 0) {
           state.wideTimeRemaining -= delta;
           if (state.wideTimeRemaining <= 0) {
-            state.paddleTargetW = 96;
+            state.paddleTargetW = clamp(state.viewportWidth * 0.22, 72, Math.min(180, state.viewportWidth * 0.32));
           }
         }
         if (state.fireballTimeRemaining > 0) {
@@ -308,8 +353,9 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
           if (state.laserCooldown > 180) {
             state.laserCooldown = 0;
             const paddleY = curH - 50;
-            state.lasers.push({ x: state.paddleX - state.paddleW / 2 + 10, y: paddleY, vy: -12 });
-            state.lasers.push({ x: state.paddleX + state.paddleW / 2 - 10, y: paddleY, vy: -12 });
+            const laserSpeed = -12 * clamp(curH / 600, 0.85, 1.35);
+            state.lasers.push({ x: state.paddleX - state.paddleW / 2 + 10, y: paddleY, vy: laserSpeed });
+            state.lasers.push({ x: state.paddleX + state.paddleW / 2 - 10, y: paddleY, vy: laserSpeed });
             if (soundEnabled) sounds.playLaser();
           }
         }
@@ -540,9 +586,9 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
             {
               x: curW / 2,
               y: curH - 100,
-              vx: 4,
-              vy: -6,
-              radius: 6,
+              vx: 4 * clamp(curW / 400, 0.85, 1.8),
+              vy: -6 * clamp(curH / 600, 0.85, 1.35),
+              radius: clamp(6 * Math.min(curW / 400, curH / 600), 5, 10),
               fireball: false,
               trail: [],
             },
@@ -850,7 +896,7 @@ function applyPowerUp(
   } else if (type === 'laser') {
     state.laserTimeRemaining = 7000;
   } else if (type === 'wide') {
-    state.paddleTargetW = 140;
+    state.paddleTargetW = clamp(curW * 0.3, 140, Math.min(240, curW * 0.38));
     state.wideTimeRemaining = 8000;
   } else if (type === 'fireball') {
     state.balls.forEach((b: Ball) => (b.fireball = true));

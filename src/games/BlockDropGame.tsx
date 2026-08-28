@@ -3,11 +3,10 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { RotateCw, ArrowDown, ArrowLeft, ArrowRight, ChevronsDown, Zap, Trophy } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { getBlockDropLayout, resolveBlockDropHold } from '../lib/blockDropSupport';
 
 const COLS = 10;
 const ROWS = 20;
-const BLOCK_SIZE = 22;
-
 type TetrominoType = 'I' | 'J' | 'L' | 'O' | 'S' | 'T' | 'Z';
 
 const SHAPES: Record<TetrominoType, { shape: number[][]; color: string }> = {
@@ -30,6 +29,62 @@ interface ActivePiece {
   color: string;
 }
 
+const drawPreview = (
+  ctx: CanvasRenderingContext2D,
+  label: 'HOLD' | 'NEXT',
+  type: TetrominoType | null,
+  x: number,
+  y: number,
+  size: number,
+  cell: number,
+  enabled = true,
+) => {
+  ctx.save();
+  ctx.fillStyle = enabled ? 'rgba(15,23,42,0.92)' : 'rgba(9,9,11,0.78)';
+  ctx.strokeStyle = enabled ? 'rgba(71,85,105,0.92)' : 'rgba(63,63,70,0.55)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(x, y, size, size, Math.max(7, size * 0.1));
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = enabled ? '#94A3B8' : '#52525B';
+  ctx.font = '800 9px ui-monospace, monospace';
+  ctx.fillText(label, x + size / 2, y - 8);
+  if (label === 'HOLD') {
+    ctx.font = '700 7px ui-monospace, monospace';
+    ctx.fillStyle = enabled ? '#64748B' : '#3F3F46';
+    ctx.fillText(enabled ? 'C / SHIFT' : 'LOCKED', x + size / 2, y + size + 12);
+  }
+
+  if (!type) {
+    ctx.fillStyle = '#475569';
+    ctx.font = '900 18px ui-monospace, monospace';
+    ctx.fillText('—', x + size / 2, y + size / 2 + 6);
+    ctx.restore();
+    return;
+  }
+
+  const data = SHAPES[type];
+  const matrix = data.shape;
+  const pieceW = matrix[0].length * cell;
+  const pieceH = matrix.length * cell;
+  const offX = x + (size - pieceW) / 2;
+  const offY = y + (size - pieceH) / 2;
+  ctx.fillStyle = data.color;
+  ctx.shadowColor = data.color;
+  ctx.shadowBlur = enabled ? 10 : 3;
+  ctx.globalAlpha = enabled ? 1 : 0.42;
+  for (let row = 0; row < matrix.length; row++) {
+    for (let col = 0; col < matrix[row].length; col++) {
+      if (!matrix[row][col]) continue;
+      ctx.fillRect(offX + col * cell + 1, offY + row * cell + 1, cell - 2, cell - 2);
+    }
+  }
+  ctx.restore();
+};
+
 export const BlockDropGame: React.FC<GameComponentProps> = ({
   onGameOver,
   onScoreUpdate,
@@ -47,6 +102,8 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
     lines: 0,
     level: 1,
     nextType: 'T' as TetrominoType,
+    holdType: null as TetrominoType | null,
+    canHold: true,
   });
 
   const gameStateRef = useRef({
@@ -59,6 +116,8 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
     grid: Array.from({ length: ROWS }, () => Array(COLS).fill(null)) as (string | null)[][],
     currentPiece: null as ActivePiece | null,
     nextPieceType: 'T' as TetrominoType,
+    holdPieceType: null as TetrominoType | null,
+    canHold: true,
     dropTimer: 0,
     dropInterval: 0.8, // sec per step
     lockTimer: 0, // Lock delay timer for spin-slotting
@@ -101,6 +160,14 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
       }
     }
     return false;
+  };
+
+  const finishGame = () => {
+    const state = gameStateRef.current;
+    if (!state.isAlive) return;
+    state.isAlive = false;
+    if (soundEnabled) sounds.playExplosion();
+    setSafeTimeout(() => onGameOver(state.score), 400);
   };
 
   const rotateMatrix = (matrix: number[][]) => {
@@ -156,6 +223,33 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
         return;
       }
     }
+  };
+
+  const holdPiece = () => {
+    const state = gameStateRef.current;
+    if (!state.currentPiece || !state.isAlive || isPausedRef.current || !state.canHold) return;
+
+    const result = resolveBlockDropHold(
+      {
+        current: state.currentPiece.type,
+        next: state.nextPieceType,
+        hold: state.holdPieceType,
+        canHold: state.canHold,
+      },
+      getRandomPieceType,
+    );
+    if (!result.changed) return;
+
+    state.holdPieceType = result.hold;
+    state.nextPieceType = result.next;
+    state.currentPiece = spawnPiece(result.current);
+    state.canHold = false;
+    state.dropTimer = 0;
+    state.lockTimer = 0;
+    state.lockResets = 0;
+    if (soundEnabled) sounds.playPop();
+
+    if (collides(state.currentPiece, 0, 0)) finishGame();
   };
 
   const hardDrop = () => {
@@ -236,16 +330,16 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
       });
     }
 
-    // Spawn next piece
+    // Spawn next piece. A fresh placement restores exactly one Hold/Swap action.
     state.currentPiece = spawnPiece(state.nextPieceType);
     state.nextPieceType = getRandomPieceType();
+    state.canHold = true;
+    state.dropTimer = 0;
+    state.lockTimer = 0;
+    state.lockResets = 0;
 
     // Check game over
-    if (collides(state.currentPiece, 0, 0)) {
-      state.isAlive = false;
-      if (soundEnabled) sounds.playExplosion();
-      setSafeTimeout(() => onGameOver(state.score), 400);
-    }
+    if (collides(state.currentPiece, 0, 0)) finishGame();
   };
 
   // Keyboard controls
@@ -266,6 +360,13 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
       } else if (e.code === 'Space') {
         e.preventDefault();
         hardDrop();
+      } else if (
+        e.code === 'KeyC' ||
+        e.code === 'ShiftLeft' ||
+        e.code === 'ShiftRight'
+      ) {
+        e.preventDefault();
+        holdPiece();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -282,6 +383,11 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
     state.grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
     state.nextPieceType = getRandomPieceType();
     state.currentPiece = spawnPiece(getRandomPieceType());
+    state.holdPieceType = null;
+    state.canHold = true;
+    state.dropTimer = 0;
+    state.lockTimer = 0;
+    state.lockResets = 0;
     state.particles = [];
     state.popups = [];
   }, []);
@@ -294,10 +400,19 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
       const currentTime = performance.now();
       ctx.clearRect(0, 0, w, h);
 
-      const boardW = COLS * BLOCK_SIZE;
-      const boardH = ROWS * BLOCK_SIZE;
-      const boardX = (w - boardW) / 2 - 30;
-      const boardY = (h - boardH) / 2;
+      const layout = getBlockDropLayout(w, h);
+      const {
+        cellSize,
+        boardW,
+        boardH,
+        boardX,
+        boardY,
+        previewSize,
+        previewCellSize,
+        holdX,
+        nextX,
+        previewY,
+      } = layout;
 
       if (!isPausedRef.current && state.isAlive) {
         // Falling & Lock Delay
@@ -349,7 +464,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
       // Grid cell lines
       for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
-          ctx.strokeRect(boardX + c * BLOCK_SIZE, boardY + r * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+          ctx.strokeRect(boardX + c * cellSize, boardY + r * cellSize, cellSize, cellSize);
         }
       }
 
@@ -362,9 +477,9 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
             ctx.fillStyle = color;
             ctx.shadowColor = color;
             ctx.shadowBlur = 8;
-            ctx.fillRect(boardX + c * BLOCK_SIZE + 1, boardY + r * BLOCK_SIZE + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+            ctx.fillRect(boardX + c * cellSize + 1, boardY + r * cellSize + 1, cellSize - 2, cellSize - 2);
             ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.fillRect(boardX + c * BLOCK_SIZE + 2, boardY + r * BLOCK_SIZE + 2, BLOCK_SIZE - 4, 3);
+            ctx.fillRect(boardX + c * cellSize + 2, boardY + r * cellSize + 2, cellSize - 4, 3);
             ctx.restore();
           }
         }
@@ -387,7 +502,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
               const gx = state.currentPiece.x + c;
               const gy = ghostY + r;
               if (gy >= 0) {
-                ctx.strokeRect(boardX + gx * BLOCK_SIZE + 2, boardY + gy * BLOCK_SIZE + 2, BLOCK_SIZE - 4, BLOCK_SIZE - 4);
+                ctx.strokeRect(boardX + gx * cellSize + 2, boardY + gy * cellSize + 2, cellSize - 4, cellSize - 4);
               }
             }
           }
@@ -406,9 +521,9 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
               const gx = state.currentPiece.x + c;
               const gy = state.currentPiece.y + r;
               if (gy >= 0) {
-                ctx.fillRect(boardX + gx * BLOCK_SIZE + 1, boardY + gy * BLOCK_SIZE + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                ctx.fillRect(boardX + gx * cellSize + 1, boardY + gy * cellSize + 1, cellSize - 2, cellSize - 2);
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-                ctx.fillRect(boardX + gx * BLOCK_SIZE + 2, boardY + gy * BLOCK_SIZE + 2, BLOCK_SIZE - 4, 3);
+                ctx.fillRect(boardX + gx * cellSize + 2, boardY + gy * cellSize + 2, cellSize - 4, 3);
                 ctx.fillStyle = state.currentPiece.color;
               }
             }
@@ -417,37 +532,27 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
         ctx.restore();
       }
 
-      // Render Next Piece Preview Box on right side
-      const nextBoxX = boardX + boardW + 20;
-      const nextBoxY = boardY + 20;
-
-      ctx.fillStyle = '#18181B';
-      ctx.strokeStyle = '#27272A';
-      ctx.lineWidth = 2;
-      ctx.roundRect(nextBoxX, nextBoxY, 80, 80, 8);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = '#71717A';
-      ctx.font = 'bold 10px monospace';
-      ctx.fillText('NEXT', nextBoxX + 26, nextBoxY - 8);
-
-      const nextShapeData = SHAPES[state.nextPieceType];
-      ctx.fillStyle = nextShapeData.color;
-      ctx.shadowColor = nextShapeData.color;
-      ctx.shadowBlur = 8;
-
-      const nMat = nextShapeData.shape;
-      const nOffX = nextBoxX + (80 - nMat[0].length * 15) / 2;
-      const nOffY = nextBoxY + (80 - nMat.length * 15) / 2;
-
-      for (let r = 0; r < nMat.length; r++) {
-        for (let c = 0; c < nMat[r].length; c++) {
-          if (nMat[r][c]) {
-            ctx.fillRect(nOffX + c * 15, nOffY + r * 15, 13, 13);
-          }
-        }
-      }
+      // Hold and Next previews flank the larger responsive board on every viewport.
+      drawPreview(
+        ctx,
+        'HOLD',
+        state.holdPieceType,
+        holdX,
+        previewY,
+        previewSize,
+        previewCellSize,
+        state.canHold,
+      );
+      drawPreview(
+        ctx,
+        'NEXT',
+        state.nextPieceType,
+        nextX,
+        previewY,
+        previewSize,
+        previewCellSize,
+        true,
+      );
 
       // Render Popups
       for (const pop of state.popups) {
@@ -470,7 +575,9 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
             prev.score === state.score &&
             prev.lines === state.lines &&
             prev.level === state.level &&
-            prev.nextType === state.nextPieceType
+            prev.nextType === state.nextPieceType &&
+            prev.holdType === state.holdPieceType &&
+            prev.canHold === state.canHold
           ) {
             return prev;
           }
@@ -479,6 +586,8 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
             lines: state.lines,
             level: state.level,
             nextType: state.nextPieceType,
+            holdType: state.holdPieceType,
+            canHold: state.canHold,
           };
         });
       }
@@ -491,7 +600,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
     <div
       ref={containerRef}
       id="block-drop-container"
-      className="relative w-full h-full min-h-[440px] flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none"
+      className="relative w-full h-full min-h-0 flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none"
     >
       {/* Top HUD */}
       <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 pointer-events-none gap-2 flex-wrap">
@@ -508,47 +617,57 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
       <canvas ref={canvasRef} className="w-full h-full block" />
 
       {/* Mobile Controls */}
-      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-auto z-10 sm:hidden">
-        <div className="flex gap-1.5">
-          <button
-            type="button"
-            onClick={() => moveHorizontal(-1)}
-            className="w-12 h-12 rounded-xl bg-zinc-900/90 border border-zinc-700 text-white flex items-center justify-center active:scale-95 shadow-md"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => moveHorizontal(1)}
-            className="w-12 h-12 rounded-xl bg-zinc-900/90 border border-zinc-700 text-white flex items-center justify-center active:scale-95 shadow-md"
-          >
-            <ArrowRight className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            onClick={softDrop}
-            className="w-12 h-12 rounded-xl bg-zinc-900/90 border border-zinc-700 text-white flex items-center justify-center active:scale-95 shadow-md"
-          >
-            <ArrowDown className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="flex gap-1.5">
-          <button
-            type="button"
-            onClick={rotatePiece}
-            className="w-13 h-12 rounded-xl bg-cyan-600 text-white font-bold flex items-center justify-center active:scale-95 shadow-md shadow-cyan-500/20"
-          >
-            <RotateCw className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            onClick={hardDrop}
-            className="w-13 h-12 rounded-xl bg-pink-600 text-white font-bold flex items-center justify-center active:scale-95 shadow-md shadow-pink-500/20"
-          >
-            <ChevronsDown className="w-5 h-5" />
-          </button>
-        </div>
+      <div className="absolute bottom-2 left-2 right-2 z-10 grid grid-cols-6 gap-1 pointer-events-auto sm:hidden">
+        <button
+          type="button"
+          onClick={() => moveHorizontal(-1)}
+          className="h-11 min-w-0 rounded-lg bg-zinc-900/92 border border-zinc-700 text-white flex items-center justify-center active:scale-95 shadow-md"
+          aria-label="Move left"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => moveHorizontal(1)}
+          className="h-11 min-w-0 rounded-lg bg-zinc-900/92 border border-zinc-700 text-white flex items-center justify-center active:scale-95 shadow-md"
+          aria-label="Move right"
+        >
+          <ArrowRight className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={softDrop}
+          className="h-11 min-w-0 rounded-lg bg-zinc-900/92 border border-zinc-700 text-white flex items-center justify-center active:scale-95 shadow-md"
+          aria-label="Soft drop"
+        >
+          <ArrowDown className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={holdPiece}
+          disabled={!hudState.canHold}
+          className="h-11 min-w-0 rounded-lg border border-amber-400/40 bg-amber-400/10 text-amber-200 flex flex-col items-center justify-center active:scale-95 shadow-md disabled:opacity-35 disabled:active:scale-100"
+          aria-label="Hold or swap piece"
+        >
+          <span className="font-mono-arcade text-[7px] font-black">HOLD</span>
+          <span className="mt-0.5 text-[6px] text-amber-300/55">C</span>
+        </button>
+        <button
+          type="button"
+          onClick={rotatePiece}
+          className="h-11 min-w-0 rounded-lg bg-cyan-600 text-white font-bold flex items-center justify-center active:scale-95 shadow-md shadow-cyan-500/20"
+          aria-label="Rotate piece"
+        >
+          <RotateCw className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={hardDrop}
+          className="h-11 min-w-0 rounded-lg bg-pink-600 text-white font-bold flex items-center justify-center active:scale-95 shadow-md shadow-pink-500/20"
+          aria-label="Hard drop"
+        >
+          <ChevronsDown className="w-4 h-4" />
+        </button>
       </div>
     </div>
   );

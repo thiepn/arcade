@@ -4,6 +4,8 @@ import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { Heart, Flame, Shield } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
+import { createBladeLaunchTrajectory, getBladeGravity } from '../lib/bladeTrajectory';
 
 interface TargetItem {
   id: number;
@@ -232,10 +234,13 @@ export const BladeGame: React.FC<GameComponentProps> = ({
       const spawnSlot = (i + 1) / (count + 1);
       const startX = w * (0.15 + spawnSlot * 0.7 + (Math.random() - 0.5) * 0.12);
       const startY = h + 25;
-      const targetApexX = w * (0.25 + Math.random() * 0.5);
-      const flightDuration = 1.15 + Math.random() * 0.25;
-      const vx = (targetApexX - startX) / (flightDuration * 60);
-      const vy = -(11.0 + Math.random() * 3.5);
+      const trajectory = createBladeLaunchTrajectory({
+        startX,
+        startY,
+        width: w,
+        height: h,
+      });
+      const { vx, vy } = trajectory;
 
       state.targets.push({
         id: state.nextId++,
@@ -531,8 +536,34 @@ export const BladeGame: React.FC<GameComponentProps> = ({
     canvasRef,
     isPaused,
     onResize: (w, h) => {
-      gameStateRef.current.width = w;
-      gameStateRef.current.height = h;
+      const state = gameStateRef.current;
+      const scaleX = w / Math.max(1, state.width);
+      const scaleY = h / Math.max(1, state.height);
+      const previousGravity = getBladeGravity(state.height);
+      const nextGravity = getBladeGravity(h);
+      const flightTimeScale = Math.sqrt(
+        Math.max(0.0001, (scaleY * previousGravity) / nextGravity),
+      );
+      const velocityScaleX = scaleX / flightTimeScale;
+      const velocityScaleY = scaleY / flightTimeScale;
+
+      for (const target of state.targets) {
+        rescalePoint(target, scaleX, scaleY);
+        rescaleVelocity(target, velocityScaleX, velocityScaleY);
+      }
+      for (const piece of state.slicedPieces) {
+        rescalePoint(piece, scaleX, scaleY);
+        rescaleVelocity(piece, velocityScaleX, velocityScaleY);
+      }
+      for (const particle of state.particles) {
+        rescalePoint(particle, scaleX, scaleY);
+        rescaleVelocity(particle, velocityScaleX, velocityScaleY);
+      }
+      rescaleTrail(state.bladeTrail, scaleX, scaleY);
+      for (const text of state.floatingTexts) rescalePoint(text, scaleX, scaleY);
+
+      state.width = w;
+      state.height = h;
     },
     onUpdate: (ctx, dt, width, height) => {
       const state = gameStateRef.current;
@@ -582,7 +613,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
         }
 
         // Update Flying Targets
-        const gravity = 0.28;
+        const gravity = getBladeGravity(h);
         for (let i = state.targets.length - 1; i >= 0; i--) {
           const t = state.targets[i];
           t.vy += gravity;

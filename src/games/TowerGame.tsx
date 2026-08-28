@@ -3,6 +3,7 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { Rocket, Shield, ArrowUp, Flame, Magnet } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { clamp } from '../lib/gameCoordinates';
 
 interface Platform {
   id: number;
@@ -134,6 +135,8 @@ export const TowerGame: React.FC<GameComponentProps> = ({
     // Input state
     leftPressed: false,
     rightPressed: false,
+    viewportWidth: 420,
+    viewportHeight: 600,
   });
 
   // Keyboard controls
@@ -149,13 +152,13 @@ export const TowerGame: React.FC<GameComponentProps> = ({
       // Wall Jump or Micro Burst
       if ((e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') && state.isAlive) {
         if (state.isTouchingWallLeft) {
-          state.vx = 8;
+          state.vx = 8 * Math.min(1.8, Math.max(0.85, state.viewportWidth / 420));
           state.vy = 16;
           state.squashX = 0.7;
           state.squashY = 1.3;
           if (soundEnabled) sounds.playWallJump();
         } else if (state.isTouchingWallRight) {
-          state.vx = -8;
+          state.vx = -8 * Math.min(1.8, Math.max(0.85, state.viewportWidth / 420));
           state.vy = 16;
           state.squashX = 0.7;
           state.squashY = 1.3;
@@ -196,7 +199,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
       state.rightPressed = false;
       // Wall jump trigger if touching right wall
       if (state.isTouchingWallRight) {
-        state.vx = -8;
+        state.vx = -8 * Math.min(1.8, Math.max(0.85, state.viewportWidth / 420));
         state.vy = 16;
         if (soundEnabled) sounds.playWallJump();
       }
@@ -205,7 +208,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
       state.leftPressed = false;
       // Wall jump trigger if touching left wall
       if (state.isTouchingWallLeft) {
-        state.vx = 8;
+        state.vx = 8 * Math.min(1.8, Math.max(0.85, state.viewportWidth / 420));
         state.vy = 16;
         if (soundEnabled) sounds.playWallJump();
       }
@@ -222,14 +225,17 @@ export const TowerGame: React.FC<GameComponentProps> = ({
   const generateWorldUpTo = (targetY: number, currentWorldWidth: number) => {
     const state = gameStateRef.current;
     const w = Math.max(300, currentWorldWidth);
+    const horizontalScale = Math.min(1.8, Math.max(0.85, w / 420));
+    const platformScale = Math.min(1.45, horizontalScale);
 
     // Base platform
     if (state.platforms.length === 0) {
+      const basePlatformWidth = 110 * platformScale;
       state.platforms.push({
         id: state.nextId++,
-        x: w / 2 - 55,
+        x: w / 2 - basePlatformWidth / 2,
         y: 20,
-        w: 110,
+        w: basePlatformWidth,
         h: 14,
         type: 'standard',
       });
@@ -240,7 +246,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
     while (state.highestPlatformY < targetY) {
       const gapY = Math.random() * 45 + 46; // 46 to 91 px gap
       const nextY = state.highestPlatformY + gapY;
-      const platW = Math.random() * 25 + 68; // 68 to 93 px width
+      const platW = (Math.random() * 25 + 68) * platformScale;
       const platX = Math.random() * (w - platW - 40) + 20;
 
       const rand = Math.random();
@@ -251,7 +257,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
 
       if (rand < 0.22) {
         type = 'moving';
-        vx = (Math.random() * 1.6 + 1.1) * (Math.random() < 0.5 ? 1 : -1);
+        vx = (Math.random() * 1.6 + 1.1) * horizontalScale * (Math.random() < 0.5 ? 1 : -1);
       } else if (rand < 0.38) {
         type = 'spring';
       } else if (rand < 0.52) {
@@ -290,7 +296,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
           id: state.nextId++,
           x: droneX,
           y: nextY + gapY * 0.5,
-          vx: (Math.random() * 1.5 + 1.0) * (Math.random() < 0.5 ? 1 : -1),
+          vx: (Math.random() * 1.5 + 1.0) * horizontalScale * (Math.random() < 0.5 ? 1 : -1),
           radius: 14,
           alive: true,
           minX: 25,
@@ -347,6 +353,36 @@ export const TowerGame: React.FC<GameComponentProps> = ({
   useGameLoop({
     canvasRef,
     isPaused,
+    onResize: (w, h) => {
+      const state = gameStateRef.current;
+      const scaleX = w / Math.max(1, state.viewportWidth);
+
+      state.px = clamp(state.px * scaleX, state.radius + 16, w - state.radius - 16);
+      state.vx *= scaleX;
+      for (const platform of state.platforms) {
+        platform.x *= scaleX;
+        platform.w *= scaleX;
+        if (platform.vx !== undefined) platform.vx *= scaleX;
+        if (platform.minX !== undefined) platform.minX *= scaleX;
+        if (platform.maxX !== undefined) platform.maxX *= scaleX;
+      }
+      for (const drone of state.drones) {
+        drone.x *= scaleX;
+        drone.vx *= scaleX;
+        drone.minX *= scaleX;
+        drone.maxX *= scaleX;
+      }
+      for (const ring of state.boostRings) ring.x *= scaleX;
+      for (const particle of state.particles) {
+        particle.x *= scaleX;
+        particle.vx *= scaleX;
+      }
+      for (const popup of state.popups) popup.x *= scaleX;
+
+      state.viewportWidth = w;
+      state.viewportHeight = h;
+      if (state.platforms.length === 0) generateWorldUpTo(1800, w);
+    },
     onUpdate: (ctx, deltaSec, curW, curH) => {
       const dt = Math.min(deltaSec, 0.08);
       const state = gameStateRef.current;
@@ -360,8 +396,9 @@ export const TowerGame: React.FC<GameComponentProps> = ({
         }
 
         // Horizontal Movement & Acceleration
-        const moveAccel = 38;
-        const maxMoveSpeed = 8.8;
+        const horizontalScale = Math.min(1.8, Math.max(0.85, curW / 420));
+        const moveAccel = 38 * horizontalScale;
+        const maxMoveSpeed = 8.8 * horizontalScale;
         if (state.leftPressed) {
           state.vx = Math.max(-maxMoveSpeed, state.vx - moveAccel * dt);
           state.facingRight = false;

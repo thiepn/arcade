@@ -304,6 +304,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       if (e.repeat) return;
       for (let i = 0; i < 4; i++) {
         if (LANE_KEYS[i].includes(e.code)) {
+          e.preventDefault();
           setActiveLanes((prev) => {
             const next = [...prev];
             next[i] = true;
@@ -318,6 +319,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
     const handleKeyUp = (e: KeyboardEvent) => {
       for (let i = 0; i < 4; i++) {
         if (LANE_KEYS[i].includes(e.code)) {
+          e.preventDefault();
           setActiveLanes((prev) => {
             const next = [...prev];
             next[i] = false;

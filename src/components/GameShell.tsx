@@ -70,6 +70,17 @@ export const GameShell: React.FC<GameShellProps> = ({
     isNewHigh: boolean;
   } | null>(null);
 
+  const isLaserRope = game.id === 'laserrope';
+  const laserRopeGrade = useMemo(() => {
+    if (!isLaserRope || !gameOverData) return null;
+    const score = gameOverData.score;
+    if (score >= 12000) return 'S+';
+    if (score >= 8000) return 'S';
+    if (score >= 5000) return 'A';
+    if (score >= 2500) return 'B';
+    return 'C';
+  }, [gameOverData, isLaserRope]);
+
   const gamepad = useGamepadBridge({
     gameId: game.id,
     targetRef: gameStageRef,
@@ -291,8 +302,19 @@ export const GameShell: React.FC<GameShellProps> = ({
         if (e.target instanceof HTMLInputElement) return;
         e.preventDefault();
         onToggleSound();
-      } else if (e.key === 'f' || e.key === 'F') {
-        if (e.target instanceof HTMLInputElement) return;
+      } else if (
+        e.altKey &&
+        e.code === 'Enter' &&
+        !e.ctrlKey &&
+        !e.metaKey
+      ) {
+        if (
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement ||
+          (e.target instanceof HTMLElement && e.target.isContentEditable)
+        ) {
+          return;
+        }
         e.preventDefault();
         toggleFullscreen();
       }
@@ -420,7 +442,7 @@ export const GameShell: React.FC<GameShellProps> = ({
               e.stopPropagation();
               toggleFullscreen();
             }}
-            title={isFullscreen ? 'Exit Fullscreen (F)' : 'Fullscreen Immersive (F)'}
+            title={isFullscreen ? 'Exit Fullscreen (Alt+Enter)' : 'Fullscreen Immersive (Alt+Enter)'}
             className={`p-1.5 sm:p-2 rounded-lg transition-colors cursor-pointer border inline-flex shrink-0 ${
               isFullscreen
                 ? 'bg-[#38BDF8]/20 text-[#38BDF8] border-[#38BDF8]/40 shadow-[0_0_10px_rgba(56,189,248,0.3)]'
@@ -479,7 +501,7 @@ export const GameShell: React.FC<GameShellProps> = ({
       {/* Main Game Stage Area */}
       <main
         ref={gameStageRef}
-        className={`relative flex-1 w-full flex items-center justify-center overflow-hidden transition-all duration-150 ${
+        className={`relative flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden transition-all duration-150 ${
           isFullscreen
             ? 'h-full max-w-none max-h-none p-0 pt-12'
             : 'max-w-4xl p-1.5 sm:p-3'
@@ -487,7 +509,7 @@ export const GameShell: React.FC<GameShellProps> = ({
         style={{ touchAction: 'none', overscrollBehavior: 'none' }}
       >
         <div
-          className={`relative w-full h-full bg-[#0A0A0B] overflow-hidden flex items-center justify-center transition-all ${
+          className={`relative w-full h-full min-h-0 bg-[#0A0A0B] overflow-hidden flex items-center justify-center transition-all ${
             isFullscreen
               ? 'rounded-none border-0 max-h-none'
               : 'max-h-[660px] rounded-2xl border border-[#27272A] shadow-2xl'
@@ -528,21 +550,31 @@ export const GameShell: React.FC<GameShellProps> = ({
 
           {/* Pause Modal Overlay */}
           {isPaused && !gameOverData && (
-            <div className="absolute inset-0 bg-[#0A0A0B]/90 backdrop-blur-md z-40 flex flex-col items-center justify-center gap-4 p-4 sm:p-6 animate-in fade-in zoom-in-95 duration-150">
-              <div className="p-6 rounded-2xl bg-[#141418] border border-[#27272A] text-center max-w-sm w-full shadow-2xl flex flex-col items-center">
-                <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-[#F43F5E] mb-3 shadow-lg shadow-rose-500/10">
+            <div className={`absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 p-4 sm:p-6 backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 ${isLaserRope ? 'bg-[#020617]/94' : 'bg-[#0A0A0B]/90'}`}>
+              <div className={`p-5 sm:p-6 rounded-2xl text-center max-w-sm w-full shadow-2xl flex flex-col items-center ${isLaserRope ? 'bg-[#050B16]/96 border border-cyan-300/25 shadow-cyan-950/30' : 'bg-[#141418] border border-[#27272A]'}`}>
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 shadow-lg ${isLaserRope ? 'bg-cyan-400/10 border border-cyan-300/30 text-cyan-200 shadow-cyan-500/10' : 'bg-rose-500/15 border border-rose-500/30 text-[#F43F5E] shadow-rose-500/10'}`}>
                   <Pause className="w-6 h-6" />
                 </div>
-                <h2 className="text-xl font-black text-white font-mono-arcade tracking-wide mb-1">GAME PAUSED</h2>
+                <h2 className="text-xl font-black text-white font-mono-arcade tracking-wide mb-1">{isLaserRope ? 'SYSTEM PAUSED' : 'GAME PAUSED'}</h2>
                 
                 {/* How To Play Card */}
                 <div className="w-full my-3.5 p-3.5 rounded-xl bg-[#0B0B0E] border border-cyan-500/30 text-left">
                   <div className="flex items-center gap-1.5 text-cyan-400 font-mono-arcade text-xs font-bold mb-1.5 uppercase">
-                    <Sparkles className="w-3.5 h-3.5" /> How To Play
+                    <Sparkles className="w-3.5 h-3.5" /> {isLaserRope ? 'Reflex Protocol' : 'How To Play'}
                   </div>
                   <p className="text-xs text-zinc-200 leading-relaxed font-sans font-medium">
                     {game.instructions}
                   </p>
+                  {isLaserRope && (
+                    <div className="mt-3 grid grid-cols-2 gap-2 font-mono-arcade text-[8px] font-black">
+                      <div className="rounded-lg border border-cyan-400/20 bg-cyan-400/[0.05] px-2 py-2 text-cyan-200">
+                        JUMP <span className="block mt-1 text-zinc-500">SPACE · W · ↑</span>
+                      </div>
+                      <div className="rounded-lg border border-purple-400/20 bg-purple-400/[0.05] px-2 py-2 text-purple-200">
+                        SLIDE <span className="block mt-1 text-zinc-500">S · ↓</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-2 w-full font-mono-arcade text-xs">
@@ -583,15 +615,15 @@ export const GameShell: React.FC<GameShellProps> = ({
 
           {/* Game Over Result Panel */}
           {gameOverData && (
-            <div className="absolute inset-0 bg-[#0A0A0B]/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
-              <div className="w-full max-w-sm p-6 rounded-2xl bg-[#18181B] border border-[#27272A] shadow-2xl flex flex-col items-center text-center">
+            <div className={`absolute inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md ${isLaserRope ? 'bg-[#020617]/95' : 'bg-[#0A0A0B]/90'}`}>
+              <div className={`w-full max-w-sm p-5 sm:p-6 rounded-2xl shadow-2xl flex flex-col items-center text-center ${isLaserRope ? 'bg-[#050B16]/98 border border-rose-400/25 shadow-rose-950/30' : 'bg-[#18181B] border border-[#27272A]'}`}>
                 {gameOverData.isNewHigh ? (
                   <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/50 text-amber-400 text-xs font-bold font-mono-arcade mb-3">
                     <Sparkles className="w-3.5 h-3.5" /> NEW HIGH SCORE!
                   </div>
                 ) : (
                   <span className="text-[10px] font-mono-arcade text-[#71717A] tracking-widest uppercase mb-3 font-bold">
-                    SESSION COMPLETE
+                    {isLaserRope ? 'RUN TERMINATED' : 'SESSION COMPLETE'}
                   </span>
                 )}
 
@@ -614,6 +646,16 @@ export const GameShell: React.FC<GameShellProps> = ({
                     </span>
                   </div>
                 </div>
+
+                {isLaserRope && laserRopeGrade && (
+                  <div className="mb-5 flex w-full items-center justify-between rounded-xl border border-cyan-400/20 bg-cyan-400/[0.05] px-4 py-3 font-mono-arcade">
+                    <div className="text-left">
+                      <div className="text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300/55">REFLEX GRADE</div>
+                      <div className="mt-1 text-[9px] font-bold text-zinc-400">READ · REACT · SURVIVE</div>
+                    </div>
+                    <div className="text-3xl font-black text-cyan-200 drop-shadow-[0_0_12px_rgba(103,232,249,0.35)]">{laserRopeGrade}</div>
+                  </div>
+                )}
 
                 {/* Action Buttons */}
                 <div className="w-full flex flex-col gap-2.5">
@@ -677,7 +719,7 @@ export const GameShell: React.FC<GameShellProps> = ({
       {!isFullscreen && (
         <footer className="w-full max-w-4xl px-4 py-1.5 flex items-center justify-between text-[10px] sm:text-[11px] font-mono-arcade text-[#52525B] pointer-events-none">
           <span>{gamepad.connected ? (gamepad.pointerMode ? 'Gamepad: Stick cursor • A hold/click • B pause/back' : 'Gamepad: Stick/D-pad move • A action • B pause/back') : `Controls: ${game.controlsHint}`}</span>
-          <span className="hidden sm:inline">F: Fullscreen • Esc: Pause • R: Restart</span>
+          <span className="hidden sm:inline">Alt+Enter: Fullscreen • Esc: Pause • R: Restart</span>
         </footer>
       )}
     </div>

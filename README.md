@@ -1,6 +1,6 @@
 # Micro Arcade
 
-Micro Arcade is a browser-based collection of 31 instant-play mini-games built with React, TypeScript, Vite, Tailwind CSS, and an optional Cloudflare Worker + D1 leaderboard service.
+Micro Arcade is a browser-based collection of 32 instant-play mini-games built with React, TypeScript, Vite, Tailwind CSS, and an optional Cloudflare Worker + D1 leaderboard service.
 
 ## Local development
 

@@ -2,7 +2,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { installMobileRuntimeCompatibility } from './lib/mobileRuntime';
 import './index.css';
+
+installMobileRuntimeCompatibility();
 
 window.addEventListener('vite:preloadError', (event) => {
   event.preventDefault();

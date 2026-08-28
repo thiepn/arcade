@@ -3,6 +3,7 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { clamp } from '../lib/gameCoordinates';
 
 interface Block {
   x: number;
@@ -70,6 +71,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
     targetCameraY: 0,
     shake: 0,
     initialized: false,
+    viewportWidth: 500,
   });
 
   const getHue = (index: number) => {
@@ -91,8 +93,9 @@ export const StackGame: React.FC<GameComponentProps> = ({
       state.currentX = prevBlock.x; // Snap perfectly
 
       // Bonus width reward on high streak
-      if (state.perfectStreak >= 5 && state.currentWidth < 220) {
-        state.currentWidth = Math.min(220, state.currentWidth + 12);
+      const rewardWidthCap = Math.min(320, Math.max(220, state.viewportWidth * 0.45));
+      if (state.perfectStreak >= 5 && state.currentWidth < rewardWidthCap) {
+        state.currentWidth = Math.min(rewardWidthCap, state.currentWidth + 12);
         state.currentX -= 6;
       }
 
@@ -136,8 +139,8 @@ export const StackGame: React.FC<GameComponentProps> = ({
 
       // Spawn next hovering block
       state.direction *= -1;
-      state.currentX = state.direction === 1 ? -state.currentWidth : 500;
-      state.speed = 3.5 + Math.min(4.5, state.score * 0.08);
+      state.currentX = state.direction === 1 ? -state.currentWidth : state.viewportWidth + state.currentWidth * 0.15;
+      state.speed = 3.5 * clamp(state.viewportWidth / 500, 0.85, 1.7) + Math.min(4.5, state.score * 0.08);
 
       if (state.blocks.length > 5) {
         state.targetCameraY = (state.blocks.length - 5) * state.currentHeight;
@@ -209,8 +212,8 @@ export const StackGame: React.FC<GameComponentProps> = ({
 
     // Spawn next hovering block
     state.direction *= -1;
-    state.currentX = state.direction === 1 ? -state.currentWidth : 500;
-    state.speed = 3.5 + Math.min(4.5, state.score * 0.08);
+    state.currentX = state.direction === 1 ? -state.currentWidth : state.viewportWidth + state.currentWidth * 0.15;
+    state.speed = 3.5 * clamp(state.viewportWidth / 500, 0.85, 1.7) + Math.min(4.5, state.score * 0.08);
 
     if (state.blocks.length > 5) {
       state.targetCameraY = (state.blocks.length - 5) * state.currentHeight;
@@ -218,7 +221,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
   };
 
   const initGame = (w: number) => {
-    const baseWidth = Math.min(200, Math.max(150, w * 0.5));
+    const baseWidth = clamp(w * 0.5, 150, 260);
     const startX = (w - baseWidth) / 2;
 
     const state = gameStateRef.current;
@@ -228,10 +231,11 @@ export const StackGame: React.FC<GameComponentProps> = ({
     state.cameraY = 0;
     state.targetCameraY = 0;
     state.shake = 0;
+    state.viewportWidth = w;
     state.currentWidth = baseWidth;
     state.currentHeight = 26;
     state.currentX = -baseWidth;
-    state.speed = 3.5;
+    state.speed = 3.5 * clamp(w / 500, 0.85, 1.7);
     state.direction = 1;
     state.debris = [];
     state.rings = [];
@@ -281,9 +285,32 @@ export const StackGame: React.FC<GameComponentProps> = ({
     canvasRef,
     isPaused,
     onResize: (w) => {
-      if (!gameStateRef.current.initialized) {
+      const state = gameStateRef.current;
+      if (!state.initialized) {
         initGame(w);
+        return;
       }
+
+      const scaleX = w / Math.max(1, state.viewportWidth);
+      state.currentX *= scaleX;
+      state.currentWidth *= scaleX;
+      state.speed *= scaleX;
+      for (const block of state.blocks) {
+        block.x *= scaleX;
+        block.width *= scaleX;
+      }
+      for (const debris of state.debris) {
+        debris.x *= scaleX;
+        debris.width *= scaleX;
+        debris.vx *= scaleX;
+      }
+      for (const ring of state.rings) {
+        ring.x *= scaleX;
+        ring.radius *= scaleX;
+        ring.maxRadius *= scaleX;
+      }
+      for (const text of state.floatingTexts) text.x *= scaleX;
+      state.viewportWidth = w;
     },
     onUpdate: (ctx, deltaSec, curW, curH) => {
       const state = gameStateRef.current;
