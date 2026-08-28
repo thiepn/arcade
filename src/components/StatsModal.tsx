@@ -53,10 +53,14 @@ import {
   getOverallArcadeLeaderboard,
   getDivisionColor,
   simulateLiveCompetition,
+  refreshGameLeaderboard,
+  refreshOverallLeaderboard,
+  isLiveLeaderboardConfigured,
   resetAllLeaderboards,
   LeaderboardDivision,
   LeaderboardEntry,
   GlobalOverallEntry,
+  LEADERBOARD_UPDATED_EVENT,
 } from '../lib/leaderboards';
 import {
   ACHIEVEMENTS_REGISTRY,
@@ -112,6 +116,25 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const setSafeTimeout = useSafeTimeout();
+
+  useEffect(() => {
+    const handleLeaderboardUpdate = () => setRefreshTick((tick) => tick + 1);
+    window.addEventListener(LEADERBOARD_UPDATED_EVENT, handleLeaderboardUpdate);
+    return () => window.removeEventListener(LEADERBOARD_UPDATED_EVENT, handleLeaderboardUpdate);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'leaderboards' || !isLiveLeaderboardConfigured()) return;
+    if (leaderboardScope === 'perGame') {
+      void refreshGameLeaderboard(selectedGameId).catch((error) => {
+        console.warn('Unable to refresh game leaderboard:', error);
+      });
+    } else {
+      void refreshOverallLeaderboard().catch((error) => {
+        console.warn('Unable to refresh overall leaderboard:', error);
+      });
+    }
+  }, [activeTab, leaderboardScope, selectedGameId]);
 
   // Achievement filters & search
   const [achievementFilter, setAchievementFilter] = useState<

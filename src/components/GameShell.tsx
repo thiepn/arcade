@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { GameEntry } from '../data/games';
 import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
+import { beginLeaderboardSession, submitLeaderboardScore, type LeaderboardPlaySession } from '../lib/leaderboards';
 import confetti from 'canvas-confetti';
 import {
   ArrowLeft,
@@ -51,6 +52,8 @@ export const GameShell: React.FC<GameShellProps> = ({
   const prevScoreRef = useRef(0);
   const activeSessionKeyRef = useRef(1);
   const gameOverHandledRef = useRef(false);
+  const leaderboardSessionRef = useRef<LeaderboardPlaySession | null>(null);
+  const leaderboardSessionPromiseRef = useRef<Promise<LeaderboardPlaySession | null> | null>(null);
 
   // Sync haptics enabled state with global haptics engine
   useEffect(() => {
@@ -66,6 +69,24 @@ export const GameShell: React.FC<GameShellProps> = ({
   // Key to force-remount the mini-game component upon instant restart
   const [gameSessionKey, setGameSessionKey] = useState(1);
   activeSessionKeyRef.current = gameSessionKey;
+
+  useEffect(() => {
+    let cancelled = false;
+    leaderboardSessionRef.current = null;
+    const sessionKey = gameSessionKey;
+    const request = beginLeaderboardSession(game.id);
+    leaderboardSessionPromiseRef.current = request;
+    void request.then((session) => {
+      if (!cancelled && activeSessionKeyRef.current === sessionKey) {
+        leaderboardSessionRef.current = session;
+      }
+    }).catch((error) => {
+      console.warn('Unable to start live leaderboard session:', error);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [game.id, gameSessionKey]);
 
   const handleRestart = useCallback(() => {
     sounds.playClick();
@@ -107,6 +128,15 @@ export const GameShell: React.FC<GameShellProps> = ({
       const safeFinalScore = Number.isFinite(finalScore) ? Math.max(0, finalScore) : 0;
       const { isNewHighScore } = onSaveScore(game.id, safeFinalScore);
       const newBest = Math.max(bestScore, safeFinalScore);
+
+      const submitRemoteScore = (session: LeaderboardPlaySession | null) => {
+        if (session) void submitLeaderboardScore(session, safeFinalScore);
+      };
+      if (leaderboardSessionRef.current) {
+        submitRemoteScore(leaderboardSessionRef.current);
+      } else if (leaderboardSessionPromiseRef.current) {
+        void leaderboardSessionPromiseRef.current.then(submitRemoteScore).catch(() => {});
+      }
 
       setGameOverData({
         score: safeFinalScore,
