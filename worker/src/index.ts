@@ -27,7 +27,7 @@ const GAME_RULES: Record<string, GameRule> = Object.fromEntries(
   [
     'orbit','stack','reaction','dodge','pulse','merge','typerush','oneline','breakout','perfectstop',
     'chain','gravity','blade','pinball','chrono','matrix','drift','vanguard','slingshot','snake',
-    'rhythm','tower','pacmaze','flappyaero','roadcross','bubblebuster','astroblaster','laserrope','blockdrop','airhockey',
+    'rhythm','tower','pacmaze','flappyaero','roadcross','bubblebuster','astroblaster','laserrope','blockdrop','knifetarget','airhockey',
   ].map((id) => [id, { maxScore: 100_000_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 }])
 );
 
@@ -41,6 +41,7 @@ Object.assign(GAME_RULES, {
   perfectstop: { maxScore: 100_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 },
   chain: { maxScore: 1_000_000, minDurationMs: 250, maxDurationMs: 10 * 60 * 1000 },
   matrix: { maxScore: 1_000_000, minDurationMs: 500, maxDurationMs: 30 * 60 * 1000 },
+  knifetarget: { maxScore: 10_000_000, minDurationMs: 500, maxDurationMs: 30 * 60 * 1000 },
   airhockey: { maxScore: 1_000_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 },
 });
 

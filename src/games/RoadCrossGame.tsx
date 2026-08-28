@@ -44,6 +44,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
   const setSafeTimeout = useSafeTimeout();
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const [hudState, setHudState] = useState({
     score: 0,
@@ -139,18 +140,17 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Screen tap / click navigation
-  const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  // Unified pointer navigation: short press = contextual tap, swipe = cardinal move.
+  const handleTapAt = (clientX: number, clientY: number) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
+    const clickX = clientX - rect.left;
+    const clickY = clientY - rect.top;
 
     const boardWidth = COLS_COUNT * TILE_SIZE;
     const offsetX = (rect.width - boardWidth) / 2;
     const playerScreenX = offsetX + gameStateRef.current.col * TILE_SIZE + TILE_SIZE / 2;
 
-    // Relative to player X position on screen
     if (clickY > rect.height * 0.75 && Math.abs(clickX - playerScreenX) < 40) {
       triggerMove(0, -1);
     } else if (clickX < playerScreenX - 35) {
@@ -160,6 +160,35 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
     } else {
       triggerMove(0, 1);
     }
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    pointerStartRef.current = { x: e.clientX, y: e.clientY };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const startPoint = pointerStartRef.current;
+    pointerStartRef.current = null;
+    if (!startPoint) {
+      handleTapAt(e.clientX, e.clientY);
+      return;
+    }
+
+    const dx = e.clientX - startPoint.x;
+    const dy = e.clientY - startPoint.y;
+    const threshold = 24;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < threshold) {
+      handleTapAt(e.clientX, e.clientY);
+      return;
+    }
+
+    if (Math.abs(dx) > Math.abs(dy)) triggerMove(dx > 0 ? 1 : -1, 0);
+    else triggerMove(0, dy < 0 ? 1 : -1);
+  };
+
+  const handlePointerCancel = () => {
+    pointerStartRef.current = null;
   };
 
   const generateLanesUpTo = (targetRow: number) => {
@@ -612,7 +641,9 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
     <div
       ref={containerRef}
       id="road-cross-container"
-      onClick={handleCanvasClick}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
       className="relative w-full h-full min-h-[440px] flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none cursor-pointer"
     >
       {/* Top HUD */}
