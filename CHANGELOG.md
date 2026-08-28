@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Changed
-- Added a shared `ResizeObserver`-driven canvas coordinate layer and migrated Breakout, Chain, and Gravity Tower to remap active game state across desktop resizing, fullscreen changes, and device orientation changes.
+- Added a shared `ResizeObserver`-driven canvas coordinate layer and migrated Air Hockey, Astro Blaster, Breakout, Chain, Dodge, Stack, and Gravity Tower to remap live game state across desktop resizing, fullscreen changes, and device orientation changes.
 
 ## 1.0.0 — 2026-08-28
 
