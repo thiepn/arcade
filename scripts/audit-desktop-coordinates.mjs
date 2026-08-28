@@ -33,7 +33,11 @@ for (const file of responsiveGames) {
 }
 
 const airHockey = read('src/games/AirHockeyGame.tsx');
-assert(airHockey.includes('rescaleTrail(state.puckTrail'), 'Air Hockey puck trail is not remapped');
+assert(
+  airHockey.includes('rescaleTrail(state.puckTrail') ||
+    airHockey.includes('for (const trail of state.puckTrail) remapPoint(trail)'),
+  'Air Hockey puck trail is not remapped',
+);
 assert(airHockey.includes('state.playerMallet.y = clamp'), 'Air Hockey mallets are not constrained after resize');
 
 const astro = read('src/games/AstroBlasterGame.tsx');
