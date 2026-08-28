@@ -18,6 +18,7 @@
     "quality:shortcuts": "bun scripts/audit-rhythm-shortcuts.ts",
     "quality:pac": "bun scripts/audit-pac-controls.ts",
     "quality:mobile": "bun scripts/audit-mobile-runtime.ts",
+    "quality:rope": "bun scripts/audit-laser-rope-presentation.ts",
     "worker:dev": "wrangler dev",
     "worker:check": "tsc -p worker/tsconfig.json --noEmit && wrangler deploy --dry-run --outdir .wrangler-dist",
     "worker:deploy": "wrangler deploy",
