@@ -1,4 +1,3 @@
-import { GAMES_REGISTRY } from '../data/games';
 import { UserStats } from '../types';
 
 export type LeaderboardDivision = 'diamond' | 'platinum' | 'gold' | 'silver' | 'bronze';
@@ -36,87 +35,91 @@ export interface GlobalOverallEntry {
   timestamp: string;
 }
 
-interface StoredLeaderboardData {
-  [gameId: string]: LeaderboardEntry[];
+export interface LeaderboardPlaySession {
+  id: string;
+  gameId: string;
+  clientStartedAt: number;
+  expiresAt: number;
 }
 
-const STORAGE_KEY = 'micro_arcade_global_leaderboards_v2';
+interface GameLeaderboardData {
+  topEntries: LeaderboardEntry[];
+  userRank: number | null;
+  userEntry: LeaderboardEntry | null;
+  totalCompetitors: number;
+}
 
-const BOT_NAMES = [
-  'PixelDrifter99',
-  'NeonSamurai',
-  'GlitchQueen',
-  'QuantumPulse',
-  'RetroViper',
-  'HyperSonic_X',
-  'StarVoyager',
-  'AstroMiner',
-  'VoidWalker',
-  'BlazeRunner',
-  'AeroAce',
-  'LaserKnight',
-  'TurboGamer',
-  'ZeroGravity',
-  'EchoStrike',
-  'SynthWave84',
-  'ChromaGhost',
-  'BulletTime',
-  'OrbitMaster',
-  'ApexPilot',
-  'PulseRider',
-  'NovaCaptain',
-  'ShadowByte',
-  'FluxCapacitor',
-  'NeonFalcon',
-  'TitanStrike',
-  'SparkyCat',
-  'MegaByte',
-  'CosmosKid',
-  'CyberValkyrie',
-  'PhantomRogue',
-  'VaporBlade',
-  'OmegaZenith',
-  'SolarFlare',
-  'MatrixHacker',
-  'DriftKing_JP',
-  'VanguardHero',
-  'GravityWarp',
-];
+interface OverallLeaderboardData {
+  topEntries: GlobalOverallEntry[];
+  userRank: number | null;
+  userEntry: GlobalOverallEntry;
+  totalWorldCompetitors: number;
+}
 
-const COUNTRIES = [
-  { flag: '🇯🇵', code: 'JP' },
-  { flag: '🇺🇸', code: 'US' },
-  { flag: '🇰🇷', code: 'KR' },
-  { flag: '🇩🇪', code: 'DE' },
-  { flag: '🇬🇧', code: 'GB' },
-  { flag: '🇨🇦', code: 'CA' },
-  { flag: '🇫🇷', code: 'FR' },
-  { flag: '🇧🇷', code: 'BR' },
-  { flag: '🇦🇺', code: 'AU' },
-  { flag: '🇸🇬', code: 'SG' },
-  { flag: '🇸🇪', code: 'SE' },
-  { flag: '🇳🇱', code: 'NL' },
-  { flag: '🇪🇸', code: 'ES' },
-  { flag: '🇮🇹', code: 'IT' },
-  { flag: '🇲🇽', code: 'MX' },
-  { flag: '🇫🇮', code: 'FI' },
-];
+interface LeaderboardCache {
+  games: Record<string, GameLeaderboardData>;
+  overall?: OverallLeaderboardData;
+  updatedAt: number;
+}
 
-const BADGES = ['PRO', 'LEGEND', 'ACE', 'CHAMP', 'ELITE', 'VETERAN', 'VIP', 'SPEED', 'MASTER'];
+interface ServerGameRow {
+  id: string;
+  name: string;
+  country_code: string;
+  score: number;
+  achieved_at: number;
+  rank: number;
+  isUser?: boolean;
+}
 
-const TIMESTAMPS = [
-  'Just now',
-  '5m ago',
-  '18m ago',
-  '45m ago',
-  '2h ago',
-  '4h ago',
-  '7h ago',
-  '1d ago',
-  '2d ago',
-  '3d ago',
-  '5d ago',
-];
+interface ServerOverallRow {
+  id: string;
+  name: string;
+  country_code: string;
+  total_score: number;
+  games_played: number;
+  rating_score: number;
+  last_achieved_at: number;
+  rank: number;
+  isUser?: boolean;
+}
+
+const GUEST_KEY = 'micro_arcade_guest_credential_v1';
+const CACHE_KEY = 'micro_arcade_live_leaderboards_v1';
+const LEGACY_FAKE_KEY = 'micro_arcade_global_leaderboards_v2';
+export const LEADERBOARD_UPDATED_EVENT = 'micro-arcade-leaderboards-updated';
+
+function apiBase(): string {
+  return (import.meta.env.VITE_LEADERBOARD_API_URL || '').trim().replace(/\/$/, '');
+}
+
+export function isLiveLeaderboardConfigured(): boolean {
+  return Boolean(apiBase());
+}
+
+function countryFlag(code: string): string {
+  const normalized = code.toUpperCase();
+  if (!/^[A-Z]{2}$/.test(normalized) || normalized === 'XX') return '🌐';
+  return String.fromCodePoint(...[...normalized].map((char) => 127397 + char.charCodeAt(0)));
+}
+
+function relativeTime(timestamp: number): string {
+  if (!timestamp) return 'Recently';
+  const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+  if (seconds < 60) return 'Just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function avatarSeed(value: string): number {
+  let hash = 0;
+  for (const char of value) hash = (hash * 31 + char.charCodeAt(0)) | 0;
+  return Math.abs(hash) % 100;
+}
 
 export function getDivisionForRank(rank: number): LeaderboardDivision {
   if (rank === 1) return 'diamond';
@@ -128,459 +131,228 @@ export function getDivisionForRank(rank: number): LeaderboardDivision {
 
 export function getDivisionColor(division: LeaderboardDivision): string {
   switch (division) {
-    case 'diamond':
-      return '#38BDF8';
-    case 'platinum':
-      return '#A855F7';
-    case 'gold':
-      return '#FACC15';
-    case 'silver':
-      return '#E2E8F0';
-    case 'bronze':
-      return '#FB923C';
+    case 'diamond': return '#38BDF8';
+    case 'platinum': return '#A855F7';
+    case 'gold': return '#FACC15';
+    case 'silver': return '#E2E8F0';
+    case 'bronze': return '#FB923C';
   }
 }
 
-// Baseline score ranges calibrated per game type
-function getGameBaseScoreConfig(gameId: string): { topBase: number; step: number; variance: number } {
-  switch (gameId) {
-    case 'drift':
-      return { topBase: 24500, step: 1800, variance: 900 };
-    case 'vanguard':
-      return { topBase: 28800, step: 2200, variance: 1100 };
-    case 'slingshot':
-      return { topBase: 16400, step: 1200, variance: 600 };
-    case 'miner':
-      return { topBase: 19500, step: 1500, variance: 750 };
-    case 'stack':
-      return { topBase: 84, step: 6, variance: 3 };
-    case 'reaction':
-      return { topBase: 145, step: 8, variance: 4 };
-    case 'orbit':
-      return { topBase: 36, step: 3, variance: 1 };
-    case 'dodge':
-      return { topBase: 48, step: 4, variance: 2 };
-    case 'pulse':
-      return { topBase: 52, step: 4, variance: 2 };
-    case 'merge':
-      return { topBase: 8192, step: 600, variance: 250 };
-    case 'typerush':
-      return { topBase: 142, step: 9, variance: 4 };
-    case 'oneline':
-      return { topBase: 24, step: 2, variance: 1 };
-    case 'breakout':
-      return { topBase: 4800, step: 350, variance: 150 };
-    case 'perfectstop':
-      return { topBase: 998, step: 40, variance: 15 };
-    case 'chain':
-      return { topBase: 65, step: 5, variance: 2 };
-    case 'gravity':
-      return { topBase: 58, step: 4, variance: 2 };
-    case 'blade':
-      return { topBase: 86, step: 6, variance: 3 };
-    case 'pinball':
-      return { topBase: 15600, step: 1200, variance: 500 };
-    case 'chrono':
-      return { topBase: 42, step: 3, variance: 1 };
-    case 'matrix':
-      return { topBase: 38, step: 3, variance: 1 };
-    case 'rhythm':
-      return { topBase: 38500, step: 2800, variance: 1200 };
-    case 'tower':
-      return { topBase: 22000, step: 1800, variance: 800 };
-    case 'snake':
-      return { topBase: 12400, step: 950, variance: 400 };
-    default:
-      return { topBase: 5000, step: 400, variance: 200 };
-  }
-}
-
-function seededRandom(seed: number): () => number {
-  let s = seed % 2147483647;
-  if (s <= 0) s += 2147483646;
-  return () => {
-    s = (s * 16807) % 2147483647;
-    return (s - 1) / 2147483646;
-  };
-}
-
-function stringToHash(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
-}
-
-export function generateInitialLeaderboard(gameId: string): LeaderboardEntry[] {
-  const config = getGameBaseScoreConfig(gameId);
-  const rng = seededRandom(stringToHash(gameId) + 42);
-
-  const numEntries = 15;
-  const entries: LeaderboardEntry[] = [];
-  const usedNames = new Set<string>();
-
-  let currentScore = config.topBase;
-
-  for (let i = 0; i < numEntries; i++) {
-    let nameIdx = Math.floor(rng() * BOT_NAMES.length);
-    while (usedNames.has(BOT_NAMES[nameIdx])) {
-      nameIdx = (nameIdx + 1) % BOT_NAMES.length;
-    }
-    const name = BOT_NAMES[nameIdx];
-    usedNames.add(name);
-
-    const countryObj = COUNTRIES[Math.floor(rng() * COUNTRIES.length)];
-    const hasBadge = rng() > 0.35;
-    const badge = hasBadge ? BADGES[Math.floor(rng() * BADGES.length)] : undefined;
-    const timestamp = TIMESTAMPS[Math.min(i, TIMESTAMPS.length - 1)];
-    const level = Math.max(2, Math.min(10, Math.floor(10 - i * 0.5 + (rng() * 2 - 1))));
-
-    const entryScore = Math.max(1, Math.round(currentScore + (rng() * 2 - 1) * config.variance));
-    currentScore = Math.max(1, currentScore - config.step);
-
-    const trends: ('up' | 'down' | 'same')[] = ['up', 'down', 'same', 'same', 'up'];
-    const trend = trends[Math.floor(rng() * trends.length)];
-
-    entries.push({
-      id: `bot-${gameId}-${i}`,
-      rank: i + 1,
-      name,
-      score: entryScore,
-      country: countryObj.flag,
-      countryCode: countryObj.code,
-      badge,
-      timestamp,
-      isUser: false,
-      avatarSeed: stringToHash(name) % 100,
-      division: getDivisionForRank(i + 1),
-      trend,
-      level,
-    });
-  }
-
-  entries.sort((a, b) => b.score - a.score);
-  entries.forEach((e, idx) => {
-    e.rank = idx + 1;
-    e.division = getDivisionForRank(idx + 1);
-  });
-
-  return entries;
-}
-
-export function getStoredLeaderboards(): StoredLeaderboardData {
-  if (typeof window === 'undefined') return {};
+function loadCache(): LeaderboardCache {
+  if (typeof window === 'undefined') return { games: {}, updatedAt: 0 };
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw);
-  } catch (e) {
-    console.warn('Failed to load global leaderboards from localStorage:', e);
-    return {};
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : { games: {}, updatedAt: 0 };
+  } catch {
+    return { games: {}, updatedAt: 0 };
   }
 }
 
-export function saveStoredLeaderboards(data: StoredLeaderboardData): void {
+function saveCache(cache: LeaderboardCache): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch (e) {
-    console.warn('Failed to save global leaderboards to localStorage:', e);
-  }
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+    window.dispatchEvent(new CustomEvent(LEADERBOARD_UPDATED_EVENT));
+  } catch {}
 }
 
-export function getGlobalLeaderboardForGame(
-  gameId: string,
-  userHighScore: number
-): {
-  topEntries: LeaderboardEntry[];
-  userRank: number | null;
-  userEntry: LeaderboardEntry | null;
-  totalCompetitors: number;
-} {
-  const allStored = getStoredLeaderboards();
-  let baseEntries = allStored[gameId];
+function getCredential(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(GUEST_KEY);
+}
 
-  if (!baseEntries || baseEntries.length === 0) {
-    baseEntries = generateInitialLeaderboard(gameId);
-    allStored[gameId] = baseEntries;
-    saveStoredLeaderboards(allStored);
-  }
-
-  const botsOnly = baseEntries.filter((e) => !e.isUser);
-
-  let combined: LeaderboardEntry[] = [...botsOnly];
-  let userEntry: LeaderboardEntry | null = null;
-
-  if (userHighScore > 0) {
-    userEntry = {
-      id: `user-${gameId}`,
-      rank: 0,
-      name: 'YOU (Local Legend)',
-      score: userHighScore,
-      country: '🌟',
-      countryCode: 'YOU',
-      badge: 'PLAYER',
-      timestamp: 'Active Session',
-      isUser: true,
-      division: 'bronze',
-      trend: 'up',
-      level: 1,
-    };
-    combined.push(userEntry);
-  }
-
-  combined.sort((a, b) => b.score - a.score);
-
-  let userRank: number | null = null;
-  combined.forEach((entry, idx) => {
-    entry.rank = idx + 1;
-    entry.division = getDivisionForRank(idx + 1);
-    if (entry.isUser) {
-      userRank = entry.rank;
-    }
+async function ensureGuestCredential(): Promise<string | null> {
+  const existing = getCredential();
+  if (existing) return existing;
+  const base = apiBase();
+  if (!base || typeof window === 'undefined') return null;
+  const response = await fetch(`${base}/v1/guest`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: '{}',
   });
+  if (!response.ok) throw new Error(`Guest creation failed (${response.status})`);
+  const data = await response.json() as { credential: string };
+  localStorage.setItem(GUEST_KEY, data.credential);
+  return data.credential;
+}
 
-  const topEntries = combined.slice(0, 10);
+async function apiRequest<T>(path: string, init: RequestInit = {}, retryAuth = true): Promise<T> {
+  const base = apiBase();
+  if (!base) throw new Error('Live leaderboard API is not configured');
+  const credential = await ensureGuestCredential();
+  const headers = new Headers(init.headers);
+  if (!headers.has('content-type') && init.body) headers.set('content-type', 'application/json');
+  if (credential) headers.set('authorization', `Bearer ${credential}`);
+  const response = await fetch(`${base}${path}`, { ...init, headers });
+  if (response.status === 401 && retryAuth && typeof window !== 'undefined') {
+    localStorage.removeItem(GUEST_KEY);
+    return apiRequest<T>(path, init, false);
+  }
+  if (!response.ok) {
+    const message = await response.text().catch(() => '');
+    throw new Error(`Leaderboard API ${response.status}${message ? `: ${message}` : ''}`);
+  }
+  return response.json() as Promise<T>;
+}
 
+function normalizeGameRow(row: ServerGameRow): LeaderboardEntry {
   return {
-    topEntries,
-    userRank,
-    userEntry,
-    totalCompetitors: combined.length + 95,
+    id: row.id,
+    rank: row.rank,
+    name: row.isUser ? `${row.name} (YOU)` : row.name,
+    score: row.score,
+    country: countryFlag(row.country_code),
+    countryCode: row.country_code,
+    badge: row.isUser ? 'PLAYER' : undefined,
+    timestamp: relativeTime(row.achieved_at),
+    isUser: Boolean(row.isUser),
+    avatarSeed: avatarSeed(row.id),
+    division: getDivisionForRank(row.rank),
+    trend: 'same',
+    level: Math.max(1, Math.min(10, 11 - Math.ceil(row.rank / 2))),
   };
 }
 
-/**
- * Calculates simulated World Overall Arcade Championship Hall of Fame
- */
-export function getOverallArcadeLeaderboard(stats: UserStats): {
-  topEntries: GlobalOverallEntry[];
-  userRank: number | null;
-  userEntry: GlobalOverallEntry;
-  totalWorldCompetitors: number;
-} {
-  const totalScore = (Object.values(stats.highScores) as number[]).reduce((a, b) => a + (b || 0), 0);
-  const totalPlays = (Object.values(stats.playCounts) as number[]).reduce((a, b) => a + (b || 0), 0);
-  
-  // Calculate user rating score
-  const userRating = Math.round((totalScore * 0.1) + (stats.favorites.length * 20) + (totalPlays * 10));
-
-  const bots: GlobalOverallEntry[] = [
-    {
-      id: 'overall-bot-1',
-      rank: 1,
-      name: 'Vanguard_Apex',
-      ratingScore: 9850,
-      totalScore: 42300,
-      badgesUnlocked: 20,
-      country: '🇯🇵',
-      countryCode: 'JP',
-      badgeTitle: 'Apex Hall of Fame',
-      division: 'diamond',
-      level: 10,
-      timestamp: '2h ago',
-    },
-    {
-      id: 'overall-bot-2',
-      rank: 2,
-      name: 'QuantumGlitch',
-      ratingScore: 7420,
-      totalScore: 34100,
-      badgesUnlocked: 18,
-      country: '🇺🇸',
-      countryCode: 'US',
-      badgeTitle: 'Grandmaster Legend',
-      division: 'platinum',
-      level: 9,
-      timestamp: '5m ago',
-    },
-    {
-      id: 'overall-bot-3',
-      rank: 3,
-      name: 'NeonCyberKing',
-      ratingScore: 5980,
-      totalScore: 28900,
-      badgesUnlocked: 16,
-      country: '🇰🇷',
-      countryCode: 'KR',
-      badgeTitle: 'Grandmaster Legend',
-      division: 'platinum',
-      level: 8,
-      timestamp: '18m ago',
-    },
-    {
-      id: 'overall-bot-4',
-      rank: 4,
-      name: 'DriftPhantom',
-      ratingScore: 4860,
-      totalScore: 24200,
-      badgesUnlocked: 14,
-      country: '🇩🇪',
-      countryCode: 'DE',
-      badgeTitle: 'Arcade Master',
-      division: 'gold',
-      level: 7,
-      timestamp: '1h ago',
-    },
-    {
-      id: 'overall-bot-5',
-      rank: 5,
-      name: 'PixelKnight88',
-      ratingScore: 3950,
-      totalScore: 19800,
-      badgesUnlocked: 12,
-      country: '🇬🇧',
-      countryCode: 'GB',
-      badgeTitle: 'Arcade Master',
-      division: 'gold',
-      level: 6,
-      timestamp: '4h ago',
-    },
-    {
-      id: 'overall-bot-6',
-      rank: 6,
-      name: 'SolarFlare_X',
-      ratingScore: 3200,
-      totalScore: 15400,
-      badgesUnlocked: 10,
-      country: '🇫🇷',
-      countryCode: 'FR',
-      badgeTitle: 'Arcade Veteran',
-      division: 'gold',
-      level: 5,
-      timestamp: '1d ago',
-    },
-    {
-      id: 'overall-bot-7',
-      rank: 7,
-      name: 'VaporEcho',
-      ratingScore: 2540,
-      totalScore: 12100,
-      badgesUnlocked: 8,
-      country: '🇨🇦',
-      countryCode: 'CA',
-      badgeTitle: 'Arcade Veteran',
-      division: 'silver',
-      level: 4,
-      timestamp: '2d ago',
-    },
-    {
-      id: 'overall-bot-8',
-      rank: 8,
-      name: 'OrbitAstro',
-      ratingScore: 1920,
-      totalScore: 9200,
-      badgesUnlocked: 6,
-      country: '🇸🇬',
-      countryCode: 'SG',
-      badgeTitle: 'Active Challenger',
-      division: 'silver',
-      level: 3,
-      timestamp: '3d ago',
-    },
-    {
-      id: 'overall-bot-9',
-      rank: 9,
-      name: 'MatrixRogue',
-      ratingScore: 1410,
-      totalScore: 6800,
-      badgesUnlocked: 4,
-      country: '🇦🇺',
-      countryCode: 'AU',
-      badgeTitle: 'Active Challenger',
-      division: 'silver',
-      level: 2,
-      timestamp: '4d ago',
-    },
-    {
-      id: 'overall-bot-10',
-      rank: 10,
-      name: 'BlazeCat',
-      ratingScore: 950,
-      totalScore: 4100,
-      badgesUnlocked: 2,
-      country: '🇧🇷',
-      countryCode: 'BR',
-      badgeTitle: 'Rookie Contender',
-      division: 'silver',
-      level: 2,
-      timestamp: '5d ago',
-    },
-  ];
-
-  const userEntry: GlobalOverallEntry = {
-    id: 'overall-user',
-    rank: 0,
-    name: 'YOU (Arcade Challenger)',
-    ratingScore: userRating,
-    totalScore,
+function normalizeOverallRow(row: ServerOverallRow): GlobalOverallEntry {
+  const level = Math.max(1, Math.min(10, 1 + Math.floor(row.games_played / 3)));
+  return {
+    id: row.id,
+    rank: row.rank,
+    name: row.isUser ? `${row.name} (YOU)` : row.name,
+    ratingScore: row.rating_score,
+    totalScore: row.total_score,
     badgesUnlocked: 0,
-    country: '🌟',
-    countryCode: 'YOU',
-    badgeTitle: 'Player Standing',
-    division: 'bronze',
-    level: 1,
-    isUser: true,
-    timestamp: 'Live Active',
-  };
-
-  const combined = [...bots, userEntry];
-  combined.sort((a, b) => b.ratingScore - a.ratingScore);
-
-  let userRank: number | null = null;
-  combined.forEach((entry, idx) => {
-    entry.rank = idx + 1;
-    entry.division = getDivisionForRank(idx + 1);
-    if (entry.isUser) {
-      userRank = entry.rank;
-    }
-  });
-
-  const topEntries = combined.slice(0, 10);
-
-  return {
-    topEntries,
-    userRank,
-    userEntry,
-    totalWorldCompetitors: 340,
+    country: countryFlag(row.country_code),
+    countryCode: row.country_code,
+    badgeTitle: row.games_played >= 20 ? 'Arcade Master' : row.games_played >= 10 ? 'Circuit Veteran' : 'Arcade Challenger',
+    division: getDivisionForRank(row.rank),
+    level,
+    isUser: Boolean(row.isUser),
+    timestamp: relativeTime(row.last_achieved_at),
   };
 }
 
-export function simulateLiveCompetition(gameId: string): void {
-  const allStored = getStoredLeaderboards();
-  const baseEntries = allStored[gameId] || generateInitialLeaderboard(gameId);
-  const config = getGameBaseScoreConfig(gameId);
+export async function refreshGameLeaderboard(gameId: string): Promise<GameLeaderboardData> {
+  const data = await apiRequest<{
+    entries: ServerGameRow[];
+    userEntry: ServerGameRow | null;
+    totalCompetitors: number;
+  }>(`/v1/leaderboards/${encodeURIComponent(gameId)}?limit=10`);
+  const normalized: GameLeaderboardData = {
+    topEntries: data.entries.map(normalizeGameRow),
+    userRank: data.userEntry?.rank ?? null,
+    userEntry: data.userEntry ? normalizeGameRow({ ...data.userEntry, isUser: true }) : null,
+    totalCompetitors: data.totalCompetitors,
+  };
+  const cache = loadCache();
+  cache.games[gameId] = normalized;
+  cache.updatedAt = Date.now();
+  saveCache(cache);
+  return normalized;
+}
 
-  const updated = baseEntries.map((e) => {
-    if (e.isUser) return e;
-    if (Math.random() < 0.35) {
-      const shift = Math.round((Math.random() * 2 - 1) * (config.variance * 0.4));
-      return {
-        ...e,
-        score: Math.max(10, e.score + shift),
-        timestamp: 'Just now',
-        trend: shift > 0 ? ('up' as const) : shift < 0 ? ('down' as const) : ('same' as const),
-      };
-    }
-    return e;
-  });
+export async function refreshOverallLeaderboard(): Promise<OverallLeaderboardData> {
+  const data = await apiRequest<{
+    entries: ServerOverallRow[];
+    userEntry: ServerOverallRow | null;
+    totalCompetitors: number;
+  }>('/v1/leaderboards/overall?limit=10');
+  const userEntry = data.userEntry ? normalizeOverallRow({ ...data.userEntry, isUser: true }) : {
+    id: 'local-user', rank: 0, name: 'YOU', ratingScore: 0, totalScore: 0, badgesUnlocked: 0,
+    country: '🌐', countryCode: 'XX', badgeTitle: 'Arcade Challenger', division: 'bronze' as const,
+    level: 1, isUser: true, timestamp: 'Not ranked yet',
+  };
+  const normalized: OverallLeaderboardData = {
+    topEntries: data.entries.map(normalizeOverallRow),
+    userRank: data.userEntry?.rank ?? null,
+    userEntry,
+    totalWorldCompetitors: data.totalCompetitors,
+  };
+  const cache = loadCache();
+  cache.overall = normalized;
+  cache.updatedAt = Date.now();
+  saveCache(cache);
+  return normalized;
+}
 
-  updated.sort((a, b) => b.score - a.score);
-  updated.forEach((e, idx) => {
-    e.rank = idx + 1;
-    e.division = getDivisionForRank(idx + 1);
-  });
+export function getGlobalLeaderboardForGame(gameId: string, userHighScore: number): GameLeaderboardData {
+  const cached = loadCache().games[gameId];
+  if (cached) return cached;
+  if (isLiveLeaderboardConfigured()) void refreshGameLeaderboard(gameId).catch(() => {});
+  const pendingUser: LeaderboardEntry | null = userHighScore > 0 ? {
+    id: 'local-user', rank: 0, name: 'YOU (pending sync)', score: userHighScore,
+    country: '🌐', countryCode: 'XX', badge: 'PLAYER', timestamp: 'Local score', isUser: true,
+    division: 'bronze', trend: 'same', level: 1,
+  } : null;
+  return { topEntries: [], userRank: null, userEntry: pendingUser, totalCompetitors: 0 };
+}
 
-  allStored[gameId] = updated;
-  saveStoredLeaderboards(allStored);
+export function getOverallArcadeLeaderboard(stats: UserStats): OverallLeaderboardData {
+  const cached = loadCache().overall;
+  if (cached) return cached;
+  if (isLiveLeaderboardConfigured()) void refreshOverallLeaderboard().catch(() => {});
+  const totalScore = (Object.values(stats.highScores) as number[]).reduce((sum, value) => sum + (value || 0), 0);
+  const gamesPlayed = Object.values(stats.playCounts).filter((count) => (count || 0) > 0).length;
+  return {
+    topEntries: [],
+    userRank: null,
+    totalWorldCompetitors: 0,
+    userEntry: {
+      id: 'local-user', rank: 0, name: 'YOU (pending sync)', ratingScore: gamesPlayed * 1000,
+      totalScore, badgesUnlocked: 0, country: '🌐', countryCode: 'XX', badgeTitle: 'Arcade Challenger',
+      division: 'bronze', level: Math.max(1, Math.min(10, 1 + Math.floor(gamesPlayed / 3))),
+      isUser: true, timestamp: 'Local profile',
+    },
+  };
+}
+
+export async function simulateLiveCompetition(gameId: string): Promise<void> {
+  if (!isLiveLeaderboardConfigured()) return;
+  await Promise.allSettled([refreshGameLeaderboard(gameId), refreshOverallLeaderboard()]);
 }
 
 export function resetAllLeaderboards(): void {
   if (typeof window === 'undefined') return;
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch {}
+  localStorage.removeItem(CACHE_KEY);
+  localStorage.removeItem(LEGACY_FAKE_KEY);
+  window.dispatchEvent(new CustomEvent(LEADERBOARD_UPDATED_EVENT));
 }
 
+export async function beginLeaderboardSession(gameId: string): Promise<LeaderboardPlaySession | null> {
+  if (!isLiveLeaderboardConfigured()) return null;
+  const clientStartedAt = Date.now();
+  const data = await apiRequest<{ session: { id: string; gameId: string; expiresAt: number } }>('/v1/sessions', {
+    method: 'POST',
+    body: JSON.stringify({ gameId }),
+  });
+  return { id: data.session.id, gameId: data.session.gameId, expiresAt: data.session.expiresAt, clientStartedAt };
+}
+
+export async function submitLeaderboardScore(session: LeaderboardPlaySession, score: number): Promise<boolean> {
+  if (!isLiveLeaderboardConfigured() || !Number.isFinite(score)) return false;
+  try {
+    await apiRequest('/v1/scores', {
+      method: 'POST',
+      body: JSON.stringify({
+        sessionId: session.id,
+        score: Math.max(0, Math.round(score)),
+        durationMs: Math.max(0, Date.now() - session.clientStartedAt),
+      }),
+    });
+    await Promise.allSettled([refreshGameLeaderboard(session.gameId), refreshOverallLeaderboard()]);
+    return true;
+  } catch (error) {
+    console.warn('Live leaderboard score submission failed:', error);
+    return false;
+  }
+}
+
+export async function updateGuestDisplayName(name: string): Promise<void> {
+  await apiRequest('/v1/me', { method: 'PATCH', body: JSON.stringify({ name }) });
+  const cache = loadCache();
+  cache.games = {};
+  delete cache.overall;
+  saveCache(cache);
+}
