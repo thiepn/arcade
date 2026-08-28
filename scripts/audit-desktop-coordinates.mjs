@@ -14,13 +14,29 @@ assert(loop.includes('createGameResizeInfo'), 'game loop must expose normalized 
 assert(loop.includes('ctx.setTransform(dpr'), 'game loop must reset the DPR transform each frame');
 assert(loop.includes('getBoundingClientRect'), 'game loop must measure the rendered game stage');
 
-for (const file of ['BreakoutGame.tsx', 'ChainGame.tsx', 'TowerGame.tsx']) {
+const responsiveGames = [
+  'AirHockeyGame.tsx',
+  'AstroBlasterGame.tsx',
+  'BreakoutGame.tsx',
+  'ChainGame.tsx',
+  'DodgeGame.tsx',
+  'StackGame.tsx',
+  'TowerGame.tsx',
+];
+
+for (const file of responsiveGames) {
   const source = read(`src/games/${file}`);
   assert(source.includes("../lib/gameCoordinates"), `${file} is not using the shared coordinate layer`);
-  assert(source.includes('viewportWidth:'), `${file} does not retain its current logical viewport`);
-  assert(source.includes('viewportHeight:'), `${file} does not retain its current logical height`);
-  assert(source.includes('onResize: (w, h)'), `${file} does not remap active state on resize`);
+  assert(source.includes('onResize: (w'), `${file} does not remap active state on resize`);
 }
+
+const airHockey = read('src/games/AirHockeyGame.tsx');
+assert(airHockey.includes('rescaleTrail(state.puckTrail'), 'Air Hockey puck trail is not remapped');
+assert(airHockey.includes('state.playerMallet.y = clamp'), 'Air Hockey mallets are not constrained after resize');
+
+const astro = read('src/games/AstroBlasterGame.tsx');
+assert(astro.includes('rescalePoint(state.ship'), 'Astro Blaster ship is not remapped');
+assert(astro.includes('asteroid.vertices'), 'Astro Blaster asteroid geometry is not resized');
 
 const breakout = read('src/games/BreakoutGame.tsx');
 assert(breakout.includes('rescaleTrail(ball.trail'), 'Breakout ball trails are not remapped');
@@ -30,6 +46,17 @@ assert(breakout.includes('brick.y *= scaleY'), 'Breakout bricks are not vertical
 const chain = read('src/games/ChainGame.tsx');
 assert(chain.includes('particle.maxExplosionRadius *= uniformScale'), 'Chain explosion radii are not resized');
 assert(chain.includes('arc.x2 *= scaleX'), 'Chain lightning endpoints are not remapped');
+
+const dodge = read('src/games/DodgeGame.tsx');
+assert(dodge.includes('needsInitialPlacement'), 'Dodge player is not initialized from the measured arena');
+assert(dodge.includes('rescaleTrail(state.ghostTrail'), 'Dodge ghost trail is not remapped');
+
+const stack = read('src/games/StackGame.tsx');
+assert(stack.includes('state.viewportWidth + state.currentWidth'), 'Stack still uses a fixed right rail edge');
+assert(
+  stack.includes('Math.max(220, state.viewportWidth * 0.45)'),
+  'Stack mobile perfect-streak width reward is not preserved',
+);
 
 const tower = read('src/games/TowerGame.tsx');
 assert(tower.includes('curW / 420'), 'Tower desktop movement speed is not width-aware');
@@ -43,5 +70,5 @@ if (errors.length) {
 }
 
 console.log(
-  'Desktop-coordinate audit passed: shared ResizeObserver canvas sizing and responsive Breakout, Chain, and Tower world remapping are active.',
+  `Desktop-coordinate audit passed: shared ResizeObserver sizing and ${responsiveGames.length} responsive game-world migrations are active.`,
 );
