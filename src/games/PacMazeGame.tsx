@@ -3,6 +3,12 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { Ghost, Zap, Shield, Sparkles, Trophy, Flame } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import {
+  advancePacMover,
+  getPacDirectionForCode,
+  queuePacDirection,
+  shouldCapturePacKey,
+} from '../lib/pacMazeControls';
 
 // Maze Tile Grid Definition
 // 1 = Wall, 0 = Dot, 2 = Power Pellet, 3 = Empty/Spawn, 4 = Fruit Spawn, 9 = Gate
@@ -122,27 +128,20 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
     gameStateRef.current.grid = MAZE_MAP.map((r) => [...r]);
   }, []);
 
-  // Keyboard controls
+  // Capture desktop controls before browser scrolling or shell-level handlers.
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const direction = getPacDirectionForCode(event.code);
+      if (!direction || !shouldCapturePacKey(event)) return;
+
+      event.preventDefault();
       const state = gameStateRef.current;
-      if (e.code === 'ArrowUp' || e.code === 'KeyW') {
-        state.nextDirX = 0;
-        state.nextDirY = -1;
-      } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
-        state.nextDirX = 0;
-        state.nextDirY = 1;
-      } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
-        state.nextDirX = -1;
-        state.nextDirY = 0;
-      } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
-        state.nextDirX = 1;
-        state.nextDirY = 0;
-      }
+      if (!state.isAlive || isPausedRef.current) return;
+      queuePacDirection(state, direction.x, direction.y);
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, []);
 
   // Swipe / Touch Controls
@@ -161,11 +160,9 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
     if (Math.hypot(dx, dy) > threshold) {
       const state = gameStateRef.current;
       if (Math.abs(dx) > Math.abs(dy)) {
-        state.nextDirX = dx > 0 ? 1 : -1;
-        state.nextDirY = 0;
+        queuePacDirection(state, dx > 0 ? 1 : -1, 0);
       } else {
-        state.nextDirX = 0;
-        state.nextDirY = dy > 0 ? 1 : -1;
+        queuePacDirection(state, 0, dy > 0 ? 1 : -1);
       }
       touchStartRef.current = { x: e.clientX, y: e.clientY };
     }
@@ -230,53 +227,16 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
           if (state.fruitTimer <= 0) state.fruitActive = false;
         }
 
-        // Speed calculation
-        const playerSpeed = (state.frightenedTimer > 0 ? 5.6 : 5.0) * dt;
-
-        // Try apply next direction if aligned with tile center
-        const alignThreshold = 0.22;
-        const curCol = Math.round(state.px);
-        const curRow = Math.round(state.py);
-
-        if (state.nextDirX !== 0 || state.nextDirY !== 0) {
-          const canTurn = !isWall(curRow + state.nextDirY, curCol + state.nextDirX);
-          const alignedX = Math.abs(state.px - curCol) < alignThreshold;
-          const alignedY = Math.abs(state.py - curRow) < alignThreshold;
-
-          if (canTurn && alignedX && alignedY) {
-            state.px = curCol;
-            state.py = curRow;
-            state.dirX = state.nextDirX;
-            state.dirY = state.nextDirY;
-          }
-        }
-
-        // Move player
-        if (state.dirX !== 0 || state.dirY !== 0) {
-          const nextX = state.px + state.dirX * playerSpeed;
-          const nextY = state.py + state.dirY * playerSpeed;
-
-          // Wrap-around tunnels
-          if (nextX < -0.5) {
-            state.px = COLS - 0.5;
-          } else if (nextX > COLS - 0.5) {
-            state.px = -0.5;
-          } else {
-            const checkCol = state.dirX > 0 ? Math.ceil(nextX) : Math.floor(nextX);
-            const checkRow = state.dirY > 0 ? Math.ceil(nextY) : Math.floor(nextY);
-
-            if (state.dirX !== 0 && isWall(curRow, checkCol)) {
-              state.px = curCol;
-              state.dirX = 0;
-            } else if (state.dirY !== 0 && isWall(checkRow, curCol)) {
-              state.py = curRow;
-              state.dirY = 0;
-            } else {
-              state.px = nextX;
-              state.py = nextY;
-            }
-          }
-        }
+        // Movement is tile-center based rather than threshold based. Inputs are
+        // buffered until the next valid intersection, while opposite directions
+        // reverse immediately even between tile centers.
+        const playerSpeedTilesPerSecond = state.frightenedTimer > 0 ? 5.6 : 5.0;
+        advancePacMover(
+          state,
+          playerSpeedTilesPerSecond * dt,
+          isWall,
+          COLS,
+        );
 
         // Eat dots & power pellets
         const pCol = Math.round(state.px);
