@@ -18,6 +18,7 @@ jobs:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
       - run: bun run quality:games
+      - run: bun run quality:desktop
       - run: bunx tsc --noEmit
       - run: bun run d1:migrate:local
       - name: Smoke-test Worker API
