@@ -36,24 +36,28 @@ const renameResponse = await request('/v1/me', {
 });
 assert(renameResponse.ok, `profile rename failed: ${renameResponse.status}`);
 
-const sessionStartedAt = Date.now();
-const sessionResponse = await request('/v1/sessions', {
-  method: 'POST',
-  headers: auth,
-  body: JSON.stringify({ gameId: 'reaction' }),
-});
-assert(sessionResponse.status === 201, `session failed: ${sessionResponse.status}`);
-const sessionData = await sessionResponse.json();
-assert(sessionData.session?.id, 'session id missing');
+async function submitRun(gameId, score, waitMs) {
+  const startedAt = Date.now();
+  const sessionResponse = await request('/v1/sessions', {
+    method: 'POST',
+    headers: auth,
+    body: JSON.stringify({ gameId }),
+  });
+  assert(sessionResponse.status === 201, `${gameId} session failed: ${sessionResponse.status}`);
+  const sessionData = await sessionResponse.json();
+  assert(sessionData.session?.id, `${gameId} session id missing`);
+  await new Promise((resolve) => setTimeout(resolve, waitMs));
+  const durationMs = Date.now() - startedAt;
+  const scoreResponse = await request('/v1/scores', {
+    method: 'POST',
+    headers: auth,
+    body: JSON.stringify({ sessionId: sessionData.session.id, score, durationMs }),
+  });
+  assert(scoreResponse.ok, `${gameId} score submission failed: ${scoreResponse.status} ${await scoreResponse.text()}`);
+  return { sessionId: sessionData.session.id, durationMs };
+}
 
-await new Promise((resolve) => setTimeout(resolve, 900));
-const durationMs = Date.now() - sessionStartedAt;
-const scoreResponse = await request('/v1/scores', {
-  method: 'POST',
-  headers: auth,
-  body: JSON.stringify({ sessionId: sessionData.session.id, score: 500, durationMs }),
-});
-assert(scoreResponse.ok, `score submission failed: ${scoreResponse.status} ${await scoreResponse.text()}`);
+const firstReaction = await submitRun('reaction', 500, 900);
 
 const leaderboardResponse = await request('/v1/leaderboards/reaction?limit=10', { headers: auth });
 assert(leaderboardResponse.ok, `leaderboard failed: ${leaderboardResponse.status}`);
@@ -65,21 +69,31 @@ assert(leaderboard.userEntry?.rank === 1, 'authenticated user should rank first'
 const replayResponse = await request('/v1/scores', {
   method: 'POST',
   headers: auth,
-  body: JSON.stringify({ sessionId: sessionData.session.id, score: 600, durationMs: durationMs + 50 }),
+  body: JSON.stringify({ sessionId: firstReaction.sessionId, score: 600, durationMs: firstReaction.durationMs + 50 }),
 });
 assert(replayResponse.status === 409, `replay should be rejected with 409, got ${replayResponse.status}`);
+
+await submitRun('reaction', 300, 900);
+await submitRun('stack', 200, 350);
+
+const reactionAfterResponse = await request('/v1/leaderboards/reaction?limit=10', { headers: auth });
+assert(reactionAfterResponse.ok, `reaction leaderboard refresh failed: ${reactionAfterResponse.status}`);
+const reactionAfter = await reactionAfterResponse.json();
+assert(reactionAfter.userEntry?.score === 500, 'lower repeat score must not replace the permanent reaction best');
 
 const overallResponse = await request('/v1/leaderboards/overall?limit=10', { headers: auth });
 assert(overallResponse.ok, `overall leaderboard failed: ${overallResponse.status}`);
 const overall = await overallResponse.json();
 assert(overall.userEntry?.rank === 1, 'overall authenticated user should rank first');
-assert(overall.userEntry?.total_score === 500, 'overall score should use best score');
+assert(overall.userEntry?.games_played === 2, 'overall leaderboard should count two ranked games');
+assert(overall.userEntry?.total_score === 700, 'overall combined score should sum best scores across games only');
 
 const weeklyResponse = await request('/v1/leaderboards/weekly?limit=10', { headers: auth });
 assert(weeklyResponse.ok, `weekly leaderboard failed: ${weeklyResponse.status}`);
 const weekly = await weeklyResponse.json();
 assert(weekly.userEntry?.rank === 1, 'weekly authenticated user should rank first');
-assert(weekly.userEntry?.total_score === 500, 'weekly combined score should include weekly best score');
+assert(weekly.userEntry?.games_played === 2, 'weekly leaderboard should count two games with weekly scores');
+assert(weekly.userEntry?.total_score === 700, 'weekly combined score must use reaction best 500 + stack best 200, not sum repeated reaction submissions');
 assert(weekly.entries?.length === 1, 'weekly leaderboard should contain one overall player row');
 assert(Number.isFinite(weekly.weekStart) && Number.isFinite(weekly.weekEnd), 'weekly boundary metadata missing');
 assert(weekly.weekEnd - weekly.weekStart === 7 * 24 * 60 * 60 * 1000, 'weekly window should be seven days');
@@ -91,7 +105,7 @@ const meAfterResponse = await request('/v1/me', { headers: auth });
 assert(meAfterResponse.ok, `updated profile failed: ${meAfterResponse.status}`);
 const meAfter = await meAfterResponse.json();
 assert(meAfter.player?.name === 'Smoke Player', 'profile rename did not persist');
-assert(meAfter.activity?.submissions === 1, 'profile submission count should reflect accepted run');
-assert(meAfter.activity?.rankedGames === 1, 'profile ranked game count should reflect accepted run');
+assert(meAfter.activity?.submissions === 3, 'profile submission count should reflect all three accepted runs');
+assert(meAfter.activity?.rankedGames === 2, 'profile ranked game count should reflect reaction and stack');
 
 console.log('Cloudflare leaderboard + MA2 weekly/profile API smoke test passed');
