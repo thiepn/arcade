@@ -6,46 +6,9 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  apply-pac-control-migration:
-    if: github.event_name == 'pull_request' && github.head_ref == 'fix/desktop-gameplay-32'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.0
-      - run: bun install --frozen-lockfile
-      - name: Apply migration when needed
-        shell: bash
-        run: |
-          set -euo pipefail
-          if grep -q "const alignThreshold = 0.22" src/games/PacMazeGame.tsx; then
-            node scripts/migrate-pac-controls.mjs
-          else
-            echo "Cyber Pac-Runner migration is already applied."
-          fi
-      - run: bun scripts/audit-pac-controls.ts
-      - run: bunx tsc --noEmit
-      - name: Commit generated game repair
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/games/PacMazeGame.tsx
-          if git diff --cached --quiet; then
-            echo "No generated Cyber Pac-Runner changes to commit."
-            exit 0
-          fi
-          git commit -m "Repair Cyber Pac-Runner desktop controls"
-          git push origin HEAD:${{ github.head_ref }}
-
   build:
     runs-on: ubuntu-latest
     steps:
@@ -60,6 +23,7 @@ jobs:
       - run: bun run quality:pinball
       - run: bun run quality:chrono
       - run: bun run quality:shortcuts
+      - run: bun run quality:pac
       - run: bunx tsc --noEmit
       - run: bun run d1:migrate:local
       - name: Smoke-test Worker API
