@@ -52,6 +52,8 @@ for (const [width, height] of [
 }
 
 const source = readFileSync('src/games/LaserRopeGame.tsx', 'utf8');
+const hud = readFileSync('src/components/LaserRopeHud.tsx', 'utf8');
+
 for (const token of [
   'getLaserRopeArenaMetrics',
   'drawLaserRopeBackground',
@@ -61,12 +63,22 @@ for (const token of [
   'drawLaserRopePlayerNode',
   'drawLaserRopeOrb',
   'getLaserRopeBeamColor',
-  'LASER MODE',
-  'FEVER',
-  'hudState.score',
-  'hudState.laserMode',
+  'LaserRopeHud',
+  '<LaserRopeHud state={hudState} />',
 ]) {
   assert(source.includes(token), `LaserRopeGame is missing Phase A presentation token: ${token}`);
+}
+
+for (const token of [
+  'LASER MODE',
+  'FEVER',
+  'state.score',
+  'state.jumpStreak',
+  'state.rpm',
+  'state.laserMode',
+  'state.isFeverActive',
+]) {
+  assert(hud.includes(token), `LaserRopeHud is missing Phase A HUD token: ${token}`);
 }
 
 assert(!source.includes('const beamRadius = 155'), 'fixed prototype beam radius returned');
