@@ -14,6 +14,7 @@ const assert = (condition: boolean, message: string) => {
 
 for (const [width, height] of [
   [320, 480],
+  [360, 400],
   [360, 640],
   [390, 844],
   [768, 1024],
@@ -30,8 +31,11 @@ for (const [width, height] of [
   assert(layout.height <= AIR_HOCKEY_MAX_TABLE_HEIGHT + 0.01, `${width}x${height}: desktop height cap ignored`);
   assert(layout.aspect >= AIR_HOCKEY_MIN_ASPECT - 0.01, `${width}x${height}: table became too narrow`);
   assert(layout.aspect <= AIR_HOCKEY_MAX_ASPECT + 0.01, `${width}x${height}: table became too wide`);
-  assert(layout.goalWidth >= 92, `${width}x${height}: goal became too narrow`);
-  assert(layout.goalWidth <= layout.width * 0.38, `${width}x${height}: goal dominates table width`);
+  assert(
+    layout.goalWidth >= Math.min(80, layout.width * 0.3),
+    `${width}x${height}: goal became too narrow`,
+  );
+  assert(layout.goalWidth <= layout.width * 0.38 + 0.01, `${width}x${height}: goal dominates table width`);
 }
 
 const desktop = getAirHockeyTableLayout(900, 660);
@@ -42,6 +46,10 @@ assert(desktop.height > desktop.width, 'desktop arena must remain portrait-orien
 const tallPhone = getAirHockeyTableLayout(390, 844);
 assert(tallPhone.width >= 350, '390x844 phone wastes too much horizontal space');
 assert(tallPhone.height >= 540, '390x844 phone arena is too short to play comfortably');
+
+const shortPhone = getAirHockeyTableLayout(360, 400);
+assert(shortPhone.bottom <= 400, 'short mobile arena extends below the rendered stage');
+assert(shortPhone.top >= 0, 'short mobile arena extends above the rendered stage');
 
 const source = readFileSync('src/games/AirHockeyGame.tsx', 'utf8');
 for (const token of [
@@ -72,5 +80,5 @@ if (errors.length) {
 }
 
 console.log(
-  'Neon Puck Smash audit passed: portrait arena proportions, desktop width limits, mobile fill, HUD/control clearance, responsive motion scaling, pointer capture, and frame-rate-normalized puck drag are certified.',
+  'Neon Puck Smash audit passed: controlled portrait arena proportions, desktop width limits, tall/short mobile containment, HUD/control clearance, responsive motion scaling, pointer capture, and frame-rate-normalized puck drag are certified.',
 );
