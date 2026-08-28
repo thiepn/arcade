@@ -24,6 +24,8 @@
     "quality:blockdrop": "bun scripts/audit-block-drop-hold.ts",
     "quality:knife": "bun scripts/audit-knife-target-aim.ts",
     "quality:puck": "bun scripts/audit-air-hockey-layout.ts",
+    "quality:rail": "bun scripts/audit-neon-rail-shift.ts",
+    "quality:release32": "bun scripts/audit-release-32.ts",
     "worker:dev": "wrangler dev",
     "worker:check": "tsc -p worker/tsconfig.json --noEmit && wrangler deploy --dry-run --outdir .wrangler-dist",
     "worker:deploy": "wrangler deploy",
@@ -31,8 +33,7 @@
     "d1:migrate:remote": "wrangler d1 migrations apply micro-arcade-leaderboards --remote",
     "build:pages": "VITE_BASE_PATH=/arcade/ vite build",
     "quality:ma3": "bun scripts/audit-ma3.mjs",
-    "quality:ma4": "bun scripts/audit-ma4.mjs",
-    "quality:rail": "bun scripts/audit-neon-rail-shift.ts"
+    "quality:ma4": "bun scripts/audit-ma4.mjs"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
