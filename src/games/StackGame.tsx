@@ -93,7 +93,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
       state.currentX = prevBlock.x; // Snap perfectly
 
       // Bonus width reward on high streak
-      const rewardWidthCap = Math.min(320, state.viewportWidth * 0.45);
+      const rewardWidthCap = Math.min(320, Math.max(220, state.viewportWidth * 0.45));
       if (state.perfectStreak >= 5 && state.currentWidth < rewardWidthCap) {
         state.currentWidth = Math.min(rewardWidthCap, state.currentWidth + 12);
         state.currentX -= 6;
