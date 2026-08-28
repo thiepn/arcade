@@ -2,6 +2,9 @@ node_modules/
 build/
 dist/
 coverage/
+.wrangler/
+.wrangler-dist/
+.dev.vars*
 .DS_Store
 *.log
 .env*
