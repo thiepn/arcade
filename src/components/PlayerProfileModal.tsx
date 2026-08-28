@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, Check, Edit3, Gamepad2, Globe2, Medal, Save, Trophy, UserRound, X } from 'lucide-react';
+import { CalendarDays, Check, Edit3, Globe2, Medal, Save, Trophy, UserRound, X } from 'lucide-react';
 import { UserStats } from '../types';
 import { GAMES_REGISTRY } from '../data/games';
 import { ACHIEVEMENTS_REGISTRY, getTotalPlayCount, getUniqueGamesCount } from '../lib/achievements';
@@ -50,7 +50,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ stats, o
   const mostPlayedGame = useMemo(() => {
     let bestId: string | null = null;
     let bestCount = 0;
-    for (const [gameId, count] of Object.entries(stats.playCounts)) {
+    for (const [gameId, count] of Object.entries(stats.playCounts) as Array<[string, number]>) {
       if ((count || 0) > bestCount) {
         bestId = gameId;
         bestCount = count || 0;
