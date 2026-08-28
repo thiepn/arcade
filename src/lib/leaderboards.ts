@@ -88,6 +88,7 @@ const GUEST_KEY = 'micro_arcade_guest_credential_v1';
 const CACHE_KEY = 'micro_arcade_live_leaderboards_v1';
 const LEGACY_FAKE_KEY = 'micro_arcade_global_leaderboards_v2';
 export const LEADERBOARD_UPDATED_EVENT = 'micro-arcade-leaderboards-updated';
+let guestCreationPromise: Promise<string | null> | null = null;
 
 function apiBase(): string {
   return (import.meta.env.VITE_LEADERBOARD_API_URL || '').trim().replace(/\/$/, '');
@@ -167,15 +168,24 @@ async function ensureGuestCredential(): Promise<string | null> {
   if (existing) return existing;
   const base = apiBase();
   if (!base || typeof window === 'undefined') return null;
-  const response = await fetch(`${base}/v1/guest`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: '{}',
-  });
-  if (!response.ok) throw new Error(`Guest creation failed (${response.status})`);
-  const data = await response.json() as { credential: string };
-  localStorage.setItem(GUEST_KEY, data.credential);
-  return data.credential;
+  if (!guestCreationPromise) {
+    guestCreationPromise = (async () => {
+      const response = await fetch(`${base}/v1/guest`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      });
+      if (!response.ok) throw new Error(`Guest creation failed (${response.status})`);
+      const data = await response.json() as { credential: string };
+      localStorage.setItem(GUEST_KEY, data.credential);
+      return data.credential;
+    })();
+  }
+  try {
+    return await guestCreationPromise;
+  } finally {
+    guestCreationPromise = null;
+  }
 }
 
 async function apiRequest<T>(path: string, init: RequestInit = {}, retryAuth = true): Promise<T> {
@@ -280,7 +290,6 @@ export async function refreshOverallLeaderboard(): Promise<OverallLeaderboardDat
 export function getGlobalLeaderboardForGame(gameId: string, userHighScore: number): GameLeaderboardData {
   const cached = loadCache().games[gameId];
   if (cached) return cached;
-  if (isLiveLeaderboardConfigured()) void refreshGameLeaderboard(gameId).catch(() => {});
   const pendingUser: LeaderboardEntry | null = userHighScore > 0 ? {
     id: 'local-user', rank: 0, name: 'YOU (pending sync)', score: userHighScore,
     country: '🌐', countryCode: 'XX', badge: 'PLAYER', timestamp: 'Local score', isUser: true,
@@ -292,7 +301,6 @@ export function getGlobalLeaderboardForGame(gameId: string, userHighScore: numbe
 export function getOverallArcadeLeaderboard(stats: UserStats): OverallLeaderboardData {
   const cached = loadCache().overall;
   if (cached) return cached;
-  if (isLiveLeaderboardConfigured()) void refreshOverallLeaderboard().catch(() => {});
   const totalScore = (Object.values(stats.highScores) as number[]).reduce((sum, value) => sum + (value || 0), 0);
   const gamesPlayed = Object.values(stats.playCounts).filter((count) => (count || 0) > 0).length;
   return {
