@@ -73,9 +73,26 @@ assert(css.includes('env(safe-area-inset-bottom)'), 'safe-area bottom inset hand
 assert(css.includes('100dvh'), 'dynamic viewport height handling is missing');
 assert(css.includes('prefers-reduced-motion'), 'reduced-motion accessibility handling is missing');
 
-assert(pagesWorkflow.includes('actions/deploy-pages@v4'), 'Pages workflow must deploy the built artifact');
+assert(
+  /uses:\s*actions\/deploy-pages@[0-9a-f]{40}/i.test(pagesWorkflow),
+  'Pages workflow must deploy the built artifact with a SHA-pinned deploy-pages action',
+);
 assert(pagesWorkflow.includes('bun run build:pages'), 'Pages workflow must build the Vite Pages variant');
-assert(pagesWorkflow.includes('actions/upload-pages-artifact@v3'), 'Pages workflow must upload dist, not raw source');
+assert(
+  /uses:\s*actions\/upload-pages-artifact@[0-9a-f]{40}/i.test(pagesWorkflow),
+  'Pages workflow must upload dist with a SHA-pinned upload-pages-artifact action',
+);
+assert(
+  /uses:\s*actions\/configure-pages@[0-9a-f]{40}/i.test(pagesWorkflow),
+  'Pages workflow must configure Pages with a SHA-pinned configure-pages action',
+);
+assert(
+  pagesWorkflow.includes('workflow_run:') &&
+    pagesWorkflow.includes('workflows: [CI]') &&
+    pagesWorkflow.includes("github.event.workflow_run.conclusion == 'success'") &&
+    pagesWorkflow.includes('ref: ${{ github.event.workflow_run.head_sha }}'),
+  'Pages workflow must deploy the exact main commit only after successful CI',
+);
 
 for (const icon of ['public/icons/icon-192.png', 'public/icons/icon-512.png', 'public/icons/apple-touch-icon.png']) {
   assert(existsSync(icon), `${icon} is missing`);
