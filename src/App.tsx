@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useMemo, useCallback } from 'react';
 import { GAMES_REGISTRY, GameEntry } from './data/games';
 import { GameDefinition, UserStats, AppTheme } from './types';
 import {
@@ -22,15 +22,32 @@ import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { FilterBar } from './components/FilterBar';
 import { GameCard } from './components/GameCard';
-import { GameShell } from './components/GameShell';
 import { RecentlyPlayedSection } from './components/RecentlyPlayedSection';
-import { StatsModal } from './components/StatsModal';
-import { OverallLeaderboardModal } from './components/OverallLeaderboardModal';
-import { PlayerProfileModal } from './components/PlayerProfileModal';
-import { StressTester } from './components/StressTester';
 import { PwaStatus } from './components/PwaStatus';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { AnimatePresence, motion } from "motion/react";
 import { Sparkles, Gamepad2, Shuffle, Heart, BarChart2, Globe, Trophy, Medal, Activity, UserRound } from 'lucide-react';
+
+
+const GameShell = lazy(() => import('./components/GameShell').then(({ GameShell }) => ({ default: GameShell })));
+const StatsModal = lazy(() => import('./components/StatsModal').then(({ StatsModal }) => ({ default: StatsModal })));
+const OverallLeaderboardModal = lazy(() => import('./components/OverallLeaderboardModal').then(({ OverallLeaderboardModal }) => ({ default: OverallLeaderboardModal })));
+const PlayerProfileModal = lazy(() => import('./components/PlayerProfileModal').then(({ PlayerProfileModal }) => ({ default: PlayerProfileModal })));
+const StressTester = lazy(() => import('./components/StressTester').then(({ StressTester }) => ({ default: StressTester })));
+
+const DeferredSurface: React.FC<{ label: string; fullscreen?: boolean }> = ({ label, fullscreen = false }) => (
+  <div
+    className={`${fullscreen ? 'fixed inset-0 z-[70]' : 'fixed inset-0 z-[90]'} flex items-center justify-center bg-[#0A0A0B]/92 p-6 text-white backdrop-blur-sm`}
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <div className="flex items-center gap-3 rounded-xl border border-[#27272A] bg-[#111114] px-4 py-3 text-xs font-mono-arcade text-zinc-300 shadow-2xl">
+      <span className="h-3 w-3 animate-pulse rounded-full bg-cyan-400" aria-hidden="true" />
+      {label}
+    </div>
+  </div>
+);
 
 export default function App() {
   const [stats, setStats] = useState<UserStats>(() => getStoredStats());
@@ -226,21 +243,26 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col justify-between selection:bg-cyan-500/30 selection:text-cyan-200">
+      <a href="#library-section" className="skip-link">Skip to game library</a>
       {/* If a game is active, render full-screen unified Game Shell */}
       {activeGame && (
-        <GameShell
-          key={activeGame.id}
-          game={activeGame}
-          bestScore={stats.highScores[activeGame.id] || 0}
-          soundEnabled={stats.soundEnabled}
-          hapticsEnabled={stats.hapticsEnabled ?? true}
-          onToggleSound={handleToggleSound}
-          onToggleHaptics={handleToggleHaptics}
-          onBackToArcade={() => setActiveGameId(null)}
-          onPlayNextRandom={handlePlayRandomGame}
-          onSaveScore={handleSaveScore}
-          onViewLeaderboard={(gameId) => handleOpenStats('leaderboards', gameId)}
-        />
+        <ErrorBoundary key={`game-shell-${activeGame.id}`} onReset={() => setActiveGameId(null)}>
+          <Suspense fallback={<DeferredSurface label={`Loading ${activeGame.title}…`} fullscreen />}>
+            <GameShell
+              key={activeGame.id}
+              game={activeGame}
+              bestScore={stats.highScores[activeGame.id] || 0}
+              soundEnabled={stats.soundEnabled}
+              hapticsEnabled={stats.hapticsEnabled ?? true}
+              onToggleSound={handleToggleSound}
+              onToggleHaptics={handleToggleHaptics}
+              onBackToArcade={() => setActiveGameId(null)}
+              onPlayNextRandom={handlePlayRandomGame}
+              onSaveScore={handleSaveScore}
+              onViewLeaderboard={(gameId) => handleOpenStats('leaderboards', gameId)}
+            />
+          </Suspense>
+        </ErrorBoundary>
       )}
 
       {/* Main Arcade Homepage */}
@@ -292,7 +314,7 @@ export default function App() {
         />
 
         {/* Game Cards Grid */}
-        <main className="w-full max-w-6xl mx-auto px-4 py-4 flex-1">
+        <main id="library-section" tabIndex={-1} aria-label="Game library" className="w-full max-w-6xl mx-auto px-4 py-4 flex-1 outline-none">
           {filteredGames.length > 0 ? (
             <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               <AnimatePresence mode="popLayout">
@@ -351,7 +373,7 @@ export default function App() {
             <span>• {GAMES_REGISTRY.length} MINI-GAMES • 0 SEC ONBOARDING</span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
             <button
               type="button"
               onClick={handlePlayRandomGame}
@@ -403,39 +425,47 @@ export default function App() {
       <PwaStatus activeGame={Boolean(activeGame)} />
 
       {import.meta.env.DEV && stressTesterOpen && (
-        <StressTester onClose={() => setStressTesterOpen(false)} />
+        <Suspense fallback={<DeferredSurface label="Loading developer tools…" />}>
+          <StressTester onClose={() => setStressTesterOpen(false)} />
+        </Suspense>
       )}
 
       {overallLeaderboardOpen && (
-        <OverallLeaderboardModal stats={stats} onClose={() => setOverallLeaderboardOpen(false)} />
+        <Suspense fallback={<DeferredSurface label="Loading leaderboards…" />}>
+          <OverallLeaderboardModal stats={stats} onClose={() => setOverallLeaderboardOpen(false)} />
+        </Suspense>
       )}
 
       {profileOpen && (
-        <PlayerProfileModal stats={stats} onClose={() => setProfileOpen(false)} />
+        <Suspense fallback={<DeferredSurface label="Loading player profile…" />}>
+          <PlayerProfileModal stats={stats} onClose={() => setProfileOpen(false)} />
+        </Suspense>
       )}
 
       {/* Statistics Modal Overlay */}
       {statsModalOpen && (
-        <StatsModal
-          stats={stats}
-          initialTab={statsModalTab}
-          initialGameId={statsModalGameId}
-          onClose={() => setStatsModalOpen(false)}
-          onUpdateSound={(enabled, volume) => {
-            const updated = updateSoundPreference(enabled, volume);
-            setStats(updated);
-          }}
-          onUpdateHaptics={(enabled) => {
-            const updated = updateHapticsPreference(enabled);
-            setStats(updated);
-          }}
-          onUpdateTheme={handleUpdateTheme}
-          onClearData={handleClearData}
-          onLaunchGame={(gameId) => {
-            setStatsModalOpen(false);
-            handleLaunchGame(gameId);
-          }}
-        />
+        <Suspense fallback={<DeferredSurface label="Loading arcade data…" />}>
+          <StatsModal
+            stats={stats}
+            initialTab={statsModalTab}
+            initialGameId={statsModalGameId}
+            onClose={() => setStatsModalOpen(false)}
+            onUpdateSound={(enabled, volume) => {
+              const updated = updateSoundPreference(enabled, volume);
+              setStats(updated);
+            }}
+            onUpdateHaptics={(enabled) => {
+              const updated = updateHapticsPreference(enabled);
+              setStats(updated);
+            }}
+            onUpdateTheme={handleUpdateTheme}
+            onClearData={handleClearData}
+            onLaunchGame={(gameId) => {
+              setStatsModalOpen(false);
+              handleLaunchGame(gameId);
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );

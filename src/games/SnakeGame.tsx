@@ -287,7 +287,8 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
           y: (newHead.y + 0.5) * state.cellSize,
           vx: (Math.random() - 0.5) * 5,
           vy: (Math.random() - 0.5) * 5,
-          life: 1.0,
+          life: 1,
+          maxLife: 18,
           color: '#38BDF8',
           size: Math.random() * 3 + 2,
         });

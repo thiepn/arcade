@@ -1,39 +1,12 @@
 import { GameDefinition } from '../types';
-import React from 'react';
-import { OrbitGame } from '../games/OrbitGame';
-import { StackGame } from '../games/StackGame';
-import { ReactionGame } from '../games/ReactionGame';
-import { DodgeGame } from '../games/DodgeGame';
-import { PulseGame } from '../games/PulseGame';
-import { MergeGame } from '../games/MergeGame';
-import { TypeRushGame } from '../games/TypeRushGame';
-import { OneLineGame } from '../games/OneLineGame';
-import { BreakoutGame } from '../games/BreakoutGame';
-import { PerfectStopGame } from '../games/PerfectStopGame';
-import { ChainGame } from '../games/ChainGame';
-import { GravityGame } from '../games/GravityGame';
-import { BladeGame } from '../games/BladeGame';
-import { PinballGame } from '../games/PinballGame';
-import { ChronoGame } from '../games/ChronoGame';
-import { MatrixGame } from '../games/MatrixGame';
-import { DriftGame } from '../games/DriftGame';
-import { VanguardGame } from '../games/VanguardGame';
-import { SlingshotGame } from '../games/SlingshotGame';
-import { SnakeGame } from '../games/SnakeGame';
-import { RhythmGame } from '../games/RhythmGame';
-import { TowerGame } from '../games/TowerGame';
-import { PacMazeGame } from '../games/PacMazeGame';
-import { FlappyAeroGame } from '../games/FlappyAeroGame';
-import { RoadCrossGame } from '../games/RoadCrossGame';
-import { BubbleBusterGame } from '../games/BubbleBusterGame';
-import { LaserRopeGame } from '../games/LaserRopeGame';
-import { BlockDropGame } from '../games/BlockDropGame';
-import { AirHockeyGame } from '../games/AirHockeyGame';
-import { AstroBlasterGame } from '../games/AstroBlasterGame';
-import { KnifeTargetGame } from '../games/KnifeTargetGame';
+import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
+
+type MiniGameComponent = ComponentType<any>;
+
+const lazyGame = (loader: () => Promise<{ default: MiniGameComponent }>): LazyExoticComponent<MiniGameComponent> => lazy(loader);
 
 export interface GameEntry extends GameDefinition {
-  component: React.FC<any>;
+  component: LazyExoticComponent<MiniGameComponent>;
 }
 
 export const GAMES_REGISTRY: GameEntry[] = [
@@ -50,7 +23,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Tap/Space to invert orbit direction and switch lane.',
     controlsHint: 'Click / Tap / Space',
     icon: 'Orbit',
-    component: OrbitGame,
+    component: lazyGame(() => import('../games/OrbitGame').then(({ OrbitGame }) => ({ default: OrbitGame }))),
   },
   {
     id: 'stack',
@@ -65,7 +38,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Tap/Space to drop each block on top of the tower.',
     controlsHint: 'Click / Tap / Space',
     icon: 'Layers',
-    component: StackGame,
+    component: lazyGame(() => import('../games/StackGame').then(({ StackGame }) => ({ default: StackGame }))),
   },
   {
     id: 'reaction',
@@ -80,7 +53,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Wait for green, then tap as fast as possible. Avoid false starts.',
     controlsHint: 'Click / Tap / Space',
     icon: 'Zap',
-    component: ReactionGame,
+    component: lazyGame(() => import('../games/ReactionGame').then(({ ReactionGame }) => ({ default: ReactionGame }))),
   },
   {
     id: 'dodge',
@@ -95,7 +68,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Drag or use Arrow keys to steer clear of red obstacles.',
     controlsHint: 'Touch Drag / Mouse / Arrow Keys',
     icon: 'ShieldAlert',
-    component: DodgeGame,
+    component: lazyGame(() => import('../games/DodgeGame').then(({ DodgeGame }) => ({ default: DodgeGame }))),
   },
   {
     id: 'pulse',
@@ -110,7 +83,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Tap/Space at the exact moment the ring overlaps the target.',
     controlsHint: 'Click / Tap / Space',
     icon: 'Radio',
-    component: PulseGame,
+    component: lazyGame(() => import('../games/PulseGame').then(({ PulseGame }) => ({ default: PulseGame }))),
   },
   {
     id: 'merge',
@@ -125,7 +98,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Tap column or press 1–4 to drop tiles and merge identical numbers.',
     controlsHint: 'Tap Column / Keys 1–4',
     icon: 'Grid',
-    component: MergeGame,
+    component: lazyGame(() => import('../games/MergeGame').then(({ MergeGame }) => ({ default: MergeGame }))),
   },
   {
     id: 'typerush',
@@ -140,7 +113,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Type letters on keyboard or use the on-screen keypad.',
     controlsHint: 'Physical Keyboard / On-Screen Keypad',
     icon: 'Keyboard',
-    component: TypeRushGame,
+    component: lazyGame(() => import('../games/TypeRushGame').then(({ TypeRushGame }) => ({ default: TypeRushGame }))),
   },
   {
     id: 'oneline',
@@ -155,7 +128,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Draw one line from start to finish, then release.',
     controlsHint: 'Click & Drag / Touch Draw',
     icon: 'PenTool',
-    component: OneLineGame,
+    component: lazyGame(() => import('../games/OneLineGame').then(({ OneLineGame }) => ({ default: OneLineGame }))),
   },
   {
     id: 'breakout',
@@ -170,7 +143,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Move paddle horizontally to bounce the ball and shatter bricks.',
     controlsHint: 'Mouse Drag / Touch / Arrow Keys',
     icon: 'Boxes',
-    component: BreakoutGame,
+    component: lazyGame(() => import('../games/BreakoutGame').then(({ BreakoutGame }) => ({ default: BreakoutGame }))),
   },
   {
     id: 'perfectstop',
@@ -185,7 +158,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Tap or press Space to freeze the slider on the center marker.',
     controlsHint: 'Click / Tap / Space',
     icon: 'Crosshair',
-    component: PerfectStopGame,
+    component: lazyGame(() => import('../games/PerfectStopGame').then(({ PerfectStopGame }) => ({ default: PerfectStopGame }))),
   },
   {
     id: 'chain',
@@ -200,7 +173,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Tap anywhere once to spawn the initial detonation.',
     controlsHint: 'Click / Tap',
     icon: 'Sparkles',
-    component: ChainGame,
+    component: lazyGame(() => import('../games/ChainGame').then(({ ChainGame }) => ({ default: ChainGame }))),
   },
   {
     id: 'gravity',
@@ -215,7 +188,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Drag to slingshot probe. Touch/click or use A/D to steer direction in flight, and G to flip gravity.',
     controlsHint: 'Slingshot Drag • Touch/A/D to Steer • [G] Flip',
     icon: 'Compass',
-    component: GravityGame,
+    component: lazyGame(() => import('../games/GravityGame').then(({ GravityGame }) => ({ default: GravityGame }))),
   },
   {
     id: 'blade',
@@ -230,7 +203,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Swipe mouse/touch rapidly across flying orbs. Avoid explosive red mines.',
     controlsHint: 'Mouse Drag / Swipe Slice',
     icon: 'Sword',
-    component: BladeGame,
+    component: lazyGame(() => import('../games/BladeGame').then(({ BladeGame }) => ({ default: BladeGame }))),
   },
   {
     id: 'pinball',
@@ -245,7 +218,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Press A/D or Left/Right Arrow to trigger flippers. Hit drop targets for multiball.',
     controlsHint: 'A / D • Left/Right Arrow • Tap Sides',
     icon: 'Disc',
-    component: PinballGame,
+    component: lazyGame(() => import('../games/PinballGame').then(({ PinballGame }) => ({ default: PinballGame }))),
   },
   {
     id: 'chrono',
@@ -260,7 +233,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Hold A/D or Left/Right to rotate around the core. Space to trigger EMP blast.',
     controlsHint: 'A / D • Left/Right Arrow • [Space] EMP',
     icon: 'Hexagon',
-    component: ChronoGame,
+    component: lazyGame(() => import('../games/ChronoGame').then(({ ChronoGame }) => ({ default: ChronoGame }))),
   },
   {
     id: 'matrix',
@@ -275,7 +248,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Memorize the flashing node sequence, then tap or use keys (QWE/ASD/ZXC) to replicate.',
     controlsHint: 'Tap Grid / Keys QWE-ASD-ZXC / Numpad',
     icon: 'Terminal',
-    component: MatrixGame,
+    component: lazyGame(() => import('../games/MatrixGame').then(({ MatrixGame }) => ({ default: MatrixGame }))),
   },
   {
     id: 'drift',
@@ -290,7 +263,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Steer with A/D, Arrow Keys, or on-screen buttons to drift. Tap Space/Nitro to boost.',
     controlsHint: 'A / D • Arrow Keys • [Space] Nitro',
     icon: 'Flame',
-    component: DriftGame,
+    component: lazyGame(() => import('../games/DriftGame').then(({ DriftGame }) => ({ default: DriftGame }))),
   },
   {
     id: 'vanguard',
@@ -305,7 +278,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Drag or use WASD/Arrows to glide and auto-fire. Tap Nova Bomb / Space to clear screen.',
     controlsHint: 'Mouse Drag / Touch / Arrows • [Space] Bomb',
     icon: 'Rocket',
-    component: VanguardGame,
+    component: lazyGame(() => import('../games/VanguardGame').then(({ VanguardGame }) => ({ default: VanguardGame }))),
   },
   {
     id: 'slingshot',
@@ -320,7 +293,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Tap or press Space to release orbit tangentially. Enter target gravity wells to tether.',
     controlsHint: 'Click / Tap / Space',
     icon: 'Orbit',
-    component: SlingshotGame,
+    component: lazyGame(() => import('../games/SlingshotGame').then(({ SlingshotGame }) => ({ default: SlingshotGame }))),
   },
   {
     id: 'snake',
@@ -335,7 +308,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Use Arrow Keys / WASD or swipe to steer. Eat orbs to grow and trigger ghost powerups.',
     controlsHint: 'Arrow Keys / WASD / Swipe / D-Pad',
     icon: 'Zap',
-    component: SnakeGame,
+    component: lazyGame(() => import('../games/SnakeGame').then(({ SnakeGame }) => ({ default: SnakeGame }))),
   },
   {
     id: 'rhythm',
@@ -350,7 +323,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Tap D/F/J/K or 1/2/3/4 or Arrows when falling beat notes cross the target receptor line.',
     controlsHint: 'D / F / J / K • 1 / 2 / 3 / 4 • Arrows • Tap Lanes',
     icon: 'Radio',
-    component: RhythmGame,
+    component: lazyGame(() => import('../games/RhythmGame').then(({ RhythmGame }) => ({ default: RhythmGame }))),
   },
   {
     id: 'tower',
@@ -365,7 +338,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Steer with A/D, Left/Right Arrows, or touch screen halves to land on platforms and bounce upward. Space for micro-boost.',
     controlsHint: 'A / D • Left/Right Arrow • Touch Halves • [Space]',
     icon: 'Boxes',
-    component: TowerGame,
+    component: lazyGame(() => import('../games/TowerGame').then(({ TowerGame }) => ({ default: TowerGame }))),
   },
   {
     id: 'pacmaze',
@@ -380,7 +353,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Steer with Arrow Keys / WASD or swipe. Eat power pellets to chomp cyber ghosts.',
     controlsHint: 'WASD / Arrow Keys / Swipe',
     icon: 'Ghost',
-    component: PacMazeGame,
+    component: lazyGame(() => import('../games/PacMazeGame').then(({ PacMazeGame }) => ({ default: PacMazeGame }))),
   },
   {
     id: 'flappyaero',
@@ -395,7 +368,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Click, Tap, or press Space to thrust upward. Pass through laser gate openings.',
     controlsHint: 'Click / Tap / Space',
     icon: 'Wind',
-    component: FlappyAeroGame,
+    component: lazyGame(() => import('../games/FlappyAeroGame').then(({ FlappyAeroGame }) => ({ default: FlappyAeroGame }))),
   },
   {
     id: 'roadcross',
@@ -410,7 +383,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Hop with WASD / Arrow Keys or Tap/Swipe. Ride barges across plasma rivers.',
     controlsHint: 'WASD / Arrow Keys / Tap / Swipe',
     icon: 'Footprints',
-    component: RoadCrossGame,
+    component: lazyGame(() => import('../games/RoadCrossGame').then(({ RoadCrossGame }) => ({ default: RoadCrossGame }))),
   },
   {
     id: 'bubblebuster',
@@ -425,7 +398,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Aim with Mouse/Touch/Arrows, shoot with Click/Space. Match 3 to pop.',
     controlsHint: 'Aim: Mouse/Touch/A-D • Shoot: Click/Space',
     icon: 'CircleDot',
-    component: BubbleBusterGame,
+    component: lazyGame(() => import('../games/BubbleBusterGame').then(({ BubbleBusterGame }) => ({ default: BubbleBusterGame }))),
   },
   {
     id: 'astroblaster',
@@ -440,7 +413,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Steer with Left/Right or A/D. Thrust with Up or W. Space to Fire. Shift or S to Hyperspace Warp.',
     controlsHint: 'A / D: Steer • W: Thrust • Space: Fire • Shift: Warp',
     icon: 'Rocket',
-    component: AstroBlasterGame,
+    component: lazyGame(() => import('../games/AstroBlasterGame').then(({ AstroBlasterGame }) => ({ default: AstroBlasterGame }))),
   },
   {
     id: 'laserrope',
@@ -455,7 +428,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Tap or press Space to jump. Double tap for double jump over sweeping lasers.',
     controlsHint: 'Click / Tap / Space',
     icon: 'Activity',
-    component: LaserRopeGame,
+    component: lazyGame(() => import('../games/LaserRopeGame').then(({ LaserRopeGame }) => ({ default: LaserRopeGame }))),
   },
   {
     id: 'blockdrop',
@@ -470,7 +443,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Move with Left/Right, Rotate with Up, Soft Drop with Down, Hard Drop with Space.',
     controlsHint: 'Arrows / WASD • Space: Hard Drop',
     icon: 'Grid3X3',
-    component: BlockDropGame,
+    component: lazyGame(() => import('../games/BlockDropGame').then(({ BlockDropGame }) => ({ default: BlockDropGame }))),
   },
   {
     id: 'knifetarget',
@@ -485,7 +458,7 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Tap, click, or press Space to throw. Avoid embedded blades and red deflector shields.',
     controlsHint: 'Click / Tap / Space',
     icon: 'Target',
-    component: KnifeTargetGame,
+    component: lazyGame(() => import('../games/KnifeTargetGame').then(({ KnifeTargetGame }) => ({ default: KnifeTargetGame }))),
   },
   {
     id: 'airhockey',
@@ -500,6 +473,6 @@ export const GAMES_REGISTRY: GameEntry[] = [
     instructions: 'Drag your cyan mallet with mouse or touch (or WASD/Arrows) to smash the puck.',
     controlsHint: 'Mouse Drag / Touch / WASD',
     icon: 'Trophy',
-    component: AirHockeyGame,
+    component: lazyGame(() => import('../games/AirHockeyGame').then(({ AirHockeyGame }) => ({ default: AirHockeyGame }))),
   },
 ];

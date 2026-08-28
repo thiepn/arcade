@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, Crown, Globe2, RefreshCw, Trophy, Users, X } from 'lucide-react';
 import { UserStats } from '../types';
+import { useModalFocus } from '../hooks/useModalFocus';
 import {
   GlobalOverallEntry,
   OverallLeaderboardData,
@@ -68,6 +69,9 @@ const Row: React.FC<{ entry: GlobalOverallEntry }> = ({ entry }) => {
 };
 
 export const OverallLeaderboardModal: React.FC<OverallLeaderboardModalProps> = ({ stats, onClose }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocus(dialogRef);
+
   const [mode, setMode] = useState<BoardMode>('global');
   const [globalBoard, setGlobalBoard] = useState<OverallLeaderboardData>(() => getOverallArcadeLeaderboard(stats));
   const [weeklyBoard, setWeeklyBoard] = useState<OverallLeaderboardData>(() => getWeeklyOverallLeaderboard(stats));
@@ -115,7 +119,7 @@ export const OverallLeaderboardModal: React.FC<OverallLeaderboardModalProps> = (
   const entries = useMemo(() => board.topEntries, [board.topEntries]);
 
   return (
-    <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Overall leaderboards">
+    <div ref={dialogRef} tabIndex={-1} className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 outline-none" role="dialog" aria-modal="true" aria-label="Overall leaderboards">
       <div className="w-full max-w-3xl max-h-[90vh] overflow-hidden rounded-2xl border border-[#27272A] bg-[#0A0A0B] shadow-2xl flex flex-col">
         <div className="px-4 sm:px-5 py-4 border-b border-[#27272A] flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
