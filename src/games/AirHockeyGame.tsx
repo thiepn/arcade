@@ -322,7 +322,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
         const diffConfig = DIFFICULTY_CONFIG[state.difficulty] || DIFFICULTY_CONFIG.MEDIUM;
         const tableCenterX = (tableLeft + tableRight) / 2;
         const aiHomeX = tableCenterX;
-        const aiHomeY = tableTop + 55;
+        const aiHomeY = tableTop + 55 * table.motionScale;
 
         let aiTargetX = aiHomeX;
         let aiTargetY = aiHomeY;
@@ -334,8 +334,10 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
 
         if (state.puck.y < centerY + 20) {
           if (state.puck.y < state.aiMallet.y - 4) {
-            aiTargetX = state.puck.x > tableCenterX ? aiMinX + 25 : aiMaxX - 25;
-            aiTargetY = Math.max(aiMinY, state.puck.y - 10);
+            aiTargetX = state.puck.x > tableCenterX
+              ? aiMinX + 25 * table.motionScale
+              : aiMaxX - 25 * table.motionScale;
+            aiTargetY = Math.max(aiMinY, state.puck.y - 10 * table.motionScale);
           } else {
             const predX = state.puck.x + state.puck.vx * diffConfig.predFactor;
             aiTargetX = Math.max(aiMinX, Math.min(aiMaxX, predX));
@@ -343,7 +345,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
           }
         } else {
           const guardFactor = (state.puck.x - tableCenterX) / (tableRight - tableLeft);
-          aiTargetX = tableCenterX + guardFactor * 50;
+          aiTargetX = tableCenterX + guardFactor * 50 * table.motionScale;
           aiTargetY = aiHomeY;
         }
 
@@ -706,7 +708,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
       <canvas ref={canvasRef} className="w-full h-full block cursor-none" />
 
       {/* Difficulty Selection Pills at Bottom */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 p-1 bg-zinc-900/90 border border-zinc-800 rounded-2xl backdrop-blur-md z-20 pointer-events-auto shadow-2xl">
+      <div className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 flex max-w-[calc(100%-12px)] items-center gap-1 sm:gap-1.5 p-1 bg-zinc-900/90 border border-zinc-800 rounded-2xl backdrop-blur-md z-20 pointer-events-auto shadow-2xl">
         {(['EASY', 'MEDIUM', 'HARD'] as DifficultyLevel[]).map((lvl) => {
           const cfg = DIFFICULTY_CONFIG[lvl];
           const isSelected = selectedDifficulty === lvl;
@@ -715,14 +717,14 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
               key={lvl}
               type="button"
               onClick={() => changeDifficulty(lvl)}
-              className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer ${
+              className={`min-w-0 px-2 sm:px-3 py-1.5 rounded-xl font-mono text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
                 isSelected
                   ? 'bg-zinc-800 text-white shadow-md border border-zinc-600'
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
               }`}
             >
               <span style={{ color: isSelected ? cfg.color : undefined }}>{cfg.label}</span>
-              <span className="ml-1 text-[10px] opacity-75">{cfg.multiplierBadge}</span>
+              <span className="ml-1 hidden text-[10px] opacity-75 sm:inline">{cfg.multiplierBadge}</span>
             </button>
           );
         })}
