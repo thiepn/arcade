@@ -3,6 +3,17 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { LaserRopeHud } from '../components/LaserRopeHud';
+import {
+  drawLaserRopeArenaFrame,
+  drawLaserRopeBackground,
+  drawLaserRopeBeam,
+  drawLaserRopeHub,
+  drawLaserRopeOrb,
+  drawLaserRopePlayerNode,
+  getLaserRopeArenaMetrics,
+  getLaserRopeBeamColor,
+} from '../lib/laserRopePresentation';
 
 interface OrbItem {
   id: number;
@@ -31,6 +42,8 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
     multiplier: 1,
     feverPercent: 0,
     hasShield: false,
+    laserMode: 'LOW' as 'LOW' | 'HIGH' | 'DUAL',
+    isFeverActive: false,
   });
 
   const gameStateRef = useRef({
@@ -452,193 +465,113 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
       }
 
       // ==========================================
-      // LIGHTWEIGHT HIGH-FPS RENDER
+      // PHASE A — NEON ARENA PRESENTATION
       // ==========================================
-      ctx.fillStyle = '#050508';
-      ctx.fillRect(0, 0, w, h);
+      const presentationTime = performance.now() / 1000;
+      const arenaMetrics = getLaserRopeArenaMetrics(w, h);
+      const beamColor = getLaserRopeBeamColor(
+        state.laserMode,
+        state.isFeverActive,
+      );
 
-      // Arena Floor
+      drawLaserRopeBackground(
+        ctx,
+        w,
+        h,
+        presentationTime,
+        state.isFeverActive,
+      );
+
       ctx.save();
-      ctx.translate(centerX, groundY);
+      ctx.translate(arenaMetrics.centerX, arenaMetrics.groundY);
+      drawLaserRopeArenaFrame(
+        ctx,
+        arenaMetrics,
+        presentationTime,
+        state.isFeverActive,
+        state.laserMode,
+      );
 
-      // Floor Oval
-      ctx.fillStyle = '#0F172A';
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 165, 58, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      // Floor Ring
-      ctx.strokeStyle = state.isFeverActive ? 'rgba(250, 204, 21, 0.6)' : 'rgba(6, 182, 212, 0.4)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 85, 30, 0, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Jump Target Ring
-      ctx.strokeStyle = state.laserMode === 'HIGH' ? 'rgba(168, 85, 247, 0.5)' : 'rgba(244, 63, 94, 0.5)';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.ellipse(0, 32, 28, 10, 0, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Render Collectible Orbs
+      // Collectibles now read as illuminated arena objects instead of flat dots.
       for (const orb of state.orbs) {
         const floatY = -orb.y + Math.sin(orb.pulse) * 4;
-        let col = '#FACC15';
-        if (orb.type === 'gem') col = '#38BDF8';
-        if (orb.type === 'shield') col = '#A855F7';
-
-        ctx.fillStyle = col;
-        ctx.beginPath();
-        ctx.arc(orb.x, floatY, 8, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#FFFFFF';
-        ctx.beginPath();
-        ctx.arc(orb.x, floatY, 3, 0, Math.PI * 2);
-        ctx.fill();
+        let color = '#FACC15';
+        if (orb.type === 'gem') color = '#38BDF8';
+        if (orb.type === 'shield') color = '#A855F7';
+        drawLaserRopeOrb(ctx, orb.x, floatY, color, orb.pulse);
       }
 
-      // Render Rotating Lasers
-      const beamRadius = 155;
       const activeBeams =
         state.beamsCount === 1
           ? [state.sweepAngle]
           : [state.sweepAngle, state.sweepAngle + Math.PI];
+      const laserHeightOffset =
+        state.laserMode === 'HIGH'
+          ? -Math.max(24, arenaMetrics.radiusY * 0.5)
+          : 0;
 
-      const laserHeightOffset = state.laserMode === 'HIGH' ? -28 : 0;
-
-      for (const bAngle of activeBeams) {
-        const lx = Math.cos(bAngle) * beamRadius;
-        const ly = Math.sin(bAngle) * (beamRadius * 0.35) + laserHeightOffset;
-
-        // Laser line
-        ctx.strokeStyle = state.isFeverActive
-          ? '#FACC15'
-          : state.laserMode === 'HIGH'
-          ? '#A855F7'
-          : '#EF4444';
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        ctx.moveTo(0, -8 + laserHeightOffset);
-        ctx.quadraticCurveTo(lx * 0.5, ly * 0.5 + 6, lx, ly);
-        ctx.stroke();
-
-        // Inner Core
-        ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(0, -8 + laserHeightOffset);
-        ctx.quadraticCurveTo(lx * 0.5, ly * 0.5 + 6, lx, ly);
-        ctx.stroke();
-
-        // Emitter tip
-        ctx.fillStyle = '#FFFFFF';
-        ctx.beginPath();
-        ctx.arc(lx, ly, 5, 0, Math.PI * 2);
-        ctx.fill();
+      for (const beamAngle of activeBeams) {
+        const endX = Math.cos(beamAngle) * arenaMetrics.beamRadius;
+        const endY =
+          Math.sin(beamAngle) * arenaMetrics.radiusY * 0.94 +
+          laserHeightOffset;
+        drawLaserRopeBeam(
+          ctx,
+          endX,
+          endY,
+          laserHeightOffset,
+          beamColor,
+          presentationTime,
+          state.isFeverActive ? 1.12 : 1,
+        );
       }
 
-      // Center Hub
-      ctx.fillStyle = '#1E293B';
-      ctx.fillRect(-10, -36, 20, 36);
-      ctx.fillStyle = state.isFeverActive ? '#FACC15' : '#EF4444';
-      ctx.beginPath();
-      ctx.arc(0, -36, 8, 0, Math.PI * 2);
-      ctx.fill();
+      drawLaserRopeHub(
+        ctx,
+        presentationTime,
+        beamColor,
+        state.isFeverActive,
+      );
 
-      // Player Shadow
-      const shadowScale = Math.max(0.3, 1 - state.playerY / 140);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-      ctx.beginPath();
-      ctx.ellipse(0, 28, (state.isSliding ? 26 : 18) * shadowScale, 8 * shadowScale, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Runner Avatar
       if (state.isAlive) {
-        const py = -state.playerY + 28;
-        ctx.save();
-        ctx.translate(0, py - (state.isSliding ? 8 : 18));
-
-        // Shield aura
-        if (state.hasShield) {
-          ctx.strokeStyle = '#A855F7';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(0, 0, 22, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-
-        if (state.isSliding) {
-          // Sliding / Ducking pose
-          ctx.fillStyle = state.isFeverActive ? '#FACC15' : '#34D399';
-          ctx.fillRect(-18, -6, 36, 12);
-          ctx.strokeStyle = '#059669';
-          ctx.lineWidth = 1.5;
-          ctx.strokeRect(-18, -6, 36, 12);
-
-          // Visor
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(4, -4, 10, 5);
-        } else {
-          // Standing / Jumping runner
-          ctx.fillStyle = state.isFeverActive ? '#FACC15' : '#38BDF8';
-          ctx.fillRect(-10, -16, 20, 24);
-          ctx.strokeStyle = '#0284C7';
-          ctx.lineWidth = 1.5;
-          ctx.strokeRect(-10, -16, 20, 24);
-
-          // Visor
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(-7, -12, 14, 6);
-
-          // Legs
-          ctx.fillStyle = '#0369A1';
-          ctx.fillRect(-8, 8, 5, 10);
-          ctx.fillRect(3, 8, 5, 10);
-
-          // Shoes
-          ctx.fillStyle = '#38BDF8';
-          ctx.fillRect(-9, 17, 7, 3);
-          ctx.fillRect(2, 17, 7, 3);
-
-          // Thruster sparks when jumping
-          if (!state.isGrounded) {
-            ctx.fillStyle = state.jumpCount === 2 ? '#F43F5E' : '#FACC15';
-            ctx.beginPath();
-            ctx.moveTo(-7, 20);
-            ctx.lineTo(-5, 28);
-            ctx.lineTo(-3, 20);
-            ctx.moveTo(3, 20);
-            ctx.lineTo(5, 28);
-            ctx.lineTo(7, 20);
-            ctx.fill();
-          }
-        }
-
-        ctx.restore();
+        drawLaserRopePlayerNode(ctx, {
+          playerY: state.playerY,
+          isSliding: state.isSliding,
+          isGrounded: state.isGrounded,
+          jumpCount: state.jumpCount,
+          hasShield: state.hasShield,
+          isFeverActive: state.isFeverActive,
+          time: presentationTime,
+        });
       }
 
-      // Particles
-      for (const p of state.particles) {
-        ctx.fillStyle = p.color;
+      for (const particle of state.particles) {
+        const alpha = Math.max(0, Math.min(1, particle.life / particle.maxLife));
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = particle.color;
+        ctx.shadowColor = particle.color;
+        ctx.shadowBlur = 6;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
         ctx.fill();
       }
-
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
       ctx.restore();
 
-      // Popups
+      // Existing gameplay messaging remains above the upgraded arena.
       for (const pop of state.popups) {
+        const popupAlpha = Math.max(0, Math.min(1, pop.life * 1.4));
+        ctx.globalAlpha = popupAlpha;
         ctx.fillStyle = pop.color;
-        ctx.font = 'bold 14px monospace';
+        ctx.shadowColor = pop.color;
+        ctx.shadowBlur = 8;
+        ctx.font = 'bold 13px ui-monospace, monospace';
         ctx.textAlign = 'center';
         ctx.fillText(pop.text, pop.x, pop.y);
       }
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
 
       // Sync HUD
       setHudState((prev) => {
@@ -653,7 +586,9 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
           prev.rpm === rpm &&
           prev.multiplier === state.multiplier &&
           prev.feverPercent === feverPercent &&
-          prev.hasShield === state.hasShield
+          prev.hasShield === state.hasShield &&
+          prev.laserMode === state.laserMode &&
+          prev.isFeverActive === state.isFeverActive
         ) {
           return prev;
         }
@@ -664,6 +599,8 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
           multiplier: state.multiplier,
           feverPercent,
           hasShield: state.hasShield,
+          laserMode: state.laserMode,
+          isFeverActive: state.isFeverActive,
         };
       });
 
@@ -675,43 +612,12 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
     <div
       ref={containerRef}
       id="laser-rope-container"
-      className="relative w-full h-full min-h-[440px] flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none"
+      className="relative w-full h-full min-h-0 flex flex-col items-center justify-center bg-[#030712] select-none overflow-hidden touch-none"
     >
-      {/* Top HUD */}
-      <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 pointer-events-none gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
-          <div className="px-2.5 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-pink-400 font-mono text-xs font-black backdrop-blur-md">
-            STREAK: {hudState.jumpStreak}
-          </div>
+      {/* Phase A HUD */}
+      <LaserRopeHud state={hudState} />
 
-          {hudState.multiplier > 1 && (
-            <div className="px-2 py-1 rounded-xl bg-amber-500/20 border border-amber-500/50 text-amber-300 font-mono text-xs font-black">
-              {hudState.multiplier}x
-            </div>
-          )}
-
-          {hudState.hasShield && (
-            <div className="px-2 py-1 rounded-xl bg-purple-500/20 border border-purple-500/50 text-purple-300 font-mono text-xs font-black">
-              🛡️ SHIELD
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="px-2.5 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-zinc-400 font-mono text-xs font-bold backdrop-blur-md">
-            SPEED: <span className="text-white">{hudState.rpm} RPM</span>
-          </div>
-
-          <div className="w-20 bg-zinc-800 rounded-full h-2.5 overflow-hidden border border-zinc-700">
-            <div
-              className="bg-amber-400 h-full transition-all duration-150"
-              style={{ width: `${hudState.feverPercent}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <canvas ref={canvasRef} className="w-full h-full block" />
+      <canvas ref={canvasRef} className="w-full h-full min-h-0 block touch-none" />
 
       {/* On-screen Jump & Slide Controls */}
       <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between pointer-events-auto z-10">
