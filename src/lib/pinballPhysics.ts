@@ -161,11 +161,12 @@ export const resolveCircleCircle = (
     const speed = Math.hypot(body.vx, body.vy);
     dx = speed > 0.0001 ? -body.vx / speed : 0;
     dy = speed > 0.0001 ? -body.vy / speed : -1;
-    distance = 1;
+    distance = 0;
   }
 
-  const normalX = dx / distance;
-  const normalY = dy / distance;
+  const normalLength = Math.hypot(dx, dy) || 1;
+  const normalX = dx / normalLength;
+  const normalY = dy / normalLength;
   const penetration = minimumDistance - distance;
   body.x += normalX * (penetration + 0.25);
   body.y += normalY * (penetration + 0.25);
@@ -196,7 +197,7 @@ export const resolveCircleSegment = (
 
   let normalX = body.x - closest.x;
   let normalY = body.y - closest.y;
-  let distance = Math.hypot(normalX, normalY);
+  const distance = Math.hypot(normalX, normalY);
   if (distance < 0.0001) {
     const segmentX = bx - ax;
     const segmentY = by - ay;
@@ -207,7 +208,6 @@ export const resolveCircleSegment = (
       normalX *= -1;
       normalY *= -1;
     }
-    distance = 1;
   } else {
     normalX /= distance;
     normalY /= distance;
@@ -245,27 +245,31 @@ export const resolveCircleAabb = (
 ): PinballCollision | null => {
   const nearX = clamp(body.x, x, x + width);
   const nearY = clamp(body.y, y, y + height);
-  let dx = body.x - nearX;
-  let dy = body.y - nearY;
-  let distance = Math.hypot(dx, dy);
-
+  const dx = body.x - nearX;
+  const dy = body.y - nearY;
+  const distance = Math.hypot(dx, dy);
   if (distance >= body.radius) return null;
 
+  let normalX: number;
+  let normalY: number;
+  let penetration: number;
+
   if (distance < 0.0001) {
-    const distances = [
-      { value: Math.abs(body.x - x), nx: -1, ny: 0 },
-      { value: Math.abs(x + width - body.x), nx: 1, ny: 0 },
-      { value: Math.abs(body.y - y), nx: 0, ny: -1 },
-      { value: Math.abs(y + height - body.y), nx: 0, ny: 1 },
-    ].sort((a, b) => a.value - b.value);
-    dx = distances[0].nx;
-    dy = distances[0].ny;
-    distance = 1;
+    const edge = [
+      { value: body.x - x, nx: -1, ny: 0 },
+      { value: x + width - body.x, nx: 1, ny: 0 },
+      { value: body.y - y, nx: 0, ny: -1 },
+      { value: y + height - body.y, nx: 0, ny: 1 },
+    ].sort((a, b) => a.value - b.value)[0];
+    normalX = edge.nx;
+    normalY = edge.ny;
+    penetration = body.radius + Math.max(0, edge.value);
+  } else {
+    normalX = dx / distance;
+    normalY = dy / distance;
+    penetration = body.radius - distance;
   }
 
-  const normalX = dx / distance;
-  const normalY = dy / distance;
-  const penetration = body.radius - distance;
   body.x += normalX * (penetration + 0.25);
   body.y += normalY * (penetration + 0.25);
 
