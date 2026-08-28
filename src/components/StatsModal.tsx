@@ -57,6 +57,7 @@ import {
   LeaderboardDivision,
   LeaderboardEntry,
   GlobalOverallEntry,
+  LEADERBOARD_UPDATED_EVENT,
 } from '../lib/leaderboards';
 import {
   ACHIEVEMENTS_REGISTRY,
@@ -112,6 +113,12 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const setSafeTimeout = useSafeTimeout();
+
+  useEffect(() => {
+    const handleLeaderboardUpdate = () => setRefreshTick((tick) => tick + 1);
+    window.addEventListener(LEADERBOARD_UPDATED_EVENT, handleLeaderboardUpdate);
+    return () => window.removeEventListener(LEADERBOARD_UPDATED_EVENT, handleLeaderboardUpdate);
+  }, []);
 
   // Achievement filters & search
   const [achievementFilter, setAchievementFilter] = useState<
