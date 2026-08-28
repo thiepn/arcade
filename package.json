@@ -26,6 +26,7 @@
     "quality:puck": "bun scripts/audit-air-hockey-layout.ts",
     "quality:rail": "bun scripts/audit-neon-rail-shift.ts",
     "quality:release32": "bun scripts/audit-release-32.ts",
+    "quality:hardening": "bun scripts/audit-repository-hardening.ts",
     "worker:dev": "wrangler dev",
     "worker:check": "tsc -p worker/tsconfig.json --noEmit && wrangler deploy --dry-run --outdir .wrangler-dist",
     "worker:deploy": "wrangler deploy",

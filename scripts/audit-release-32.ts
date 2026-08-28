@@ -81,6 +81,7 @@ const requiredQualityGates = [
   'quality:puck',
   'quality:rail',
   'quality:release32',
+  'quality:hardening',
 ] as const;
 for (const gate of requiredQualityGates) {
   assert(Boolean(pkg.scripts?.[gate]), `package.json is missing ${gate}`);
@@ -102,6 +103,7 @@ const requiredAuditFiles = [
   'scripts/audit-knife-target-aim.ts',
   'scripts/audit-air-hockey-layout.ts',
   'scripts/audit-neon-rail-shift.ts',
+  'scripts/audit-repository-hardening.ts',
 ];
 for (const path of requiredAuditFiles) {
   assert(existsSync(join(root, path)), `missing permanent regression audit ${path}`);
@@ -131,4 +133,4 @@ if (errors.length) {
 
 console.log('FINAL 32-GAME RELEASE / REGRESSION AUDIT — PASS');
 console.log('32 source modules / 32 lazy registry entries / 32 Worker rules are in exact parity.');
-console.log('All game contracts, permanent regression gates, roster metadata, mobile/MA4 counts, and cleanup constraints are certified.');
+console.log('All game contracts, permanent regression gates, repository hardening, roster metadata, mobile/MA4 counts, and cleanup constraints are certified.');
