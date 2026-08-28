@@ -26,6 +26,13 @@ const registeredFiles = new Set(
     .filter((value): value is string => Boolean(value)),
 );
 
+const controlHints = new Map<string, string>();
+for (const component of registeredComponents) {
+  const escaped = component.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = new RegExp(`controlsHint:\\s*'([^']+)'[\\s\\S]{0,240}?component:\\s*${escaped}\\s*,`).exec(registrySource);
+  if (match) controlHints.set(component, match[1]);
+}
+
 const errors: string[] = [];
 const warnings: string[] = [];
 
@@ -47,10 +54,13 @@ type Row = {
   score: boolean;
   keyboard: boolean;
   pointer: boolean;
+  mouse: boolean;
   touch: boolean;
+  click: boolean;
   raf: boolean;
   timers: number;
   listeners: number;
+  hint: string;
 };
 
 const rows: Row[] = [];
@@ -68,6 +78,8 @@ function listenerEvents(source: string, method: 'addEventListener' | 'removeEven
 
 for (const file of files) {
   const source = readFileSync(join(gamesDir, file), 'utf8');
+  const component = [...importedComponents.entries()].find(([, importedFile]) => importedFile === file)?.[0];
+  const hint = component ? (controlHints.get(component) ?? '') : '';
   const addEvents = listenerEvents(source, 'addEventListener');
   const removeEvents = listenerEvents(source, 'removeEventListener');
 
@@ -101,27 +113,45 @@ for (const file of files) {
   if (!hasGameOver) errors.push(`${file}: does not expose/use onGameOver.`);
   if (!hasScore) errors.push(`${file}: does not expose/use onScoreUpdate.`);
 
+  const keyboard = /keydown|keyup|onKeyDown|onKeyUp/.test(source);
+  const pointer = /pointerdown|pointermove|pointerup|pointercancel|onPointer/.test(source);
+  const mouse = /mousedown|mousemove|mouseup|onMouse/.test(source);
+  const touch = /touchstart|touchmove|touchend|touchcancel|onTouch/.test(source);
+  const click = /onClick/.test(source);
+
+  const promisesTouch = /touch|tap|swipe/i.test(hint);
+  const promisesContinuousTouch = promisesTouch && /drag|swipe|steer|draw/i.test(hint);
+  if (promisesTouch && !(pointer || touch || click)) {
+    errors.push(`${file}: registry promises touch/tap input (${JSON.stringify(hint)}) but no pointer/touch/click handler is present.`);
+  }
+  if (promisesContinuousTouch && !(pointer || touch)) {
+    errors.push(`${file}: registry promises continuous touch input (${JSON.stringify(hint)}) but only mouse/click input is implemented.`);
+  }
+
   rows.push({
     file: basename(file, '.tsx'),
     pause: hasPause,
     gameOver: hasGameOver,
     score: hasScore,
-    keyboard: /keydown|keyup|onKeyDown|onKeyUp/.test(source),
-    pointer: /pointerdown|pointermove|pointerup|onPointer|mousedown|mousemove|mouseup|onMouse|onClick/.test(source),
-    touch: /touchstart|touchmove|touchend|onTouch/.test(source),
+    keyboard,
+    pointer,
+    mouse,
+    touch,
+    click,
     raf: rafs > 0,
     timers: intervals + timeouts,
     listeners: [...addEvents.values()].reduce((sum, value) => sum + value, 0),
+    hint,
   });
 }
 
 console.log(`MA1 GAME QUALITY AUDIT — ${files.length} game source files / ${registeredComponents.size} registered games`);
 console.log('');
-console.log('Game | Pause | GameOver | Score | Keyboard | Pointer | Touch | RAF | Timers | Listeners');
-console.log('--- | --- | --- | --- | --- | --- | --- | --- | ---: | ---:');
+console.log('Game | Pause | Over | Score | Key | Pointer | Mouse | Touch | Click | RAF | Timers | Listeners | Registry controls');
+console.log('--- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---');
 for (const row of rows) {
   const yes = (value: boolean) => value ? 'yes' : '—';
-  console.log(`${row.file} | ${yes(row.pause)} | ${yes(row.gameOver)} | ${yes(row.score)} | ${yes(row.keyboard)} | ${yes(row.pointer)} | ${yes(row.touch)} | ${yes(row.raf)} | ${row.timers} | ${row.listeners}`);
+  console.log(`${row.file} | ${yes(row.pause)} | ${yes(row.gameOver)} | ${yes(row.score)} | ${yes(row.keyboard)} | ${yes(row.pointer)} | ${yes(row.mouse)} | ${yes(row.touch)} | ${yes(row.click)} | ${yes(row.raf)} | ${row.timers} | ${row.listeners} | ${row.hint || 'unregistered'}`);
 }
 
 if (warnings.length) {
