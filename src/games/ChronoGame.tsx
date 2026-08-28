@@ -2,7 +2,20 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { Heart, Zap, Sparkles, Flame, Radio } from 'lucide-react';
-import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { useGameLoop } from '../hooks/useGameLoop';
+import {
+  CHRONO_MAX_ACTIVE_WALLS,
+  CHRONO_SIDES,
+  CHRONO_TRANSITION_GRACE_FRAMES,
+  getChronoDesiredWallSpeed,
+  getChronoOpenSideForAngle,
+  getChronoSpawnInterval,
+  getChronoStageForScore,
+  getChronoWallColor,
+  isAngleInChronoGap,
+  planChronoWall,
+  selectNextChronoWall,
+} from '../lib/chronoWavePlanner';
 
 interface WallPattern {
   radius: number;
@@ -12,6 +25,8 @@ interface WallPattern {
   speed: number;
   color: string;
   cleared: boolean;
+  impactFrame: number;
+  stage: number;
 }
 
 interface Shard {
@@ -64,8 +79,11 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
     playerTurnDir: 0, // -1 (left), 1 (right), 0 (none)
     isDirectAiming: false,
     invulnerableTime: 0,
-    lastOpenSide: 0,
+    lastOpenSide: getChronoOpenSideForAngle(0),
     consecutiveSameGap: 0,
+    lastPlannedImpactFrame: 0,
+    forcedNextOpenSide: getChronoOpenSideForAngle(0) as number | null,
+    transitionGraceFrames: 0,
     gameTimeFrames: 0,
     walls: [] as WallPattern[],
     shards: [] as Shard[],
@@ -80,7 +98,7 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
     shake: 0,
     corePulse: 0,
     spawnTimer: 0,
-    spawnInterval: 85,
+    spawnInterval: getChronoSpawnInterval(1),
     rotationSpeed: 0.17, // Agile turning
     speedMultiplier: 1.0,
   });
@@ -107,9 +125,16 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
 
     if (soundEnabled) sounds.playShockwave();
 
-    // Clear all walls on screen
+    // Clear all walls and restart the planner from the player's current lane.
     const wallCount = state.walls.length;
     state.walls = [];
+    state.shards = [];
+    state.lastPlannedImpactFrame = state.gameTimeFrames;
+    state.lastOpenSide = getChronoOpenSideForAngle(state.playerAngle);
+    state.forcedNextOpenSide = state.lastOpenSide;
+    state.consecutiveSameGap = 0;
+    state.transitionGraceFrames = Math.max(state.transitionGraceFrames, 30);
+    state.spawnTimer = 0;
     const bonus = 1500 + wallCount * 500;
     state.score += bonus;
     onScoreUpdate(state.score);
@@ -130,58 +155,82 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
     }
   }, [onScoreUpdate, soundEnabled]);
 
-  const setSafeTimeout = useSafeTimeout();
-
   const spawnWall = useCallback((maxRadius: number) => {
     const state = gameStateRef.current;
-    const sides = 6;
-    
-    // Calculate next open side with strict anti-stacking rule (max 2 consecutive same-side gaps)
-    let offsetChoices = [-2, -1, 0, 1, 2];
-    
-    // If we've already had 2 of the exact same open side in a row, exclude 0 (same side) entirely!
-    if (state.consecutiveSameGap >= 2) {
-      offsetChoices = [-2, -1, 1, 2];
-    }
-
-    const offset = offsetChoices[Math.floor(Math.random() * offsetChoices.length)];
-    let openSide = (state.lastOpenSide + offset + sides) % sides;
-
-    if (openSide === state.lastOpenSide) {
-      state.consecutiveSameGap++;
-    } else {
-      state.consecutiveSameGap = 1;
-      state.lastOpenSide = openSide;
-    }
-
-    // Gap is strictly a single block / sector opening
-    const openSpan = 1;
-
-    const colors = ['#A855F7', '#38BDF8', '#34D399', '#FACC15', '#F43F5E'];
-    const color = colors[(state.stage - 1) % colors.length];
-
-    // Base speed scales smoothly with stage and continuous play time
-    const baseSpeed = 1.45 + (state.stage - 1) * 0.3;
-
-    state.walls.push({
-      radius: maxRadius,
-      sides,
-      openSide,
-      openSpan,
-      speed: baseSpeed * state.speedMultiplier,
-      color,
-      cleared: false,
+    const plan = planChronoWall({
+      currentFrame: state.gameTimeFrames,
+      spawnRadius: maxRadius,
+      playerRadius: state.playerRadius,
+      desiredSpeed: getChronoDesiredWallSpeed(state.stage, state.speedMultiplier),
+      rotationSpeed: state.rotationSpeed,
+      lastImpactFrame: state.lastPlannedImpactFrame,
+      lastOpenSide: state.lastOpenSide,
+      consecutiveSameGap: state.consecutiveSameGap,
+      forcedOpenSide: state.forcedNextOpenSide,
     });
 
-    // Spawn energy shards in safe lanes
+    state.lastPlannedImpactFrame = plan.impactFrame;
+    state.lastOpenSide = plan.openSide;
+    state.consecutiveSameGap = plan.consecutiveSameGap;
+    state.forcedNextOpenSide = null;
+
+    const color = getChronoWallColor(state.stage);
+    state.walls.push({
+      radius: maxRadius,
+      sides: CHRONO_SIDES,
+      openSide: plan.openSide,
+      openSpan: plan.openSpan,
+      speed: plan.speed,
+      color,
+      cleared: false,
+      impactFrame: plan.impactFrame,
+      stage: state.stage,
+    });
+
     if (Math.random() < 0.45) {
       state.shards.push({
-        angle: ((openSide + 0.5) / sides) * Math.PI * 2,
+        angle: ((plan.openSide + plan.openSpan * 0.5) / CHRONO_SIDES) * Math.PI * 2,
         radius: state.playerRadius,
         collected: false,
       });
     }
   }, []);
+
+  const beginStageTransition = (nextStage: number, cx: number, cy: number) => {
+    const state = gameStateRef.current;
+    if (nextStage <= state.stage) return;
+
+    state.stage = nextStage;
+    state.spawnInterval = getChronoSpawnInterval(nextStage);
+    state.walls = [];
+    state.shards = [];
+    state.spawnTimer = 0;
+    state.transitionGraceFrames = CHRONO_TRANSITION_GRACE_FRAMES;
+    state.invulnerableTime = Math.max(
+      state.invulnerableTime,
+      CHRONO_TRANSITION_GRACE_FRAMES,
+    );
+    state.lastPlannedImpactFrame = state.gameTimeFrames;
+    state.lastOpenSide = getChronoOpenSideForAngle(state.playerAngle);
+    state.forcedNextOpenSide = state.lastOpenSide;
+    state.consecutiveSameGap = 0;
+    setStage(nextStage);
+
+    const messages = [
+      '',
+      '',
+      'STAGE 2: ACCELERATING',
+      'STAGE 3: QUANTUM DENSITY',
+      'STAGE 4: HYPER DRIVE',
+    ];
+    addScorePopup(
+      messages[nextStage] ?? ('STAGE ' + nextStage),
+      cx,
+      cy - 40,
+      getChronoWallColor(nextStage),
+    );
+    if (soundEnabled) sounds.playVictory();
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -202,6 +251,9 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
     // Keyboard handlers
     const handleKeyDown = (e: KeyboardEvent) => {
       const state = gameStateRef.current;
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+      }
       if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
         state.playerTurnDir = -1;
         state.isDirectAiming = false;
@@ -299,6 +351,7 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
     isPaused,
     onUpdate: (ctx, dt, curW, curH) => {
       const state = gameStateRef.current;
+      const frameScale = Math.min(dt * 60, 2);
 
       const cx = curW * 0.5;
       const cy = curH * 0.5;
@@ -308,7 +361,7 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
 
       if (state.shake > 0) {
         ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
-        state.shake *= 0.88;
+        state.shake *= Math.pow(0.88, frameScale);
         if (state.shake < 0.2) state.shake = 0;
       }
 
@@ -316,8 +369,8 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
 
       // --- GAME LOOP UPDATE ---
       if (!isPausedRef.current && state.isAlive) {
-        state.corePulse += 0.05;
-        state.gameTimeFrames++;
+        state.corePulse += 0.05 * frameScale;
+        state.gameTimeFrames += frameScale;
 
         // Smooth continuous speed progression: gradually scales difficulty every second survived!
         const timeFactor = Math.min(1.0, state.gameTimeFrames / 5400); // 0 -> 1 over 90 seconds
@@ -326,7 +379,7 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
 
         // Invulnerability countdown
         if (state.invulnerableTime > 0) {
-          state.invulnerableTime--;
+          state.invulnerableTime = Math.max(0, state.invulnerableTime - frameScale);
         }
 
         // Direct Aiming interpolation
@@ -339,45 +392,58 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
           if (Math.abs(diff) < 0.08) {
             state.playerAngle = state.targetAngle;
           } else {
-            state.playerAngle += Math.sign(diff) * Math.min(Math.abs(diff) * 0.35, state.rotationSpeed * 1.5);
+            state.playerAngle +=
+              Math.sign(diff) *
+              Math.min(Math.abs(diff) * 0.35, state.rotationSpeed * 1.5 * frameScale);
           }
         } else if (state.playerTurnDir !== 0) {
           // Snappy button/key rotation
-          state.playerAngle += state.playerTurnDir * state.rotationSpeed;
+          state.playerAngle += state.playerTurnDir * state.rotationSpeed * frameScale;
         }
 
         // Normalise angle to 0..2PI
         if (state.playerAngle < 0) state.playerAngle += Math.PI * 2;
         if (state.playerAngle >= Math.PI * 2) state.playerAngle -= Math.PI * 2;
 
-        // Spawn timer scales with game speed
-        state.spawnTimer += state.speedMultiplier;
-        if (state.spawnTimer >= state.spawnInterval) {
-          state.spawnTimer = 0;
-          spawnWall(maxSpawnRadius);
+        // Stage transitions pause spawning, clear mixed-color walls, and force
+        // the first new opening around the player's current position.
+        if (state.transitionGraceFrames > 0) {
+          state.transitionGraceFrames = Math.max(
+            0,
+            state.transitionGraceFrames - frameScale,
+          );
+        } else {
+          state.spawnTimer += state.speedMultiplier * frameScale;
+          const activeWallCount = state.walls.filter(
+            (wall) => !wall.cleared && wall.radius > state.playerRadius,
+          ).length;
+          if (
+            state.spawnTimer >= state.spawnInterval &&
+            activeWallCount < CHRONO_MAX_ACTIVE_WALLS
+          ) {
+            state.spawnTimer = 0;
+            spawnWall(maxSpawnRadius);
+          } else if (activeWallCount >= CHRONO_MAX_ACTIVE_WALLS) {
+            state.spawnTimer = Math.min(state.spawnTimer, state.spawnInterval);
+          }
         }
 
         // Wall simulation & collision check
         for (let i = state.walls.length - 1; i >= 0; i--) {
           const wall = state.walls[i];
-          wall.radius -= wall.speed;
+          const previousRadius = wall.radius;
+          wall.radius -= wall.speed * frameScale;
 
-          // Check if wall passes player orbital ring
+          // Crossing detection cannot skip at high refresh rates or after a slow frame.
           const pR = state.playerRadius;
-          if (Math.abs(wall.radius - pR) < wall.speed * 1.25 && !wall.cleared) {
-            // Determine player's sector segment index
-            const sectorAngle = (Math.PI * 2) / wall.sides;
-            const playerSector = Math.floor(state.playerAngle / sectorAngle);
-
-            // Check if player is inside open span
-            let isSafe = false;
-            for (let span = 0; span < wall.openSpan; span++) {
-              const safeSector = (wall.openSide + span) % wall.sides;
-              if (playerSector === safeSector) {
-                isSafe = true;
-                break;
-              }
-            }
+          const crossedPlayer = previousRadius >= pR && wall.radius < pR;
+          if (crossedPlayer && !wall.cleared) {
+            const isSafe = isAngleInChronoGap(
+              state.playerAngle,
+              wall.openSide,
+              wall.openSpan,
+              wall.sides,
+            );
 
             if (isSafe) {
               // Successfully passed through the open slot!
@@ -387,26 +453,6 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
               if (soundEnabled) sounds.playScore();
               addScorePopup('+250', cx + Math.cos(state.playerAngle) * pR, cy + Math.sin(state.playerAngle) * pR, wall.color);
 
-              // Stage Progression
-              if (state.score > 2500 && state.stage === 1) {
-                state.stage = 2;
-                state.spawnInterval = 80;
-                setStage(2);
-                if (soundEnabled) sounds.playVictory();
-                addScorePopup('STAGE 2: ACCELERATING', cx, cy - 40, '#38BDF8');
-              } else if (state.score > 6000 && state.stage === 2) {
-                state.stage = 3;
-                state.spawnInterval = 70;
-                setStage(3);
-                if (soundEnabled) sounds.playVictory();
-                addScorePopup('STAGE 3: QUANTUM DENSITY', cx, cy - 40, '#FACC15');
-              } else if (state.score > 12000 && state.stage === 3) {
-                state.stage = 4;
-                state.spawnInterval = 60;
-                setStage(4);
-                if (soundEnabled) sounds.playVictory();
-                addScorePopup('STAGE 4: HYPER DRIVE', cx, cy - 40, '#F43F5E');
-              }
             } else if (state.invulnerableTime <= 0) {
               // Hit the wall!
               wall.cleared = true;
@@ -442,6 +488,11 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
           if (wall.radius < 20) {
             state.walls.splice(i, 1);
           }
+        }
+
+        const nextStage = getChronoStageForScore(state.score);
+        if (nextStage > state.stage) {
+          beginStageTransition(nextStage, cx, cy);
         }
 
         // Energy Shards collection
@@ -485,16 +536,20 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
       }
 
       // Escape Gap Telegraph Guides (Subtle luminous beam pointing to upcoming wall opening)
-      if (state.walls.length > 0) {
-        const closestWall = state.walls[0];
+      const closestWall = selectNextChronoWall(state.walls, state.playerRadius);
+      if (closestWall) {
         const sectorAngle = (Math.PI * 2) / closestWall.sides;
-        const midOpenAngle = (closestWall.openSide + closestWall.openSpan * 0.5) * sectorAngle;
+        const midOpenAngle =
+          (closestWall.openSide + closestWall.openSpan * 0.5) * sectorAngle;
 
-        ctx.strokeStyle = 'rgba(52, 211, 153, 0.12)';
-        ctx.lineWidth = 22;
+        ctx.strokeStyle = 'rgba(52, 211, 153, 0.15)';
+        ctx.lineWidth = 24;
         ctx.beginPath();
         ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + Math.cos(midOpenAngle) * maxSpawnRadius, cy + Math.sin(midOpenAngle) * maxSpawnRadius);
+        ctx.lineTo(
+          cx + Math.cos(midOpenAngle) * maxSpawnRadius,
+          cy + Math.sin(midOpenAngle) * maxSpawnRadius,
+        );
         ctx.stroke();
       }
 
@@ -608,9 +663,9 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
       // Particles
       for (let i = state.particles.length - 1; i >= 0; i--) {
         const p = state.particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life++;
+        p.x += p.vx * frameScale;
+        p.y += p.vy * frameScale;
+        p.life += frameScale;
         const alpha = Math.max(0, 1 - p.life / p.maxLife);
 
         ctx.fillStyle = p.color;
@@ -628,8 +683,8 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
       // Floating Scores
       for (let i = state.floatingScores.length - 1; i >= 0; i--) {
         const fs = state.floatingScores[i];
-        fs.y -= 1;
-        fs.life++;
+        fs.y -= 1 * frameScale;
+        fs.life += frameScale;
         const alpha = Math.max(0, 1 - fs.life / fs.maxLife);
 
         ctx.fillStyle = fs.color;
