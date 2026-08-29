@@ -36,7 +36,7 @@ for (const token of [
 for (const token of [
   "text: '⚡ DIRECTION REVERSED!'",
   "text: '⚠️ HIGH BEAM - SLIDE / DUCK!'",
-  "text: '🛡️ SHIELD READY'",
+  "text = '🛡️ SHIELD READY'",
   "text: 'SHIELD DEFLECTED!'",
 ]) {
   assert(source.includes(token), `Laser Rope inline feedback is missing: ${token}`);
