@@ -22,6 +22,16 @@ jobs:
         shell: bash
         run: |
           python scripts/patch-one-line.py
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/audit-one-line.ts')
+          s = p.read_text()
+          bad = "assert(!source.includes('onResize: (w, h) => {\n      generateLevel('), 'resize still regenerates the puzzle');"
+          good = r"assert(!/onResize:\s*\(w, h\)\s*=>\s*\{\s*generateLevel\(/.test(source), 'resize still regenerates the puzzle');"
+          if bad not in s:
+              raise SystemExit('generated resize audit anchor not found')
+          p.write_text(s.replace(bad, good, 1))
+          PY
           rm scripts/patch-one-line.py
           rm .github/workflows/patch-one-line.yml
           bun install --frozen-lockfile
