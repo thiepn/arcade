@@ -53,9 +53,14 @@ for (const token of [
   'if (state.jumpStreak >= 20) state.multiplier = 4',
   "e.code === 'Space'",
   "e.code === 'ArrowDown'",
+  'min-h-0',
+  'flex-1 sm:flex-none',
+  'const arenaRadiusX = Math.min(165',
 ]) {
-  assert(game.includes(token), `site-cohesion repair changed a core Laser Rope rule: ${token}`);
+  assert(game.includes(token), `site-cohesion repair changed or omitted a core Laser Rope rule: ${token}`);
 }
+
+assert(!game.includes('min-h-[440px]'), 'Laser Rope returned to a fixed minimum game height');
 
 if (errors.length) {
   console.error('Laser Rope Reflex shell-cohesion audit failed:');
@@ -64,5 +69,5 @@ if (errors.length) {
 }
 
 console.log(
-  'Laser Rope Reflex shell-cohesion audit passed: no start gate, no custom pause/result shell, no standalone presentation framework, correct jump/slide instructions, and the certified core mechanics remain intact.',
+  'Laser Rope Reflex shell-cohesion audit passed: no start gate, no custom pause/result shell, no standalone presentation framework, responsive shared-layout controls, correct jump/slide instructions, and the certified core mechanics remain intact.',
 );
