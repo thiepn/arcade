@@ -33,15 +33,16 @@ for (const token of [
 }
 
 for (const token of [
-  "const centerX = w / 2",
-  "const groundY = h * 0.72",
+  'const centerX = w / 2',
+  'const groundY = h * 0.72',
   '<canvas ref={canvasRef}',
   'ArrowUp',
   'ArrowDown',
-  'FEVER',
-  'STREAK',
+  'feverPercent',
+  'STREAK:',
+  'SPEED:',
   'JUMP',
-  'SLIDE',
+  'SLIDE / DUCK',
   'touch-none',
 ]) {
   assert(game.includes(token), `site-cohesive Laser Rope implementation is missing: ${token}`);
