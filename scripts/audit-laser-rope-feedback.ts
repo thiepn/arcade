@@ -19,7 +19,6 @@ for (const token of [
   'state.modeChangeTimer -= dt',
   'state.sweepAngle += effectiveSpeed * state.direction * dt',
   'const sweepSmoothing = 1 - Math.pow(0.92, dt * 60)',
-  "state.laserMode = 'HIGH';\n            // HIGH is always a single sweep.\n            state.beamsCount = 1",
   'const relPrev = Math.atan2',
   'const relCurr = Math.atan2',
   'if (state.direction > 0)',
@@ -34,6 +33,11 @@ for (const token of [
 ]) {
   assert(source.includes(token), `Laser Rope gameplay feedback/fairness rule is missing: ${token}`);
 }
+
+assert(
+  /state\.laserMode = 'HIGH';[\s\S]{0,260}state\.beamsCount = 1;/.test(source),
+  'HIGH mode does not explicitly collapse a previous DUAL pattern back to one beam',
+);
 
 for (const token of [
   "text: '⚡ DIRECTION REVERSED!'",
