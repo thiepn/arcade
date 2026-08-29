@@ -3,6 +3,11 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { RotateCcw, Award, Compass, Shuffle, Sparkles } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import {
+  getOneLineInkBudget,
+  getOneLinePhysicsStepBatch,
+  remapOneLinePoint,
+} from '../lib/oneLineRuntime';
 
 interface Point {
   x: number;
@@ -51,7 +56,6 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
   const [physicsRunning, setPhysicsRunning] = useState(false);
   const [inkPercent, setInkPercent] = useState(100);
 
-  const maxInkLength = 1100;
 
   const gameStateRef = useRef({
     ball: { x: 50, y: 50, vx: 0, vy: 0, radius: 9 },
@@ -70,6 +74,9 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
     lastBounceSoundTime: 0,
     stuckTimer: 0,
     lastPos: { x: 0, y: 0 },
+    physicsAccumulator: 0,
+    viewportWidth: 0,
+    viewportHeight: 0,
   });
 
   // Procedural dynamic level generation that produces endless, varied puzzles
@@ -78,6 +85,9 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
     state.linePoints = [];
     state.particles = [];
     state.physicsRunning = false;
+    state.physicsAccumulator = 0;
+    state.viewportWidth = w;
+    state.viewportHeight = h;
     state.stuckTimer = 0;
     isDrawingRef.current = false;
     setPhysicsRunning(false);
@@ -197,19 +207,36 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
     state.stars = stars;
   }, []);
 
+  const resetCurrentAttempt = useCallback(() => {
+    const state = gameStateRef.current;
+    state.linePoints = [];
+    state.particles = [];
+    state.physicsRunning = false;
+    state.physicsAccumulator = 0;
+    state.stuckTimer = 0;
+    state.ball = { x: state.startPos.x, y: state.startPos.y, vx: 0, vy: 0, radius: 9 };
+    state.lastPos = { x: state.startPos.x, y: state.startPos.y };
+    state.stars.forEach((star) => {
+      star.collected = false;
+    });
+    isDrawingRef.current = false;
+    setPhysicsRunning(false);
+    setStarsCount(0);
+    setInkPercent(100);
+  }, []);
+
   const handleResetLevel = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const dpr = window.devicePixelRatio || 1;
-    generateLevel(gameStateRef.current.level, canvas.width / dpr, canvas.height / dpr);
+    if (soundEnabled) sounds.playClick();
+    resetCurrentAttempt();
   };
 
   const handleRandomNewLevel = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const dpr = window.devicePixelRatio || 1;
+    const state = gameStateRef.current;
+    const w = state.viewportWidth;
+    const h = state.viewportHeight;
+    if (w <= 0 || h <= 0) return;
     if (soundEnabled) sounds.playClick();
-    generateLevel(gameStateRef.current.level, canvas.width / dpr, canvas.height / dpr);
+    generateLevel(state.level, w, h);
   };
 
   const launchBall = () => {
@@ -264,9 +291,15 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
       // Smooth 10px decimation prevents hundreds of redundant vertices, giving 60fps locked performance
       if (!last || Math.hypot(pt.x - last.x, pt.y - last.y) >= 10) {
         const curLen = calculateTotalLength(pts);
+        const rect = canvas.getBoundingClientRect();
+        const maxInkLength = getOneLineInkBudget(rect.width, rect.height);
         if (curLen < maxInkLength) {
-          pts.push(pt);
-          const remaining = Math.max(0, Math.round(((maxInkLength - curLen) / maxInkLength) * 100));
+          const segmentLength = last ? Math.hypot(pt.x - last.x, pt.y - last.y) : 0;
+          if (curLen + segmentLength <= maxInkLength) {
+            pts.push(pt);
+          }
+          const usedLength = Math.min(maxInkLength, curLen + segmentLength);
+          const remaining = Math.max(0, Math.round(((maxInkLength - usedLength) / maxInkLength) * 100));
           setInkPercent(remaining);
         }
       }
@@ -303,7 +336,52 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
     canvasRef,
     isPaused,
     onResize: (w, h) => {
-      generateLevel(gameStateRef.current.level, w, h);
+      const state = gameStateRef.current;
+      const oldW = state.viewportWidth;
+      const oldH = state.viewportHeight;
+      if (oldW <= 0 || oldH <= 0 || state.obstacles.length === 0) {
+        generateLevel(state.level, w, h);
+        return;
+      }
+      if (Math.abs(oldW - w) < 0.5 && Math.abs(oldH - h) < 0.5) return;
+
+      const sx = w / oldW;
+      const sy = h / oldH;
+      state.startPos = remapOneLinePoint(state.startPos, oldW, oldH, w, h);
+      state.target = {
+        ...remapOneLinePoint(state.target, oldW, oldH, w, h),
+        radius: state.target.radius,
+      };
+      state.ball.x *= sx;
+      state.ball.y *= sy;
+      state.ball.vx *= sx;
+      state.ball.vy *= sy;
+      state.lastPos = remapOneLinePoint(state.lastPos, oldW, oldH, w, h);
+      state.linePoints = state.linePoints.map((point) => remapOneLinePoint(point, oldW, oldH, w, h));
+      state.obstacles = state.obstacles.map((obstacle) => ({
+        ...obstacle,
+        x: obstacle.x * sx,
+        y: obstacle.y * sy,
+        w: obstacle.w * sx,
+        h: obstacle.h * sy,
+      }));
+      state.stars = state.stars.map((star) => ({
+        ...star,
+        x: star.x * sx,
+        y: star.y * sy,
+      }));
+      state.particles.forEach((particle) => {
+        particle.x *= sx;
+        particle.y *= sy;
+        particle.vx *= sx;
+        particle.vy *= sy;
+      });
+      state.viewportWidth = w;
+      state.viewportHeight = h;
+
+      const maxInkLength = getOneLineInkBudget(w, h);
+      const usedInk = calculateTotalLength(state.linePoints);
+      setInkPercent(Math.max(0, Math.round(((maxInkLength - usedInk) / maxInkLength) * 100)));
     },
     onUpdate: (ctx, dt, curW, curH) => {
       const state = gameStateRef.current;
@@ -313,25 +391,26 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
 
       if (state.shake > 0) {
         ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
-        state.shake *= 0.88;
+        state.shake *= Math.pow(0.88, Math.max(0.001, Math.min(dt, 0.05) * 60));
         if (state.shake < 0.2) state.shake = 0;
       }
 
       ctx.clearRect(-20, -20, curW + 40, curH + 40);
 
       if (!isPausedRef.current && state.physicsRunning) {
-        const subSteps = 4;
-        const gravityPerStep = 0.28 / subSteps;
+        const batch = getOneLinePhysicsStepBatch(state.physicsAccumulator, dt);
+        state.physicsAccumulator = batch.remainderSec;
         const ballR = state.ball.radius;
         const minAllowedDist = ballR + 2.5;
 
-        for (let step = 0; step < subSteps; step++) {
-          state.ball.vy += gravityPerStep;
+        for (let step = 0; step < batch.steps; step++) {
+          // 240 Hz fixed step = the original four 60 Hz substeps, independent of display refresh rate.
+          state.ball.vy += 0.28 / 4;
           state.ball.vx *= 0.9985;
           state.ball.vy *= 0.9985;
 
-          state.ball.x += state.ball.vx / subSteps;
-          state.ball.y += state.ball.vy / subSteps;
+          state.ball.x += state.ball.vx / 4;
+          state.ball.y += state.ball.vy / 4;
 
           // Highly optimized line collision with broadphase AABB culling
           const pts = state.linePoints;
@@ -430,14 +509,13 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
         );
         state.lastPos = { x: state.ball.x, y: state.ball.y };
 
-        if (travelDist < 0.6) {
-          state.stuckTimer++;
-          if (state.stuckTimer > 120) {
+        const frameScale = Math.max(0.001, Math.min(dt, 0.05) * 60);
+        if (travelDist / frameScale < 0.6) {
+          state.stuckTimer += Math.min(dt, 0.05);
+          if (state.stuckTimer > 2) {
             state.physicsRunning = false;
             setPhysicsRunning(false);
-            setSafeTimeout(() => {
-              generateLevel(state.level, curW, curH);
-            }, 300);
+            setSafeTimeout(resetCurrentAttempt, 300);
           }
         } else {
           state.stuckTimer = 0;
@@ -519,10 +597,7 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
               onGameOver(state.score);
             }, 400);
           } else {
-            setSafeTimeout(() => {
-              if (!gameStateRef.current) return;
-              generateLevel(state.level, curW, curH);
-            }, 400);
+            setSafeTimeout(resetCurrentAttempt, 400);
           }
         }
       }
@@ -619,9 +694,10 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
       // Particles
       for (let i = state.particles.length - 1; i >= 0; i--) {
         const p = state.particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life++;
+        const particleFrameScale = Math.max(0.001, Math.min(dt, 0.05) * 60);
+        p.x += p.vx * particleFrameScale;
+        p.y += p.vy * particleFrameScale;
+        p.life += particleFrameScale;
         const alpha = Math.max(0, 1 - p.life / p.maxLife);
 
         ctx.beginPath();
