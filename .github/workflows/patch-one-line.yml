@@ -9,6 +9,7 @@ permissions:
 
 jobs:
   patch:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -38,9 +39,10 @@ jobs:
           bun run quality:oneline
           bun run quality:release32
           bunx tsc --noEmit
-      - name: Commit repaired One Line
+      - name: Commit repaired One Line source
         shell: bash
         run: |
+          git restore --source=HEAD -- .github/workflows/ci.yml .github/workflows/patch-one-line.yml scripts/patch-one-line.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
