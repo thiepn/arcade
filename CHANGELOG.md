@@ -2,11 +2,17 @@
 
 ## Unreleased
 
+## 1.1.1 — 2026-08-29
+
 ### Added
 - Added repository governance and release-hardening files: CODEOWNERS, pull-request validation template, Dependabot maintenance, security disclosure policy, contribution workflow, production release checklist, and the permanent `quality:hardening` audit.
 
 ### Changed
-- Hardened GitHub Actions with read-only checkout credentials, full-SHA action pinning, stale-CI cancellation, job timeouts, and a Pages deployment chain that builds the exact `main` commit only after its CI run succeeds.
+- Hardened GitHub Actions with read-only checkout credentials, full-SHA action pinning, stale-CI cancellation, job timeouts, and a Pages deployment chain that builds and deploys the exact `main` commit only after its CI run succeeds.
+- Upgraded the GitHub Pages Actions stack to Node-24-generation releases: checkout 7.0.1, configure-pages 6.0.0, upload-pages-artifact 5.0.0, and deploy-pages 5.0.0, each pinned to an immutable commit SHA.
+- Regenerated and certified the Bun dependency lock while upgrading `@types/node` to 26.3, `lucide-react` to 1.34, and `motion` to 13.1.
+- Upgraded the build toolchain as one compatibility unit to Vite 8.2.2 and `@vitejs/plugin-react` 6.1, with frozen-install, TypeScript, Worker, root build, Pages build, MA3/MA4, and all 32-game regression gates passing before and after merge.
+- Kept the 32-game roster, scoring rules, gameplay behavior, Worker runtime behavior, and leaderboard semantics unchanged during the maintenance release.
 
 ## 1.1.0 — 2026-08-29
 
