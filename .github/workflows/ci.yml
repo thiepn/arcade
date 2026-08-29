@@ -33,6 +33,7 @@ jobs:
       - run: bun run quality:pac
       - run: bun run quality:roadcross
       - run: bun run quality:typerush
+      - run: bun run quality:oneline
       - run: bun run quality:mobile
       - run: bun run quality:rope
       - run: bun run quality:rope-feedback
