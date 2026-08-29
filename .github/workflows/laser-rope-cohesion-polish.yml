@@ -1,0 +1,35 @@
+name: One-shot Laser Rope cohesion polish
+
+on:
+  push:
+    branches:
+      - fix/laser-rope-site-cohesion
+    paths:
+      - .github/workflows/laser-rope-cohesion-polish.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: true
+      - name: Apply cohesion polish
+        run: node scripts/migrate-laser-rope-cohesion-polish.mjs
+      - name: Commit polished source and remove one-shot migration
+        run: |
+          rm .github/workflows/laser-rope-cohesion-polish.yml
+          rm scripts/migrate-laser-rope-cohesion-polish.mjs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No migration changes to commit."
+            exit 0
+          fi
+          git commit -m "Polish Laser Rope within shared arcade design"
+          git push origin HEAD:fix/laser-rope-site-cohesion
