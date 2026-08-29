@@ -18,6 +18,8 @@ for (const token of [
   'state.speedChangeTimer -= dt',
   'state.modeChangeTimer -= dt',
   'state.sweepAngle += effectiveSpeed * state.direction * dt',
+  'const sweepSmoothing = 1 - Math.pow(0.92, dt * 60)',
+  "state.laserMode = 'HIGH';\n            // HIGH is always a single sweep.\n            state.beamsCount = 1",
   'const relPrev = Math.atan2',
   'const relCurr = Math.atan2',
   'if (state.direction > 0)',
@@ -36,6 +38,7 @@ for (const token of [
 for (const token of [
   "text: '⚡ DIRECTION REVERSED!'",
   "text: '⚠️ HIGH BEAM - SLIDE / DUCK!'",
+  "text: '⚠️ DUAL BEAM - JUMP!'",
   "text = '🛡️ SHIELD READY'",
   "text: 'SHIELD DEFLECTED!'",
 ]) {
@@ -62,5 +65,5 @@ if (errors.length) {
 }
 
 console.log(
-  'Laser Rope Reflex gameplay-feedback audit passed: elapsed-time jump/sweep physics, bidirectional crossing detection, jump/slide rules, shield handling, multipliers, fever, and lightweight in-game feedback are preserved without a separate visual framework.',
+  'Laser Rope Reflex gameplay-feedback audit passed: elapsed-time jump/sweep physics, refresh-normalized speed ramping, mode-safe beam counts, bidirectional crossing detection, jump/slide rules, shield handling, and lightweight in-game feedback are preserved without a separate visual framework.',
 );

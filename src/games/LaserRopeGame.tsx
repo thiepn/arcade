@@ -31,6 +31,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
     multiplier: 1,
     feverPercent: 0,
     hasShield: false,
+    laserMode: 'LOW' as 'LOW' | 'HIGH' | 'DUAL',
   });
 
   const gameStateRef = useRef({
@@ -153,6 +154,11 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
 
       const centerX = w / 2;
       const groundY = h * 0.72;
+      // Preserve the original compact arena style, but shrink it when needed so
+      // the floor and beam emitters never clip on narrow phone canvases.
+      const arenaRadiusX = Math.min(165, Math.max(80, w / 2 - 16));
+      const arenaRadiusY = Math.max(28, arenaRadiusX * (58 / 165));
+      const beamRadius = Math.max(70, arenaRadiusX - 10);
 
       if (!isPausedRef.current && state.isAlive) {
         // Fever state
@@ -207,6 +213,9 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
           state.modeChangeTimer = Math.random() * 4.5 + 4.0;
           if (state.jumpStreak > 6 && Math.random() < 0.4) {
             state.laserMode = 'HIGH';
+            // HIGH is always a single sweep. Explicitly reset this after DUAL so
+            // the previous two-beam state cannot leak into the new mode.
+            state.beamsCount = 1;
             state.popups.push({
               id: state.nextId++,
               x: centerX,
@@ -218,6 +227,14 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
           } else if (state.jumpStreak >= 12 && Math.random() < 0.35) {
             state.laserMode = 'DUAL';
             state.beamsCount = 2;
+            state.popups.push({
+              id: state.nextId++,
+              x: centerX,
+              y: groundY - 150,
+              text: '⚠️ DUAL BEAM - JUMP!',
+              color: '#F43F5E',
+              life: 1.0,
+            });
           } else {
             state.laserMode = 'LOW';
             state.beamsCount = 1;
@@ -225,7 +242,8 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
         }
 
         const effectiveSpeed = state.isFeverActive ? state.sweepSpeed * 0.75 : state.sweepSpeed;
-        state.sweepSpeed += (state.speedTarget - state.sweepSpeed) * 0.08;
+        const sweepSmoothing = 1 - Math.pow(0.92, dt * 60);
+        state.sweepSpeed += (state.speedTarget - state.sweepSpeed) * sweepSmoothing;
 
         const prevAngle = state.sweepAngle;
         state.sweepAngle += effectiveSpeed * state.direction * dt;
@@ -466,7 +484,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
       ctx.strokeStyle = '#334155';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 165, 58, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, arenaRadiusX, arenaRadiusY, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
 
@@ -474,14 +492,22 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
       ctx.strokeStyle = state.isFeverActive ? 'rgba(250, 204, 21, 0.6)' : 'rgba(6, 182, 212, 0.4)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 85, 30, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, arenaRadiusX * 0.52, arenaRadiusY * 0.52, 0, 0, Math.PI * 2);
       ctx.stroke();
 
       // Jump Target Ring
       ctx.strokeStyle = state.laserMode === 'HIGH' ? 'rgba(168, 85, 247, 0.5)' : 'rgba(244, 63, 94, 0.5)';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.ellipse(0, 32, 28, 10, 0, 0, Math.PI * 2);
+      ctx.ellipse(
+        0,
+        arenaRadiusY * 0.55,
+        Math.max(22, arenaRadiusX * 0.17),
+        Math.max(8, arenaRadiusY * 0.17),
+        0,
+        0,
+        Math.PI * 2,
+      );
       ctx.stroke();
 
       // Render Collectible Orbs
@@ -503,7 +529,6 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
       }
 
       // Render Rotating Lasers
-      const beamRadius = 155;
       const activeBeams =
         state.beamsCount === 1
           ? [state.sweepAngle]
@@ -516,16 +541,20 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
         const ly = Math.sin(bAngle) * (beamRadius * 0.35) + laserHeightOffset;
 
         // Laser line
-        ctx.strokeStyle = state.isFeverActive
+        const beamColor = state.isFeverActive
           ? '#FACC15'
           : state.laserMode === 'HIGH'
           ? '#A855F7'
           : '#EF4444';
+        ctx.strokeStyle = beamColor;
+        ctx.shadowColor = beamColor;
+        ctx.shadowBlur = 10;
         ctx.lineWidth = 3.5;
         ctx.beginPath();
         ctx.moveTo(0, -8 + laserHeightOffset);
         ctx.quadraticCurveTo(lx * 0.5, ly * 0.5 + 6, lx, ly);
         ctx.stroke();
+        ctx.shadowBlur = 0;
 
         // Inner Core
         ctx.strokeStyle = '#FFFFFF';
@@ -653,7 +682,8 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
           prev.rpm === rpm &&
           prev.multiplier === state.multiplier &&
           prev.feverPercent === feverPercent &&
-          prev.hasShield === state.hasShield
+          prev.hasShield === state.hasShield &&
+          prev.laserMode === state.laserMode
         ) {
           return prev;
         }
@@ -664,6 +694,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
           multiplier: state.multiplier,
           feverPercent,
           hasShield: state.hasShield,
+          laserMode: state.laserMode,
         };
       });
 
@@ -675,13 +706,28 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
     <div
       ref={containerRef}
       id="laser-rope-container"
-      className="relative w-full h-full min-h-[440px] flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none"
+      className="relative w-full h-full min-h-0 flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none"
     >
       {/* Top HUD */}
       <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 pointer-events-none gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <div className="px-2.5 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-pink-400 font-mono text-xs font-black backdrop-blur-md">
             STREAK: {hudState.jumpStreak}
+          </div>
+
+          <div className="px-2 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-zinc-400 font-mono text-[10px] sm:text-xs font-black backdrop-blur-md">
+            MODE:{' '}
+            <span
+              className={
+                hudState.laserMode === 'HIGH'
+                  ? 'text-purple-300'
+                  : hudState.laserMode === 'DUAL'
+                    ? 'text-pink-400'
+                    : 'text-cyan-300'
+              }
+            >
+              {hudState.laserMode}
+            </span>
           </div>
 
           {hudState.multiplier > 1 && (
@@ -711,17 +757,17 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
         </div>
       </div>
 
-      <canvas ref={canvasRef} className="w-full h-full block" />
+      <canvas ref={canvasRef} className="w-full h-full min-h-0 block" />
 
       {/* On-screen Jump & Slide Controls */}
-      <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between pointer-events-auto z-10">
+      <div className="absolute bottom-2.5 left-2.5 right-2.5 sm:bottom-3 sm:left-4 sm:right-4 flex items-center justify-between gap-2 pointer-events-auto z-10">
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             triggerSlide();
           }}
-          className="px-6 h-12 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-purple-500/50 text-purple-300 font-black flex items-center justify-center gap-1.5 active:scale-95 shadow-lg cursor-pointer"
+          className="h-12 min-w-0 flex-1 sm:flex-none sm:px-6 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-purple-500/50 text-purple-300 font-black flex items-center justify-center gap-1.5 active:scale-95 shadow-lg cursor-pointer"
           aria-label="Slide / Duck"
         >
           <ArrowDown className="w-5 h-5" />
@@ -734,7 +780,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
             e.stopPropagation();
             triggerJump();
           }}
-          className="px-7 h-12 rounded-xl bg-pink-500 hover:bg-pink-400 text-white font-black flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-pink-500/30 cursor-pointer"
+          className="h-12 min-w-0 flex-1 sm:flex-none sm:px-7 rounded-xl bg-pink-500 hover:bg-pink-400 text-white font-black flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-pink-500/30 cursor-pointer"
           aria-label="Jump / Double Jump"
         >
           <ArrowUp className="w-5 h-5" />

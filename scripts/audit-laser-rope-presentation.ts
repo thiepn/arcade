@@ -35,18 +35,26 @@ for (const token of [
 for (const token of [
   'const centerX = w / 2',
   'const groundY = h * 0.72',
+  'const arenaRadiusX = Math.min(165',
+  'const arenaRadiusY = Math.max(28',
+  'const beamRadius = Math.max(70, arenaRadiusX - 10)',
   '<canvas ref={canvasRef}',
   'ArrowUp',
   'ArrowDown',
   'feverPercent',
   'STREAK:',
   'SPEED:',
+  "MODE:{' '}",
+  'min-h-0',
   'JUMP',
   'SLIDE / DUCK',
   'touch-none',
 ]) {
   assert(game.includes(token), `site-cohesive Laser Rope implementation is missing: ${token}`);
 }
+
+assert(!game.includes('ctx.ellipse(0, 0, 165, 58'), 'fixed-width Laser Rope arena returned');
+assert(!game.includes('const beamRadius = 155'), 'fixed Laser Rope beam radius returned');
 
 for (const token of [
   "const isLaserRope = game.id === 'laserrope'",
@@ -69,5 +77,5 @@ if (errors.length) {
 }
 
 console.log(
-  'Laser Rope Reflex site-cohesion audit passed: the game uses the shared arcade shell and inline canvas/HUD language, with no bespoke start screen, HUD framework, or game-specific pause/result UI.',
+  'Laser Rope Reflex site-cohesion audit passed: shared arcade shell, shrink-safe responsive arena, inline HUD/controls, and no bespoke start screen or game-specific pause/result UI are certified.',
 );
