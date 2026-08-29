@@ -1,110 +1,81 @@
-import { readFileSync } from 'node:fs';
-import {
-  LASER_ROPE_PHASE_A_VERSION,
-  getLaserRopeArenaMetrics,
-  getLaserRopeBeamColor,
-} from '../src/lib/laserRopePresentation';
+import { existsSync, readFileSync } from 'node:fs';
 
 const errors: string[] = [];
 const assert = (condition: boolean, message: string) => {
   if (!condition) errors.push(message);
 };
 
-assert(LASER_ROPE_PHASE_A_VERSION === 'phase-a-1', 'unexpected Laser Rope presentation version');
-assert(getLaserRopeBeamColor('LOW', false) === '#EF4444', 'low beam color changed');
-assert(getLaserRopeBeamColor('HIGH', false) === '#A855F7', 'high beam color changed');
-assert(getLaserRopeBeamColor('DUAL', false) === '#F43F5E', 'dual beam color changed');
-assert(getLaserRopeBeamColor('LOW', true) === '#FACC15', 'fever beam color changed');
+const game = readFileSync('src/games/LaserRopeGame.tsx', 'utf8');
+const shell = readFileSync('src/components/GameShell.tsx', 'utf8');
 
-for (const [width, height] of [
-  [320, 480],
-  [360, 640],
-  [390, 844],
-  [430, 932],
-  [768, 1024],
-  [900, 660],
-  [1440, 900],
-] as const) {
-  const arena = getLaserRopeArenaMetrics(width, height);
-  assert(arena.radiusX >= 100, `${width}x${height}: arena became too small`);
-  assert(arena.radiusY >= 40, `${width}x${height}: arena became too flat`);
-  assert(
-    arena.frameHalfWidth <= width / 2,
-    `${width}x${height}: arena frame overflows horizontally`,
-  );
-  assert(
-    arena.centerX - arena.frameHalfWidth >= 0 &&
-      arena.centerX + arena.frameHalfWidth <= width,
-    `${width}x${height}: arena frame is not centered inside the viewport`,
-  );
-  assert(
-    arena.groundY + arena.frameBottom <= height,
-    `${width}x${height}: arena frame overflows below the viewport`,
-  );
-  assert(
-    arena.groundY + arena.frameTop >= 0,
-    `${width}x${height}: arena frame overflows above the viewport`,
-  );
-  assert(
-    arena.beamRadius <= arena.radiusX,
-    `${width}x${height}: beam emitters escape the arena`,
-  );
+for (const removedPath of [
+  'src/components/LaserRopeStartPanel.tsx',
+  'src/components/LaserRopeHud.tsx',
+  'src/lib/laserRopePresentation.ts',
+  'src/lib/laserRopeFeedback.ts',
+]) {
+  assert(!existsSync(removedPath), `bespoke Laser Rope presentation file returned: ${removedPath}`);
 }
 
-const source = readFileSync('src/games/LaserRopeGame.tsx', 'utf8');
-const hud = readFileSync('src/components/LaserRopeHud.tsx', 'utf8');
-
 for (const token of [
-  'getLaserRopeArenaMetrics',
+  'LaserRopeStartPanel',
+  'LaserRopeHud',
+  'laserRopePresentation',
+  'laserRopeFeedback',
   'drawLaserRopeBackground',
   'drawLaserRopeArenaFrame',
-  'drawLaserRopeBeam',
-  'drawLaserRopeHub',
   'drawLaserRopePlayerNode',
-  'drawLaserRopeOrb',
-  'getLaserRopeBeamColor',
-  'LaserRopeHud',
-  '<LaserRopeHud state={hudState} />',
+  'hasStartedRef',
+  'SYSTEM LIVE',
+  'START RUN',
 ]) {
-  assert(source.includes(token), `LaserRopeGame is missing Phase A presentation token: ${token}`);
+  assert(!game.includes(token), `Laser Rope regained standalone presentation token: ${token}`);
 }
 
 for (const token of [
-  'LASER MODE',
-  'FEVER',
-  'state.score',
-  'state.jumpStreak',
-  'state.rpm',
-  'state.laserMode',
-  'state.isFeverActive',
+  'const centerX = w / 2',
+  'const groundY = h * 0.72',
+  'const arenaRadiusX = Math.min(165',
+  'const arenaRadiusY = Math.max(28',
+  'const beamRadius = Math.max(70, arenaRadiusX - 10)',
+  '<canvas ref={canvasRef}',
+  'ArrowUp',
+  'ArrowDown',
+  'feverPercent',
+  'STREAK:',
+  'SPEED:',
+  "MODE:{' '}",
+  'min-h-0',
+  'JUMP',
+  'SLIDE / DUCK',
+  'touch-none',
 ]) {
-  assert(hud.includes(token), `LaserRopeHud is missing Phase A HUD token: ${token}`);
+  assert(game.includes(token), `site-cohesive Laser Rope implementation is missing: ${token}`);
 }
 
-assert(!source.includes('const beamRadius = 155'), 'fixed prototype beam radius returned');
-assert(
-  !source.includes('ctx.ellipse(0, 0, 165, 58'),
-  'fixed prototype arena oval returned',
-);
-assert(
-  !source.includes('ctx.fillRect(-10, -16, 20, 24)'),
-  'prototype rectangular standing avatar returned',
-);
-assert(
-  !source.includes('ctx.fillRect(-18, -6, 36, 12)'),
-  'prototype rectangular sliding avatar returned',
-);
-assert(
-  source.includes('min-h-0') && source.includes('touch-none'),
-  'Laser Rope mobile-safe layout was not preserved',
-);
+assert(!game.includes('ctx.ellipse(0, 0, 165, 58'), 'fixed-width Laser Rope arena returned');
+assert(!game.includes('const beamRadius = 155'), 'fixed Laser Rope beam radius returned');
+
+for (const token of [
+  "const isLaserRope = game.id === 'laserrope'",
+  'SYSTEM PAUSED',
+  'Reflex Protocol',
+  'RUN TERMINATED',
+  'REFLEX GRADE',
+]) {
+  assert(!shell.includes(token), `GameShell regained Laser Rope-only UI: ${token}`);
+}
+
+for (const token of ['GAME PAUSED', 'How To Play', 'SESSION COMPLETE']) {
+  assert(shell.includes(token), `shared GameShell presentation is missing: ${token}`);
+}
 
 if (errors.length) {
-  console.error('Laser Rope Reflex Phase A audit failed:');
+  console.error('Laser Rope Reflex site-cohesion audit failed:');
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
 console.log(
-  'Laser Rope Reflex Phase A audit passed: responsive arena framing, layered background, multi-layer laser beams, energy-node player rendering, collectible glow, and upgraded HUD are certified.',
+  'Laser Rope Reflex site-cohesion audit passed: shared arcade shell, shrink-safe responsive arena, inline HUD/controls, and no bespoke start screen or game-specific pause/result UI are certified.',
 );

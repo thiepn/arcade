@@ -3,29 +3,6 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
-import { LaserRopeHud } from '../components/LaserRopeHud';
-import { LaserRopeStartPanel } from '../components/LaserRopeStartPanel';
-import {
-  drawLaserRopeArenaFrame,
-  drawLaserRopeBackground,
-  drawLaserRopeBeam,
-  drawLaserRopeHub,
-  drawLaserRopeOrb,
-  drawLaserRopePlayerNode,
-  getLaserRopeArenaMetrics,
-  getLaserRopeBeamColor,
-} from '../lib/laserRopePresentation';
-import {
-  drawLaserRopeFeedbackBanner,
-  drawLaserRopeFeedbackBursts,
-  drawLaserRopeScreenFlash,
-  drawLaserRopeSpawnTelegraph,
-  drawLaserRopeSweepTelegraph,
-  getLaserRopeApproachIntensity,
-  isLaserRopeNearMiss,
-  type LaserRopeFeedbackBanner,
-  type LaserRopeFeedbackBurst,
-} from '../lib/laserRopeFeedback';
 
 interface OrbItem {
   id: number;
@@ -46,8 +23,6 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
-  const hasStartedRef = useRef(false);
-  const [hasStarted, setHasStarted] = useState(false);
 
   const [hudState, setHudState] = useState({
     score: 0,
@@ -57,7 +32,6 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
     feverPercent: 0,
     hasShield: false,
     laserMode: 'LOW' as 'LOW' | 'HIGH' | 'DUAL',
-    isFeverActive: false,
   });
 
   const gameStateRef = useRef({
@@ -95,43 +69,12 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
 
     particles: [] as { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number }[],
     popups: [] as { id: number; x: number; y: number; text: string; color: string; life: number }[],
-    feedbackBursts: [] as LaserRopeFeedbackBurst[],
-    feedbackBanner: null as LaserRopeFeedbackBanner | null,
-    screenShake: 0,
-    screenFlashAlpha: 0,
-    screenFlashColor: '#FFFFFF',
-    pendingLaserMode: null as null | 'LOW' | 'HIGH' | 'DUAL',
-    pendingBeamsCount: 1,
-    telegraphTimer: 0,
-    telegraphDuration: 0.9,
-    deathPresentationTimer: 0,
     nextId: 1,
   });
-
-  const startRun = () => {
-    if (hasStartedRef.current || isPausedRef.current) return;
-    hasStartedRef.current = true;
-    setHasStarted(true);
-    const state = gameStateRef.current;
-    state.feedbackBanner = {
-      title: 'SYSTEM LIVE',
-      detail: 'LOW / DUAL = JUMP  •  HIGH = SLIDE',
-      color: '#67E8F9',
-      life: 0.85,
-      maxLife: 0.85,
-    };
-    state.screenFlashColor = '#38BDF8';
-    state.screenFlashAlpha = Math.max(state.screenFlashAlpha, 0.055);
-    if (soundEnabled) sounds.playClick();
-  };
 
   const triggerJump = () => {
     const state = gameStateRef.current;
     if (!state.isAlive || isPausedRef.current) return;
-    if (!hasStartedRef.current) {
-      startRun();
-      return;
-    }
 
     if (state.jumpCount < 2) {
       state.isSliding = false;
@@ -158,10 +101,6 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
   const triggerSlide = () => {
     const state = gameStateRef.current;
     if (!state.isAlive || isPausedRef.current) return;
-    if (!hasStartedRef.current) {
-      startRun();
-      return;
-    }
 
     if (state.isGrounded) {
       state.isSliding = true;
@@ -190,11 +129,6 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!hasStartedRef.current && e.code === 'Enter') {
-        e.preventDefault();
-        startRun();
-        return;
-      }
       if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
         e.preventDefault();
         triggerJump();
@@ -220,8 +154,13 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
 
       const centerX = w / 2;
       const groundY = h * 0.72;
+      // Preserve the original compact arena style, but shrink it when needed so
+      // the floor and beam emitters never clip on narrow phone canvases.
+      const arenaRadiusX = Math.min(165, Math.max(80, w / 2 - 16));
+      const arenaRadiusY = Math.max(28, arenaRadiusX * (58 / 165));
+      const beamRadius = Math.max(70, arenaRadiusX - 10);
 
-      if (!isPausedRef.current && state.isAlive && hasStartedRef.current) {
+      if (!isPausedRef.current && state.isAlive) {
         // Fever state
         if (state.isFeverActive) {
           state.feverDuration -= dt;
@@ -268,50 +207,43 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
           state.speedTarget = Math.min(5.4, 2.2 + state.jumpStreak * 0.1);
         }
 
-        // Mode changes are announced before activation so every new beam pattern is readable.
-        if (state.pendingLaserMode) {
-          state.telegraphTimer -= dt;
-          if (state.telegraphTimer <= 0) {
-            state.laserMode = state.pendingLaserMode;
-            state.beamsCount = state.pendingBeamsCount;
-            state.feedbackBanner = {
-              title: state.laserMode === 'HIGH' ? 'HIGH BEAM ACTIVE' : state.laserMode === 'DUAL' ? 'DUAL SWEEP ACTIVE' : 'LOW SWEEP ACTIVE',
-              detail: state.laserMode === 'HIGH' ? 'SLIDE / DUCK' : 'JUMP THE SWEEP',
-              color: state.laserMode === 'HIGH' ? '#C084FC' : '#F43F5E',
-              life: 0.52,
-              maxLife: 0.52,
-            };
-            state.pendingLaserMode = null;
-            state.telegraphTimer = 0;
-          }
-        } else {
-          state.modeChangeTimer -= dt;
-          if (state.modeChangeTimer <= 0) {
-            state.modeChangeTimer = Math.random() * 4.5 + 4.0;
-            let nextMode: 'LOW' | 'HIGH' | 'DUAL' = 'LOW';
-            let nextBeamsCount = 1;
-            if (state.jumpStreak > 6 && Math.random() < 0.4) {
-              nextMode = 'HIGH';
-            } else if (state.jumpStreak >= 12 && Math.random() < 0.35) {
-              nextMode = 'DUAL';
-              nextBeamsCount = 2;
-            }
-
-            state.pendingLaserMode = nextMode;
-            state.pendingBeamsCount = nextBeamsCount;
-            state.telegraphTimer = state.telegraphDuration;
-            state.feedbackBanner = {
-              title: nextMode === 'HIGH' ? 'INCOMING HIGH BEAM' : nextMode === 'DUAL' ? 'INCOMING DUAL SWEEP' : 'INCOMING LOW SWEEP',
-              detail: nextMode === 'HIGH' ? 'PREPARE TO SLIDE' : 'PREPARE TO JUMP',
-              color: nextMode === 'HIGH' ? '#C084FC' : '#FB7185',
-              life: state.telegraphDuration,
-              maxLife: state.telegraphDuration,
-            };
+        // Mode change (Low jump vs High slide vs Dual)
+        state.modeChangeTimer -= dt;
+        if (state.modeChangeTimer <= 0) {
+          state.modeChangeTimer = Math.random() * 4.5 + 4.0;
+          if (state.jumpStreak > 6 && Math.random() < 0.4) {
+            state.laserMode = 'HIGH';
+            // HIGH is always a single sweep. Explicitly reset this after DUAL so
+            // the previous two-beam state cannot leak into the new mode.
+            state.beamsCount = 1;
+            state.popups.push({
+              id: state.nextId++,
+              x: centerX,
+              y: groundY - 150,
+              text: '⚠️ HIGH BEAM - SLIDE / DUCK!',
+              color: '#A855F7',
+              life: 1.2,
+            });
+          } else if (state.jumpStreak >= 12 && Math.random() < 0.35) {
+            state.laserMode = 'DUAL';
+            state.beamsCount = 2;
+            state.popups.push({
+              id: state.nextId++,
+              x: centerX,
+              y: groundY - 150,
+              text: '⚠️ DUAL BEAM - JUMP!',
+              color: '#F43F5E',
+              life: 1.0,
+            });
+          } else {
+            state.laserMode = 'LOW';
+            state.beamsCount = 1;
           }
         }
 
         const effectiveSpeed = state.isFeverActive ? state.sweepSpeed * 0.75 : state.sweepSpeed;
-        state.sweepSpeed += (state.speedTarget - state.sweepSpeed) * 0.08;
+        const sweepSmoothing = 1 - Math.pow(0.92, dt * 60);
+        state.sweepSpeed += (state.speedTarget - state.sweepSpeed) * sweepSmoothing;
 
         const prevAngle = state.sweepAngle;
         state.sweepAngle += effectiveSpeed * state.direction * dt;
@@ -435,14 +367,6 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
             }
 
             if (evaded) {
-              const nearMiss = isLaserRopeNearMiss(
-                state.laserMode,
-                state.playerY,
-                state.isSliding,
-                state.slideTimer,
-              );
-              const previousMultiplier = state.multiplier;
-
               // Successfully cleared laser!
               state.jumpStreak++;
               state.feverCharge = Math.min(100, state.feverCharge + 15);
@@ -471,49 +395,6 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
               onScoreUpdate(state.score);
               if (soundEnabled) sounds.playScore();
 
-              const comboAdvanced = state.multiplier > previousMultiplier;
-              const successColor = nearMiss ? '#67E8F9' : '#34D399';
-              state.feedbackBursts.push({
-                id: state.nextId++,
-                x: 0,
-                y: -state.playerY + 10,
-                color: successColor,
-                life: nearMiss ? 0.46 : 0.34,
-                maxLife: nearMiss ? 0.46 : 0.34,
-                strength: nearMiss ? 1.05 : 0.78,
-                kind: nearMiss ? 'near-miss' : 'success',
-              });
-              state.screenShake = Math.max(state.screenShake, nearMiss ? 4.2 : 2.3);
-
-              if (nearMiss) {
-                state.feedbackBanner = {
-                  title: 'NEAR MISS',
-                  detail: '+' + earnedPts + '  •  STREAK ' + state.jumpStreak,
-                  color: '#67E8F9',
-                  life: 0.68,
-                  maxLife: 0.68,
-                };
-                if (soundEnabled) sounds.playWhoosh();
-              } else if (comboAdvanced) {
-                state.feedbackBanner = {
-                  title: 'COMBO x' + state.multiplier,
-                  detail: 'STREAK ' + state.jumpStreak + '  •  +' + earnedPts,
-                  color: '#FACC15',
-                  life: 0.82,
-                  maxLife: 0.82,
-                };
-                state.screenFlashColor = '#FACC15';
-                state.screenFlashAlpha = Math.max(state.screenFlashAlpha, 0.09);
-              } else {
-                state.feedbackBanner = {
-                  title: evasionText,
-                  detail: '+' + earnedPts + '  •  STREAK ' + state.jumpStreak,
-                  color: '#34D399',
-                  life: 0.48,
-                  maxLife: 0.48,
-                };
-              }
-
               state.popups.push({
                 id: state.nextId++,
                 x: centerX,
@@ -539,26 +420,6 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
               // Hit laser!
               if (state.hasShield) {
                 state.hasShield = false;
-                state.screenShake = Math.max(state.screenShake, 8);
-                state.screenFlashColor = '#A855F7';
-                state.screenFlashAlpha = Math.max(state.screenFlashAlpha, 0.17);
-                state.feedbackBursts.push({
-                  id: state.nextId++,
-                  x: 0,
-                  y: -state.playerY + 10,
-                  color: '#C084FC',
-                  life: 0.52,
-                  maxLife: 0.52,
-                  strength: 1.2,
-                  kind: 'shield',
-                });
-                state.feedbackBanner = {
-                  title: 'SHIELD DEFLECT',
-                  detail: 'IMPACT ABSORBED',
-                  color: '#C084FC',
-                  life: 0.78,
-                  maxLife: 0.78,
-                };
                 if (soundEnabled) sounds.playShockwave();
                 state.popups.push({
                   id: state.nextId++,
@@ -570,27 +431,6 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
                 });
               } else {
                 state.isAlive = false;
-                state.deathPresentationTimer = 0.7;
-                state.screenShake = Math.max(state.screenShake, 18);
-                state.screenFlashColor = '#EF4444';
-                state.screenFlashAlpha = Math.max(state.screenFlashAlpha, 0.38);
-                state.feedbackBursts.push({
-                  id: state.nextId++,
-                  x: 0,
-                  y: -state.playerY + 10,
-                  color: '#EF4444',
-                  life: 0.52,
-                  maxLife: 0.52,
-                  strength: 1.65,
-                  kind: 'collision',
-                });
-                state.feedbackBanner = {
-                  title: 'LASER HIT',
-                  detail: 'RUN ENDED',
-                  color: '#FB7185',
-                  life: 0.62,
-                  maxLife: 0.62,
-                };
                 if (soundEnabled) sounds.playExplosion();
 
                 for (let i = 0; i < 20; i++) {
@@ -606,7 +446,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
                   });
                 }
 
-                setSafeTimeout(() => onGameOver(state.score), 650);
+                setSafeTimeout(() => onGameOver(state.score), 400);
               }
             }
           }
@@ -629,163 +469,205 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
         }
       }
 
-      // Presentation feedback continues briefly after a fatal collision so the hit reads visually.
-      if (!isPausedRef.current) {
-        state.screenShake = Math.max(0, state.screenShake - 34 * dt);
-        state.screenFlashAlpha = Math.max(0, state.screenFlashAlpha - 1.7 * dt);
-        if (state.feedbackBanner) {
-          state.feedbackBanner.life -= dt;
-          if (state.feedbackBanner.life <= 0) state.feedbackBanner = null;
-        }
-        for (let index = state.feedbackBursts.length - 1; index >= 0; index--) {
-          state.feedbackBursts[index].life -= dt;
-          if (state.feedbackBursts[index].life <= 0) state.feedbackBursts.splice(index, 1);
-        }
-        if (!state.isAlive && state.deathPresentationTimer > 0) {
-          state.deathPresentationTimer = Math.max(0, state.deathPresentationTimer - dt);
-        }
-      }
-
       // ==========================================
-      // PHASE A — NEON ARENA PRESENTATION
+      // LIGHTWEIGHT HIGH-FPS RENDER
       // ==========================================
-      const presentationTime = performance.now() / 1000;
-      const arenaMetrics = getLaserRopeArenaMetrics(w, h);
-      const beamColor = getLaserRopeBeamColor(
-        state.laserMode,
-        state.isFeverActive,
-      );
+      ctx.fillStyle = '#050508';
+      ctx.fillRect(0, 0, w, h);
 
-      drawLaserRopeBackground(
-        ctx,
-        w,
-        h,
-        presentationTime,
-        state.isFeverActive,
-      );
-
+      // Arena Floor
       ctx.save();
-      const shakeX = state.screenShake > 0 ? (Math.random() - 0.5) * state.screenShake : 0;
-      const shakeY = state.screenShake > 0 ? (Math.random() - 0.5) * state.screenShake * 0.65 : 0;
-      ctx.translate(arenaMetrics.centerX + shakeX, arenaMetrics.groundY + shakeY);
-      drawLaserRopeArenaFrame(
-        ctx,
-        arenaMetrics,
-        presentationTime,
-        state.isFeverActive,
-        state.laserMode,
-      );
+      ctx.translate(centerX, groundY);
 
-      // Collectibles now read as illuminated arena objects instead of flat dots.
+      // Floor Oval
+      ctx.fillStyle = '#0F172A';
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, arenaRadiusX, arenaRadiusY, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Floor Ring
+      ctx.strokeStyle = state.isFeverActive ? 'rgba(250, 204, 21, 0.6)' : 'rgba(6, 182, 212, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, arenaRadiusX * 0.52, arenaRadiusY * 0.52, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Jump Target Ring
+      ctx.strokeStyle = state.laserMode === 'HIGH' ? 'rgba(168, 85, 247, 0.5)' : 'rgba(244, 63, 94, 0.5)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(
+        0,
+        arenaRadiusY * 0.55,
+        Math.max(22, arenaRadiusX * 0.17),
+        Math.max(8, arenaRadiusY * 0.17),
+        0,
+        0,
+        Math.PI * 2,
+      );
+      ctx.stroke();
+
+      // Render Collectible Orbs
       for (const orb of state.orbs) {
         const floatY = -orb.y + Math.sin(orb.pulse) * 4;
-        let color = '#FACC15';
-        if (orb.type === 'gem') color = '#38BDF8';
-        if (orb.type === 'shield') color = '#A855F7';
-        drawLaserRopeOrb(ctx, orb.x, floatY, color, orb.pulse);
+        let col = '#FACC15';
+        if (orb.type === 'gem') col = '#38BDF8';
+        if (orb.type === 'shield') col = '#A855F7';
+
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(orb.x, floatY, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(orb.x, floatY, 3, 0, Math.PI * 2);
+        ctx.fill();
       }
 
+      // Render Rotating Lasers
       const activeBeams =
         state.beamsCount === 1
           ? [state.sweepAngle]
           : [state.sweepAngle, state.sweepAngle + Math.PI];
-      const approachIntensity = getLaserRopeApproachIntensity(activeBeams);
-      drawLaserRopeSweepTelegraph(
-        ctx,
-        arenaMetrics,
-        state.laserMode,
-        approachIntensity,
-        presentationTime,
-      );
-      if (state.pendingLaserMode && state.telegraphTimer > 0) {
-        const telegraphProgress = 1 - state.telegraphTimer / state.telegraphDuration;
-        drawLaserRopeSpawnTelegraph(
-          ctx,
-          arenaMetrics,
-          state.pendingLaserMode,
-          telegraphProgress,
-          presentationTime,
-        );
-      }
 
-      const laserHeightOffset =
-        state.laserMode === 'HIGH'
-          ? -Math.max(24, arenaMetrics.radiusY * 0.5)
-          : 0;
+      const laserHeightOffset = state.laserMode === 'HIGH' ? -28 : 0;
 
-      for (const beamAngle of activeBeams) {
-        const endX = Math.cos(beamAngle) * arenaMetrics.beamRadius;
-        const endY =
-          Math.sin(beamAngle) * arenaMetrics.radiusY * 0.94 +
-          laserHeightOffset;
-        drawLaserRopeBeam(
-          ctx,
-          endX,
-          endY,
-          laserHeightOffset,
-          beamColor,
-          presentationTime,
-          state.isFeverActive ? 1.12 : 1,
-        );
-      }
+      for (const bAngle of activeBeams) {
+        const lx = Math.cos(bAngle) * beamRadius;
+        const ly = Math.sin(bAngle) * (beamRadius * 0.35) + laserHeightOffset;
 
-      drawLaserRopeHub(
-        ctx,
-        presentationTime,
-        beamColor,
-        state.isFeverActive,
-      );
-
-      if (state.isAlive) {
-        drawLaserRopePlayerNode(ctx, {
-          playerY: state.playerY,
-          isSliding: state.isSliding,
-          isGrounded: state.isGrounded,
-          jumpCount: state.jumpCount,
-          hasShield: state.hasShield,
-          isFeverActive: state.isFeverActive,
-          time: presentationTime,
-        });
-      }
-
-      drawLaserRopeFeedbackBursts(ctx, state.feedbackBursts, presentationTime);
-
-      for (const particle of state.particles) {
-        const alpha = Math.max(0, Math.min(1, particle.life / particle.maxLife));
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = particle.color;
-        ctx.shadowColor = particle.color;
-        ctx.shadowBlur = 6;
+        // Laser line
+        const beamColor = state.isFeverActive
+          ? '#FACC15'
+          : state.laserMode === 'HIGH'
+          ? '#A855F7'
+          : '#EF4444';
+        ctx.strokeStyle = beamColor;
+        ctx.shadowColor = beamColor;
+        ctx.shadowBlur = 10;
+        ctx.lineWidth = 3.5;
         ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.moveTo(0, -8 + laserHeightOffset);
+        ctx.quadraticCurveTo(lx * 0.5, ly * 0.5 + 6, lx, ly);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Inner Core
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(0, -8 + laserHeightOffset);
+        ctx.quadraticCurveTo(lx * 0.5, ly * 0.5 + 6, lx, ly);
+        ctx.stroke();
+
+        // Emitter tip
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(lx, ly, 5, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.globalAlpha = 1;
-      ctx.shadowBlur = 0;
+
+      // Center Hub
+      ctx.fillStyle = '#1E293B';
+      ctx.fillRect(-10, -36, 20, 36);
+      ctx.fillStyle = state.isFeverActive ? '#FACC15' : '#EF4444';
+      ctx.beginPath();
+      ctx.arc(0, -36, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Player Shadow
+      const shadowScale = Math.max(0.3, 1 - state.playerY / 140);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.beginPath();
+      ctx.ellipse(0, 28, (state.isSliding ? 26 : 18) * shadowScale, 8 * shadowScale, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Runner Avatar
+      if (state.isAlive) {
+        const py = -state.playerY + 28;
+        ctx.save();
+        ctx.translate(0, py - (state.isSliding ? 8 : 18));
+
+        // Shield aura
+        if (state.hasShield) {
+          ctx.strokeStyle = '#A855F7';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(0, 0, 22, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        if (state.isSliding) {
+          // Sliding / Ducking pose
+          ctx.fillStyle = state.isFeverActive ? '#FACC15' : '#34D399';
+          ctx.fillRect(-18, -6, 36, 12);
+          ctx.strokeStyle = '#059669';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(-18, -6, 36, 12);
+
+          // Visor
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(4, -4, 10, 5);
+        } else {
+          // Standing / Jumping runner
+          ctx.fillStyle = state.isFeverActive ? '#FACC15' : '#38BDF8';
+          ctx.fillRect(-10, -16, 20, 24);
+          ctx.strokeStyle = '#0284C7';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(-10, -16, 20, 24);
+
+          // Visor
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(-7, -12, 14, 6);
+
+          // Legs
+          ctx.fillStyle = '#0369A1';
+          ctx.fillRect(-8, 8, 5, 10);
+          ctx.fillRect(3, 8, 5, 10);
+
+          // Shoes
+          ctx.fillStyle = '#38BDF8';
+          ctx.fillRect(-9, 17, 7, 3);
+          ctx.fillRect(2, 17, 7, 3);
+
+          // Thruster sparks when jumping
+          if (!state.isGrounded) {
+            ctx.fillStyle = state.jumpCount === 2 ? '#F43F5E' : '#FACC15';
+            ctx.beginPath();
+            ctx.moveTo(-7, 20);
+            ctx.lineTo(-5, 28);
+            ctx.lineTo(-3, 20);
+            ctx.moveTo(3, 20);
+            ctx.lineTo(5, 28);
+            ctx.lineTo(7, 20);
+            ctx.fill();
+          }
+        }
+
+        ctx.restore();
+      }
+
+      // Particles
+      for (const p of state.particles) {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       ctx.restore();
 
-      // Existing gameplay messaging remains above the upgraded arena.
+      // Popups
       for (const pop of state.popups) {
-        const popupAlpha = Math.max(0, Math.min(1, pop.life * 1.4));
-        ctx.globalAlpha = popupAlpha;
         ctx.fillStyle = pop.color;
-        ctx.shadowColor = pop.color;
-        ctx.shadowBlur = 8;
-        ctx.font = 'bold 13px ui-monospace, monospace';
+        ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'center';
         ctx.fillText(pop.text, pop.x, pop.y);
       }
-      ctx.globalAlpha = 1;
-      ctx.shadowBlur = 0;
-
-      drawLaserRopeFeedbackBanner(ctx, w, h, state.feedbackBanner);
-      drawLaserRopeScreenFlash(
-        ctx,
-        w,
-        h,
-        state.screenFlashColor,
-        state.screenFlashAlpha,
-      );
 
       // Sync HUD
       setHudState((prev) => {
@@ -801,8 +683,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
           prev.multiplier === state.multiplier &&
           prev.feverPercent === feverPercent &&
           prev.hasShield === state.hasShield &&
-          prev.laserMode === state.laserMode &&
-          prev.isFeverActive === state.isFeverActive
+          prev.laserMode === state.laserMode
         ) {
           return prev;
         }
@@ -814,11 +695,10 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
           feverPercent,
           hasShield: state.hasShield,
           laserMode: state.laserMode,
-          isFeverActive: state.isFeverActive,
         };
       });
 
-      return state.isAlive || state.deathPresentationTimer > 0;
+      return state.isAlive;
     },
   });
 
@@ -826,14 +706,58 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
     <div
       ref={containerRef}
       id="laser-rope-container"
-      className="relative w-full h-full min-h-0 flex flex-col items-center justify-center bg-[#030712] select-none overflow-hidden touch-none"
+      className="relative w-full h-full min-h-0 flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none"
     >
-      {/* Phase A HUD */}
-      <LaserRopeHud state={hudState} />
+      {/* Top HUD */}
+      <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 pointer-events-none gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <div className="px-2.5 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-pink-400 font-mono text-xs font-black backdrop-blur-md">
+            STREAK: {hudState.jumpStreak}
+          </div>
 
-      <canvas ref={canvasRef} className="w-full h-full min-h-0 block touch-none" />
+          <div className="px-2 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-zinc-400 font-mono text-[10px] sm:text-xs font-black backdrop-blur-md">
+            MODE:{' '}
+            <span
+              className={
+                hudState.laserMode === 'HIGH'
+                  ? 'text-purple-300'
+                  : hudState.laserMode === 'DUAL'
+                    ? 'text-pink-400'
+                    : 'text-cyan-300'
+              }
+            >
+              {hudState.laserMode}
+            </span>
+          </div>
 
-      {!hasStarted && <LaserRopeStartPanel onStart={startRun} />}
+          {hudState.multiplier > 1 && (
+            <div className="px-2 py-1 rounded-xl bg-amber-500/20 border border-amber-500/50 text-amber-300 font-mono text-xs font-black">
+              {hudState.multiplier}x
+            </div>
+          )}
+
+          {hudState.hasShield && (
+            <div className="px-2 py-1 rounded-xl bg-purple-500/20 border border-purple-500/50 text-purple-300 font-mono text-xs font-black">
+              🛡️ SHIELD
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="px-2.5 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-zinc-400 font-mono text-xs font-bold backdrop-blur-md">
+            SPEED: <span className="text-white">{hudState.rpm} RPM</span>
+          </div>
+
+          <div className="w-20 bg-zinc-800 rounded-full h-2.5 overflow-hidden border border-zinc-700">
+            <div
+              className="bg-amber-400 h-full transition-all duration-150"
+              style={{ width: `${hudState.feverPercent}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <canvas ref={canvasRef} className="w-full h-full min-h-0 block" />
 
       {/* On-screen Jump & Slide Controls */}
       <div className="absolute bottom-2.5 left-2.5 right-2.5 sm:bottom-3 sm:left-4 sm:right-4 flex items-center justify-between gap-2 pointer-events-auto z-10">
@@ -843,14 +767,11 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
             e.stopPropagation();
             triggerSlide();
           }}
-          className="h-12 min-w-0 flex-1 sm:flex-none sm:min-w-[150px] sm:px-5 rounded-xl bg-[#090D18]/92 hover:bg-purple-500/10 border border-purple-400/45 text-purple-200 font-black flex items-center justify-center gap-2 active:scale-[0.97] shadow-lg shadow-purple-950/25 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300"
-          aria-label="Slide under high beams. Keyboard S or Arrow Down."
+          className="h-12 min-w-0 flex-1 sm:flex-none sm:px-6 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-purple-500/50 text-purple-300 font-black flex items-center justify-center gap-1.5 active:scale-95 shadow-lg cursor-pointer"
+          aria-label="Slide / Duck"
         >
-          <ArrowDown className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-          <span className="flex flex-col items-start font-mono-arcade leading-none">
-            <span className="text-[10px] sm:text-xs font-black">SLIDE</span>
-            <span className="mt-1 text-[7px] font-bold text-purple-300/55">S / ↓ · HIGH</span>
-          </span>
+          <ArrowDown className="w-5 h-5" />
+          <span className="font-mono text-xs font-black">SLIDE / DUCK</span>
         </button>
 
         <button
@@ -859,14 +780,11 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
             e.stopPropagation();
             triggerJump();
           }}
-          className="h-12 min-w-0 flex-1 sm:flex-none sm:min-w-[150px] sm:px-5 rounded-xl bg-cyan-300 hover:bg-cyan-200 text-slate-950 font-black flex items-center justify-center gap-2 active:scale-[0.97] shadow-lg shadow-cyan-500/20 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
-          aria-label="Jump over low and dual beams. Keyboard Space, W, or Arrow Up."
+          className="h-12 min-w-0 flex-1 sm:flex-none sm:px-7 rounded-xl bg-pink-500 hover:bg-pink-400 text-white font-black flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-pink-500/30 cursor-pointer"
+          aria-label="Jump / Double Jump"
         >
-          <ArrowUp className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-          <span className="flex flex-col items-start font-mono-arcade leading-none">
-            <span className="text-[10px] sm:text-xs font-black">JUMP</span>
-            <span className="mt-1 text-[7px] font-black text-slate-700/65">SPACE / ↑ · LOW</span>
-          </span>
+          <ArrowUp className="w-5 h-5" />
+          <span className="font-mono text-xs font-black">JUMP</span>
         </button>
       </div>
     </div>

@@ -1,71 +1,73 @@
 import { readFileSync } from 'node:fs';
-import {
-  LASER_ROPE_PHASE_B_VERSION,
-  getLaserRopeApproachIntensity,
-  isLaserRopeNearMiss,
-} from '../src/lib/laserRopeFeedback';
 
 const errors: string[] = [];
 const assert = (condition: boolean, message: string) => {
   if (!condition) errors.push(message);
 };
 
-assert(LASER_ROPE_PHASE_B_VERSION === 'phase-b-1', 'unexpected Laser Rope Phase B version');
-assert(getLaserRopeApproachIntensity([Math.PI / 2]) > 0.99, 'beam at player lane must fully telegraph');
-assert(getLaserRopeApproachIntensity([-Math.PI / 2]) < 0.01, 'opposite beam must not trigger approach warning');
-assert(
-  getLaserRopeApproachIntensity([Math.PI / 2 - 0.3]) > getLaserRopeApproachIntensity([Math.PI / 2 - 0.6]),
-  'approach warning must intensify as the beam nears the player',
-);
-
-assert(isLaserRopeNearMiss('LOW', 25, false, 0), 'low beam edge-clear should count as near miss');
-assert(isLaserRopeNearMiss('DUAL', 40, false, 0), 'dual beam edge-clear should count as near miss');
-assert(!isLaserRopeNearMiss('LOW', 60, false, 0), 'high jump must not count as near miss');
-assert(isLaserRopeNearMiss('HIGH', 0, true, 0.12), 'late slide should count as near miss');
-assert(!isLaserRopeNearMiss('HIGH', 0, true, 0.4), 'early safe slide must not count as near miss');
-
 const source = readFileSync('src/games/LaserRopeGame.tsx', 'utf8');
+
+// Preserve the actual gameplay repair without requiring a separate presentation system.
 for (const token of [
-  'pendingLaserMode',
-  'telegraphTimer',
-  'telegraphDuration',
-  'feedbackBursts',
-  'feedbackBanner',
-  'screenShake',
-  'screenFlashAlpha',
-  'deathPresentationTimer',
-  'isLaserRopeNearMiss',
-  'getLaserRopeApproachIntensity',
-  'drawLaserRopeSweepTelegraph',
-  'drawLaserRopeSpawnTelegraph',
-  'drawLaserRopeFeedbackBursts',
-  'drawLaserRopeFeedbackBanner',
-  'drawLaserRopeScreenFlash',
-  'NEAR MISS',
-  'COMBO x',
+  'const dt = Math.min(deltaSec, 0.05)',
+  'state.playerVY = state.jumpCount === 0 ? 560 : 480',
+  'const gravity = 1450',
+  'state.playerVY -= gravity * dt',
+  'state.playerY += state.playerVY * dt',
+  'state.playerVY = -750',
+  'state.speedChangeTimer -= dt',
+  'state.modeChangeTimer -= dt',
+  'state.sweepAngle += effectiveSpeed * state.direction * dt',
+  'const sweepSmoothing = 1 - Math.pow(0.92, dt * 60)',
+  'const relPrev = Math.atan2',
+  'const relCurr = Math.atan2',
+  'if (state.direction > 0)',
+  'if (state.laserMode === \'HIGH\')',
+  'evaded = state.isSliding',
+  'if (state.playerY > 24)',
+  'if (state.hasShield)',
+  'state.jumpStreak++',
+  'state.feverCharge = Math.min(100, state.feverCharge + 15)',
+  'if (state.jumpStreak >= 20) state.multiplier = 4',
+  'onScoreUpdate(state.score)',
 ]) {
-  assert(source.includes(token), `LaserRopeGame is missing Phase B feedback token: ${token}`);
+  assert(source.includes(token), `Laser Rope gameplay feedback/fairness rule is missing: ${token}`);
 }
 
 assert(
-  source.includes('state.isAlive || state.deathPresentationTimer > 0'),
-  'fatal collision feedback cannot animate after the player dies',
-);
-assert(
-  source.includes('arenaMetrics.centerX + shakeX') && source.includes('arenaMetrics.groundY + shakeY'),
-  'arena is not using screen-shake translation',
-);
-assert(
-  source.includes('state.pendingLaserMode = nextMode') && source.includes('state.laserMode = state.pendingLaserMode'),
-  'laser mode changes are not staged through a telegraph window',
+  /state\.laserMode = 'HIGH';[\s\S]{0,260}state\.beamsCount = 1;/.test(source),
+  'HIGH mode does not explicitly collapse a previous DUAL pattern back to one beam',
 );
 
+for (const token of [
+  "text: '⚡ DIRECTION REVERSED!'",
+  "text: '⚠️ HIGH BEAM - SLIDE / DUCK!'",
+  "text: '⚠️ DUAL BEAM - JUMP!'",
+  "text = '🛡️ SHIELD READY'",
+  "text: 'SHIELD DEFLECTED!'",
+]) {
+  assert(source.includes(token), `Laser Rope inline feedback is missing: ${token}`);
+}
+
+// These effects were coupled to the unwanted standalone visual redesign.
+for (const token of [
+  'drawLaserRopeFeedbackBanner',
+  'drawLaserRopeFeedbackBursts',
+  'drawLaserRopeScreenFlash',
+  'drawLaserRopeSpawnTelegraph',
+  'drawLaserRopeSweepTelegraph',
+  'feedbackBanner',
+  'feedbackBursts',
+]) {
+  assert(!source.includes(token), `standalone Laser Rope feedback framework returned: ${token}`);
+}
+
 if (errors.length) {
-  console.error('Laser Rope Reflex Phase B audit failed:');
+  console.error('Laser Rope Reflex gameplay-feedback audit failed:');
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
 console.log(
-  'Laser Rope Reflex Phase B audit passed: staged laser warnings, approach telegraphs, near-miss detection, collision bursts, combo feedback, screen shake, screen flash, and death feedback are certified.',
+  'Laser Rope Reflex gameplay-feedback audit passed: elapsed-time jump/sweep physics, refresh-normalized speed ramping, mode-safe beam counts, bidirectional crossing detection, jump/slide rules, shield handling, and lightweight in-game feedback are preserved without a separate visual framework.',
 );
