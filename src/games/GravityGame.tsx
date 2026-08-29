@@ -4,6 +4,12 @@ import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { RotateCcw, Award, Rocket, Compass, Clock, Zap, ArrowLeftRight, Navigation } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import {
+  advanceGravityBody,
+  getGravityPhysicsStepBatch,
+  getGravityResizeScale,
+  remapGravityPoint,
+} from '../lib/gravityRuntime';
 
 interface Planet {
   x: number;
@@ -82,6 +88,10 @@ export const GravityGame: React.FC<GameComponentProps> = ({
     shake: 0,
     wormholePulse: 0,
     gravityInverted: false,
+    physicsAccumulator: 0,
+    viewportWidth: 0,
+    viewportHeight: 0,
+    steerImpulsePending: false,
   });
 
   const setupLevel = useCallback((lvl: number, w: number, h: number) => {
@@ -96,6 +106,10 @@ export const GravityGame: React.FC<GameComponentProps> = ({
     const cx = w * 0.5;
     const cy = h * 0.5;
 
+    state.viewportWidth = w;
+    state.viewportHeight = h;
+    state.physicsAccumulator = 0;
+    state.steerImpulsePending = false;
     state.startPos = { x: cx, y: cy };
     state.probe = { x: cx, y: cy, vx: 0, vy: 0, radius: 8 };
     state.trail = [];
@@ -468,10 +482,10 @@ export const GravityGame: React.FC<GameComponentProps> = ({
       const pos = getPos(e);
 
       if (state.hasLaunched) {
-        // In-flight steering: steer towards click/touch point!
+        // In-flight steering is consumed by the fixed-step simulation, not pointer event frequency.
         state.isSteering = true;
         state.steerTarget = pos;
-        applyDirectionSteer(pos.x, pos.y, 1.5);
+        state.steerImpulsePending = true;
         return;
       }
 
@@ -486,7 +500,6 @@ export const GravityGame: React.FC<GameComponentProps> = ({
 
       if (state.hasLaunched && state.isSteering) {
         state.steerTarget = pos;
-        applyDirectionSteer(pos.x, pos.y, 1.0);
         return;
       }
 
@@ -498,6 +511,7 @@ export const GravityGame: React.FC<GameComponentProps> = ({
     const handleUp = () => {
       const state = gameStateRef.current;
       state.isSteering = false;
+      state.steerImpulsePending = false;
 
       if (!state.isAiming || state.hasLaunched) return;
       state.isAiming = false;
@@ -510,6 +524,7 @@ export const GravityGame: React.FC<GameComponentProps> = ({
         state.probe.vx = dx * 0.075;
         state.probe.vy = dy * 0.075;
         state.hasLaunched = true;
+        state.physicsAccumulator = 0;
         state.attempts++;
         setHasLaunched(true);
         haptics.medium();
@@ -572,7 +587,61 @@ export const GravityGame: React.FC<GameComponentProps> = ({
     canvasRef,
     isPaused,
     onResize: (w, h) => {
-      setupLevel(gameStateRef.current.level, w, h);
+      const state = gameStateRef.current;
+      const oldW = state.viewportWidth;
+      const oldH = state.viewportHeight;
+      if (oldW <= 0 || oldH <= 0 || state.planets.length === 0) {
+        setupLevel(state.level, w, h);
+        return;
+      }
+      if (Math.abs(oldW - w) < 0.5 && Math.abs(oldH - h) < 0.5) return;
+
+      const sx = w / oldW;
+      const sy = h / oldH;
+      const sizeScale = getGravityResizeScale(oldW, oldH, w, h);
+      const massScale = sizeScale * sizeScale * sizeScale;
+
+      state.startPos = remapGravityPoint(state.startPos, oldW, oldH, w, h);
+      state.aimDrag = remapGravityPoint(state.aimDrag, oldW, oldH, w, h);
+      state.steerTarget = remapGravityPoint(state.steerTarget, oldW, oldH, w, h);
+      state.target = {
+        ...remapGravityPoint(state.target, oldW, oldH, w, h),
+        radius: state.target.radius * sizeScale,
+      };
+      state.probe.x *= sx;
+      state.probe.y *= sy;
+      state.probe.vx *= sx;
+      state.probe.vy *= sy;
+      state.probe.radius *= sizeScale;
+      state.trail = state.trail.map((point) => remapGravityPoint(point, oldW, oldH, w, h));
+      state.planets = state.planets.map((planet) => {
+        const baseMass = planet.baseMass * massScale;
+        const mass = state.gravityInverted ? -baseMass : baseMass;
+        return {
+          ...planet,
+          x: planet.x * sx,
+          y: planet.y * sy,
+          radius: planet.radius * sizeScale,
+          baseMass,
+          mass,
+          type: mass < 0 ? 'repulsion' : 'gravity',
+        };
+      });
+      state.stars = state.stars.map((star) => ({
+        ...star,
+        x: star.x * sx,
+        y: star.y * sy,
+        radius: star.radius * sizeScale,
+      }));
+      state.particles.forEach((particle) => {
+        particle.x *= sx;
+        particle.y *= sy;
+        particle.vx *= sx;
+        particle.vy *= sy;
+        particle.size *= sizeScale;
+      });
+      state.viewportWidth = w;
+      state.viewportHeight = h;
     },
     onUpdate: (ctx, dt, curW, curH) => {
       const state = gameStateRef.current;
@@ -581,28 +650,34 @@ export const GravityGame: React.FC<GameComponentProps> = ({
 
       if (state.shake > 0) {
         ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
-        state.shake *= 0.88;
+        state.shake *= Math.pow(0.88, Math.max(0.001, Math.min(dt, 0.05) * 60));
         if (state.shake < 0.2) state.shake = 0;
       }
 
       ctx.clearRect(-20, -20, curW + 40, curH + 40);
 
-      state.wormholePulse += 0.05;
+      state.wormholePulse += Math.min(dt, 0.05) * 3;
 
-      if (!isPausedRef.current && state.isAlive) {
-        if (state.hasLaunched) {
-          const timeScale = isSlowMoRef.current ? 0.35 : 1.0;
+      if (!isPausedRef.current && state.isAlive && state.hasLaunched) {
+        const batch = getGravityPhysicsStepBatch(state.physicsAccumulator, dt);
+        state.physicsAccumulator = batch.remainderSec;
+        const timeScale = isSlowMoRef.current ? 0.35 : 1.0;
 
-          // Continuous touch/mouse steering if user is holding pointer down
+        for (let step = 0; step < batch.steps && state.hasLaunched && state.isAlive; step++) {
           if (state.isSteering) {
-            applyDirectionSteer(state.steerTarget.x, state.steerTarget.y, 0.6);
+            applyDirectionSteer(
+              state.steerTarget.x,
+              state.steerTarget.y,
+              state.steerImpulsePending ? 1.5 : 0.6,
+            );
+            state.steerImpulsePending = false;
           }
 
-          // Pure Newtonian gravitational & repulsor physics
           let fx = 0;
           let fy = 0;
+          let collisionPlanet: Planet | null = null;
 
-          state.planets.forEach((planet) => {
+          for (const planet of state.planets) {
             const dx = planet.x - state.probe.x;
             const dy = planet.y - state.probe.y;
             const dist = Math.hypot(dx, dy);
@@ -611,107 +686,108 @@ export const GravityGame: React.FC<GameComponentProps> = ({
               fx += (dx / dist) * force;
               fy += (dy / dist) * force;
             }
-
-            // Planet collision
             if (dist < planet.radius * 0.85 + state.probe.radius) {
-              state.hasLaunched = false;
-              state.shake = 10;
-              state.lives--;
-              setLives(state.lives);
-              haptics.impact();
-              if (soundEnabled) sounds.playExplosion();
-
-              for (let k = 0; k < 18; k++) {
-                const ang = Math.random() * Math.PI * 2;
-                state.particles.push({
-                  x: state.probe.x,
-                  y: state.probe.y,
-                  vx: Math.cos(ang) * (2 + Math.random() * 4),
-                  vy: Math.sin(ang) * (2 + Math.random() * 4),
-                  color: planet.color,
-                  size: 3.5,
-                  life: 0,
-                  maxLife: 25,
-                });
-              }
-
-              if (state.lives <= 0) {
-                state.isAlive = false;
-                haptics.gameOver();
-                onGameOver(state.score);
-              } else {
-                setSafeTimeout(() => {
-                  state.probe.x = state.startPos.x;
-                  state.probe.y = state.startPos.y;
-                  state.probe.vx = 0;
-                  state.probe.vy = 0;
-                  state.trail = [];
-                  state.boosts = 4;
-                  setBoostsRemaining(4);
-                  setHasLaunched(false);
-                }, 400);
-              }
+              collisionPlanet = planet;
+              break;
             }
-          });
-
-          // Target Wormhole gravitational pull
-          const tdx = state.target.x - state.probe.x;
-          const tdy = state.target.y - state.probe.y;
-          const tdist = Math.hypot(tdx, tdy);
-
-          if (tdist < 100) {
-            const pull = (100 - tdist) * 0.0045;
-            fx += (tdx / tdist) * pull;
-            fy += (tdy / tdist) * pull;
           }
 
-          state.probe.vx += fx * timeScale;
-          state.probe.vy += fy * timeScale;
-          state.probe.x += state.probe.vx * timeScale;
-          state.probe.y += state.probe.vy * timeScale;
+          if (collisionPlanet) {
+            state.hasLaunched = false;
+            state.physicsAccumulator = 0;
+            state.steerImpulsePending = false;
+            state.shake = 10;
+            state.lives--;
+            setLives(state.lives);
+            haptics.impact();
+            if (soundEnabled) sounds.playExplosion();
 
-          // Trail logging
+            for (let k = 0; k < 18; k++) {
+              const ang = Math.random() * Math.PI * 2;
+              state.particles.push({
+                x: state.probe.x,
+                y: state.probe.y,
+                vx: Math.cos(ang) * (2 + Math.random() * 4),
+                vy: Math.sin(ang) * (2 + Math.random() * 4),
+                color: collisionPlanet.color,
+                size: 3.5,
+                life: 0,
+                maxLife: 25,
+              });
+            }
+
+            if (state.lives <= 0) {
+              state.isAlive = false;
+              haptics.gameOver();
+              onGameOver(state.score);
+            } else {
+              setSafeTimeout(() => {
+                state.probe.x = state.startPos.x;
+                state.probe.y = state.startPos.y;
+                state.probe.vx = 0;
+                state.probe.vy = 0;
+                state.trail = [];
+                state.boosts = 4;
+                state.physicsAccumulator = 0;
+                setBoostsRemaining(4);
+                setHasLaunched(false);
+              }, 400);
+            }
+            break;
+          }
+
+          const tdx = state.target.x - state.probe.x;
+          const tdy = state.target.y - state.probe.y;
+          const tdistBefore = Math.hypot(tdx, tdy);
+          const pullRadius = 100 * getGravityResizeScale(420, 500, curW, curH);
+          if (tdistBefore > 0.001 && tdistBefore < pullRadius) {
+            const pull = (pullRadius - tdistBefore) * 0.0045;
+            fx += (tdx / tdistBefore) * pull;
+            fy += (tdy / tdistBefore) * pull;
+          }
+
+          advanceGravityBody(state.probe, fx, fy, timeScale);
+
           state.trail.push({ x: state.probe.x, y: state.probe.y });
           if (state.trail.length > 50) state.trail.shift();
 
-          // Star pickups
-          state.stars.forEach((s) => {
-            if (!s.collected) {
-              const sdist = Math.hypot(s.x - state.probe.x, s.y - state.probe.y);
-              if (sdist < s.radius + state.probe.radius) {
-                s.collected = true;
-                state.score += 500;
-                onScoreUpdate(state.score);
-                setStarsCollected((prev) => prev + 1);
-                haptics.score();
-                if (soundEnabled) sounds.playScore();
+          for (const star of state.stars) {
+            if (star.collected) continue;
+            const sdist = Math.hypot(star.x - state.probe.x, star.y - state.probe.y);
+            if (sdist < star.radius + state.probe.radius) {
+              star.collected = true;
+              state.score += 500;
+              onScoreUpdate(state.score);
+              setStarsCollected((prev) => prev + 1);
+              haptics.score();
+              if (soundEnabled) sounds.playScore();
 
-                for (let k = 0; k < 12; k++) {
-                  state.particles.push({
-                    x: s.x,
-                    y: s.y,
-                    vx: (Math.random() - 0.5) * 5,
-                    vy: (Math.random() - 0.5) * 5,
-                    color: '#FACC15',
-                    size: 3,
-                    life: 0,
-                    maxLife: 20,
-                  });
-                }
+              for (let k = 0; k < 12; k++) {
+                state.particles.push({
+                  x: star.x,
+                  y: star.y,
+                  vx: (Math.random() - 0.5) * 5,
+                  vy: (Math.random() - 0.5) * 5,
+                  color: '#FACC15',
+                  size: 3,
+                  life: 0,
+                  maxLife: 20,
+                });
               }
             }
-          });
+          }
 
-          // Target Wormhole Victory Condition
-          if (tdist < state.target.radius * 0.8 + state.probe.radius) {
+          const targetDist = Math.hypot(state.target.x - state.probe.x, state.target.y - state.probe.y);
+          if (targetDist < state.target.radius * 0.8 + state.probe.radius) {
             state.hasLaunched = false;
+            state.physicsAccumulator = 0;
+            state.steerImpulsePending = false;
             setHasLaunched(false);
 
-            const collectedStars = state.stars.filter((s) => s.collected).length;
+            const collectedStars = state.stars.filter((star) => star.collected).length;
             const sectorBonus = 1000 + collectedStars * 500;
             state.score += sectorBonus;
             onScoreUpdate(state.score);
-
             haptics.combo();
             if (soundEnabled) sounds.playSuccess();
 
@@ -730,11 +806,11 @@ export const GravityGame: React.FC<GameComponentProps> = ({
 
             state.level++;
             setSafeTimeout(() => {
-              setupLevel(state.level, curW, curH);
+              setupLevel(state.level, state.viewportWidth, state.viewportHeight);
             }, 600);
+            break;
           }
 
-          // Deep Space Void (Out of Bounds)
           if (
             state.probe.x < -80 ||
             state.probe.x > curW + 80 ||
@@ -742,6 +818,8 @@ export const GravityGame: React.FC<GameComponentProps> = ({
             state.probe.y > curH + 80
           ) {
             state.hasLaunched = false;
+            state.physicsAccumulator = 0;
+            state.steerImpulsePending = false;
             setHasLaunched(false);
             state.lives--;
             setLives(state.lives);
@@ -758,10 +836,12 @@ export const GravityGame: React.FC<GameComponentProps> = ({
                 state.probe.vy = 0;
                 state.trail = [];
                 state.boosts = 4;
+                state.physicsAccumulator = 0;
                 setBoostsRemaining(4);
                 setHasLaunched(false);
               }, 300);
             }
+            break;
           }
         }
       }
@@ -955,9 +1035,10 @@ export const GravityGame: React.FC<GameComponentProps> = ({
       // Particles
       for (let i = state.particles.length - 1; i >= 0; i--) {
         const p = state.particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life++;
+        const particleFrameScale = Math.max(0.001, Math.min(dt, 0.05) * 60);
+        p.x += p.vx * particleFrameScale;
+        p.y += p.vy * particleFrameScale;
+        p.life += particleFrameScale;
         const alpha = Math.max(0, 1 - p.life / p.maxLife);
 
         ctx.beginPath();
