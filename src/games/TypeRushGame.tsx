@@ -3,6 +3,11 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { Heart, Flame, Keyboard, Crosshair } from 'lucide-react';
 import { useSafeTimeout } from '../hooks/useGameLoop';
+import {
+  TYPE_RUSH_WORD_RENDER_INTERVAL_MS,
+  TYPE_RUSH_WPM_RENDER_INTERVAL_MS,
+  shouldSyncTypeRushUi,
+} from '../lib/typeRushRuntime';
 
 interface FallingWord {
   id: number;
@@ -240,6 +245,8 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
 
     let animationId: number;
     let lastTime = performance.now();
+    let lastWordRenderSync = lastTime;
+    let lastWpmRenderSync = lastTime;
 
     const loop = (currentTime: number) => {
       const dt = Math.min(currentTime - lastTime, 40);
@@ -252,12 +259,20 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
           state.freezeTimer -= dt / 1000;
         }
 
-        // Live WPM calculation
-        if (state.gameTime > 2) {
+        // WPM is display-only data; update it at a bounded cadence instead of every RAF.
+        if (
+          state.gameTime > 2 &&
+          shouldSyncTypeRushUi(
+            currentTime,
+            lastWpmRenderSync,
+            TYPE_RUSH_WPM_RENDER_INTERVAL_MS,
+          )
+        ) {
           const currentWpm = Math.round(
             (state.charsTyped / 5) / (state.gameTime / 60)
           );
           setWpm(currentWpm);
+          lastWpmRenderSync = currentTime;
         }
 
         // Spawning timer (scaled for reasonable pace and reading room)
@@ -296,7 +311,17 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
           }
         }
 
-        setWords([...state.words]);
+        // Falling-word motion stays time-based, while React rendering is capped at 30 Hz.
+        if (
+          shouldSyncTypeRushUi(
+            currentTime,
+            lastWordRenderSync,
+            TYPE_RUSH_WORD_RENDER_INTERVAL_MS,
+          )
+        ) {
+          setWords([...state.words]);
+          lastWordRenderSync = currentTime;
+        }
       }
 
       animationId = requestAnimationFrame(loop);
@@ -393,14 +418,7 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
           return (
             <div
               key={w.id}
-              onClick={(e) => {
-                e.stopPropagation();
-                focusDeviceKeyboard();
-                if (w.word[w.typedIndex]) {
-                  handleKeyInput(w.word[w.typedIndex]);
-                }
-              }}
-              className={`absolute -translate-x-1/2 transition-all duration-75 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl font-mono-arcade text-xs sm:text-sm font-bold tracking-wider border shadow-xl flex items-center gap-1.5 cursor-pointer select-none ${
+              className={`absolute pointer-events-none -translate-x-1/2 transition-all duration-75 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl font-mono-arcade text-xs sm:text-sm font-bold tracking-wider border shadow-xl flex items-center gap-1.5 cursor-default select-none ${
                 isTargeted
                   ? 'bg-[#18181B] border-white text-white shadow-[0_0_20px_rgba(56,189,248,0.6)] scale-105 z-20'
                   : 'bg-[#18181B]/95 border-[#27272A]'
