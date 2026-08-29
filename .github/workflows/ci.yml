@@ -31,6 +31,7 @@ jobs:
       - run: bun run quality:chrono
       - run: bun run quality:shortcuts
       - run: bun run quality:pac
+      - run: bun run quality:roadcross
       - run: bun run quality:mobile
       - run: bun run quality:rope
       - run: bun run quality:rope-feedback

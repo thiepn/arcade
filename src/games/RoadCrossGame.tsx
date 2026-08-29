@@ -3,6 +3,7 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { canAcceptRoadCrossMove, getRoadCrossBoardMetrics } from '../lib/roadCrossSupport';
 
 type LaneType = 'grass' | 'road' | 'train' | 'river';
 
@@ -86,10 +87,12 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
   const triggerMove = (dCol: number, dRow: number) => {
     const state = gameStateRef.current;
     if (!state.isAlive || isPausedRef.current) return;
+    if (!canAcceptRoadCrossMove(state.jumpProgress)) return;
 
     // Strict 1-block discrete movements
     const targetCol = Math.max(0, Math.min(COLS_COUNT - 1, state.col + dCol));
     const targetRow = Math.max(0, state.row + dRow);
+    if (targetCol === state.col && targetRow === state.row) return;
 
     if (dRow > 0) state.facing = 'up';
     else if (dRow < 0) state.facing = 'down';
@@ -147,9 +150,10 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
     const clickX = clientX - rect.left;
     const clickY = clientY - rect.top;
 
-    const boardWidth = COLS_COUNT * TILE_SIZE;
-    const offsetX = (rect.width - boardWidth) / 2;
-    const playerScreenX = offsetX + gameStateRef.current.col * TILE_SIZE + TILE_SIZE / 2;
+    const tapMetrics = getRoadCrossBoardMetrics(rect.width);
+    const playerScreenX =
+      tapMetrics.offsetX +
+      (gameStateRef.current.col * TILE_SIZE + TILE_SIZE / 2) * tapMetrics.scale;
 
     if (clickY > rect.height * 0.75 && Math.abs(clickX - playerScreenX) < 40) {
       triggerMove(0, -1);
@@ -315,7 +319,11 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
       ctx.clearRect(0, 0, w, h);
 
       const boardWidth = COLS_COUNT * TILE_SIZE;
-      const offsetX = (w - boardWidth) / 2;
+      const boardMetrics = getRoadCrossBoardMetrics(w);
+      const boardScale = boardMetrics.scale;
+      const renderOffsetX = boardMetrics.offsetX;
+      // Board drawing below runs in original world coordinates inside a horizontal fit transform.
+      const offsetX = 0;
 
       if (!isPausedRef.current && state.isAlive) {
         // Combo decay
@@ -426,7 +434,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
 
               state.popups.push({
                 id: state.nextId++,
-                x: offsetX + (coin.col + 0.5) * TILE_SIZE,
+                x: renderOffsetX + (coin.col + 0.5) * TILE_SIZE * boardScale,
                 y: h - (lane.rowY * TILE_SIZE - state.cameraY) - 10,
                 text: `+${coinPts}`,
                 color: '#FACC15',
@@ -468,6 +476,11 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
       const toScreenY = (rowY: number) => {
         return h - (rowY * TILE_SIZE - state.cameraY) - TILE_SIZE;
       };
+
+      // Keep the original 9-column world/physics, but fit it horizontally on narrow screens.
+      ctx.save();
+      ctx.translate(renderOffsetX, 0);
+      ctx.scale(boardScale, 1);
 
       // Draw Lanes
       for (const lane of state.lanes) {
@@ -594,6 +607,8 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
         ctx.restore();
       }
 
+      ctx.restore();
+
       // Laser Death Line
       const laserSY = toScreenY(state.laserRow);
       if (laserSY < h + 80) {
@@ -644,7 +659,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
-      className="relative w-full h-full min-h-[440px] flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none cursor-pointer"
+      className="relative w-full h-full min-h-0 flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none cursor-pointer"
     >
       {/* Top HUD */}
       <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 pointer-events-none gap-2 flex-wrap">
@@ -667,7 +682,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
         )}
       </div>
 
-      <canvas ref={canvasRef} className="w-full h-full block" />
+      <canvas ref={canvasRef} className="w-full h-full min-h-0 block" />
 
       {/* On-screen Directional Touch Controls for mobile & tablet */}
       <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between pointer-events-auto z-10">
