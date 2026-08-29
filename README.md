@@ -104,16 +104,19 @@ VITE_LEADERBOARD_API_URL=https://micro-arcade-leaderboards.<your-subdomain>.work
 
 Without `VITE_LEADERBOARD_API_URL`, the application never fabricates leaderboard competitors; live ranking/profile surfaces remain offline while local gameplay continues to work.
 
-## Version 1.1 release status
+## Version 1.1.1 release status
 
-Version 1.1 completes the 32-game roster and carries the permanent `quality:release32` release/regression gate alongside the MA3/MA4 hardening baseline.
+Version 1.1.1 keeps the completed 32-game roster unchanged while hardening the repository/deployment path and modernizing the certified build dependency baseline.
 
-- all 32 game implementations are code-split and loaded only when opened
+- all 32 game implementations remain code-split and loaded only when opened
 - frontend registry and Cloudflare Worker accepted-game rules remain in exact 32-game parity
-- large statistics, profile, leaderboard, game-shell, and developer surfaces are deferred
+- `quality:release32` and `quality:hardening` are permanent CI gates
+- GitHub Pages deploys only after successful `main` CI and rebuilds the exact CI-certified commit SHA
+- GitHub Actions are full-SHA pinned; the checkout/configure/upload/deploy Pages stack uses the current Node-24-generation releases
+- the certified dependency baseline includes `@types/node` 26, Lucide 1.34, Motion 13.1, Vite 8.2, and `@vitejs/plugin-react` 6.1
 - the PWA build manifest lets the service worker cache every lazy game chunk for complete offline play
 - root and per-game error boundaries provide recoverable failure isolation
 - keyboard-operable game cards, skip navigation, visible focus, modal focus trapping, zoom support, reduced motion, and safe-area handling form the accessibility baseline
 - CI enforces game parity, targeted gameplay regressions, Worker behavior, root and Pages builds, PWA integrity, lazy-loading structure, accessibility structure, and the per-chunk size ceiling
 
-The public frontend is release-ready. Live ranking surfaces still require the documented one-time Cloudflare D1/Worker provisioning and frontend API URL configuration.
+The public frontend is release-ready. Live ranking surfaces still require the documented one-time Cloudflare D1/Worker provisioning and frontend API URL configuration. GitHub-side `main` branch protection remains tracked separately because it is a repository setting rather than source-controlled configuration.
