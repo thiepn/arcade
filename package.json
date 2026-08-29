@@ -17,6 +17,7 @@
     "quality:chrono": "bun scripts/audit-chrono-reachability.ts",
     "quality:shortcuts": "bun scripts/audit-rhythm-shortcuts.ts",
     "quality:pac": "bun scripts/audit-pac-controls.ts",
+    "quality:roadcross": "bun scripts/audit-road-cross.ts",
     "quality:mobile": "bun scripts/audit-mobile-runtime.ts",
     "quality:rope": "bun scripts/audit-laser-rope-presentation.ts",
     "quality:rope-feedback": "bun scripts/audit-laser-rope-feedback.ts",
