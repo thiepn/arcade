@@ -1,0 +1,233 @@
+name: Patch Type Rush
+
+on:
+  push:
+    branches: [fix/type-rush-input-performance]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: fix/type-rush-input-performance
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+      - name: Apply Type Rush input and render-sync repair
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/games/TypeRushGame.tsx')
+          source = path.read_text()
+
+          source = source.replace(
+              "import { useSafeTimeout } from '../hooks/useGameLoop';\n",
+              "import { useSafeTimeout } from '../hooks/useGameLoop';\nimport {\n  TYPE_RUSH_WORD_RENDER_INTERVAL_MS,\n  TYPE_RUSH_WPM_RENDER_INTERVAL_MS,\n  shouldSyncTypeRushUi,\n} from '../lib/typeRushRuntime';\n",
+          )
+
+          source = source.replace(
+              "    let animationId: number;\n    let lastTime = performance.now();\n",
+              "    let animationId: number;\n    let lastTime = performance.now();\n    let lastWordRenderSync = lastTime;\n    let lastWpmRenderSync = lastTime;\n",
+          )
+
+          old_wpm = """        // Live WPM calculation
+        if (state.gameTime > 2) {
+          const currentWpm = Math.round(
+            (state.charsTyped / 5) / (state.gameTime / 60)
+          );
+          setWpm(currentWpm);
+        }
+"""
+          new_wpm = """        // WPM is display-only data; update it at a bounded cadence instead of every RAF.
+        if (
+          state.gameTime > 2 &&
+          shouldSyncTypeRushUi(
+            currentTime,
+            lastWpmRenderSync,
+            TYPE_RUSH_WPM_RENDER_INTERVAL_MS,
+          )
+        ) {
+          const currentWpm = Math.round(
+            (state.charsTyped / 5) / (state.gameTime / 60)
+          );
+          setWpm(currentWpm);
+          lastWpmRenderSync = currentTime;
+        }
+"""
+          if old_wpm not in source:
+              raise SystemExit('WPM block not found')
+          source = source.replace(old_wpm, new_wpm, 1)
+
+          old_sync = """        setWords([...state.words]);
+      }
+
+      animationId = requestAnimationFrame(loop);
+"""
+          new_sync = """        // Falling-word motion stays time-based, while React rendering is capped at 30 Hz.
+        if (
+          shouldSyncTypeRushUi(
+            currentTime,
+            lastWordRenderSync,
+            TYPE_RUSH_WORD_RENDER_INTERVAL_MS,
+          )
+        ) {
+          setWords([...state.words]);
+          lastWordRenderSync = currentTime;
+        }
+      }
+
+      animationId = requestAnimationFrame(loop);
+"""
+          if old_sync not in source:
+              raise SystemExit('RAF render-sync block not found')
+          source = source.replace(old_sync, new_sync, 1)
+
+          old_card = """            <div
+              key={w.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                focusDeviceKeyboard();
+                if (w.word[w.typedIndex]) {
+                  handleKeyInput(w.word[w.typedIndex]);
+                }
+              }}
+              className={`absolute -translate-x-1/2 transition-all duration-75 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl font-mono-arcade text-xs sm:text-sm font-bold tracking-wider border shadow-xl flex items-center gap-1.5 cursor-pointer select-none ${
+"""
+          new_card = """            <div
+              key={w.id}
+              className={`absolute pointer-events-none -translate-x-1/2 transition-all duration-75 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl font-mono-arcade text-xs sm:text-sm font-bold tracking-wider border shadow-xl flex items-center gap-1.5 cursor-default select-none ${
+"""
+          if old_card not in source:
+              raise SystemExit('click-to-autotype word card block not found')
+          source = source.replace(old_card, new_card, 1)
+
+          path.write_text(source)
+
+          Path('src/lib/typeRushRuntime.ts').write_text("""export const TYPE_RUSH_WORD_RENDER_HZ = 30;
+export const TYPE_RUSH_WORD_RENDER_INTERVAL_MS = 1000 / TYPE_RUSH_WORD_RENDER_HZ;
+export const TYPE_RUSH_WPM_RENDER_INTERVAL_MS = 250;
+
+export const shouldSyncTypeRushUi = (
+  currentTimeMs: number,
+  lastSyncTimeMs: number,
+  intervalMs: number,
+) => currentTimeMs - lastSyncTimeMs >= intervalMs;
+""")
+
+          Path('scripts/audit-type-rush.ts').write_text("""import { readFileSync } from 'node:fs';
+import {
+  TYPE_RUSH_WORD_RENDER_HZ,
+  TYPE_RUSH_WORD_RENDER_INTERVAL_MS,
+  TYPE_RUSH_WPM_RENDER_INTERVAL_MS,
+  shouldSyncTypeRushUi,
+} from '../src/lib/typeRushRuntime';
+
+const errors: string[] = [];
+const assert = (condition: boolean, message: string) => {
+  if (!condition) errors.push(message);
+};
+
+const source = readFileSync('src/games/TypeRushGame.tsx', 'utf8');
+
+assert(!source.includes('handleKeyInput(w.word[w.typedIndex])'), 'clicking a falling word can still auto-enter its next correct character');
+assert(source.includes('pointer-events-none') && source.includes('cursor-default'), 'falling word cards are still interactive click targets');
+assert(source.includes('onClick={focusDeviceKeyboard}'), 'arena click no longer focuses the device keyboard');
+assert(source.includes('handleKeyInput(char);'), 'native/mobile input no longer routes through the typing validator');
+assert(source.includes("window.addEventListener('keydown', handleWindowKeyDown)"), 'physical keyboard listener is missing');
+assert(source.includes('TYPE_RUSH_WORD_RENDER_INTERVAL_MS'), 'bounded falling-word render cadence is not wired into Type Rush');
+assert(source.includes('TYPE_RUSH_WPM_RENDER_INTERVAL_MS'), 'bounded WPM render cadence is not wired into Type Rush');
+assert(source.includes('lastWordRenderSync = currentTime'), 'falling-word render sync timestamp is not advanced');
+assert(source.includes('lastWpmRenderSync = currentTime'), 'WPM render sync timestamp is not advanced');
+assert(TYPE_RUSH_WORD_RENDER_HZ === 30, `expected 30 Hz word rendering, found ${TYPE_RUSH_WORD_RENDER_HZ}`);
+assert(TYPE_RUSH_WPM_RENDER_INTERVAL_MS === 250, 'WPM display should update at 4 Hz');
+
+const countSyncs = (fps: number, intervalMs: number, seconds = 10) => {
+  const frameMs = 1000 / fps;
+  let last = 0;
+  let count = 0;
+  for (let now = frameMs; now <= seconds * 1000 + 0.001; now += frameMs) {
+    if (shouldSyncTypeRushUi(now, last, intervalMs)) {
+      count++;
+      last = now;
+    }
+  }
+  return count;
+};
+
+for (const fps of [30, 60, 120, 144, 240]) {
+  const wordSyncs = countSyncs(fps, TYPE_RUSH_WORD_RENDER_INTERVAL_MS);
+  const wordHz = wordSyncs / 10;
+  assert(wordHz <= 30.1, `${fps} FPS causes ${wordHz.toFixed(1)} React word renders/sec`);
+  assert(wordHz >= 24, `${fps} FPS starves falling-word rendering at ${wordHz.toFixed(1)} renders/sec`);
+
+  const wpmSyncs = countSyncs(fps, TYPE_RUSH_WPM_RENDER_INTERVAL_MS);
+  assert(wpmSyncs <= 40, `${fps} FPS causes more than 4 WPM renders/sec`);
+}
+
+const renderSetWordsOccurrences = source.match(/setWords\(\[\.\.\.state\.words\]\)/g)?.length ?? 0;
+assert(renderSetWordsOccurrences <= 2, `unexpected high-frequency setWords call sites: ${renderSetWordsOccurrences}`);
+
+if (errors.length) {
+  console.error('TYPE RUSH INPUT / PERFORMANCE AUDIT — FAIL');
+  for (const error of errors) console.error(`- ${error}`);
+  process.exit(1);
+}
+
+console.log('TYPE RUSH INPUT / PERFORMANCE AUDIT — PASS');
+console.log('Word cards cannot auto-type, physical/mobile typing remains active, and React animation sync is refresh-rate bounded.');
+""")
+
+          pkg = Path('package.json')
+          text = pkg.read_text()
+          needle = '    "quality:roadcross": "bun scripts/audit-road-cross.ts",\n'
+          if '"quality:typerush"' not in text:
+              if needle not in text:
+                  raise SystemExit('package roadcross anchor not found')
+              text = text.replace(needle, needle + '    "quality:typerush": "bun scripts/audit-type-rush.ts",\n', 1)
+          pkg.write_text(text)
+
+          ci = Path('.github/workflows/ci.yml')
+          text = ci.read_text()
+          needle = '      - run: bun run quality:roadcross\n'
+          if 'bun run quality:typerush' not in text:
+              if needle not in text:
+                  raise SystemExit('CI roadcross anchor not found')
+              text = text.replace(needle, needle + '      - run: bun run quality:typerush\n', 1)
+          ci.write_text(text)
+
+          release = Path('scripts/audit-release-32.ts')
+          text = release.read_text()
+          if "  'quality:typerush'," not in text:
+              needle = "  'quality:roadcross',\n"
+              if needle not in text:
+                  raise SystemExit('release gate roadcross anchor not found')
+              text = text.replace(needle, needle + "  'quality:typerush',\n", 1)
+          if "  'scripts/audit-type-rush.ts'," not in text:
+              needle = "  'scripts/audit-road-cross.ts',\n"
+              if needle not in text:
+                  raise SystemExit('release audit roadcross anchor not found')
+              text = text.replace(needle, needle + "  'scripts/audit-type-rush.ts',\n", 1)
+          release.write_text(text)
+          PY
+
+          rm .github/workflows/patch-type-rush.yml
+          bun install --frozen-lockfile
+          bun run quality:typerush
+          bun run quality:release32
+          bunx tsc --noEmit
+
+      - name: Commit repaired Type Rush
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Fix Type Rush input exploit and render cadence'
+          git push origin HEAD:fix/type-rush-input-performance
