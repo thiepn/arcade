@@ -43,6 +43,8 @@ for path, token in min_height_files.items():
     write(path, s)
 
 # 3. Permanent regression audit for lifecycle continuity + shrink-safe game roots.
+# Terminal flags such as Pinball's gameOverReported are allowed to stop a loop;
+# transient transition flags that are later reset are not.
 audit = '''import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -55,6 +57,7 @@ const gameFiles = readdirSync('src/games').filter((file) => file.endsWith('Game.
 
 assert(gameFiles.length === 32, `expected 32 game modules, found ${gameFiles.length}`);
 
+const transientStopPattern = /return\\s+!state\\.(?:isFinished|isTransitioning|roundTransition|waveTransition)\\s*;/;
 for (const file of gameFiles) {
   const source = read(join('src/games', file));
   assert(
@@ -62,8 +65,8 @@ for (const file of gameFiles) {
     `${file} restores a fixed minimum game height that can overflow a short mobile/landscape stage`,
   );
   assert(
-    !/return\\s+!state\\.[A-Za-z_$][\\w$]*\\s*;/.test(source),
-    `${file} stops the shared RAF loop from a transient negated state flag`,
+    !transientStopPattern.test(source),
+    `${file} stops the shared RAF loop from a transient transition flag`,
   );
 }
 
