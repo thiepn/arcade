@@ -24,6 +24,7 @@
     "quality:slingshot": "bun scripts/audit-slingshot.ts",
     "quality:tower": "bun scripts/audit-tower.ts",
     "quality:astro": "bun scripts/audit-astro.ts",
+    "quality:drift": "bun scripts/audit-drift.ts",
     "quality:mobile": "bun scripts/audit-mobile-runtime.ts",
     "quality:rope": "bun scripts/audit-laser-rope-presentation.ts",
     "quality:rope-feedback": "bun scripts/audit-laser-rope-feedback.ts",

@@ -3,7 +3,8 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { Flame, Zap, Shield, Sparkles, Gauge, AlertTriangle } from 'lucide-react';
-import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { useGameLoop } from '../hooks/useGameLoop';
+import { DRIFT_FIXED_STEP_SEC, getDriftPhysicsStepBatch } from '../lib/driftRuntime';
 
 interface Particle {
   x: number;
@@ -93,6 +94,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
     maxSpeed: 9.2,
     nitro: 70,
     isBoosting: false,
+    boostTimer: 0,
     invulnerableTime: 0,
     screenShake: 0,
     // Track State
@@ -111,16 +113,17 @@ export const DriftGame: React.FC<GameComponentProps> = ({
     spawnTimer: 0,
     viewportWidth: 0,
     viewportHeight: 0,
+    physicsAccumulator: 0,
   });
 
-  const setSafeTimeout = useSafeTimeout();
 
   const triggerNitro = useCallback(() => {
     const state = gameStateRef.current;
-    if (state.nitro >= 25 && !state.isBoosting && state.isAlive) {
+    if (state.nitro >= 25 && !state.isBoosting && state.isAlive && !isPausedRef.current) {
       state.nitro -= 25;
       setNitroEnergy(state.nitro);
       state.isBoosting = true;
+      state.boostTimer = 1.8;
       setIsBoosting(true);
       state.screenShake = 10;
       haptics.heavy();
@@ -142,12 +145,8 @@ export const DriftGame: React.FC<GameComponentProps> = ({
         });
       }
 
-      setSafeTimeout(() => {
-        state.isBoosting = false;
-        setIsBoosting(false);
-      }, 1800);
     }
-  }, [soundEnabled, setSafeTimeout]);
+  }, [soundEnabled]);
 
   const addScorePopup = useCallback((text: string, x: number, y: number, color = '#FACC15', scale = 1.0) => {
     gameStateRef.current.popups.push({
@@ -167,6 +166,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
 
     // Input Handlers
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isPausedRef.current || !gameStateRef.current.isAlive) return;
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
         gameStateRef.current.steerInput = -1;
         setSteerLeft(true);
@@ -250,6 +250,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
 
       state.viewportWidth = w;
       state.viewportHeight = h;
+      state.physicsAccumulator = 0;
       const minX = w / 2 - roadWidth / 2 + 20;
       const maxX = w / 2 + roadWidth / 2 - 20;
       state.carX = Math.max(minX, Math.min(maxX, state.carX));
@@ -281,15 +282,28 @@ export const DriftGame: React.FC<GameComponentProps> = ({
         }
       }
     },
-    onUpdate: (ctx, dt, w, h) => {
+    onUpdate: (ctx, deltaSec, w, h) => {
       const st = gameStateRef.current;
-      
+
+      const batch = getDriftPhysicsStepBatch(st.physicsAccumulator, deltaSec);
+      st.physicsAccumulator = batch.remainderSec;
+
       ctx.save();
       const roadCenterX = w / 2;
       const roadWidth = getDriftRoadWidth(w);
 
       if (!isPausedRef.current && st.isAlive) {
-        if (st.invulnerableTime > 0) st.invulnerableTime--;
+        for (let simStep = 0; simStep < batch.steps && st.isAlive; simStep++) {
+          const dt = DRIFT_FIXED_STEP_SEC;
+          if (st.invulnerableTime > 0) st.invulnerableTime--;
+          if (st.isBoosting) {
+            st.boostTimer -= dt;
+            if (st.boostTimer <= 0) {
+              st.boostTimer = 0;
+              st.isBoosting = false;
+              setIsBoosting(false);
+            }
+          }
         if (st.screenShake > 0) st.screenShake *= 0.88;
         if (st.soundCooldown > 0) st.soundCooldown--;
 
@@ -657,6 +671,24 @@ export const DriftGame: React.FC<GameComponentProps> = ({
         // Skid marks fade
         st.skidmarks.forEach((s) => (s.alpha -= 0.012));
         st.skidmarks = st.skidmarks.filter((s) => s.alpha > 0.02);
+
+        // Update particles on the certified gameplay clock.
+        for (let i = st.particles.length - 1; i >= 0; i--) {
+          const p = st.particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.life -= 0.03;
+          if (p.life <= 0) st.particles.splice(i, 1);
+        }
+
+        // Update score popups on the certified gameplay clock.
+        for (let i = st.popups.length - 1; i >= 0; i--) {
+          const popup = st.popups[i];
+          popup.y -= 1.0;
+          popup.life -= 0.02;
+          if (popup.life <= 0) st.popups.splice(i, 1);
+        }
+        }
       }
 
       // --- RENDERING ---
@@ -891,15 +923,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
       });
 
       // Draw Particles
-      for (let i = st.particles.length - 1; i >= 0; i--) {
-        const p = st.particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 0.03;
-        if (p.life <= 0) {
-          st.particles.splice(i, 1);
-          continue;
-        }
+      for (const p of st.particles) {
         ctx.fillStyle = p.color;
         ctx.globalAlpha = p.life;
         ctx.beginPath();
@@ -981,14 +1005,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
       }
 
       // Draw Score Popups
-      for (let i = st.popups.length - 1; i >= 0; i--) {
-        const popup = st.popups[i];
-        popup.y -= 1.0;
-        popup.life -= 0.02;
-        if (popup.life <= 0) {
-          st.popups.splice(i, 1);
-          continue;
-        }
+      for (const popup of st.popups) {
         ctx.globalAlpha = Math.max(0, popup.life);
         ctx.fillStyle = popup.color;
         ctx.font = `bold ${Math.round(12 * (popup.scale || 1.0))}px monospace`;
@@ -1007,6 +1024,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
     dir: -1 | 1,
   ) => {
     event.preventDefault();
+    if (isPausedRef.current || !gameStateRef.current.isAlive) return;
     event.currentTarget.setPointerCapture?.(event.pointerId);
     haptics.light();
     gameStateRef.current.steerInput = dir;

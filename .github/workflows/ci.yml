@@ -38,6 +38,7 @@ jobs:
       - run: bun run quality:slingshot
       - run: bun run quality:tower
       - run: bun run quality:astro
+      - run: bun run quality:drift
       - run: bun run quality:mobile
       - run: bun run quality:rope
       - run: bun run quality:rope-feedback
