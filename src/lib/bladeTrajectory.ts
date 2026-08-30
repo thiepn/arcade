@@ -5,6 +5,9 @@ export const BLADE_BASE_GRAVITY = 0.28;
 export const BLADE_APEX_MIN_RATIO = 0.12;
 export const BLADE_APEX_MAX_RATIO = 0.32;
 export const BLADE_LANDING_MARGIN_RATIO = 0.08;
+export const BLADE_SIMULATION_HZ = 60;
+export const BLADE_FIXED_STEP_SEC = 1 / BLADE_SIMULATION_HZ;
+export const BLADE_MAX_FRAME_SEC = 0.05;
 
 export interface BladeLaunchOptions {
   startX: number;
@@ -23,6 +26,16 @@ export interface BladeLaunchTrajectory {
   landingX: number;
   framesToApex: number;
 }
+
+export const getBladeSimulationStepBatch = (accumulatorSec: number, deltaSec: number) => {
+  const totalSec =
+    Math.max(0, accumulatorSec) + Math.min(Math.max(0, deltaSec), BLADE_MAX_FRAME_SEC);
+  const steps = Math.floor((totalSec + 1e-9) / BLADE_FIXED_STEP_SEC);
+  return {
+    steps,
+    remainderSec: Math.max(0, totalSec - steps * BLADE_FIXED_STEP_SEC),
+  };
+};
 
 export const getBladeGravity = (height: number): number => {
   const safeHeight = Math.max(1, height);
