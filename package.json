@@ -21,6 +21,7 @@
     "quality:typerush": "bun scripts/audit-type-rush.ts",
     "quality:oneline": "bun scripts/audit-one-line.ts",
     "quality:gravity": "bun scripts/audit-gravity.ts",
+    "quality:slingshot": "bun scripts/audit-slingshot.ts",
     "quality:mobile": "bun scripts/audit-mobile-runtime.ts",
     "quality:rope": "bun scripts/audit-laser-rope-presentation.ts",
     "quality:rope-feedback": "bun scripts/audit-laser-rope-feedback.ts",
