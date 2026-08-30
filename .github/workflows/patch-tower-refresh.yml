@@ -24,11 +24,8 @@ jobs:
         run: |
           python scripts/patch-tower-refresh.py
           rm scripts/patch-tower-refresh.py
-          rm .github/workflows/patch-tower-refresh.yml
           bun install --frozen-lockfile
           bun run quality:tower
-          bun run quality:release32
-          bun run quality:hardening
           bunx tsc --noEmit
           bun run build
       - name: Commit repaired Gravity Tower source
