@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { Rocket, Shield, ArrowUp, Flame, Magnet } from 'lucide-react';
-import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { useGameLoop, useSafeTimeout, useRenderPublishedState, useRenderPublishedCallback } from '../hooks/useGameLoop';
 import { clamp } from '../lib/gameCoordinates';
 import { TOWER_FIXED_STEP_SEC, getTowerPhysicsStepBatch } from '../lib/towerRuntime';
 
@@ -72,13 +72,14 @@ export const TowerGame: React.FC<GameComponentProps> = ({
   isPaused,
   soundEnabled,
 }) => {
+  const publishScore = useRenderPublishedCallback(onScoreUpdate, 100);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
   const setSafeTimeout = useSafeTimeout();
 
-  const [hudState, setHudState] = useState({
+  const [hudState, setHudState] = useRenderPublishedState({
     altitude: 0,
     score: 0,
     hasShield: false,
@@ -87,7 +88,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
     laserDistance: 100,
     comboStreak: 0,
     multiplier: 1,
-  });
+  }, 100);
 
   const gameStateRef = useRef({
     // Player Physics & Transform
@@ -518,7 +519,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
                 plat.hasGem = false;
                 const pts = 350 * state.multiplier;
                 state.score += pts;
-                onScoreUpdate(state.score);
+                publishScore(state.score);
                 if (soundEnabled) sounds.playScore();
                 state.popups.push({
                   id: state.nextId++,
@@ -584,7 +585,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
 
               const dronePoints = 600 * state.multiplier;
               state.score += dronePoints;
-              onScoreUpdate(state.score);
+              publishScore(state.score);
 
               if (soundEnabled) sounds.playDroneDestroy();
 
@@ -647,7 +648,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
             state.screenShake = 4;
             const ringPts = 400 * state.multiplier;
             state.score += ringPts;
-            onScoreUpdate(state.score);
+            publishScore(state.score);
 
             if (soundEnabled) sounds.playFeverMode();
 
@@ -752,7 +753,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
                 plat.hasGem = false;
                 const gemPoints = 300 * state.multiplier;
                 state.score += gemPoints;
-                onScoreUpdate(state.score);
+                publishScore(state.score);
                 if (soundEnabled) sounds.playScore();
                 state.popups.push({
                   id: state.nextId++,
@@ -823,7 +824,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
           const deltaAlt = Math.floor(state.py - state.maxAltitude);
           state.maxAltitude = state.py;
           state.score += deltaAlt * 2;
-          onScoreUpdate(state.score);
+          publishScore(state.score);
         }
 
         // Continuously generate upcoming world

@@ -3,7 +3,7 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { RHYTHM_SONGS, SongDefinition, musicEngine } from '../lib/rhythmSongs';
 import { Music, Flame, Zap, Award, Shield, Sparkles, Volume2, VolumeX, Play, Disc } from 'lucide-react';
-import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
 
 interface ActiveNote {
   id: number;
@@ -64,7 +64,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
   const currentSong = RHYTHM_SONGS[selectedSongIndex];
 
   const [activeLanes, setActiveLanes] = useState<boolean[]>([false, false, false, false]);
-  const [hudStats, setHudStats] = useState({
+  const [hudStats, setHudStats] = useRenderPublishedState({
     score: 0,
     combo: 0,
     maxCombo: 0,
@@ -76,7 +76,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
     currentSongTitle: currentSong.title,
     currentSectionName: 'INTRO',
     bpm: currentSong.bpm,
-  });
+  }, 100);
 
   const gameStateRef = useRef({
     score: 0,

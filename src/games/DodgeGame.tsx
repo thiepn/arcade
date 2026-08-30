@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
-import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { useGameLoop, useSafeTimeout, useRenderPublishedCallback } from '../hooks/useGameLoop';
 import { clamp, rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
 import { ARCADE_FIXED_STEP_SEC, getArcadeStepBatch, getFrameInvariantDecay, getFrameScale } from '../lib/frameRateRuntime';
 
@@ -56,6 +56,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
   isPaused,
   soundEnabled,
 }) => {
+  const publishScore = useRenderPublishedCallback(onScoreUpdate, 100);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
@@ -290,7 +291,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
         }
 
         state.score += Math.round(dt * 0.1 * state.combo);
-        onScoreUpdate(state.score);
+        publishScore(state.score);
 
         // Recharge Dash
         if (state.dashCharges < 2) {

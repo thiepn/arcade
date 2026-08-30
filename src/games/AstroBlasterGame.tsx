@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
-import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
 import { clamp, rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
 import { ASTRO_FIXED_STEP_SEC, getAstroPhysicsStepBatch } from '../lib/astroRuntime';
 import {
@@ -118,8 +118,8 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
 
   const [lives, setLives] = useState(3);
   const [level, setLevel] = useState(1);
-  const [hasShield, setHasShield] = useState(false);
-  const [hasTripleShot, setHasTripleShot] = useState(false);
+  const [hasShield, setHasShield] = useRenderPublishedState(false);
+  const [hasTripleShot, setHasTripleShot] = useRenderPublishedState(false);
 
   const gameStateRef = useRef({
     score: 0,

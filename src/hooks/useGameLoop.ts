@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from 'react';
 import { createGameResizeInfo, type GameResizeInfo } from '../lib/gameCoordinates';
 import { getSafeCanvasDpr } from '../lib/mobileRuntime';
 
@@ -9,6 +9,155 @@ function useLatestCallback<T extends (...args: any[]) => any>(callback: T) {
   });
   return ref;
 }
+
+
+const arePublishedValuesEqual = <T,>(left: T, right: T): boolean => {
+  if (Object.is(left, right)) return true;
+  if (left === null || right === null || typeof left !== 'object' || typeof right !== 'object') {
+    return false;
+  }
+
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+    return left.every((value, index) => Object.is(value, right[index]));
+  }
+
+  if (Object.getPrototypeOf(left) !== Object.prototype || Object.getPrototypeOf(right) !== Object.prototype) {
+    return false;
+  }
+
+  const leftRecord = left as Record<string, unknown>;
+  const rightRecord = right as Record<string, unknown>;
+  const leftKeys = Object.keys(leftRecord);
+  const rightKeys = Object.keys(rightRecord);
+  if (leftKeys.length !== rightKeys.length) return false;
+  return leftKeys.every((key) => Object.prototype.hasOwnProperty.call(rightRecord, key) && Object.is(leftRecord[key], rightRecord[key]));
+};
+
+const resolvePublishedStateAction = <T,>(previous: T, action: SetStateAction<T>): T =>
+  typeof action === 'function' ? (action as (value: T) => T)(previous) : action;
+
+/**
+ * Bridges render-loop values into React without making React part of the frame clock.
+ * A zero interval publishes only semantic changes. A positive interval also caps
+ * continuous HUD refreshes while retaining a trailing update.
+ */
+export const useRenderPublishedState = <T,>(
+  initialState: T | (() => T),
+  minIntervalMs = 0,
+): [T, Dispatch<SetStateAction<T>>] => {
+  const [state, setState] = useState(initialState);
+  const publishedRef = useRef(state);
+  const pendingRef = useRef(state);
+  const lastPublishedAtRef = useRef(Number.NEGATIVE_INFINITY);
+  const trailingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTrailing = useCallback(() => {
+    if (trailingTimeoutRef.current !== null) {
+      clearTimeout(trailingTimeoutRef.current);
+      trailingTimeoutRef.current = null;
+    }
+  }, []);
+
+  const commitPending = useCallback(() => {
+    const next = pendingRef.current;
+    if (arePublishedValuesEqual(publishedRef.current, next)) return;
+    publishedRef.current = next;
+    lastPublishedAtRef.current = performance.now();
+    setState(next);
+  }, []);
+
+  const publish = useCallback<Dispatch<SetStateAction<T>>>((action) => {
+    pendingRef.current = resolvePublishedStateAction(pendingRef.current, action);
+    if (arePublishedValuesEqual(publishedRef.current, pendingRef.current)) {
+      clearTrailing();
+      return;
+    }
+
+    const now = performance.now();
+    const elapsed = now - lastPublishedAtRef.current;
+    if (minIntervalMs <= 0 || elapsed >= minIntervalMs) {
+      clearTrailing();
+      commitPending();
+      return;
+    }
+
+    if (trailingTimeoutRef.current === null) {
+      trailingTimeoutRef.current = setTimeout(() => {
+        trailingTimeoutRef.current = null;
+        commitPending();
+      }, Math.max(0, minIntervalMs - elapsed));
+    }
+  }, [clearTrailing, commitPending, minIntervalMs]);
+
+  useEffect(() => clearTrailing, [clearTrailing]);
+  return [state, publish];
+};
+
+/**
+ * Bounded publisher for parent callbacks such as onScoreUpdate. Values are
+ * de-duplicated before crossing the React component boundary and a trailing
+ * publish guarantees the latest value is not lost.
+ */
+export const useRenderPublishedCallback = <T,>(
+  callback: (value: T) => void,
+  minIntervalMs = 100,
+) => {
+  const callbackRef = useLatestCallback(callback);
+  const hasPublishedRef = useRef(false);
+  const publishedRef = useRef<T | undefined>(undefined);
+  const hasPendingRef = useRef(false);
+  const pendingRef = useRef<T | undefined>(undefined);
+  const lastPublishedAtRef = useRef(Number.NEGATIVE_INFINITY);
+  const trailingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTrailing = useCallback(() => {
+    if (trailingTimeoutRef.current !== null) {
+      clearTimeout(trailingTimeoutRef.current);
+      trailingTimeoutRef.current = null;
+    }
+  }, []);
+
+  const commitPending = useCallback(() => {
+    if (!hasPendingRef.current) return;
+    const next = pendingRef.current as T;
+    hasPendingRef.current = false;
+    if (hasPublishedRef.current && arePublishedValuesEqual(publishedRef.current as T, next)) return;
+    hasPublishedRef.current = true;
+    publishedRef.current = next;
+    lastPublishedAtRef.current = performance.now();
+    callbackRef.current(next);
+  }, [callbackRef]);
+
+  const publish = useCallback((value: T) => {
+    pendingRef.current = value;
+    hasPendingRef.current = true;
+
+    if (hasPublishedRef.current && arePublishedValuesEqual(publishedRef.current as T, value)) {
+      hasPendingRef.current = false;
+      clearTrailing();
+      return;
+    }
+
+    const now = performance.now();
+    const elapsed = now - lastPublishedAtRef.current;
+    if (minIntervalMs <= 0 || elapsed >= minIntervalMs) {
+      clearTrailing();
+      commitPending();
+      return;
+    }
+
+    if (trailingTimeoutRef.current === null) {
+      trailingTimeoutRef.current = setTimeout(() => {
+        trailingTimeoutRef.current = null;
+        commitPending();
+      }, Math.max(0, minIntervalMs - elapsed));
+    }
+  }, [clearTrailing, commitPending, minIntervalMs]);
+
+  useEffect(() => clearTrailing, [clearTrailing]);
+  return publish;
+};
 
 interface UseGameLoopProps {
   canvasRef: RefObject<HTMLCanvasElement | null>;

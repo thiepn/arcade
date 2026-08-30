@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { Ghost, Zap, Shield, Sparkles, Trophy, Flame } from 'lucide-react';
-import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
 import { getFrameInvariantChance } from '../lib/frameRateRuntime';
 import {
   advancePacMover,
@@ -65,7 +65,7 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
   isPausedRef.current = isPaused;
   const setSafeTimeout = useSafeTimeout();
 
-  const [hudState, setHudState] = useState({
+  const [hudState, setHudState] = useRenderPublishedState({
     score: 0,
     lives: 3,
     powerTime: 0,

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
-import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
 import { getFrameInvariantBlend } from '../lib/frameRateRuntime';
 import { canAcceptRoadCrossMove, getRoadCrossBoardMetrics } from '../lib/roadCrossSupport';
 
@@ -48,7 +48,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
   const setSafeTimeout = useSafeTimeout();
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
 
-  const [hudState, setHudState] = useState({
+  const [hudState, setHudState] = useRenderPublishedState({
     score: 0,
     distance: 0,
     combo: 0,

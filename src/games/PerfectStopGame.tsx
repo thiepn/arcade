@@ -15,11 +15,11 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
   const [stoppedAccuracy, setStoppedAccuracy] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [markerPos, setMarkerPos] = useState(0);
   const setSafeTimeout = useSafeTimeout();
 
   const maxRounds = 5;
   const markerPosRef = useRef(0); // 0 to 100
+  const markerElementRef = useRef<HTMLDivElement>(null);
   const markerDirRef = useRef(1);
   const markerSpeedRef = useRef(2.2);
   const animationFrameRef = useRef<number | null>(null);
@@ -31,6 +31,7 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
     setStoppedAccuracy(null);
     setIsRunning(true);
     markerPosRef.current = 0;
+    if (markerElementRef.current) markerElementRef.current.style.left = '0%';
     markerDirRef.current = 1;
     // Speed ramps up with difficulty curve
     markerSpeedRef.current = 2.2 + (roundNum - 1) * 0.85;
@@ -103,7 +104,9 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
           markerPosRef.current = 0;
           markerDirRef.current = 1;
         }
-        setMarkerPos(markerPosRef.current);
+        if (markerElementRef.current) {
+          markerElementRef.current.style.left = `${markerPosRef.current}%`;
+        }
       }
 
       animationFrameRef.current = requestAnimationFrame(loop);
@@ -199,8 +202,9 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
 
             {/* Moving Cursor Indicator */}
             <div
+              ref={markerElementRef}
               className="absolute top-0 bottom-0 w-3 -ml-1.5 transition-none flex flex-col items-center justify-between py-1 pointer-events-none"
-              style={{ left: `${markerPos}%` }}
+              style={{ left: '0%' }}
             >
               <div className="w-3 h-3 bg-white rounded-full shadow-[0_0_12px_#FFFFFF]" />
               <div className="w-1 h-full bg-white/90 shadow-[0_0_8px_#FFFFFF]" />

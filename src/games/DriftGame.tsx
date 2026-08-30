@@ -3,7 +3,7 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { Flame, Zap, Shield, Sparkles, Gauge, AlertTriangle } from 'lucide-react';
-import { useGameLoop } from '../hooks/useGameLoop';
+import { useGameLoop, useRenderPublishedState, useRenderPublishedCallback } from '../hooks/useGameLoop';
 import { DRIFT_FIXED_STEP_SEC, getDriftPhysicsStepBatch } from '../lib/driftRuntime';
 
 interface Particle {
@@ -57,16 +57,17 @@ export const DriftGame: React.FC<GameComponentProps> = ({
   isPaused,
   soundEnabled,
 }) => {
+  const publishScore = useRenderPublishedCallback(onScoreUpdate, 100);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [score, setScore] = useState(0);
+  const [score, setScore] = useRenderPublishedState(0, 100);
   const [lives, setLives] = useState(3);
   const [multiplier, setMultiplier] = useState(1);
   const [driftTier, setDriftTier] = useState<string>('NORMAL');
-  const [nitroEnergy, setNitroEnergy] = useState(70); // 0..100
+  const [nitroEnergy, setNitroEnergy] = useRenderPublishedState(70, 100); // 0..100
   const [isBoosting, setIsBoosting] = useState(false);
   const [steerLeft, setSteerLeft] = useState(false);
   const [steerRight, setSteerRight] = useState(false);
-  const [currentSpeedKmh, setCurrentSpeedKmh] = useState(160);
+  const [currentSpeedKmh, setCurrentSpeedKmh] = useRenderPublishedState(160, 100);
 
   const isPausedRef = useRef(isPaused);
   useEffect(() => {
@@ -424,7 +425,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
           // Score accumulation
           const addedDrift = Math.floor((st.isBoosting ? 20 : 10) * st.multiplier);
           st.score += addedDrift;
-          onScoreUpdate(st.score);
+          publishScore(st.score);
           setScore(st.score);
 
           // Extra Nitro generation while drifting
@@ -553,7 +554,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
               seg.gatePassed = true;
               const bonus = 450 * st.multiplier;
               st.score += bonus;
-              onScoreUpdate(st.score);
+              publishScore(st.score);
               setScore(st.score);
               addScorePopup(`APEX HIT! +${bonus}`, gateX, seg.y - 15, '#34D399', 1.2);
               if (soundEnabled) sounds.playVictory();
@@ -578,7 +579,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
               st.nitro = Math.min(100, st.nitro + 35);
               setNitroEnergy(st.nitro);
               st.score += 250 * st.multiplier;
-              onScoreUpdate(st.score);
+              publishScore(st.score);
               setScore(st.score);
               addScorePopup('+NITRO CELL!', st.carX, st.carY - 30, '#38BDF8');
               if (soundEnabled) sounds.playPop();
@@ -595,7 +596,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
               if (Math.abs(seg.rivalX - st.carX) < 60) {
                 const bonus = 500 * st.multiplier;
                 st.score += bonus;
-                onScoreUpdate(st.score);
+                publishScore(st.score);
                 setScore(st.score);
                 addScorePopup(`CLOSE PASS! +${bonus}`, st.carX, st.carY - 25, '#FACC15');
                 if (soundEnabled) sounds.playSuccess();
