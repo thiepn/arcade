@@ -4,6 +4,7 @@ import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { Shield, Bomb, Radio } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { VANGUARD_FIXED_STEP_SEC, getVanguardPhysicsStepBatch } from '../lib/vanguardRuntime';
 
 interface Bullet {
   x: number;
@@ -105,11 +106,14 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
     bossActive: false,
     bossDefeatedPoints: 0,
     keysPressed: {} as Record<string, boolean>,
+    viewportWidth: 0,
+    viewportHeight: 0,
+    physicsAccumulator: 0,
   });
 
   const triggerBomb = useCallback(() => {
     const state = gameStateRef.current;
-    if (state.bombs <= 0 || !state.isAlive) return;
+    if (state.bombs <= 0 || !state.isAlive || isPausedRef.current) return;
 
     state.bombs--;
     setBombs(state.bombs);
@@ -303,6 +307,7 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
   useEffect(() => {
     // Pointer Tracking
     const handlePointerMove = (e: MouseEvent | TouchEvent) => {
+      if (isPausedRef.current || !gameStateRef.current.isAlive) return;
       const clientX = 'touches' in e && e.touches.length > 0 ? e.touches[0].clientX : (e as MouseEvent).clientX;
       const clientY = 'touches' in e && e.touches.length > 0 ? e.touches[0].clientY : (e as MouseEvent).clientY;
       const canvas = canvasRef.current;
@@ -313,6 +318,7 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isPausedRef.current || !gameStateRef.current.isAlive) return;
       gameStateRef.current.keysPressed[e.key] = true;
       if (e.key === ' ' || e.key === 'e' || e.key === 'E' || e.key === 'b' || e.key === 'B') {
         triggerBomb();
@@ -341,20 +347,59 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
     isPaused,
     onResize: (w, h) => {
       const state = gameStateRef.current;
-      state.playerX = w / 2;
-      state.playerY = h * 0.8;
-      state.targetX = w / 2;
-      state.targetY = h * 0.8;
+      const isInitial = state.viewportWidth <= 0 || state.viewportHeight <= 0;
 
-      // Initialize Starfield
-      state.stars = [];
-      for (let i = 0; i < 75; i++) {
-        state.stars.push({
-          x: Math.random() * w,
-          y: Math.random() * h,
-          speed: 1 + Math.random() * 3.5,
-          size: Math.random() * 2 + 0.8,
-        });
+      if (isInitial) {
+        state.playerX = w / 2;
+        state.playerY = h * 0.8;
+        state.targetX = w / 2;
+        state.targetY = h * 0.8;
+      } else {
+        const scaleX = w / state.viewportWidth;
+        const scaleY = h / state.viewportHeight;
+        state.playerX *= scaleX;
+        state.playerY *= scaleY;
+        state.targetX *= scaleX;
+        state.targetY *= scaleY;
+        for (const bullet of state.bullets) {
+          bullet.x *= scaleX;
+          bullet.y *= scaleY;
+        }
+        for (const enemy of state.enemies) {
+          enemy.x *= scaleX;
+          enemy.y *= scaleY;
+        }
+        for (const drop of state.drops) {
+          drop.x *= scaleX;
+          drop.y *= scaleY;
+        }
+        for (const particle of state.particles) {
+          particle.x *= scaleX;
+          particle.y *= scaleY;
+        }
+        for (const popup of state.popups) {
+          popup.x *= scaleX;
+          popup.y *= scaleY;
+        }
+        for (const star of state.stars) {
+          star.x *= scaleX;
+          star.y *= scaleY;
+        }
+      }
+
+      state.viewportWidth = w;
+      state.viewportHeight = h;
+      state.physicsAccumulator = 0;
+
+      if (state.stars.length === 0) {
+        for (let i = 0; i < 75; i++) {
+          state.stars.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            speed: 1 + Math.random() * 3.5,
+            size: Math.random() * 2 + 0.8,
+          });
+        }
       }
     },
     onUpdate: (ctx, deltaSec, curW, curH) => {
@@ -362,7 +407,14 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
       const w = curW;
       const h = curH;
 
+      const batch = !isPausedRef.current && state.isAlive
+        ? getVanguardPhysicsStepBatch(state.physicsAccumulator, deltaSec)
+        : { steps: 0, remainderSec: 0 };
+      state.physicsAccumulator = batch.remainderSec;
+
       if (!isPausedRef.current && state.isAlive) {
+        for (let simStep = 0; simStep < batch.steps && state.isAlive; simStep++) {
+          const dt = VANGUARD_FIXED_STEP_SEC;
         // Keyboard motion
         const keySpeed = 6;
         if (state.keysPressed['ArrowLeft'] || state.keysPressed['a'] || state.keysPressed['A']) state.targetX -= keySpeed;
@@ -704,6 +756,22 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
             state.drops.splice(i, 1);
           }
         }
+
+        // Effects advance on the same 60 Hz gameplay clock and freeze while paused.
+        for (let i = state.particles.length - 1; i >= 0; i--) {
+          const p = state.particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.life -= 1.8 * dt;
+          if (p.life <= 0) state.particles.splice(i, 1);
+        }
+        for (let i = state.popups.length - 1; i >= 0; i--) {
+          const popup = state.popups[i];
+          popup.y -= 54 * dt;
+          popup.life -= 1.2 * dt;
+          if (popup.life <= 0) state.popups.splice(i, 1);
+        }
+        }
       }
 
       // --- RENDERING ---
@@ -870,15 +938,7 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
       }
 
       // Draw Particles
-      for (let i = state.particles.length - 1; i >= 0; i--) {
-        const p = state.particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 0.03;
-        if (p.life <= 0) {
-          state.particles.splice(i, 1);
-          continue;
-        }
+      for (const p of state.particles) {
         ctx.fillStyle = p.color;
         ctx.globalAlpha = p.life;
         ctx.beginPath();
@@ -888,14 +948,7 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
       }
 
       // Draw Popups
-      for (let i = state.popups.length - 1; i >= 0; i--) {
-        const popup = state.popups[i];
-        popup.y -= 0.9;
-        popup.life -= 0.02;
-        if (popup.life <= 0) {
-          state.popups.splice(i, 1);
-          continue;
-        }
+      for (const popup of state.popups) {
         ctx.globalAlpha = Math.max(0, popup.life);
         ctx.fillStyle = popup.color;
         ctx.font = 'bold 12px monospace';
@@ -969,9 +1022,9 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
         <button
           type="button"
           onClick={triggerBomb}
-          disabled={bombs <= 0}
+          disabled={bombs <= 0 || isPaused}
           className={`px-5 py-3 rounded-xl font-mono-arcade text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 select-none backdrop-blur-md ${
-            bombs > 0
+            bombs > 0 && !isPaused
               ? 'bg-cyan-600/90 hover:bg-cyan-500 text-white border-cyan-400 shadow-lg shadow-cyan-500/40 active:scale-95'
               : 'bg-zinc-800/60 text-zinc-500 border-zinc-700 cursor-not-allowed'
           }`}
