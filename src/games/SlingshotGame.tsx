@@ -4,6 +4,12 @@ import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { Shield, Sparkles, Zap, Target, Orbit, Compass, Award } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import {
+  advanceSlingshotProbe,
+  getSlingshotPhysicsStepBatch,
+  getSlingshotResizeScale,
+  remapSlingshotPoint,
+} from '../lib/slingshotRuntime';
 
 interface PlanetNode {
   id: number;
@@ -86,9 +92,7 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
   const [sectorName, setSectorName] = useState('SOLAR CORE');
 
   const isPausedRef = useRef(isPaused);
-  useEffect(() => {
-    isPausedRef.current = isPaused;
-  }, [isPaused]);
+  isPausedRef.current = isPaused;
 
   const setSafeTimeout = useSafeTimeout();
 
@@ -130,11 +134,14 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
     nodeCounter: 0,
     isAimingAtNext: false,
     lockOnSoundPlayed: false,
+    physicsAccumulator: 0,
+    viewportWidth: 0,
+    viewportHeight: 0,
   });
 
   const launchProbe = useCallback(() => {
     const state = gameStateRef.current;
-    if (!state.isTethered || !state.isAlive) return;
+    if (!state.isTethered || !state.isAlive || isPausedRef.current) return;
 
     const anchor = state.nodes.find((n) => n.id === state.currentAnchorId);
     if (!anchor) return;
@@ -199,6 +206,9 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
     state.stardust = [];
     state.asteroids = [];
     state.nebulae = [];
+    state.viewportWidth = w;
+    state.viewportHeight = h;
+    state.physicsAccumulator = 0;
 
     const startX = w / 2;
     const startY = h * 0.76;
@@ -315,7 +325,9 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
 
   useEffect(() => {
     const handleAction = (e: MouseEvent | TouchEvent | KeyboardEvent) => {
+      if (isPausedRef.current) return;
       if ('key' in e && e.key !== ' ' && e.key !== 'Enter' && e.key !== 'ArrowUp') return;
+      if ('key' in e) e.preventDefault();
       if (e.type === 'touchstart') e.preventDefault();
       launchProbe();
     };
@@ -340,9 +352,74 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
     canvasRef,
     isPaused,
     onResize: (w, h) => {
-      if (gameStateRef.current.nodes.length === 0) {
+      const st = gameStateRef.current;
+      const oldW = st.viewportWidth;
+      const oldH = st.viewportHeight;
+      if (oldW <= 0 || oldH <= 0 || st.nodes.length === 0) {
         initNodes(w, h);
+        return;
       }
+      if (Math.abs(oldW - w) < 0.5 && Math.abs(oldH - h) < 0.5) return;
+
+      const sx = w / oldW;
+      const sy = h / oldH;
+      const sizeScale = getSlingshotResizeScale(oldW, oldH, w, h);
+
+      st.nodes = st.nodes.map((node) => ({
+        ...node,
+        x: node.x * sx,
+        y: node.y * sy,
+        radius: node.radius * sizeScale,
+        gravityRadius: node.gravityRadius * sizeScale,
+      }));
+      st.stardust = st.stardust.map((star) => ({
+        ...star,
+        x: star.x * sx,
+        y: star.y * sy,
+      }));
+      st.asteroids = st.asteroids.map((asteroid) => ({
+        ...asteroid,
+        x: asteroid.x * sx,
+        y: asteroid.y * sy,
+        size: asteroid.size * sizeScale,
+        orbitRadius: asteroid.orbitRadius * sizeScale,
+      }));
+      st.nebulae = st.nebulae.map((nebula) => ({
+        ...nebula,
+        x: nebula.x * sx,
+        y: nebula.y * sy,
+        radius: nebula.radius * sizeScale,
+      }));
+      st.trail = st.trail.map((point) => ({ ...point, ...remapSlingshotPoint(point, oldW, oldH, w, h) }));
+      st.particles.forEach((particle) => {
+        particle.x *= sx;
+        particle.y *= sy;
+        particle.vx *= sx;
+        particle.vy *= sy;
+        particle.size *= sizeScale;
+      });
+      st.popups.forEach((popup) => {
+        popup.x *= sx;
+        popup.y *= sy;
+      });
+
+      st.orbitRadius *= sizeScale;
+      const currentAnchor = st.nodes.find((node) => node.id === st.currentAnchorId);
+      if (st.isTethered && currentAnchor) {
+        st.probeX = currentAnchor.x + Math.cos(st.orbitAngle) * st.orbitRadius;
+        st.probeY = currentAnchor.y + Math.sin(st.orbitAngle) * st.orbitRadius;
+      } else {
+        st.probeX *= sx;
+        st.probeY *= sy;
+        st.probeVx *= sx;
+        st.probeVy *= sy;
+      }
+
+      st.cameraY *= sy;
+      st.targetCameraY *= sy;
+      st.viewportWidth = w;
+      st.viewportHeight = h;
+      st.physicsAccumulator = 0;
     },
     onUpdate: (ctx, deltaSec, w, h) => {
       const st = gameStateRef.current;
@@ -351,29 +428,34 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
       }
 
       if (!isPausedRef.current && st.isAlive) {
-        if (st.screenShake > 0) st.screenShake *= 0.88;
+        const frameScale = Math.max(0.001, Math.min(deltaSec, 0.05) * 60);
+        if (st.screenShake > 0) {
+          st.screenShake *= Math.pow(0.88, frameScale);
+          if (st.screenShake < 0.2) st.screenShake = 0;
+        }
 
-        st.cameraY += (st.targetCameraY - st.cameraY) * 0.085;
-
-        const currentAnchor = st.nodes.find((n) => n.id === st.currentAnchorId);
-        const nextAnchor = st.nodes.find((n) => n.id === st.currentAnchorId + 1);
-
-        // Update pulse phase on all planets
+        // Visual pulses stay smooth while gameplay advances in fixed 60 Hz steps.
         st.nodes.forEach((n) => {
-          n.pulsePhase += 0.04;
+          n.pulsePhase += 0.04 * frameScale;
         });
 
-        // Update Asteroid orbits
-        st.asteroids.forEach((ast) => {
-          const anchor = st.nodes.find((n) => n.id === ast.orbitNodeId);
-          if (anchor) {
-            ast.angle += ast.orbitSpeed;
-            ast.x = anchor.x + Math.cos(ast.angle) * ast.orbitRadius;
-            ast.y = anchor.y + Math.sin(ast.angle) * ast.orbitRadius;
-          }
-        });
+        const batch = getSlingshotPhysicsStepBatch(st.physicsAccumulator, deltaSec);
+        st.physicsAccumulator = batch.remainderSec;
+        for (let simStep = 0; simStep < batch.steps && st.isAlive; simStep++) {
+          const currentAnchor = st.nodes.find((n) => n.id === st.currentAnchorId);
+          const nextAnchor = st.nodes.find((n) => n.id === st.currentAnchorId + 1);
 
-        if (st.isTethered && currentAnchor) {
+          // Asteroids and probe movement share the same fixed simulation clock.
+          st.asteroids.forEach((ast) => {
+            const anchor = st.nodes.find((n) => n.id === ast.orbitNodeId);
+            if (anchor) {
+              ast.angle += ast.orbitSpeed;
+              ast.x = anchor.x + Math.cos(ast.angle) * ast.orbitRadius;
+              ast.y = anchor.y + Math.sin(ast.angle) * ast.orbitRadius;
+            }
+          });
+
+          if (st.isTethered && currentAnchor) {
           // Orbit motion
           st.orbitAngle += st.orbitSpeed;
           st.probeX = currentAnchor.x + Math.cos(st.orbitAngle) * st.orbitRadius;
@@ -404,9 +486,8 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
             setIsLockedOn(false);
           }
         } else {
-          // Free space flight
-          st.probeX += st.probeVx;
-          st.probeY += st.probeVy;
+          // Free space flight on the same fixed simulation clock as orbital motion.
+          advanceSlingshotProbe(st);
           st.targetCameraY = -st.probeY + h * 0.65;
           st.isAimingAtNext = false;
           setIsLockedOn(false);
@@ -646,9 +727,13 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
           }
         });
 
-        // Trail fade
-        st.trail.forEach((t) => (t.alpha -= 0.02));
-        st.trail = st.trail.filter((t) => t.alpha > 0.02);
+          // Trail fade is tied to simulation time rather than render frequency.
+          st.trail.forEach((t) => (t.alpha -= 0.02));
+          st.trail = st.trail.filter((t) => t.alpha > 0.02);
+        }
+
+        const cameraBlend = 1 - Math.pow(1 - 0.085, frameScale);
+        st.cameraY += (st.targetCameraY - st.cameraY) * cameraBlend;
       }
 
       // --- RENDERING ---
@@ -848,12 +933,14 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
       ctx.fill();
       ctx.shadowBlur = 0;
 
+      const effectFrameScale = isPausedRef.current ? 0 : Math.max(0, Math.min(deltaSec, 0.05) * 60);
+
       // Draw Particles
       for (let i = st.particles.length - 1; i >= 0; i--) {
         const p = st.particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 0.03;
+        p.x += p.vx * effectFrameScale;
+        p.y += p.vy * effectFrameScale;
+        p.life -= 0.03 * effectFrameScale;
         if (p.life <= 0) {
           st.particles.splice(i, 1);
           continue;
@@ -869,8 +956,8 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
       // Popups
       for (let i = st.popups.length - 1; i >= 0; i--) {
         const popup = st.popups[i];
-        popup.y -= 1.0;
-        popup.life -= 0.02;
+        popup.y -= 1.0 * effectFrameScale;
+        popup.life -= 0.02 * effectFrameScale;
         if (popup.life <= 0) {
           st.popups.splice(i, 1);
           continue;
