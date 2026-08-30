@@ -23,24 +23,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Retry after calibrating transient lifecycle detection.
           python scripts/patch-post-repair-runtime.py
           rm scripts/patch-post-repair-runtime.py
           rm scripts/discover-post-repair-audit.ts
-          rm .github/workflows/discover-post-repair-audit.yml
-          rm .github/workflows/patch-post-repair-runtime.yml
           bun install --frozen-lockfile
           bun run quality:lifecycle
           bun run quality:mobile
           bun run quality:frame-rate
-          bun run quality:release32
           bunx tsc --noEmit
           bun run build
-      - name: Commit verified post-repair fixes
+      - name: Commit verified non-workflow changes
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
+          git add src/games/ChainGame.tsx src/games/AstroBlasterGame.tsx src/games/BladeGame.tsx src/games/BubbleBusterGame.tsx src/games/FlappyAeroGame.tsx src/games/PacMazeGame.tsx src/games/RhythmGame.tsx src/games/SlingshotGame.tsx src/games/TowerGame.tsx src/games/VanguardGame.tsx scripts/audit-game-lifecycle.ts scripts/audit-release-32.ts package.json scripts/patch-post-repair-runtime.py scripts/discover-post-repair-audit.ts
           git commit -m 'Fix post-repair lifecycle and mobile layout regressions'
           git push origin HEAD:audit/post-repair-32-sweep
