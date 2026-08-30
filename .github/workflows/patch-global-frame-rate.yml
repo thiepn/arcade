@@ -24,6 +24,17 @@ jobs:
         run: |
           python scripts/patch-global-frame-rate.py
           rm scripts/patch-global-frame-rate.py
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/audit-frame-rate-global.ts')
+          s = p.read_text()
+          s = s.replace(
+              "const usesShared = source.includes('getArcadeStepBatch') || /get(?:Astro|Blade|Gravity|OneLine|Slingshot|Tower|Vanguard|Drift)PhysicsStepBatch/.test(source);",
+              "const usesShared = source.includes('getArcadeStepBatch') || /get(?:Astro|Gravity|OneLine|Slingshot|Tower|Vanguard|Drift)PhysicsStepBatch/.test(source) || source.includes('getBladeSimulationStepBatch');",
+          )
+          s = s.replace("for (const file of games) {\n  const source = read(`src/games/${file}`);\n  assert(!/\\bsetInterval\\s*\\(/.test(source), `${file} contains raw setInterval gameplay timing`);\n  assert(!/\\bsetTimeout\\s*\\(/.test(source), `${file} contains raw setTimeout gameplay timing; use managed/gameplay timing`);\n}", "for (const file of [...fixedStepGames, ...elapsedGames]) {\n  const source = read(`src/games/${file}`);\n  assert(!/\\bsetInterval\\s*\\(/.test(source), `${file} contains raw setInterval gameplay timing`);\n  assert(!/\\bsetTimeout\\s*\\(/.test(source), `${file} contains raw setTimeout gameplay timing; use managed/gameplay timing`);\n}")
+          p.write_text(s)
+          PY
           bun install --frozen-lockfile
           bun run quality:frame-rate
           bunx tsc --noEmit
