@@ -4,6 +4,7 @@ import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { Zap, Sparkles, Ghost, Flame, Trophy } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { getFrameInvariantDecay, getFrameScale } from '../lib/frameRateRuntime';
 
 interface Point {
   x: number;
@@ -83,7 +84,7 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
     comboTimer: 0,
     shake: 0,
     tickInterval: 95, // ms per grid step
-    lastTickTime: 0,
+    tickAccumulatorMs: 0,
   });
 
   const addFloatingText = (text: string, x: number, y: number, color = '#FFFFFF') => {
@@ -235,12 +236,9 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
   }, [changeDirection, spawnFood]);
 
   // Step Logic
-  const stepSnake = (now: number) => {
+  const stepSnake = () => {
     const state = gameStateRef.current;
     if (isPausedRef.current || !state.isAlive) return;
-
-    if (now - state.lastTickTime < state.tickInterval) return;
-    state.lastTickTime = now;
 
     state.dir = { ...state.nextDir };
     const head = state.snake[0];
@@ -396,13 +394,21 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
     },
     onUpdate: (ctx, deltaSec, curW, curH) => {
       const state = gameStateRef.current;
-      const now = performance.now();
-      stepSnake(now);
+      const frameScale = !isPausedRef.current ? getFrameScale(deltaSec) : 0;
+      if (!isPausedRef.current && state.isAlive) {
+        state.tickAccumulatorMs += deltaSec * 1000;
+        let safetySteps = 0;
+        while (state.tickAccumulatorMs >= state.tickInterval && state.isAlive && safetySteps < 8) {
+          state.tickAccumulatorMs -= state.tickInterval;
+          stepSnake();
+          safetySteps++;
+        }
+      }
 
       // Screen Shake
       if (state.shake > 0) {
         ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
-        state.shake *= 0.88;
+        state.shake *= getFrameInvariantDecay(0.88, frameScale);
         if (state.shake < 0.2) state.shake = 0;
       }
 
@@ -439,7 +445,7 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
 
       // Food items
       state.foods.forEach((f) => {
-        f.pulse += 0.08;
+        f.pulse += 0.08 * frameScale;
         const cx = (f.x + 0.5) * state.cellSize;
         const cy = (f.y + 0.5) * state.cellSize;
         const rad = (state.cellSize * 0.42) + Math.sin(f.pulse) * 1.5;
@@ -517,9 +523,9 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
       // Particles
       for (let i = state.particles.length - 1; i >= 0; i--) {
         const p = state.particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life++;
+        p.x += p.vx * frameScale;
+        p.y += p.vy * frameScale;
+        p.life += frameScale;
         const alpha = Math.max(0, 1 - p.life / p.maxLife);
 
         ctx.fillStyle = p.color;
@@ -537,8 +543,8 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
       // Floating Texts
       for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
         const ft = state.floatingTexts[i];
-        ft.y -= 0.8;
-        ft.life++;
+        ft.y -= 0.8 * frameScale;
+        ft.life += frameScale;
         const alpha = Math.max(0, 1 - ft.life / ft.maxLife);
 
         ctx.fillStyle = ft.color;

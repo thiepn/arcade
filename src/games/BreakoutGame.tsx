@@ -4,6 +4,7 @@ import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { clamp, rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
+import { ARCADE_FIXED_STEP_SEC, getArcadeStepBatch, getFrameScale } from '../lib/frameRateRuntime';
 
 interface Brick {
   x: number;
@@ -98,6 +99,7 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
     lastLaserFire: 0,
     viewportWidth: 400,
     viewportHeight: 600,
+    physicsAccumulator: 0,
   });
 
   const initBricks = (w: number, round: number) => {
@@ -171,6 +173,7 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
     state.laserCooldown = 0;
     state.wideTimeRemaining = 0;
     state.fireballTimeRemaining = 0;
+    state.physicsAccumulator = 0;
     state.balls = [
       {
         x: 200,
@@ -283,14 +286,19 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
 
       state.viewportWidth = w;
       state.viewportHeight = h;
+      state.physicsAccumulator = 0;
       state.paddleX = clamp(state.paddleX, state.paddleW / 2, w - state.paddleW / 2);
       state.targetPaddleX = clamp(state.targetPaddleX, state.paddleW / 2, w - state.paddleW / 2);
 
       if (state.bricks.length === 0) state.bricks = initBricks(w, state.round);
     },
-    onUpdate: (ctx, dt, curW, curH) => {
-      const delta = Math.min(32, dt * 1000);
+    onUpdate: (ctx, deltaSec, curW, curH) => {
       const state = gameStateRef.current;
+      const batch = !isPausedRef.current && state.isAlive
+        ? getArcadeStepBatch(state.physicsAccumulator, deltaSec)
+        : { steps: 0, remainderSec: 0 };
+      state.physicsAccumulator = batch.remainderSec;
+      const effectFrameScale = !isPausedRef.current ? getFrameScale(deltaSec) : 0;
 
       const spawnWallSparks = (x: number, y: number, color: string, st: typeof state) => {
         for (let i = 0; i < 6; i++) {
@@ -314,13 +322,17 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
         const sx = (Math.random() - 0.5) * state.shake;
         const sy = (Math.random() - 0.5) * state.shake;
         ctx.translate(sx, sy);
-        state.shake *= 0.88;
-        if (state.shake < 0.2) state.shake = 0;
       }
 
       ctx.clearRect(-20, -20, curW + 40, curH + 40);
 
       if (!isPausedRef.current && state.isAlive) {
+        for (let simStep = 0; simStep < batch.steps && state.isAlive; simStep++) {
+          const delta = ARCADE_FIXED_STEP_SEC * 1000;
+          if (state.shake > 0) {
+            state.shake *= 0.88;
+            if (state.shake < 0.2) state.shake = 0;
+          }
         // Paddle movement
         if (state.keys.left) state.targetPaddleX -= 10;
         if (state.keys.right) state.targetPaddleX += 10;
@@ -594,6 +606,7 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
             },
           ];
         }
+        }
       }
 
       // --- RENDERING ---
@@ -770,9 +783,9 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
       // Draw Particles
       for (let i = state.particles.length - 1; i >= 0; i--) {
         const p = state.particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life++;
+        p.x += p.vx * effectFrameScale;
+        p.y += p.vy * effectFrameScale;
+        p.life += effectFrameScale;
         const alpha = Math.max(0, 1 - p.life / p.maxLife);
 
         ctx.beginPath();
@@ -790,8 +803,8 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
       // Draw Floating Texts
       for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
         const ft = state.floatingTexts[i];
-        ft.y -= 0.8;
-        ft.life++;
+        ft.y -= 0.8 * effectFrameScale;
+        ft.life += effectFrameScale;
         const alpha = Math.max(0, 1 - ft.life / ft.maxLife);
 
         ctx.save();

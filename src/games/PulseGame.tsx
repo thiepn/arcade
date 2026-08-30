@@ -4,6 +4,7 @@ import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { Heart, Zap, Flame, Music, Activity, Disc3 } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { getFrameInvariantBlend, getFrameInvariantDecay } from '../lib/frameRateRuntime';
 
 interface Particle {
   x: number;
@@ -356,6 +357,7 @@ export const PulseGame: React.FC<GameComponentProps> = ({
     onUpdate: (ctx, deltaSec, curW, curH) => {
       const dt = Math.min(32, deltaSec * 1000);
       const deltaRatio = dt / 16.67;
+      const activeFrameScale = !isPausedRef.current ? deltaRatio : 0;
       const state = gameStateRef.current;
       const cx = curW / 2;
       const cy = curH / 2;
@@ -364,13 +366,13 @@ export const PulseGame: React.FC<GameComponentProps> = ({
 
       if (state.shake > 0) {
         ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
-        state.shake *= 0.88;
+        state.shake *= getFrameInvariantDecay(0.88, activeFrameScale);
         if (state.shake < 0.2) state.shake = 0;
       }
 
       ctx.clearRect(-20, -20, curW + 40, curH + 40);
 
-      state.pulseTime += (state.bpm / 60) * 0.07 * deltaRatio;
+      state.pulseTime += (state.bpm / 60) * 0.07 * activeFrameScale;
 
       if (!isPausedRef.current && state.isAlive) {
         // Step pulse ring
@@ -409,7 +411,7 @@ export const PulseGame: React.FC<GameComponentProps> = ({
         for (let i = 0; i < state.bgEqualizer.length; i++) {
           const target =
             (Math.sin(state.pulseTime * 3 + i * 0.6) + 1) * (state.combo >= 5 ? 22 : 14) + 5;
-          state.bgEqualizer[i] += (target - state.bgEqualizer[i]) * 0.25;
+          state.bgEqualizer[i] += (target - state.bgEqualizer[i]) * getFrameInvariantBlend(0.25, deltaRatio);
         }
 
         // Update particles
@@ -417,7 +419,7 @@ export const PulseGame: React.FC<GameComponentProps> = ({
           const p = state.particles[i];
           p.x += p.vx * deltaRatio;
           p.y += p.vy * deltaRatio;
-          p.life++;
+          p.life += deltaRatio;
           if (p.life >= p.maxLife) {
             state.particles.splice(i, 1);
           }

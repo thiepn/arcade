@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { getFrameInvariantBlend, getFrameInvariantDecay, getFrameScale } from '../lib/frameRateRuntime';
 
 interface Particle {
   x: number;
@@ -76,8 +77,8 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
     score: 0,
     combo: 1,
     isAlive: true,
-    lastHazardSpawn: 0,
-    lastCrystalSpawn: 0,
+    hazardSpawnElapsedMs: 0,
+    crystalSpawnElapsedMs: 0,
     gameTime: 0,
     shake: 0,
     corePulse: 0,
@@ -216,9 +217,10 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
     },
     onUpdate: (ctx, deltaSec, curW, curH) => {
       const dt = Math.min(32, deltaSec * 1000);
-      const deltaRatio = dt / 16.67;
+      const deltaRatio = getFrameScale(deltaSec);
       const state = gameStateRef.current;
-      const currentTime = performance.now();
+      const activeFrameScale = !isPausedRef.current && state.isAlive ? deltaRatio : 0;
+      const currentTime = state.gameTime * 1000;
 
       const cx = curW / 2;
       const cy = curH / 2;
@@ -228,7 +230,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
       // Camera shake
       if (state.shake > 0) {
         ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
-        state.shake *= 0.88;
+        state.shake *= getFrameInvariantDecay(0.88, activeFrameScale);
         if (state.shake < 0.2) state.shake = 0;
       }
 
@@ -236,7 +238,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
 
       // Starfield background
       state.starBg.forEach((star) => {
-        star.alpha += Math.sin(currentTime * star.twinkleSpeed * 0.05) * 0.01;
+        star.alpha += Math.sin(currentTime * star.twinkleSpeed * 0.05) * 0.01 * activeFrameScale;
         const boundedAlpha = Math.max(0.1, Math.min(0.8, star.alpha));
         ctx.fillStyle = `rgba(255, 255, 255, ${boundedAlpha})`;
         ctx.fillRect(star.x, star.y, star.size, star.size);
@@ -247,7 +249,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
         state.corePulse += 0.05 * deltaRatio;
 
         // Smooth radius transition between lanes
-        state.currentRadius += (state.targetRadius - state.currentRadius) * 0.18 * deltaRatio;
+        state.currentRadius += (state.targetRadius - state.currentRadius) * getFrameInvariantBlend(0.18, deltaRatio);
 
         // Orbit update
         state.playerAngle += state.orbitSpeed * state.direction * deltaRatio;
@@ -265,19 +267,21 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
         if (state.shipTrail.length > 10) state.shipTrail.pop();
 
         state.shipTrail.forEach((t) => {
-          t.alpha *= 0.82;
+          t.alpha *= getFrameInvariantDecay(0.82, deltaRatio);
         });
 
         // Spawn Spawners
         const hazardInterval = Math.max(700, 1800 - state.gameTime * 30);
-        if (currentTime - state.lastHazardSpawn > hazardInterval) {
+        state.hazardSpawnElapsedMs += dt;
+        state.crystalSpawnElapsedMs += dt;
+        if (state.hazardSpawnElapsedMs > hazardInterval) {
           spawnHazard(curW, curH, cx, cy);
-          state.lastHazardSpawn = currentTime;
+          state.hazardSpawnElapsedMs = 0;
         }
 
-        if (currentTime - state.lastCrystalSpawn > 1600 && state.crystals.length < 5) {
+        if (state.crystalSpawnElapsedMs > 1600 && state.crystals.length < 5) {
           spawnCrystal();
-          state.lastCrystalSpawn = currentTime;
+          state.crystalSpawnElapsedMs = 0;
         }
 
         // Update Energy Crystals
@@ -335,7 +339,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
           // Trail
           h.trail.unshift({ x: h.x, y: h.y, alpha: 0.6 });
           if (h.trail.length > 8) h.trail.pop();
-          h.trail.forEach((tr) => (tr.alpha *= 0.85));
+          h.trail.forEach((tr) => (tr.alpha *= getFrameInvariantDecay(0.85, deltaRatio)));
 
           // Collision with ship
           const distToShip = Math.hypot(playerX - h.x, playerY - h.y);
@@ -474,7 +478,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
           ctx.beginPath();
           ctx.arc(0, 0, 14 * (2 - state.warpEffect), 0, Math.PI * 2);
           ctx.stroke();
-          state.warpEffect -= 0.08 * deltaRatio;
+          state.warpEffect -= 0.08 * activeFrameScale;
         }
 
         // Sleek Arrow Ship Geometry
@@ -499,9 +503,9 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
       // Particles
       for (let i = state.particles.length - 1; i >= 0; i--) {
         const p = state.particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life++;
+        p.x += p.vx * activeFrameScale;
+        p.y += p.vy * activeFrameScale;
+        p.life += activeFrameScale;
         const alpha = Math.max(0, 1 - p.life / p.maxLife);
 
         ctx.globalAlpha = alpha;
@@ -519,8 +523,8 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
       // Floating score texts
       for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
         const ft = state.floatingTexts[i];
-        ft.y -= 0.6;
-        ft.life++;
+        ft.y -= 0.6 * activeFrameScale;
+        ft.life += activeFrameScale;
         const alpha = Math.max(0, 1 - ft.life / ft.maxLife);
 
         ctx.globalAlpha = alpha;

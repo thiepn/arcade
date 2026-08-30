@@ -4,6 +4,7 @@ import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { clamp } from '../lib/gameCoordinates';
+import { getArcadeStepBatch, getFrameInvariantBlend, getFrameInvariantDecay, getFrameScale } from '../lib/frameRateRuntime';
 
 interface Block {
   x: number;
@@ -72,6 +73,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
     shake: 0,
     initialized: false,
     viewportWidth: 500,
+    physicsAccumulator: 0,
   });
 
   const getHue = (index: number) => {
@@ -232,6 +234,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
     state.targetCameraY = 0;
     state.shake = 0;
     state.viewportWidth = w;
+    state.physicsAccumulator = 0;
     state.currentWidth = baseWidth;
     state.currentHeight = 26;
     state.currentX = -baseWidth;
@@ -311,9 +314,15 @@ export const StackGame: React.FC<GameComponentProps> = ({
       }
       for (const text of state.floatingTexts) text.x *= scaleX;
       state.viewportWidth = w;
+      state.physicsAccumulator = 0;
     },
     onUpdate: (ctx, deltaSec, curW, curH) => {
       const state = gameStateRef.current;
+      const batch = !isPausedRef.current
+        ? getArcadeStepBatch(state.physicsAccumulator, deltaSec)
+        : { steps: 0, remainderSec: 0 };
+      state.physicsAccumulator = batch.remainderSec;
+      const effectFrameScale = !isPausedRef.current ? getFrameScale(deltaSec) : 0;
       if (!state.initialized) {
         initGame(curW);
       }
@@ -325,12 +334,12 @@ export const StackGame: React.FC<GameComponentProps> = ({
       // Camera shake
       if (state.shake > 0) {
         ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
-        state.shake *= 0.88;
+        state.shake *= getFrameInvariantDecay(0.88, effectFrameScale);
         if (state.shake < 0.2) state.shake = 0;
       }
 
       // Smooth camera interpolation
-      state.cameraY += (state.targetCameraY - state.cameraY) * 0.1;
+      state.cameraY += (state.targetCameraY - state.cameraY) * getFrameInvariantBlend(0.1, effectFrameScale);
 
       // Dynamic Sky Gradient based on altitude
       const altitudeProgress = Math.min(1, state.score / 50);
@@ -347,6 +356,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
       ctx.fillRect(-20, -20, curW + 40, curH + 40);
 
       if (!isPausedRef.current) {
+        for (let simStep = 0; simStep < batch.steps; simStep++) {
         // Move current block
         if (state.isAlive) {
           state.currentX += state.speed * state.direction;
@@ -380,6 +390,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
           if (r.alpha <= 0) {
             state.rings.splice(i, 1);
           }
+        }
         }
       }
 
@@ -501,8 +512,8 @@ export const StackGame: React.FC<GameComponentProps> = ({
       // Floating Texts
       for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
         const ft = state.floatingTexts[i];
-        ft.y += 0.8;
-        ft.life++;
+        ft.y += 0.8 * effectFrameScale;
+        ft.life += effectFrameScale;
         const alpha = Math.max(0, 1 - ft.life / ft.maxLife);
         const ftY = groundY - ft.y + state.cameraY - 20;
 

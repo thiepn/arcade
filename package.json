@@ -26,6 +26,7 @@
     "quality:astro": "bun scripts/audit-astro.ts",
     "quality:drift": "bun scripts/audit-drift.ts",
     "quality:vanguard": "bun scripts/audit-vanguard.ts",
+    "quality:frame-rate": "bun scripts/audit-frame-rate-global.ts",
     "quality:mobile": "bun scripts/audit-mobile-runtime.ts",
     "quality:rope": "bun scripts/audit-laser-rope-presentation.ts",
     "quality:rope-feedback": "bun scripts/audit-laser-rope-feedback.ts",
