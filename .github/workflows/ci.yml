@@ -41,6 +41,7 @@ jobs:
       - run: bun run quality:drift
       - run: bun run quality:vanguard
       - run: bun run quality:frame-rate
+      - run: bun run quality:lifecycle
       - run: bun run quality:mobile
       - run: bun run quality:rope
       - run: bun run quality:rope-feedback
