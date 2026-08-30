@@ -1,14 +1,19 @@
+import { readFileSync } from 'node:fs';
 import {
   BLADE_APEX_MAX_RATIO,
   BLADE_APEX_MIN_RATIO,
+  BLADE_FIXED_STEP_SEC,
   BLADE_LANDING_MARGIN_RATIO,
+  BLADE_SIMULATION_HZ,
   createBladeLaunchTrajectory,
+  getBladeSimulationStepBatch,
 } from '../src/lib/bladeTrajectory';
 
 const heights = [440, 500, 660, 900, 1080];
 const apexSamples = [0, 0.5, 0.999999];
 const tolerancePx = 0.75;
 const errors: string[] = [];
+const source = readFileSync('src/games/BladeGame.tsx', 'utf8');
 
 for (const height of heights) {
   const width = Math.round(height * 1.5);
@@ -71,14 +76,50 @@ for (const height of heights) {
   }
 }
 
+if (BLADE_SIMULATION_HZ !== 60) {
+  errors.push(`expected a 60 Hz Laser Blade simulation, found ${BLADE_SIMULATION_HZ}`);
+}
+if (!source.includes('getBladeSimulationStepBatch(state.physicsAccumulator, dt)')) {
+  errors.push('BladeGame does not consume elapsed time through the fixed-step runtime clock');
+}
+if (!source.includes('for (let simStep = 0; simStep < batch.steps && state.isAlive; simStep++)')) {
+  errors.push('BladeGame gameplay updates are not bounded by the fixed-step batch');
+}
+if (!source.includes('physicsAccumulator: 0')) {
+  errors.push('BladeGame does not persist a simulation accumulator');
+}
+if (!source.includes('state.comboTimer--') || !source.includes('state.spawnTimer++')) {
+  errors.push('BladeGame combo/spawn cadence is missing from the certified simulation');
+}
+if (!source.includes('state.shake *= Math.pow(0.86')) {
+  errors.push('BladeGame screen shake remains render-frame dependent');
+}
+
+const simulateStepCount = (fps: number, seconds = 4) => {
+  let accumulator = 0;
+  let steps = 0;
+  const dt = 1 / fps;
+  for (let elapsed = 0; elapsed < seconds - 1e-9; elapsed += dt) {
+    const batch = getBladeSimulationStepBatch(accumulator, dt);
+    accumulator = batch.remainderSec;
+    steps += batch.steps;
+  }
+  return steps;
+};
+const expectedSteps = Math.round(4 / BLADE_FIXED_STEP_SEC);
+for (const fps of [30, 60, 120, 144, 240]) {
+  const steps = simulateStepCount(fps);
+  if (Math.abs(steps - expectedSteps) > 1) {
+    errors.push(`${fps} FPS executes ${steps} Blade simulation steps instead of about ${expectedSteps}`);
+  }
+}
+
 if (errors.length) {
-  console.error('Laser Blade trajectory audit failed:');
+  console.error('Laser Blade trajectory/runtime audit failed:');
   for (const error of errors) console.error('- ' + error);
   process.exit(1);
 }
 
 console.log(
-  'Laser Blade trajectory audit passed: every certified mobile/desktop height reaches the ' +
-    (BLADE_APEX_MIN_RATIO * 100).toFixed(0) + '–' +
-    (BLADE_APEX_MAX_RATIO * 100).toFixed(0) + '% upper arena band.',
+  'Laser Blade audit passed: trajectories remain playable and gameplay timing is refresh-rate invariant at 30/60/120/144/240 Hz.',
 );
