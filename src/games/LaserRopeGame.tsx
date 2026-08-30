@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { ArrowUp, ArrowDown } from 'lucide-react';
-import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
 
 interface OrbItem {
   id: number;
@@ -24,7 +24,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
 
-  const [hudState, setHudState] = useState({
+  const [hudState, setHudState] = useRenderPublishedState({
     score: 0,
     jumpStreak: 0,
     rpm: 24,
@@ -32,7 +32,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
     feverPercent: 0,
     hasShield: false,
     laserMode: 'LOW' as 'LOW' | 'HIGH' | 'DUAL',
-  });
+  }, 80);
 
   const gameStateRef = useRef({
     score: 0,

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
-import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
 
 const COLORS = ['#38BDF8', '#EC4899', '#10B981', '#FACC15', '#A855F7'];
 const BUBBLE_RADIUS = 16;
@@ -42,7 +42,7 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
 
-  const [hudState, setHudState] = useState({
+  const [hudState, setHudState] = useRenderPublishedState({
     score: 0,
     shotsUntilDrop: 5,
     combo: 0,

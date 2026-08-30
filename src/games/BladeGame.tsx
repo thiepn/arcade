@@ -3,7 +3,7 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { Heart, Flame, Shield } from 'lucide-react';
-import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
 import { rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
 import { createBladeLaunchTrajectory, getBladeGravity, getBladeSimulationStepBatch } from '../lib/bladeTrajectory';
 
@@ -83,13 +83,13 @@ export const BladeGame: React.FC<GameComponentProps> = ({
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
 
-  const [hudState, setHudState] = useState({
+  const [hudState, setHudState] = useRenderPublishedState({
     lives: 3,
     combo: 0,
     multiplier: 1,
     comboTimerRatio: 0,
     hasShield: false,
-  });
+  }, 50);
 
   const gameStateRef = useRef({
     score: 0,

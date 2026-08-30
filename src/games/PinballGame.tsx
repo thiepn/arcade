@@ -3,7 +3,7 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { Disc, Heart, Shield, Trophy, Zap } from 'lucide-react';
-import { useGameLoop } from '../hooks/useGameLoop';
+import { useGameLoop, useRenderPublishedState } from '../hooks/useGameLoop';
 import { clamp, rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
 import {
   PINBALL_BALL_SAVER_SECONDS,
@@ -137,7 +137,7 @@ export const PinballGame: React.FC<GameComponentProps> = ({
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
 
-  const [hud, setHud] = useState<PinballHud>(INITIAL_HUD);
+  const [hud, setHud] = useRenderPublishedState<PinballHud>(INITIAL_HUD);
   const [leftFlipperActive, setLeftFlipperActive] = useState(false);
   const [rightFlipperActive, setRightFlipperActive] = useState(false);
 

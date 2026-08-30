@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
-import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
 import {
   getKnifeFlightPoint,
   getKnifeLocalImpactAngle,
@@ -37,7 +37,7 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
 
-  const [hudState, setHudState] = useState({
+  const [hudState, setHudState] = useRenderPublishedState({
     score: 0,
     stage: 1,
     knivesLeft: 8,

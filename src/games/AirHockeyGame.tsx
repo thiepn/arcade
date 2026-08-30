@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
-import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
 import { clamp } from '../lib/gameCoordinates';
 import { getAirHockeyTableLayout } from '../lib/airHockeyLayout';
 
@@ -65,7 +65,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>('MEDIUM');
   const [hasGameStarted, setHasGameStarted] = useState(false);
 
-  const [hudState, setHudState] = useState({
+  const [hudState, setHudState] = useRenderPublishedState({
     playerScore: 0,
     aiScore: 0,
     timeLeft: 60,

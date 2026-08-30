@@ -3,7 +3,7 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { Shield, Sparkles, Zap, Target, Orbit, Compass, Award } from 'lucide-react';
-import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
 import {
   advanceSlingshotProbe,
   getSlingshotPhysicsStepBatch,
@@ -88,7 +88,7 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
   const [lives, setLives] = useState(3);
   const [combo, setCombo] = useState(1);
   const [currentSector, setCurrentSector] = useState(1);
-  const [isLockedOn, setIsLockedOn] = useState(false);
+  const [isLockedOn, setIsLockedOn] = useRenderPublishedState(false);
   const [sectorName, setSectorName] = useState('SOLAR CORE');
 
   const isPausedRef = useRef(isPaused);
