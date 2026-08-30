@@ -5,7 +5,7 @@ import { haptics } from '../lib/haptics';
 import { Heart, Flame, Shield } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
-import { createBladeLaunchTrajectory, getBladeGravity } from '../lib/bladeTrajectory';
+import { createBladeLaunchTrajectory, getBladeGravity, getBladeSimulationStepBatch } from '../lib/bladeTrajectory';
 
 interface TargetItem {
   id: number;
@@ -120,6 +120,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
     nextId: 1,
     width: 420,
     height: 500,
+    physicsAccumulator: 0,
   });
 
   const addPopup = useCallback((text: string, x: number, y: number, color = '#FFFFFF', scale = 1.0) => {
@@ -530,6 +531,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
     state.floatingTexts = [];
     state.bladeTrail = [];
     state.spawnTimer = 20;
+    state.physicsAccumulator = 0;
   }, []);
 
   useGameLoop({
@@ -573,16 +575,23 @@ export const BladeGame: React.FC<GameComponentProps> = ({
       state.height = h;
 
       ctx.save();
-      // Screen Shake
+      // Screen shake decays by elapsed time, not render count.
+      const frameScale = Math.max(0.001, Math.min(dt, 0.05) * 60);
       if (state.shake > 0) {
         ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
-        state.shake *= 0.86;
+        state.shake *= Math.pow(0.86, frameScale);
         if (state.shake < 0.2) state.shake = 0;
       }
 
       ctx.clearRect(-10, -10, w + 20, h + 20);
 
       if (!isPausedRef.current && state.isAlive) {
+        const batch = getBladeSimulationStepBatch(state.physicsAccumulator, dt);
+        state.physicsAccumulator = batch.remainderSec;
+
+        // Preserve the original 60 Hz feel while making every gameplay timer and
+        // physics update independent of the display refresh rate.
+        for (let simStep = 0; simStep < batch.steps && state.isAlive; simStep++) {
         // Combo decay timer countdown
         if (state.comboTimer > 0) {
           state.comboTimer--;
@@ -671,6 +680,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
           if (ft.life >= ft.maxLife) {
             state.floatingTexts.splice(i, 1);
           }
+        }
         }
       }
 
