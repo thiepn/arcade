@@ -23,6 +23,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Retry after calibrating transient lifecycle detection.
           python scripts/patch-post-repair-runtime.py
           rm scripts/patch-post-repair-runtime.py
           rm scripts/discover-post-repair-audit.ts
