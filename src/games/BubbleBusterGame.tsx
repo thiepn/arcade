@@ -608,7 +608,7 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
       id="bubble-buster-container"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
-      className="relative w-full h-full min-h-[440px] flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none cursor-crosshair"
+      className="relative w-full h-full min-h-0 flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none cursor-crosshair"
     >
       {/* Top HUD */}
       <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 pointer-events-none gap-2 flex-wrap">

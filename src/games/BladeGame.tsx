@@ -867,7 +867,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
-      className="relative w-full h-full min-h-[440px] flex flex-col items-center justify-center bg-[#05050A] select-none overflow-hidden touch-none cursor-crosshair"
+      className="relative w-full h-full min-h-0 flex flex-col items-center justify-center bg-[#05050A] select-none overflow-hidden touch-none cursor-crosshair"
     >
       {/* Top HUD */}
       <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 pointer-events-none gap-2 flex-wrap">

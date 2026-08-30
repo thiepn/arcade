@@ -689,7 +689,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
     <div
       ref={containerRef}
       id="rhythm-game-container"
-      className="relative w-full h-full min-h-[440px] flex flex-col items-center justify-center bg-[#09090D] select-none overflow-hidden touch-none"
+      className="relative w-full h-full min-h-0 flex flex-col items-center justify-center bg-[#09090D] select-none overflow-hidden touch-none"
     >
       {/* Top Cyber HUD Bar & Track Selector */}
       <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 gap-1.5 flex-wrap">

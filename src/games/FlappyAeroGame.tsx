@@ -549,7 +549,7 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
       ref={containerRef}
       id="flappy-aero-container"
       onPointerDown={triggerFlap}
-      className="relative w-full h-full min-h-[440px] flex flex-col items-center justify-center bg-[#050B14] select-none overflow-hidden touch-none cursor-pointer"
+      className="relative w-full h-full min-h-0 flex flex-col items-center justify-center bg-[#050B14] select-none overflow-hidden touch-none cursor-pointer"
     >
       {/* HUD Bar */}
       <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 pointer-events-none gap-2 flex-wrap">
