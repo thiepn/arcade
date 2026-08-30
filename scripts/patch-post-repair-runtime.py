@@ -104,14 +104,9 @@ if 'quality:lifecycle' not in scripts:
     data['scripts'] = out
 write(p, json.dumps(data, indent=2) + '\n')
 
-# 5. CI enforcement.
-p = '.github/workflows/ci.yml'
-s = read(p)
-if 'bun run quality:lifecycle' not in s:
-    s = replace_once(s, '      - run: bun run quality:frame-rate\n', '      - run: bun run quality:frame-rate\n      - run: bun run quality:lifecycle\n', 'ci frame-rate gate')
-write(p, s)
-
-# 6. Release certification requires the new gate and audit.
+# 5. Release certification requires the new gate and audit. The connector will
+# add the CI workflow step after this bot commit so the bot never needs workflow
+# write permission.
 p = 'scripts/audit-release-32.ts'
 s = read(p)
 if "'quality:lifecycle'" not in s:
