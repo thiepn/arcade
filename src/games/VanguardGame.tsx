@@ -962,7 +962,7 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
   });
 
   return (
-    <div className="relative w-full h-full min-h-[420px] flex flex-col bg-[#050714] overflow-hidden select-none">
+    <div className="relative w-full h-full min-h-0 flex flex-col bg-[#050714] overflow-hidden select-none">
       {/* Top HUD */}
       <div className="absolute top-3 left-4 right-4 flex items-center justify-between z-10 pointer-events-none">
         <div className="flex items-center gap-3">

@@ -832,7 +832,7 @@ export const ChainGame: React.FC<GameComponentProps> = ({
       }
 
       ctx.restore();
-      return !state.isFinished;
+      return true;
     },
   });
 
