@@ -208,7 +208,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       // Overdrive activation check
       if (state.combo >= 15 && !state.isOverdrive) {
         state.isOverdrive = true;
-        state.overdriveTimer = 400; // ~7 seconds
+        state.overdriveTimer = 400 / 60; // ~6.7 seconds
         if (soundEnabledRef.current) sounds.playFeverMode();
       }
 
@@ -359,7 +359,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
 
         // Overdrive fever timer
         if (state.isOverdrive) {
-          state.overdriveTimer--;
+          state.overdriveTimer -= dt;
           if (state.overdriveTimer <= 0) {
             state.isOverdrive = false;
           }
@@ -420,9 +420,10 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
         // Update Particles
         for (let p = state.particles.length - 1; p >= 0; p--) {
           const part = state.particles[p];
-          part.x += part.vx;
-          part.y += part.vy;
-          part.vy += 0.12;
+          const particleFrameScale = dt * 60;
+          part.x += part.vx * particleFrameScale;
+          part.y += part.vy * particleFrameScale + 0.5 * 0.12 * particleFrameScale * (particleFrameScale - 1);
+          part.vy += 0.12 * particleFrameScale;
           part.life -= dt / part.maxLife;
           if (part.life <= 0) {
             state.particles.splice(p, 1);
@@ -673,7 +674,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
         multiplier: state.multiplier,
         grooveHealth: Math.round(state.grooveHealth),
         overdrive: state.isOverdrive,
-        overdriveTime: Math.ceil(state.overdriveTimer / 60),
+        overdriveTime: Math.ceil(state.overdriveTimer),
         songProgress: Math.max(0, Math.min(100, Math.round((state.currentBeat / state.song.durationBeats) * 100))),
         currentSongTitle: state.song.title,
         currentSectionName: sectionName,

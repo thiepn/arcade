@@ -4,6 +4,7 @@ import { sounds } from '../lib/sound';
 import { Sparkles, Bomb, Zap, Snowflake, Shield, AlertTriangle, BatteryCharging } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { clamp, rescalePoint, rescaleVelocity } from '../lib/gameCoordinates';
+import { getArcadeStepBatch, getFrameScale } from '../lib/frameRateRuntime';
 
 interface ParticleNode {
   id: number;
@@ -99,6 +100,7 @@ export const ChainGame: React.FC<GameComponentProps> = ({
     selectedTool: 'plasma' as DetonatorTool,
     viewportWidth: 400,
     viewportHeight: 600,
+    physicsAccumulator: 0,
   });
 
   const initParticles = useCallback((w: number, h: number, waveNum: number) => {
@@ -329,6 +331,7 @@ export const ChainGame: React.FC<GameComponentProps> = ({
     state.vortexes = [];
     state.lightningArcs = [];
     state.floatingTexts = [];
+    state.physicsAccumulator = 0;
     state.particles = initParticles(400, 600, 1);
     setChargesLeft(3);
     setChainCount(0);
@@ -386,25 +389,33 @@ export const ChainGame: React.FC<GameComponentProps> = ({
 
       state.viewportWidth = w;
       state.viewportHeight = h;
+      state.physicsAccumulator = 0;
       if (state.particles.length === 0) state.particles = initParticles(w, h, state.wave);
     },
-    onUpdate: (ctx, dt, curW, curH) => {
+    onUpdate: (ctx, deltaSec, curW, curH) => {
       const state = gameStateRef.current;
+      const batch = !isPausedRef.current
+        ? getArcadeStepBatch(state.physicsAccumulator, deltaSec)
+        : { steps: 0, remainderSec: 0 };
+      state.physicsAccumulator = batch.remainderSec;
+      const effectFrameScale = !isPausedRef.current ? getFrameScale(deltaSec) : 0;
 
       ctx.save();
 
       if (state.shake > 0) {
         ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
-        state.shake *= 0.88;
-        if (state.shake < 0.2) state.shake = 0;
       }
 
       ctx.clearRect(-20, -20, curW + 40, curH + 40);
 
-      let activeExplosions = 0;
-      let movingCount = 0;
-
       if (!isPausedRef.current) {
+        for (let simStep = 0; simStep < batch.steps; simStep++) {
+          let activeExplosions = 0;
+          let movingCount = 0;
+          if (state.shake > 0) {
+            state.shake *= 0.88;
+            if (state.shake < 0.2) state.shake = 0;
+          }
         // 1. Process Cryo Vortex Fields (Gravity Pull & Freeze)
         for (let vIdx = state.vortexes.length - 1; vIdx >= 0; vIdx--) {
           const v = state.vortexes[vIdx];
@@ -673,6 +684,7 @@ export const ChainGame: React.FC<GameComponentProps> = ({
             state.sparks.splice(i, 1);
           }
         }
+        }
       }
 
       // --- RENDERING ---
@@ -803,8 +815,8 @@ export const ChainGame: React.FC<GameComponentProps> = ({
       // Draw Floating Texts
       for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
         const ft = state.floatingTexts[i];
-        ft.y -= 0.8;
-        ft.life++;
+        ft.y -= 0.8 * effectFrameScale;
+        ft.life += effectFrameScale;
         const alpha = Math.max(0, 1 - ft.life / ft.maxLife);
 
         ctx.fillStyle = ft.color;

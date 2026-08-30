@@ -3,6 +3,7 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { clamp, rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
+import { ARCADE_FIXED_STEP_SEC, getArcadeStepBatch, getFrameInvariantDecay, getFrameScale } from '../lib/frameRateRuntime';
 
 interface Hazard {
   id: number;
@@ -80,18 +81,19 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
     stars: [] as Star[],
     score: 0,
     isAlive: true,
-    lastSpawn: 0,
+    spawnElapsedMs: 0,
     gameTime: 0,
     combo: 1,
     keys: { left: false, right: false, up: false, down: false },
     nextHazardId: 1,
     viewportWidth: 400,
     viewportHeight: 600,
+    physicsAccumulator: 0,
   });
 
   const triggerDash = () => {
     const state = gameStateRef.current;
-    if (!state.isAlive || state.dashCharges <= 0 || state.isDashing) return;
+    if (!state.isAlive || state.dashCharges <= 0 || state.isDashing || isPausedRef.current) return;
 
     state.dashCharges--;
     setDashAvailable(state.dashCharges);
@@ -133,6 +135,8 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
     state.dashCharges = 2;
     state.dashRecharge = 0;
     state.slowMoTimer = 0;
+    state.spawnElapsedMs = 0;
+    state.physicsAccumulator = 0;
 
     // Generate parallax starfield
     state.stars = Array.from({ length: 50 }, () => ({
@@ -144,6 +148,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
     }));
 
     const handlePointerMove = (e: MouseEvent | TouchEvent) => {
+      if (isPausedRef.current || !state.isAlive) return;
       if ('touches' in e) e.preventDefault();
       const rect = canvas.getBoundingClientRect();
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
@@ -153,6 +158,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isPausedRef.current || !state.isAlive) return;
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') state.keys.left = true;
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') state.keys.right = true;
       if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') state.keys.up = true;
@@ -230,6 +236,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
 
       state.viewportWidth = w;
       state.viewportHeight = h;
+      state.physicsAccumulator = 0;
       if (needsInitialPlacement) {
         state.playerX = w / 2;
         state.targetPlayerX = w / 2;
@@ -241,16 +248,19 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
       }
     },
     onUpdate: (ctx, deltaSec, curW, curH) => {
-      const dt = Math.min(32, deltaSec * 1000);
       const state = gameStateRef.current;
-      const currentTime = performance.now();
+      const batch = !isPausedRef.current && state.isAlive
+        ? getArcadeStepBatch(state.physicsAccumulator, deltaSec)
+        : { steps: 0, remainderSec: 0 };
+      state.physicsAccumulator = batch.remainderSec;
+      const effectFrameScale = !isPausedRef.current ? getFrameScale(deltaSec) : 0;
 
       ctx.save();
 
       // Camera shake
       if (state.shake > 0) {
         ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
-        state.shake *= 0.88;
+        state.shake *= getFrameInvariantDecay(0.88, effectFrameScale);
         if (state.shake < 0.2) state.shake = 0;
       }
 
@@ -258,7 +268,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
 
       // Parallax Stars
       state.stars.forEach((star) => {
-        star.y += star.speed * (state.slowMoTimer > 0 ? 0.4 : 1);
+        star.y += star.speed * (state.slowMoTimer > 0 ? 0.4 : 1) * effectFrameScale;
         if (star.y > curH) {
           star.y = 0;
           star.x = Math.random() * curW;
@@ -270,7 +280,9 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
       });
 
       if (!isPausedRef.current && state.isAlive) {
-        state.gameTime += dt / 1000;
+        for (let simStep = 0; simStep < batch.steps && state.isAlive; simStep++) {
+        const dt = ARCADE_FIXED_STEP_SEC * 1000;
+        state.gameTime += ARCADE_FIXED_STEP_SEC;
         const timeScale = state.slowMoTimer > 0 ? 0.45 : 1;
 
         if (state.slowMoTimer > 0) {
@@ -314,8 +326,9 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
 
         // Hazard Spawner
         const spawnDelay = Math.max(380, 1100 - state.gameTime * 25);
-        if (currentTime - state.lastSpawn > spawnDelay) {
-          state.lastSpawn = currentTime;
+        state.spawnElapsedMs += dt;
+        if (state.spawnElapsedMs > spawnDelay) {
+          state.spawnElapsedMs = 0;
           const rand = Math.random();
 
           if (rand < 0.15 && state.gameTime > 10) {
@@ -551,6 +564,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
             state.hazards.splice(i, 1);
           }
         }
+        }
       }
 
       // --- RENDERING ---
@@ -708,9 +722,9 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
       // Draw Particles
       for (let i = state.particles.length - 1; i >= 0; i--) {
         const p = state.particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life++;
+        p.x += p.vx * effectFrameScale;
+        p.y += p.vy * effectFrameScale;
+        p.life += effectFrameScale;
         const alpha = Math.max(0, 1 - p.life / p.maxLife);
 
         ctx.beginPath();

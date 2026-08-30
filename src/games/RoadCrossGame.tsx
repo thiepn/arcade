@@ -3,6 +3,7 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { getFrameInvariantBlend } from '../lib/frameRateRuntime';
 import { canAcceptRoadCrossMove, getRoadCrossBoardMetrics } from '../lib/roadCrossSupport';
 
 type LaneType = 'grass' | 'road' | 'train' | 'river';
@@ -346,12 +347,13 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
         // Smooth visual position lerp
         const targetX = state.col * TILE_SIZE;
         const targetY = state.row * TILE_SIZE;
-        state.playerX += (targetX - state.playerX) * 0.4;
-        state.playerY += (targetY - state.playerY) * 0.4;
+        const playerBlend = getFrameInvariantBlend(0.4, dt * 60);
+        state.playerX += (targetX - state.playerX) * playerBlend;
+        state.playerY += (targetY - state.playerY) * playerBlend;
 
         // Camera follow
         const targetCamY = state.playerY - h * 0.35;
-        state.cameraY += (targetCamY - state.cameraY) * 0.12;
+        state.cameraY += (targetCamY - state.cameraY) * getFrameInvariantBlend(0.12, dt * 60);
 
         // Laser creeping
         state.laserSpeed = Math.min(2.0, 0.7 + state.maxRowReached * 0.015);

@@ -3,6 +3,7 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { Ghost, Zap, Shield, Sparkles, Trophy, Flame } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
+import { getFrameInvariantChance } from '../lib/frameRateRuntime';
 import {
   advancePacMover,
   getPacDirectionForCode,
@@ -218,7 +219,7 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
         }
 
         // Fruit logic
-        if (!state.fruitActive && state.dotsEaten > 30 && Math.random() < 0.003) {
+        if (!state.fruitActive && state.dotsEaten > 30 && Math.random() < getFrameInvariantChance(0.003, dt * 60)) {
           state.fruitActive = true;
           state.fruitTimer = 10;
         }
