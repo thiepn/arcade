@@ -4,6 +4,7 @@ import { sounds } from '../lib/sound';
 import { Rocket, Shield, ArrowUp, Flame, Magnet } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { clamp } from '../lib/gameCoordinates';
+import { TOWER_FIXED_STEP_SEC, getTowerPhysicsStepBatch } from '../lib/towerRuntime';
 
 interface Platform {
   id: number;
@@ -137,12 +138,14 @@ export const TowerGame: React.FC<GameComponentProps> = ({
     rightPressed: false,
     viewportWidth: 420,
     viewportHeight: 600,
+    physicsAccumulator: 0,
   });
 
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const state = gameStateRef.current;
+      if (isPausedRef.current || !state.isAlive) return;
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
         state.leftPressed = true;
       }
@@ -190,7 +193,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
 
   // Touch / Pointer controls
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || isPausedRef.current || !gameStateRef.current.isAlive) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const state = gameStateRef.current;
@@ -346,6 +349,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
     state.hasShield = false;
     state.jetpackActive = false;
     state.magnetActive = false;
+    state.physicsAccumulator = 0;
 
     generateWorldUpTo(1800, initialWidth);
   }, []);
@@ -381,15 +385,19 @@ export const TowerGame: React.FC<GameComponentProps> = ({
 
       state.viewportWidth = w;
       state.viewportHeight = h;
+      state.physicsAccumulator = 0;
       if (state.platforms.length === 0) generateWorldUpTo(1800, w);
     },
     onUpdate: (ctx, deltaSec, curW, curH) => {
-      const dt = Math.min(deltaSec, 0.08);
       const state = gameStateRef.current;
 
       ctx.clearRect(0, 0, curW, curH);
 
+      const batch = getTowerPhysicsStepBatch(state.physicsAccumulator, deltaSec);
+      state.physicsAccumulator = batch.remainderSec;
       if (!isPausedRef.current && state.isAlive) {
+        for (let simStep = 0; simStep < batch.steps && state.isAlive; simStep++) {
+          const dt = TOWER_FIXED_STEP_SEC;
         // Screen Shake decay
         if (state.screenShake > 0) {
           state.screenShake = Math.max(0, state.screenShake - dt * 15);
@@ -872,6 +880,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
           if (popup.life <= 0) {
             state.popups.splice(pop, 1);
           }
+        }
         }
       }
 
