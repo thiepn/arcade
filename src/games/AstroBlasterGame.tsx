@@ -4,6 +4,7 @@ import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { clamp, rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
+import { ASTRO_FIXED_STEP_SEC, getAstroPhysicsStepBatch } from '../lib/astroRuntime';
 import {
   RotateCcw,
   RotateCw,
@@ -159,6 +160,7 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
 
     ufoSpawnTimer: 450,
     shootCooldown: 0,
+    physicsAccumulator: 0,
   });
 
   const addPopup = useCallback((text: string, x: number, y: number, color = '#FFFFFF') => {
@@ -402,6 +404,9 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
     state.ship.shieldTimer = 0;
     state.ship.tripleShotTimer = 0;
     state.ship.invulnerableTimer = 90;
+    state.ufoSpawnTimer = 450;
+    state.shootCooldown = 0;
+    state.physicsAccumulator = 0;
     startLevel(1);
   }, [startLevel]);
 
@@ -449,10 +454,11 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
 
       state.width = w;
       state.height = h;
+      state.physicsAccumulator = 0;
       state.ship.x = ((state.ship.x % w) + w) % w;
       state.ship.y = ((state.ship.y % h) + h) % h;
     },
-    onUpdate: (ctx, dt, width, height) => {
+    onUpdate: (ctx, deltaSec, width, height) => {
       const state = gameStateRef.current;
       const w = width;
       const h = height;
@@ -462,7 +468,8 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
       ctx.save();
       if (state.shake > 0) {
         ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
-        state.shake *= 0.88;
+        const frameScale = Math.max(0, Math.min(deltaSec, 0.08) * 60);
+        state.shake *= Math.pow(0.88, frameScale);
         if (state.shake < 0.2) state.shake = 0;
       }
 
@@ -472,7 +479,11 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
       // PHYSICS & UPDATE LOGIC
       // =====================================
       if (!isPausedRef.current && state.isAlive) {
-        const s = state.ship;
+        const batch = getAstroPhysicsStepBatch(state.physicsAccumulator, deltaSec);
+        state.physicsAccumulator = batch.remainderSec;
+        for (let simStep = 0; simStep < batch.steps && state.isAlive; simStep++) {
+          const dt = ASTRO_FIXED_STEP_SEC;
+          const s = state.ship;
 
         // Ship Timers
         if (s.invulnerableTimer > 0) s.invulnerableTimer--;
@@ -862,6 +873,7 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
           if (ft.life >= ft.maxLife) {
             state.floatingTexts.splice(i, 1);
           }
+        }
         }
       }
 
