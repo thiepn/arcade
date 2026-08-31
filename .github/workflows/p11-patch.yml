@@ -25,13 +25,34 @@ jobs:
           python scripts/patch-p11.py
           python - <<'PY'
           from pathlib import Path
-          p = Path('src/data/games.ts')
-          text = p.read_text()
-          old = "Grow through wraparound portals and escalating firewalls; Ghost Phase now enables Phase Thread routes"
-          new = "Grow through wraparound portals as firewall phrases appear every four growth steps; Ghost Phase now enables Phase Thread routes"
-          if old not in text:
-              raise SystemExit('P11/P4 Cyber Serpent teaching marker missing')
-          p.write_text(text.replace(old, new, 1))
+
+          registry = Path('src/data/games.ts')
+          text = registry.read_text()
+          replacements = [
+              (
+                  "Grow through wraparound portals and escalating firewalls; Ghost Phase now enables Phase Thread routes",
+                  "Grow through wraparound portals as firewall phrases appear every four growth steps; Ghost Phase now enables Phase Thread routes",
+                  'P11/P4 Cyber Serpent teaching marker missing',
+              ),
+              (
+                  "Read crystal routes, graze passing comets, and survive telegraphed threat formations",
+                  "Read authored crystal routes, graze passing comets, and survive telegraphed threat formations",
+                  'P11/P5 Orbit route teaching marker missing',
+              ),
+          ]
+          for old, new, message in replacements:
+              if old not in text:
+                  raise SystemExit(message)
+              text = text.replace(old, new, 1)
+          registry.write_text(text)
+
+          orbit = Path('src/games/OrbitGame.tsx')
+          orbit_text = orbit.read_text()
+          old_hud = "`${threatLabel} • FORMATION x${Math.max(1, state.formationChain)} • ROUTE x${getOrbitRouteMultiplier(state.routeChain)} • GRAZE x${Math.max(1, state.nearMissChain)}`"
+          new_hud = "`${threatLabel} • ${getOrbitRouteName(state.routeIndex)} • FORMATION x${Math.max(1, state.formationChain)} • ROUTE x${getOrbitRouteMultiplier(state.routeChain)} • GRAZE x${Math.max(1, state.nearMissChain)}`"
+          if old_hud not in orbit_text:
+              raise SystemExit('P11/P5 Orbit HUD route marker missing')
+          orbit.write_text(orbit_text.replace(old_hud, new_hud, 1))
           PY
       - run: bun install --frozen-lockfile
       - run: bun scripts/audit-gameplay-p11.ts
