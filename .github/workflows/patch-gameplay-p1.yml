@@ -44,3 +44,5 @@ jobs:
           fi
           git commit -m 'Upgrade P1 gameplay depth'
           git push origin HEAD:gameplay/p1-depth-upgrade
+
+# certification trigger
