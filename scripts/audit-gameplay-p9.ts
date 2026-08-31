@@ -84,6 +84,8 @@ for (const token of ['getStackPerfectWindow', 'focusCharges', 'focusArmed', 'foc
 }
 assert(stack.includes('FOCUS MISSED — STACK CONTINUES'), 'Stack Focus miss no longer preserves ordinary overlapping placement');
 assert(stack.includes('Math.max(0, state.blocks.length - 1) * 10'), 'Stack altitude display still conflates mastery bonus score with physical tower height');
+assert(stack.includes('Math.max(0, state.blocks.length - 1) * 0.08'), 'Stack movement speed is no longer tied to physical tower growth');
+assert(!stack.includes('state.score * 0.08'), 'Stack Focus bonus score still accelerates the base movement-speed curve');
 
 for (const token of ['isPulseWagerHit', 'syncWagerCharges', 'syncWagerArmed', 'syncWagerStreak', 'SYNC WAGER ARMED', "e.code === 'KeyF'"]) {
   assert(pulse.includes(token), `Pulse P9 integration missing ${token}`);
