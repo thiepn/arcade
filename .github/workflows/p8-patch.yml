@@ -35,6 +35,28 @@ jobs:
           path.write_text(source)
           PY
           python scripts/patch-p8.py
+          python - <<'PY'
+          from pathlib import Path
+
+          registry_path = Path('src/data/games.ts')
+          registry = registry_path.read_text()
+          registry = registry.replace(
+              "Shatter multi-hit bricks and exploit five powerups while rotating round contracts challenge combo control, power catches, armor breaks, and special-brick hunting.",
+              "Shatter multi-hit bricks, catch Multiball, Laser, Wide Paddle, and Fireball drops, and chase rotating round contracts for combo, power, armor, and special-brick mastery.",
+          )
+          registry = registry.replace(
+              "Solve ten procedural physics archetypes, then chase rotating Master Route goals that combine optional stars with ink-efficiency targets and mastery streaks.",
+              "Solve ten procedural physics archetypes with a limited ink budget, then chase rotating Master Route goals; stars are optional bonus targets for ordinary clears but fuel mastery streaks.",
+          )
+          registry_path.write_text(registry)
+
+          one_line_path = Path('src/games/OneLineGame.tsx')
+          one_line = one_line_path.read_text().replace(
+              "DRAW ONE RAMP • STARS STAY OPTIONAL • MASTER ROUTE REWARDS STAR + INK EFFICIENCY",
+              "DRAW ONE RAMP • RELEASE TO RUN PHYSICS • STARS STAY OPTIONAL • MASTER ROUTE REWARDS STAR + INK EFFICIENCY",
+          )
+          one_line_path.write_text(one_line)
+          PY
       - run: bun install --frozen-lockfile
       - run: bun scripts/audit-gameplay-p8.ts
       - run: bun run quality:games
