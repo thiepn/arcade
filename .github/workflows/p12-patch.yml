@@ -28,12 +28,12 @@ jobs:
           text = p.read_text()
           text = text.replace(
               "import { getFrameInvariantBlend } from '../lib/frameRateRuntime';\\n",
-              "import { getFrameInvariantBlend, getFrameInvariantDecay, getFrameScale } from '../lib/frameRateRuntime';\\n",
+              "import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';\\n",
               1,
           )
           text = text.replace(
               "import { getFrameInvariantBlend } from '../lib/frameRateRuntime';\\nimport {\\n",
-              "import { getFrameInvariantBlend, getFrameInvariantDecay, getFrameScale } from '../lib/frameRateRuntime';\\nimport {\\n",
+              "import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';\\nimport {\\n",
               1,
           )
           p.write_text(text)
