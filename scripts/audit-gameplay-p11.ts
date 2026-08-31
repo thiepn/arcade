@@ -78,7 +78,7 @@ assert(pac.includes('state.frightenedTimer *= PAC_HUNT_TIMER_FACTOR'), 'Pac sour
 assert(pac.includes('getPacHuntGhostSpeed'), 'Pac source does not apply Hunt ghost pressure');
 assert(pac.includes('getPacHuntCapturePoints'), 'Pac source does not apply Hunt capture rewards');
 assert(pac.includes('HUNT RUSH'), 'Pac source does not expose Hunt Rush feedback');
-assert(pac.includes("e.code === 'KeyF'"), 'Pac Hunt keyboard activation is missing');
+assert(pac.includes("event.code === 'KeyF'"), 'Pac Hunt keyboard activation is missing');
 
 assert(SNAKE_PHASE_THREAD_EXTENSION_EVERY === 3, 'Snake Phase Thread extension cadence must stay every three unique cells');
 assert(SNAKE_PHASE_THREAD_EXTENSION_TICKS === 6, 'Snake Phase Thread extension must stay bounded to six ticks');
