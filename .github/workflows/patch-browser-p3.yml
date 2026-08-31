@@ -5,6 +5,7 @@ on:
     branches: [gameplay/p3-browser-certification]
     paths:
       - scripts/audit-browser-gameplay-p3.mjs
+      - scripts/fix-p3-harness.py
       - .github/workflows/patch-browser-p3.yml
 
 permissions:
@@ -19,10 +20,12 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.0
-      - name: Install browser test dependency and wire P3 gate
+      - name: Apply corrected P3 harness and wire browser gate
         shell: bash
         run: |
           set -euo pipefail
+          python scripts/fix-p3-harness.py
+          rm scripts/fix-p3-harness.py
           bun add --dev @playwright/test@1.55.0
           python - <<'PY'
           import json
@@ -82,10 +85,9 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add package.json bun.lock scripts/audit-release-32.ts
+          git add scripts/audit-browser-gameplay-p3.mjs scripts/fix-p3-harness.py package.json bun.lock scripts/audit-release-32.ts
           if git diff --cached --quiet; then
             exit 0
           fi
           git commit -m 'Wire P3 browser gameplay certification'
           git push origin HEAD:gameplay/p3-browser-certification
-# trigger: p3-browser-certification
