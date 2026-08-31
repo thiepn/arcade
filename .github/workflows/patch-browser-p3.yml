@@ -1,0 +1,90 @@
+name: Patch P3 browser gameplay certification
+
+on:
+  push:
+    branches: [gameplay/p3-browser-certification]
+    paths:
+      - scripts/audit-browser-gameplay-p3.mjs
+      - .github/workflows/patch-browser-p3.yml
+
+permissions:
+  contents: write
+
+jobs:
+  browser-certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+      - name: Install browser test dependency and wire P3 gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun add --dev @playwright/test@1.55.0
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          p = Path('package.json')
+          data = json.loads(p.read_text())
+          scripts = data.setdefault('scripts', {})
+          scripts['quality:browser-p3'] = 'bun scripts/audit-browser-gameplay-p3.mjs'
+          p.write_text(json.dumps(data, indent=2) + '\n')
+
+          p = Path('scripts/audit-release-32.ts')
+          s = p.read_text()
+          if "'quality:browser-p3'" not in s:
+              s = s.replace("  'quality:gameplay-p2',\n", "  'quality:gameplay-p2',\n  'quality:browser-p3',\n", 1)
+          if "'scripts/audit-browser-gameplay-p3.mjs'" not in s:
+              marker = "  'scripts/audit-gameplay-p2.ts',\n"
+              if marker in s:
+                  s = s.replace(marker, marker + "  'scripts/audit-browser-gameplay-p3.mjs',\n", 1)
+              else:
+                  raise SystemExit('release32 P3 audit-file insertion marker missing')
+          p.write_text(s)
+          PY
+      - run: bun run quality:gameplay-p2
+      - run: bunx tsc --noEmit
+      - run: bun run build
+      - name: Run all-game browser gameplay certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          bunx vite preview --host 127.0.0.1 --port 4173 > /tmp/p3-preview.log 2>&1 &
+          preview_pid=$!
+          cleanup() {
+            kill "$preview_pid" 2>/dev/null || true
+            wait "$preview_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null 2>&1; then
+              break
+            fi
+            if ! kill -0 "$preview_pid" 2>/dev/null; then
+              cat /tmp/p3-preview.log
+              exit 1
+            fi
+            sleep 1
+          done
+          chrome="$(command -v google-chrome || command -v google-chrome-stable || true)"
+          if [ -z "$chrome" ]; then
+            echo 'Chrome executable not found on runner'
+            exit 1
+          fi
+          P3_CHROME_PATH="$chrome" bun run quality:browser-p3
+      - name: Commit verified P3 browser gate metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json bun.lock scripts/audit-release-32.ts
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'Wire P3 browser gameplay certification'
+          git push origin HEAD:gameplay/p3-browser-certification
