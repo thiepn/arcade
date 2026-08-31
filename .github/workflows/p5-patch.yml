@@ -21,7 +21,20 @@ jobs:
         with:
           bun-version: 1.4.0
       - name: Apply P5 bottom-three patch
-        run: python scripts/patch-p5.py
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/patch-p5.py')
+          source = path.read_text()
+          source = source.replace(
+              "'    \"quality:gameplay-p4\": \"bun scripts/audit-gameplay-p4.ts\",',",
+              "'    \"quality:gameplay-p4\": \"bun scripts/audit-gameplay-p4.ts\"',",
+          )
+          path.write_text(source)
+          PY
+          python scripts/patch-p5.py
       - run: bun install --frozen-lockfile
       - run: bun run quality:gameplay-p5
       - run: bun run quality:games
