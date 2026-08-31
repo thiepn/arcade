@@ -59,7 +59,8 @@
     "quality:gameplay-p9": "bun scripts/audit-gameplay-p9.ts",
     "quality:gameplay-p10": "bun scripts/audit-gameplay-p10.ts",
     "quality:gameplay-p11": "bun scripts/audit-gameplay-p11.ts",
-    "quality:gameplay-p12": "bun scripts/audit-gameplay-p12.ts"
+    "quality:gameplay-p12": "bun scripts/audit-gameplay-p12.ts",
+    "quality:gameplay-p13": "bun scripts/audit-gameplay-p13.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
