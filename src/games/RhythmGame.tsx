@@ -13,6 +13,11 @@ import {
   getLatencyCompensatedBeat,
   getSignedTimingErrorMs,
 } from '../lib/rhythmTiming';
+import {
+  getRhythmHoldCompletionBonus,
+  isRhythmHoldComplete,
+  shouldBreakRhythmHold,
+} from '../lib/rhythmHoldMastery';
 
 interface ActiveNote {
   id: number;
@@ -22,6 +27,8 @@ interface ActiveNote {
   holdBeats?: number;
   isHit?: boolean;
   isMissed?: boolean;
+  isHolding?: boolean;
+  holdCompleted?: boolean;
   scoreAwarded?: boolean;
 }
 
@@ -90,6 +97,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
   }, []);
 
   const [activeLanes, setActiveLanes] = useState<boolean[]>([false, false, false, false]);
+  const laneHeldRef = useRef<boolean[]>([false, false, false, false]);
   const [hudStats, setHudStats] = useRenderPublishedState({
     score: 0,
     combo: 0,
@@ -141,6 +149,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
     state.isAlive = true;
     state.popups = [];
     state.particles = [];
+    laneHeldRef.current = [false, false, false, false];
     state.notes = newSong.notes.map((n, i) => ({
       id: i + 1,
       beatTime: n.time,
@@ -149,6 +158,8 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       holdBeats: n.holdBeats,
       isHit: false,
       isMissed: false,
+      isHolding: false,
+      holdCompleted: false,
     }));
     onScoreUpdate(0);
     musicEngine.playSong(newSong, -4);
@@ -184,6 +195,10 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
 
     if (closestNote) {
       closestNote.isHit = true;
+      if (closestNote.type === 'hold' && (closestNote.holdBeats ?? 0) > 0) {
+        closestNote.isHolding = true;
+        closestNote.holdCompleted = false;
+      }
       let points = 60;
       let rating: 'PERFECT' | 'GREAT' | 'GOOD' = 'GOOD';
       let ratingColor = '#FACC15';
@@ -304,6 +319,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
     state.combo = 0;
     state.grooveHealth = 100;
     state.isAlive = true;
+    laneHeldRef.current = [false, false, false, false];
     state.notes = song.notes.map((n, i) => ({
       id: i + 1,
       beatTime: n.time,
@@ -312,6 +328,8 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       holdBeats: n.holdBeats,
       isHit: false,
       isMissed: false,
+      isHolding: false,
+      holdCompleted: false,
     }));
 
     musicEngine.setMuted(!soundEnabledRef.current);
@@ -338,6 +356,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       for (let i = 0; i < 4; i++) {
         if (LANE_KEYS[i].includes(e.code)) {
           e.preventDefault();
+          laneHeldRef.current[i] = true;
           setActiveLanes((prev) => {
             const next = [...prev];
             next[i] = true;
@@ -353,6 +372,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       for (let i = 0; i < 4; i++) {
         if (LANE_KEYS[i].includes(e.code)) {
           e.preventDefault();
+          laneHeldRef.current[i] = false;
           setActiveLanes((prev) => {
             const next = [...prev];
             next[i] = false;
@@ -404,6 +424,64 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
           state.song.bpm,
           latencyOffsetRef.current,
         );
+
+        // Hold heads still use the certified P0 fixed-ms judgement. After a valid
+        // head hit, the lane must remain physically held until the laser tail ends.
+        for (const note of state.notes) {
+          if (!note.isHolding) continue;
+          const holdBeats = note.holdBeats ?? 0;
+          if (isRhythmHoldComplete(judgementBeat, note.beatTime, holdBeats)) {
+            note.isHolding = false;
+            note.holdCompleted = true;
+            const holdBonus = getRhythmHoldCompletionBonus(holdBeats, state.multiplier);
+            state.score += holdBonus;
+            state.grooveHealth = Math.min(100, state.grooveHealth + 3);
+            onScoreUpdate(state.score);
+            state.popups.push({
+              id: state.nextPopupId++,
+              text: 'HOLD CLEAR',
+              subtext: `+${holdBonus.toLocaleString()}`,
+              color: '#34D399',
+              lane: note.lane,
+              life: 1.0,
+              maxLife: 0.65,
+            });
+            if (soundEnabledRef.current) sounds.playSuccess();
+          } else if (
+            shouldBreakRhythmHold({
+              judgementBeat,
+              startBeat: note.beatTime,
+              holdBeats,
+              bpm: state.song.bpm,
+              laneHeld: laneHeldRef.current[note.lane],
+            })
+          ) {
+            note.isHolding = false;
+            note.holdCompleted = false;
+            note.isMissed = true;
+            state.combo = 0;
+            state.multiplier = 1;
+            state.missHits++;
+            state.grooveHealth = Math.max(0, state.grooveHealth - 7);
+            state.popups.push({
+              id: state.nextPopupId++,
+              text: 'HOLD BREAK',
+              color: '#EF4444',
+              lane: note.lane,
+              life: 1.0,
+              maxLife: 0.55,
+            });
+            if (soundEnabledRef.current) sounds.playBuzz();
+            if (state.grooveHealth <= 0) {
+              state.isAlive = false;
+              musicEngine.stop();
+              if (soundEnabledRef.current) sounds.playGameOver();
+              setSafeTimeout(() => onGameOver(state.score), 400);
+              break;
+            }
+          }
+        }
+
         for (const note of state.notes) {
           const lateByMs = getSignedTimingErrorMs(note.beatTime, judgementBeat, state.song.bpm);
           if (!note.isHit && !note.isMissed && lateByMs > RHYTHM_MISS_WINDOW_MS) {
@@ -445,7 +523,10 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
           state.notes.forEach((n) => {
             n.isHit = false;
             n.isMissed = false;
+            n.isHolding = false;
+            n.holdCompleted = false;
           });
+          laneHeldRef.current = [false, false, false, false];
         }
 
         // Update Lane flashes
@@ -578,7 +659,10 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       // 3. Render Falling Notes
       // Check for simultaneous chord notes to connect with laser bar
       const visibleNotes = state.notes.filter((n) => {
-        if (n.isHit) return false;
+        if (n.isHit && !n.isHolding) return false;
+        if (n.isHolding && n.holdBeats) {
+          return displayBeat <= n.beatTime + n.holdBeats;
+        }
         const delta = n.beatTime - displayBeat;
         return delta <= state.beatsAhead && delta >= -0.8;
       });
@@ -610,15 +694,19 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       }
 
       for (const note of visibleNotes) {
-        const beatsRemaining = note.beatTime - displayBeat;
-        const ny = HIT_Y - (beatsRemaining / state.beatsAhead) * HIT_Y;
+        const isActiveHold = Boolean(note.isHolding && note.holdBeats);
+        const beatsRemaining = isActiveHold
+          ? Math.max(0, note.beatTime + (note.holdBeats ?? 0) - displayBeat)
+          : note.beatTime - displayBeat;
+        const ny = isActiveHold ? HIT_Y : HIT_Y - (beatsRemaining / state.beatsAhead) * HIT_Y;
         const nx = note.lane * laneW + 8;
         const nw = laneW - 16;
         const noteColor = note.type === 'bonus' ? '#FACC15' : LANE_COLORS[note.lane];
 
         // Hold Note Laser Trail
         if (note.type === 'hold' && note.holdBeats) {
-          const holdPixelLen = (note.holdBeats / state.beatsAhead) * HIT_Y;
+          const visibleHoldBeats = isActiveHold ? beatsRemaining : note.holdBeats;
+          const holdPixelLen = (visibleHoldBeats / state.beatsAhead) * HIT_Y;
           const beamGrad = ctx.createLinearGradient(nx, ny - holdPixelLen, nx, ny);
           beamGrad.addColorStop(0, `${noteColor}22`);
           beamGrad.addColorStop(1, `${noteColor}BB`);
@@ -843,6 +931,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
               id={`lane-btn-${idx}`}
               onPointerDown={(e) => {
                 e.preventDefault();
+                laneHeldRef.current[idx] = true;
                 setActiveLanes((prev) => {
                   const next = [...prev];
                   next[idx] = true;
@@ -851,6 +940,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
                 handleLaneTrigger(idx);
               }}
               onPointerUp={() => {
+                laneHeldRef.current[idx] = false;
                 setActiveLanes((prev) => {
                   const next = [...prev];
                   next[idx] = false;
@@ -858,6 +948,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
                 });
               }}
               onPointerLeave={() => {
+                laneHeldRef.current[idx] = false;
                 setActiveLanes((prev) => {
                   const next = [...prev];
                   next[idx] = false;
