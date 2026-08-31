@@ -199,7 +199,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
       // Spawn next hovering block
       state.direction *= -1;
       state.currentX = state.direction === 1 ? -state.currentWidth : state.viewportWidth + state.currentWidth * 0.15;
-      state.speed = 3.5 * clamp(state.viewportWidth / 500, 0.85, 1.7) + Math.min(4.5, state.score * 0.08);
+      state.speed = 3.5 * clamp(state.viewportWidth / 500, 0.85, 1.7) + Math.min(4.5, Math.max(0, state.blocks.length - 1) * 0.08);
 
       if (state.blocks.length > 5) {
         state.targetCameraY = (state.blocks.length - 5) * state.currentHeight;
@@ -284,7 +284,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
     // Spawn next hovering block
     state.direction *= -1;
     state.currentX = state.direction === 1 ? -state.currentWidth : state.viewportWidth + state.currentWidth * 0.15;
-    state.speed = 3.5 * clamp(state.viewportWidth / 500, 0.85, 1.7) + Math.min(4.5, state.score * 0.08);
+    state.speed = 3.5 * clamp(state.viewportWidth / 500, 0.85, 1.7) + Math.min(4.5, Math.max(0, state.blocks.length - 1) * 0.08);
 
     if (state.blocks.length > 5) {
       state.targetCameraY = (state.blocks.length - 5) * state.currentHeight;
