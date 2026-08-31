@@ -21,7 +21,18 @@ jobs:
         with:
           bun-version: 1.4.0
       - name: Apply P11 gameplay patch
-        run: python scripts/patch-p11.py
+        run: |
+          python scripts/patch-p11.py
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/data/games.ts')
+          text = p.read_text()
+          old = "Grow through wraparound portals and escalating firewalls; Ghost Phase now enables Phase Thread routes"
+          new = "Grow through wraparound portals as firewall phrases appear every four growth steps; Ghost Phase now enables Phase Thread routes"
+          if old not in text:
+              raise SystemExit('P11/P4 Cyber Serpent teaching marker missing')
+          p.write_text(text.replace(old, new, 1))
+          PY
       - run: bun install --frozen-lockfile
       - run: bun scripts/audit-gameplay-p11.ts
       - run: bun run quality:games
