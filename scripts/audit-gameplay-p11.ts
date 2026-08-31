@@ -47,7 +47,7 @@ for (const formation of ORBIT_THREAT_FORMATIONS) {
   assert(!threatened.has(formation.safeLane), `${formation.name} threatens its advertised safe lane`);
   assert(threatened.size === 2, `${formation.name} must threaten two distinct lanes`);
   assert(
-    [0, 1, 2].filter((lane) => lane !== formation.safeLane).every((lane) => threatened.has(lane)),
+    ([0, 1, 2] as const).filter((lane) => lane !== formation.safeLane).every((lane) => threatened.has(lane)),
     `${formation.name} must leave exactly one readable safe lane`,
   );
 }
