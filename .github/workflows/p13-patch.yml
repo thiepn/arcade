@@ -1,0 +1,60 @@
+name: P13 Flight Focus Style Patch
+
+on:
+  push:
+    branches: [gameplay/p13-flight-focus-style]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-certify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: gameplay/p13-flight-focus-style
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - name: Apply P13 gameplay patch
+        run: python scripts/patch-p13.py
+      - run: bun install --frozen-lockfile
+      - run: bun scripts/audit-gameplay-p13.ts
+      - run: bun run quality:games
+      - run: bun run quality:gravity
+      - run: bun run quality:chrono
+      - run: bun run quality:drift
+      - run: bun run quality:frame-rate
+      - run: bun run quality:hud-render
+      - run: bun run quality:gameplay-p0
+      - run: bun run quality:gameplay-p1
+      - run: bun run quality:gameplay-p2
+      - run: bun run quality:gameplay-p4
+      - run: bun run quality:gameplay-p5
+      - run: bun run quality:gameplay-p6
+      - run: bun run quality:gameplay-p7
+      - run: bun run quality:gameplay-p8
+      - run: bun run quality:gameplay-p9
+      - run: bun run quality:gameplay-p10
+      - run: bun run quality:gameplay-p11
+      - run: bun run quality:gameplay-p12
+      - run: bun run quality:lifecycle
+      - run: bun run quality:mobile
+      - run: bunx tsc --noEmit
+      - run: bun run build
+      - name: Commit verified P13 source changes
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/games/GravityGame.tsx src/games/ChronoGame.tsx src/games/DriftGame.tsx src/data/games.ts
+          if git diff --cached --quiet; then
+            echo 'No P13 source changes to commit'
+            exit 1
+          fi
+          git commit -m 'Elevate Gravity Chrono and Drift mastery'
+          git push origin HEAD:gameplay/p13-flight-focus-style
