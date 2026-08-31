@@ -18,6 +18,14 @@ import {
   createNeonRailPhrase,
   type NeonRailPhraseName,
 } from '../lib/neonRailDepth';
+import {
+  NEON_RAIL_MAX_SURGE_CHARGES,
+  NEON_RAIL_SURGE_DURATION,
+  getNeonRailMasteryReward,
+  getNeonRailSurgeScoreMultiplier,
+  getNeonRailSurgeSpeedMultiplier,
+  isNeonRailMasteryMilestone,
+} from '../lib/neonRailMastery';
 
 type RailObjectKind = 'barrier' | 'core';
 
@@ -68,6 +76,8 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
     speed: 1,
     phaseCooldown: 0,
     phraseName: 'SWITCHBACK' as NeonRailPhraseName,
+    surgeCharges: 0,
+    surgeTimer: 0,
   });
 
   const gameStateRef = useRef({
@@ -87,6 +97,8 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
     spawnTimer: 0.75,
     phaseCooldown: 0,
     phaseTimer: 0,
+    surgeCharges: 0,
+    surgeTimer: 0,
     screenShake: 0,
     objects: [] as RailObject[],
     particles: [] as RailParticle[],
@@ -124,6 +136,22 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
     if (soundEnabled) sounds.playShockwave();
   };
 
+  const triggerSurge = () => {
+    const state = gameStateRef.current;
+    if (
+      !state.isAlive ||
+      isPausedRef.current ||
+      state.surgeCharges <= 0 ||
+      state.surgeTimer > 0
+    ) {
+      return;
+    }
+    state.surgeCharges--;
+    state.surgeTimer = NEON_RAIL_SURGE_DURATION;
+    state.screenShake = Math.max(state.screenShake, 4);
+    if (soundEnabled) sounds.playFeverMode();
+  };
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
@@ -131,7 +159,9 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
         event.code === 'ArrowRight' ||
         event.code === 'KeyA' ||
         event.code === 'KeyD' ||
-        event.code === 'Space'
+        event.code === 'Space' ||
+        event.code === 'ShiftLeft' ||
+        event.code === 'ShiftRight'
       ) {
         event.preventDefault();
       }
@@ -139,6 +169,7 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
       if (event.code === 'ArrowLeft' || event.code === 'KeyA') shiftLane(-1);
       if (event.code === 'ArrowRight' || event.code === 'KeyD') shiftLane(1);
       if (event.code === 'Space') triggerPhase();
+      if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') triggerSurge();
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -199,6 +230,8 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
     state.spawnTimer = 0.75;
     state.phaseCooldown = 0;
     state.phaseTimer = 0;
+    state.surgeCharges = 0;
+    state.surgeTimer = 0;
     state.screenShake = 0;
     state.objects = [];
     state.particles = [];
@@ -216,16 +249,20 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
       const floorY = height * 0.96;
       const trackHeight = floorY - horizonY;
       const playerScreenY = horizonY + trackHeight * NEON_RAIL_PLAYER_Y;
-      const currentSpeed = getNeonRailSpeed(state.elapsed);
+      const surgeActive = state.surgeTimer > 0;
+      const surgeScoreMultiplier = getNeonRailSurgeScoreMultiplier(surgeActive);
+      const currentSpeed =
+        getNeonRailSpeed(state.elapsed) * getNeonRailSurgeSpeedMultiplier(surgeActive);
 
       if (!isPausedRef.current && state.isAlive) {
         state.elapsed += dt;
         state.phaseCooldown = Math.max(0, state.phaseCooldown - dt);
         state.phaseTimer = Math.max(0, state.phaseTimer - dt);
+        state.surgeTimer = Math.max(0, state.surgeTimer - dt);
         state.screenShake = Math.max(0, state.screenShake - 20 * dt);
         state.visualLane += (state.playerLane - state.visualLane) * Math.min(1, dt * 12);
 
-        state.survivalScore += dt * (55 + currentSpeed * 70);
+        state.survivalScore += dt * (55 + currentSpeed * 70) * surgeScoreMultiplier;
         state.score = Math.floor(state.survivalScore + state.bonusScore);
 
         state.spawnTimer -= dt;
@@ -282,14 +319,15 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
                 width,
               );
               if (state.phaseTimer > 0) {
-                state.bonusScore += 180;
+                const phaseBreakPoints = 180 * surgeScoreMultiplier;
+                state.bonusScore += phaseBreakPoints;
                 state.score = Math.floor(state.survivalScore + state.bonusScore);
                 state.screenShake = Math.max(state.screenShake, 5);
                 state.popups.push({
                   id: state.nextId++,
                   x: impactX,
                   y: playerScreenY - 18,
-                  text: 'PHASE BREAK +180',
+                  text: `PHASE BREAK +${phaseBreakPoints}`,
                   color: '#A78BFA',
                   life: 0.75,
                 });
@@ -319,8 +357,30 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
                 state.combo++;
                 const multiplier = Math.min(5, 1 + Math.floor(state.combo / 4));
                 const phaseRouteMultiplier = object.phaseCore ? 3 : 1;
-                const points = 120 * multiplier * phaseRouteMultiplier;
+                const points = 120 * multiplier * phaseRouteMultiplier * surgeScoreMultiplier;
                 state.bonusScore += points;
+
+                if (isNeonRailMasteryMilestone(state.combo)) {
+                  const masteryReward = getNeonRailMasteryReward(state.combo);
+                  const gainedCharge = state.surgeCharges < NEON_RAIL_MAX_SURGE_CHARGES;
+                  state.surgeCharges = Math.min(
+                    NEON_RAIL_MAX_SURGE_CHARGES,
+                    state.surgeCharges + 1,
+                  );
+                  state.bonusScore += masteryReward;
+                  state.popups.push({
+                    id: state.nextId++,
+                    x: width / 2,
+                    y: playerScreenY - 48,
+                    text: gainedCharge
+                      ? `ROUTE MASTERED +${masteryReward} • SURGE +1`
+                      : `ROUTE MASTERED +${masteryReward} • SURGE FULL`,
+                    color: '#FB923C',
+                    life: 1.15,
+                  });
+                  if (soundEnabled) sounds.playPowerUp();
+                }
+
                 state.score = Math.floor(state.survivalScore + state.bonusScore);
                 state.popups.push({
                   id: state.nextId++,
@@ -372,6 +432,8 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
             speed: currentSpeed / 0.34,
             phaseCooldown: state.phaseCooldown,
             phraseName: state.phraseName,
+            surgeCharges: state.surgeCharges,
+            surgeTimer: state.surgeTimer,
           });
         }
       }
@@ -498,6 +560,18 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
 
       ctx.save();
       ctx.translate(playerX, playerY);
+      if (state.surgeTimer > 0) {
+        const surgePulse = 31 + Math.sin(state.elapsed * 26) * 4;
+        ctx.strokeStyle = '#FB923C';
+        ctx.shadowColor = '#FB923C';
+        ctx.shadowBlur = 20;
+        ctx.lineWidth = 3;
+        ctx.globalAlpha = 0.78;
+        ctx.beginPath();
+        ctx.arc(0, 0, surgePulse, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
       if (state.phaseTimer > 0) {
         const pulse = 26 + Math.sin(state.elapsed * 22) * 5;
         ctx.strokeStyle = '#A78BFA';
@@ -587,6 +661,17 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
           <div className="rounded-xl border border-violet-400/25 bg-slate-950/80 px-2.5 py-1 font-mono text-[10px] font-black text-violet-300 backdrop-blur-md">
             {hudState.phaseCooldown <= 0 ? 'PHASE READY' : `PHASE ${hudState.phaseCooldown.toFixed(1)}s`}
           </div>
+          <div className={`rounded-lg border px-2 py-0.5 font-mono text-[9px] font-black ${
+            hudState.surgeTimer > 0
+              ? 'border-orange-400/45 bg-orange-500/20 text-orange-200'
+              : hudState.surgeCharges > 0
+                ? 'border-orange-400/30 bg-slate-950/80 text-orange-300'
+                : 'border-slate-700/50 bg-slate-950/70 text-slate-500'
+          }`}>
+            {hudState.surgeTimer > 0
+              ? `SURGE ${hudState.surgeTimer.toFixed(1)}s • 2x SCORE`
+              : `SURGE ${hudState.surgeCharges}/${NEON_RAIL_MAX_SURGE_CHARGES} • SHIFT`}
+          </div>
           <div className="font-mono text-[9px] font-bold text-slate-500">
             {hudState.speed.toFixed(2)}x RAIL SPEED
           </div>
@@ -595,7 +680,7 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
 
       <canvas ref={canvasRef} className="block h-full w-full" />
 
-      <div className="absolute bottom-2 left-2 right-2 z-20 grid grid-cols-3 gap-2 sm:hidden">
+      <div className="absolute bottom-2 left-2 right-2 z-20 grid grid-cols-4 gap-2 sm:hidden">
         <button
           type="button"
           onClick={() => shiftLane(-1)}
@@ -613,6 +698,16 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
         >
           <Zap className="h-4 w-4" />
           <span className="mt-0.5 font-mono text-[7px] font-black">PHASE</span>
+        </button>
+        <button
+          type="button"
+          onClick={triggerSurge}
+          disabled={hudState.surgeCharges <= 0 || hudState.surgeTimer > 0}
+          className="flex h-11 flex-col items-center justify-center rounded-xl border border-orange-400/35 bg-orange-500/15 text-orange-200 active:scale-95 disabled:opacity-35 disabled:active:scale-100"
+          aria-label="Activate score surge"
+        >
+          <Zap className="h-4 w-4" />
+          <span className="mt-0.5 font-mono text-[7px] font-black">SURGE</span>
         </button>
         <button
           type="button"

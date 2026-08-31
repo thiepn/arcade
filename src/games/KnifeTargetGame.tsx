@@ -12,6 +12,13 @@ import {
   shortestKnifeAngleDistance,
 } from '../lib/knifeTargetAim';
 import { getKnifeStageConfig, getKnifeStageRotationSpeed } from '../lib/knifeStageProgression';
+import {
+  findKnifeRazorTarget,
+  getKnifeRazorBonus,
+  getKnifeRazorTolerance,
+  isKnifeRazorHit,
+  isKnifeRazorRush,
+} from '../lib/knifeMastery';
 
 interface EmbeddedBlade {
   angle: number;
@@ -45,6 +52,7 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
     combo: 0,
     multiplier: 1,
     stageLabel: 'STEADY CORE',
+    precisionChain: 0,
   });
 
   const gameStateRef = useRef({
@@ -81,6 +89,9 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
     particles: [] as { x: number; y: number; vx: number; vy: number; life: number; color: string; size: number }[],
     popups: [] as { id: number; x: number; y: number; text: string; color: string; life: number }[],
     nextId: 1,
+    precisionTargetAngle: 0,
+    precisionTargetIndex: 0,
+    precisionChain: 0,
   });
 
   const setSafeTimeout = useSafeTimeout();
@@ -178,6 +189,8 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
     state.embeddedBlades = [];
     state.apples = [];
     state.shields = [];
+    state.precisionTargetIndex = 0;
+    state.precisionChain = 0;
 
     for (let i = 0; i < config.preBladeCount; i++) {
       state.embeddedBlades.push({
@@ -201,6 +214,13 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
         spanAngle: config.shieldSpan,
       });
     }
+
+    state.precisionTargetAngle = findKnifeRazorTarget(
+      stageNum,
+      state.precisionTargetIndex,
+      state.embeddedBlades.map((blade) => blade.angle),
+      state.shields,
+    );
   }, []);
 
   useEffect(() => {
@@ -308,6 +328,11 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
 
               setSafeTimeout(() => onGameOver(state.score), 400);
             } else {
+              const razorHit = isKnifeRazorHit(
+                hitAngle,
+                state.precisionTargetAngle,
+                state.stage,
+              );
               state.embeddedBlades.push({ angle: hitAngle });
               state.combo++;
               if (state.combo >= 15) state.multiplier = 4;
@@ -319,6 +344,34 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
               state.score += bladePts;
               onScoreUpdate(state.score);
               if (soundEnabled) sounds.playKnifeStick();
+
+              if (razorHit) {
+                state.precisionChain++;
+                const razorPts = getKnifeRazorBonus(state.precisionChain, state.stage);
+                state.score += razorPts;
+                onScoreUpdate(state.score);
+                state.popups.push({
+                  id: state.nextId++,
+                  x: impactPoint.x,
+                  y: impactPoint.y - 22,
+                  text: isKnifeRazorRush(state.precisionChain)
+                    ? `RAZOR RUSH x${state.precisionChain} +${razorPts}`
+                    : `RAZOR MARK +${razorPts}`,
+                  color: '#FACC15',
+                  life: 1.1,
+                });
+                if (soundEnabled) sounds.playCombo(Math.min(18, state.precisionChain));
+              } else {
+                state.precisionChain = 0;
+              }
+
+              state.precisionTargetIndex++;
+              state.precisionTargetAngle = findKnifeRazorTarget(
+                state.stage,
+                state.precisionTargetIndex,
+                state.embeddedBlades.map((blade) => blade.angle),
+                state.shields,
+              );
 
               for (const apple of state.apples) {
                 if (
@@ -482,6 +535,24 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
         ctx.stroke();
       }
 
+      // The gold Razor Mark is always generated away from existing blades and shields.
+      const razorTolerance = getKnifeRazorTolerance(state.stage);
+      ctx.save();
+      ctx.strokeStyle = '#FACC15';
+      ctx.shadowColor = '#FACC15';
+      ctx.shadowBlur = 14;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(
+        0,
+        0,
+        state.coreRadius + 12,
+        state.precisionTargetAngle - razorTolerance,
+        state.precisionTargetAngle + razorTolerance,
+      );
+      ctx.stroke();
+      ctx.restore();
+
       // Embedded knives and crystals now use the same standard polar-angle
       // convention as collision detection and deflector arcs.
       for (const blade of state.embeddedBlades) {
@@ -631,6 +702,7 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
         combo: state.combo,
         multiplier: state.multiplier,
         stageLabel: state.stageLabel,
+        precisionChain: state.precisionChain,
       });
 
       return state.isAlive;
@@ -654,6 +726,12 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
             {hudState.stageLabel}
           </div>
 
+          {hudState.precisionChain > 0 && (
+            <div className="px-2 py-1 rounded-xl bg-yellow-500/15 border border-yellow-400/40 text-yellow-300 font-mono text-[10px] font-black">
+              RAZOR x{hudState.precisionChain}
+            </div>
+          )}
+
           {hudState.multiplier > 1 && (
             <div className="px-2 py-1 rounded-xl bg-amber-500/20 border border-amber-500/50 text-amber-300 font-mono text-xs font-black">
               {hudState.multiplier}x MULTIPLIER
@@ -672,7 +750,7 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
       <div className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none z-10 px-2">
         <div className="px-3 py-1 rounded-full bg-[#121215]/85 border border-[#27272A] text-[9px] sm:text-[10px] text-[#A1A1AA] font-mono backdrop-blur-md text-center">
           <span>
-            Aim around the core, then Tap / Click to throw • Space / Enter throws at current aim
+            Aim around the core • Hit the gold Razor Mark to build a precision chain • Tap / Click to throw • Space / Enter uses current aim
           </span>
         </div>
       </div>
