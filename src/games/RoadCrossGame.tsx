@@ -5,6 +5,7 @@ import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
 import { getFrameInvariantBlend } from '../lib/frameRateRuntime';
 import { canAcceptRoadCrossMove, getRoadCrossBoardMetrics } from '../lib/roadCrossSupport';
+import { getRoadCrossCheckpointBonus, getRoadCrossDistrict, getRoadCrossDistrictLevel, getRoadCrossLaneType } from '../lib/roadCrossMastery';
 
 type LaneType = 'grass' | 'road' | 'train' | 'river';
 
@@ -53,6 +54,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
     distance: 0,
     combo: 0,
     multiplier: 1,
+    districtName: 'NEON SUBURB',
   });
 
   const COLS_COUNT = 9;
@@ -76,6 +78,8 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
     combo: 0,
     comboTimer: 0,
     multiplier: 1,
+    districtLevel: 0,
+    districtName: 'NEON SUBURB',
 
     lanes: [] as Lane[],
     highestLaneRow: 0,
@@ -118,6 +122,24 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
         const delta = state.row - state.maxRowReached;
         state.maxRowReached = state.row;
         state.score += delta * 20 * state.multiplier;
+
+        const nextDistrictLevel = getRoadCrossDistrictLevel(state.row);
+        if (nextDistrictLevel > state.districtLevel) {
+          state.districtLevel = nextDistrictLevel;
+          state.districtName = getRoadCrossDistrict(state.row).name;
+          const checkpointBonus = getRoadCrossCheckpointBonus(nextDistrictLevel);
+          state.score += checkpointBonus;
+          state.popups.push({
+            id: state.nextId++,
+            x: state.width / 2,
+            y: 76,
+            text: `${state.districtName} +${checkpointBonus}`,
+            color: '#34D399',
+            life: 1.4,
+          });
+          if (soundEnabled) sounds.playSuccess();
+        }
+
         onScoreUpdate(state.score);
       }
     }
@@ -200,20 +222,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
     const state = gameStateRef.current;
     while (state.highestLaneRow < targetRow) {
       const nextRow = state.highestLaneRow + 1;
-      let type: LaneType = 'road';
-      const rand = Math.random();
-
-      if (nextRow <= 3) {
-        type = 'grass';
-      } else if (rand < 0.3) {
-        type = 'grass';
-      } else if (rand < 0.65) {
-        type = 'road';
-      } else if (rand < 0.85) {
-        type = 'river';
-      } else {
-        type = 'train';
-      }
+      const type: LaneType = getRoadCrossLaneType(nextRow);
 
       const dir: 1 | -1 = Math.random() < 0.5 ? 1 : -1;
       const speed = (Math.random() * 60 + 65) * dir;
@@ -283,6 +292,8 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
     state.laserRow = -7;
     state.combo = 0;
     state.multiplier = 1;
+    state.districtLevel = 0;
+    state.districtName = getRoadCrossDistrict(4).name;
     state.lanes = [];
     state.highestLaneRow = 0;
     state.popups = [];
@@ -638,7 +649,8 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
           prev.score === state.score &&
           prev.distance === state.maxRowReached &&
           prev.combo === state.combo &&
-          prev.multiplier === state.multiplier
+          prev.multiplier === state.multiplier &&
+          prev.districtName === state.districtName
         ) {
           return prev;
         }
@@ -647,6 +659,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
           distance: state.maxRowReached,
           combo: state.combo,
           multiplier: state.multiplier,
+          districtName: state.districtName,
         };
       });
 
@@ -668,6 +681,9 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
         <div className="flex items-center gap-2">
           <div className="px-2.5 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-emerald-400 font-mono text-xs font-black backdrop-blur-md">
             ROW: {hudState.distance}
+          </div>
+          <div className="px-2.5 py-1 rounded-xl bg-sky-500/15 border border-sky-500/35 text-sky-300 font-mono text-[10px] font-black backdrop-blur-md">
+            {hudState.districtName}
           </div>
 
           {hudState.multiplier > 1 && (
