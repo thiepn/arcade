@@ -6,6 +6,7 @@ import { Zap, Sparkles, Ghost, Flame, Trophy } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { getFrameInvariantDecay, getFrameScale } from '../lib/frameRateRuntime';
 import { getSnakeFirewallCells, getSnakeFirewallStage } from './snakeExperience';
+import { extendSnakeGhostTimerForThread, getSnakePhaseThreadReward } from '../lib/snakePhaseMastery';
 
 interface Point {
   x: number;
@@ -61,6 +62,7 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
   const [multiplier, setMultiplier] = useState(1);
   const [combo, setCombo] = useState(0);
   const [firewallStage, setFirewallStage] = useState(0);
+  const [phaseThreadChain, setPhaseThreadChain] = useState(0);
 
   const gameStateRef = useRef({
     gridW: 22,
@@ -86,6 +88,8 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
     multiplierVal: 1,
     comboCount: 0,
     comboTimer: 0,
+    phaseThreadCells: new Set<string>(),
+    phaseThreadChain: 0,
     shake: 0,
     tickInterval: 95, // ms per grid step
     tickAccumulatorMs: 0,
@@ -181,7 +185,10 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
     state.foods = [];
     state.firewalls = [];
     state.firewallStage = 0;
+    state.phaseThreadCells.clear();
+    state.phaseThreadChain = 0;
     setFirewallStage(0);
+    setPhaseThreadChain(0);
     spawnFood('regular');
     spawnFood('multiplier');
 
@@ -259,6 +266,11 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
     if (state.ghostTimer > 0) {
       state.ghostTimer--;
       setGhostTime(state.ghostTimer);
+      if (state.ghostTimer === 0) {
+        state.phaseThreadCells.clear();
+        state.phaseThreadChain = 0;
+        setPhaseThreadChain(0);
+      }
     }
     if (state.multiplierTimer > 0) {
       state.multiplierTimer--;
@@ -315,6 +327,29 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
       return;
     }
 
+    if (firewallCollision && isGhost) {
+      const cellKey = `${newHead.x},${newHead.y}`;
+      if (!state.phaseThreadCells.has(cellKey)) {
+        state.phaseThreadCells.add(cellKey);
+        state.phaseThreadChain++;
+        const reward = getSnakePhaseThreadReward(state.phaseThreadChain);
+        state.score += reward;
+        state.ghostTimer = extendSnakeGhostTimerForThread(state.ghostTimer, state.phaseThreadChain);
+        setScore(state.score);
+        setGhostTime(state.ghostTimer);
+        setPhaseThreadChain(state.phaseThreadChain);
+        onScoreUpdate(state.score);
+        addFloatingText(
+          `PHASE THREAD x${state.phaseThreadChain} +${reward}`,
+          newHead.x * state.cellSize,
+          newHead.y * state.cellSize - 14,
+          '#C084FC',
+        );
+        haptics.combo();
+        if (soundEnabled) sounds.playChime(720 + Math.min(6, state.phaseThreadChain) * 55);
+      }
+    }
+
     // Self collision
     const selfCollision = state.snake.some(
       (seg, idx) => idx > 0 && seg.x === newHead.x && seg.y === newHead.y
@@ -359,7 +394,10 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
       // Power-up triggers
       if (eaten.type === 'ghost') {
         state.ghostTimer = 65; // ~6.5 seconds
+        state.phaseThreadCells.clear();
+        state.phaseThreadChain = 0;
         setGhostTime(65);
+        setPhaseThreadChain(0);
         if (soundEnabled) sounds.playPowerUp();
         addFloatingText('👻 GHOST PHASE!', newHead.x * state.cellSize, newHead.y * state.cellSize - 15, '#A855F7');
       } else if (eaten.type === 'multiplier') {
@@ -655,6 +693,10 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
             <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold flex items-center gap-1 animate-pulse">
               <Ghost className="w-3 h-3" /> GHOST PHASE
             </span>
+          )}
+
+          {phaseThreadChain > 0 && (
+            <span className="text-fuchsia-300 font-bold">THREAD x{phaseThreadChain}</span>
           )}
 
           {combo >= 2 && (
