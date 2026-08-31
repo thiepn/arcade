@@ -3,6 +3,15 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { Shield } from 'lucide-react';
 import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
+import {
+  AERO_FLOW_DURATION_SEC,
+  AERO_FLOW_MAX_CHARGES,
+  AERO_FLOW_SPEED_MULTIPLIER,
+  AERO_FLOW_START_CHARGES,
+  canTriggerAeroFlow,
+  getAeroFlowScore,
+  shouldEarnAeroFlow,
+} from '../lib/aeroMastery';
 
 interface Gate {
   id: number;
@@ -41,6 +50,8 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
     hasShield: false,
     grazeCombo: 0,
     multiplier: 1,
+    flowCharges: AERO_FLOW_START_CHARGES,
+    flowActive: false,
   });
 
   const gameStateRef = useRef({
@@ -57,6 +68,8 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
     multiplier: 1,
     score: 0,
     gatesCleared: 0,
+    flowCharges: AERO_FLOW_START_CHARGES,
+    flowTimer: 0,
 
     scrollSpeed: 170,
     distance: 0,
@@ -92,9 +105,20 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
     }
   };
 
+  const triggerFlowBoost = () => {
+    const state = gameStateRef.current;
+    if (!canTriggerAeroFlow(state.flowCharges, state.flowTimer, state.isAlive) || isPausedRef.current) return;
+    state.flowCharges--;
+    state.flowTimer = AERO_FLOW_DURATION_SEC;
+    if (soundEnabled) sounds.playWarp();
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+      if (e.code === 'KeyF' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        e.preventDefault();
+        triggerFlowBoost();
+      } else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
         e.preventDefault();
         triggerFlap();
       }
@@ -166,6 +190,10 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
       ctx.clearRect(0, 0, w, h);
 
       if (!isPausedRef.current && state.isAlive) {
+        if (state.flowTimer > 0) {
+          state.flowTimer = Math.max(0, state.flowTimer - dt);
+        }
+
         // Physics update
         const gravity = 820;
         state.vy += gravity * dt;
@@ -174,8 +202,9 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
         // Angle tilt
         state.angle = Math.max(-0.55, Math.min(1.0, state.vy / 380));
 
-        // Speed ramp
-        state.scrollSpeed = Math.min(280, 175 + state.gatesCleared * 3.0);
+        // Speed ramp. Flow raises route pressure without touching flap physics or collision geometry.
+        const baseScrollSpeed = Math.min(280, 175 + state.gatesCleared * 3.0);
+        state.scrollSpeed = baseScrollSpeed * (state.flowTimer > 0 ? AERO_FLOW_SPEED_MULTIPLIER : 1);
         state.distance += state.scrollSpeed * dt;
 
         // Thruster particles
@@ -209,7 +238,8 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
           if (!gate.passed && gate.x + gate.width < state.x) {
             gate.passed = true;
             state.gatesCleared++;
-            const gatePoints = 100 * state.multiplier;
+            if (!gate.grazed) state.grazeCombo = 0;
+            const gatePoints = getAeroFlowScore(100 * state.multiplier, state.flowTimer > 0);
             state.score += gatePoints;
             onScoreUpdate(state.score);
             if (soundEnabled) sounds.playScore();
@@ -228,7 +258,10 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
             if (distTop < 9 || distBottom < 9) {
               gate.grazed = true;
               state.grazeCombo++;
-              const grazePoints = 50 * state.multiplier;
+              if (shouldEarnAeroFlow(state.grazeCombo)) {
+                state.flowCharges = Math.min(AERO_FLOW_MAX_CHARGES, state.flowCharges + 1);
+              }
+              const grazePoints = getAeroFlowScore(50 * state.multiplier, state.flowTimer > 0);
               state.score += grazePoints;
               onScoreUpdate(state.score);
               if (soundEnabled) sounds.playWarp();
@@ -313,7 +346,7 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
           star.x -= state.scrollSpeed * dt;
           if (!star.collected && Math.hypot(state.x - star.x, state.y - star.y) < state.radius + 12) {
             star.collected = true;
-            const starPts = 200 * state.multiplier;
+            const starPts = getAeroFlowScore(200 * state.multiplier, state.flowTimer > 0);
             state.score += starPts;
             onScoreUpdate(state.score);
             if (soundEnabled) sounds.playScore();
@@ -527,7 +560,9 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
           prev.gatesCleared === state.gatesCleared &&
           prev.hasShield === state.hasShield &&
           prev.grazeCombo === state.grazeCombo &&
-          prev.multiplier === state.multiplier
+          prev.multiplier === state.multiplier &&
+          prev.flowCharges === state.flowCharges &&
+          prev.flowActive === (state.flowTimer > 0)
         ) {
           return prev;
         }
@@ -537,6 +572,8 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
           hasShield: state.hasShield,
           grazeCombo: state.grazeCombo,
           multiplier: state.multiplier,
+          flowCharges: state.flowCharges,
+          flowActive: state.flowTimer > 0,
         };
       });
 
@@ -578,6 +615,16 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
           </div>
         )}
       </div>
+
+      <button
+        type="button"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={triggerFlowBoost}
+        disabled={hudState.flowCharges <= 0 || hudState.flowActive}
+        className="absolute bottom-3 right-3 z-20 pointer-events-auto rounded-xl border border-sky-400/40 bg-[#18181B]/90 px-3 py-2 font-mono text-[10px] font-black text-sky-300 disabled:opacity-40"
+      >
+        {hudState.flowActive ? 'FLOW BOOST ACTIVE' : `FLOW BOOST ${hudState.flowCharges}/2`}
+      </button>
 
       <canvas ref={canvasRef} className="w-full h-full block" />
     </div>

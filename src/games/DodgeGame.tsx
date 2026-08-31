@@ -4,6 +4,12 @@ import { sounds } from '../lib/sound';
 import { useGameLoop, useSafeTimeout, useRenderPublishedCallback } from '../hooks/useGameLoop';
 import { clamp, rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
 import { ARCADE_FIXED_STEP_SEC, getArcadeStepBatch, getFrameInvariantDecay, getFrameScale } from '../lib/frameRateRuntime';
+import {
+  DODGE_PHASE_CUT_MAX_CHAIN,
+  getDodgePhaseCutRechargeMs,
+  getDodgePhaseCutReward,
+  isDodgePhaseCut,
+} from '../lib/dodgeMastery';
 
 interface Hazard {
   id: number;
@@ -18,6 +24,7 @@ interface Hazard {
   color: string;
   type: 'meteor' | 'laser_warning' | 'laser_active' | 'homing' | 'shuriken';
   laserTimer?: number;
+  phaseCut?: boolean;
 }
 
 interface Collectible {
@@ -62,6 +69,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
   isPausedRef.current = isPaused;
 
   const [dashAvailable, setDashAvailable] = useState(2);
+  const [phaseCutChain, setPhaseCutChain] = useState(0);
 
   const gameStateRef = useRef({
     playerX: 0,
@@ -73,6 +81,8 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
     dashRecharge: 0,
     isDashing: false,
     dashTimer: 0,
+    dashCutCount: 0,
+    phaseCutChain: 0,
     ghostTrail: [] as { x: number; y: number; alpha: number }[],
     slowMoTimer: 0,
     shake: 0,
@@ -98,6 +108,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
 
     state.dashCharges--;
     setDashAvailable(state.dashCharges);
+    state.dashCutCount = 0;
     state.isDashing = true;
     state.dashTimer = 260; // 260ms i-frames
     if (soundEnabled) sounds.playWarp();
@@ -118,6 +129,27 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
     }
   };
 
+  const registerPhaseCut = (x: number, y: number, color: string) => {
+    const state = gameStateRef.current;
+    state.dashCutCount++;
+    state.phaseCutChain = Math.min(DODGE_PHASE_CUT_MAX_CHAIN, state.phaseCutChain + 1);
+    const reward = getDodgePhaseCutReward(state.phaseCutChain);
+    state.score += reward;
+    state.dashRecharge += getDodgePhaseCutRechargeMs(state.phaseCutChain);
+    publishScore(state.score);
+    setPhaseCutChain(state.phaseCutChain);
+    for (let i = 0; i < 10; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      state.particles.push({
+        x, y,
+        vx: Math.cos(ang) * (2 + Math.random() * 4),
+        vy: Math.sin(ang) * (2 + Math.random() * 4),
+        color, size: 2.8, life: 0, maxLife: 18,
+      });
+    }
+    if (soundEnabled) sounds.playSuccess();
+  };
+
   const setSafeTimeout = useSafeTimeout();
 
   useEffect(() => {
@@ -135,6 +167,9 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
     state.hasShield = false;
     state.dashCharges = 2;
     state.dashRecharge = 0;
+    state.dashCutCount = 0;
+    state.phaseCutChain = 0;
+    setPhaseCutChain(0);
     state.slowMoTimer = 0;
     state.spawnElapsedMs = 0;
     state.physicsAccumulator = 0;
@@ -310,6 +345,10 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
           if (state.ghostTrail.length > 8) state.ghostTrail.pop();
           if (state.dashTimer <= 0) {
             state.isDashing = false;
+            if (state.dashCutCount === 0) {
+              state.phaseCutChain = 0;
+              setPhaseCutChain(0);
+            }
           }
         }
         state.ghostTrail.forEach((t) => (t.alpha *= 0.8));
@@ -488,8 +527,13 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
             }
           } else if (h.type === 'laser_active') {
             h.laserTimer = (h.laserTimer || 500) - dt;
-            // Check collision with player
-            if (!state.isDashing && Math.abs(state.playerX - h.x) < h.width / 2 + state.playerRadius - 2) {
+            // Check collision with player. A deliberate dash through an active beam
+            // counts once as a Phase Cut instead of being merely passive invulnerability.
+            const laserDistance = Math.abs(state.playerX - h.x);
+            if (state.isDashing && !h.phaseCut && isDodgePhaseCut(true, laserDistance, h.width / 2 + state.playerRadius - 2)) {
+              h.phaseCut = true;
+              registerPhaseCut(h.x, state.playerY, '#EF4444');
+            } else if (!state.isDashing && laserDistance < h.width / 2 + state.playerRadius - 2) {
               if (state.hasShield) {
                 state.hasShield = false;
                 state.isDashing = true;
@@ -525,6 +569,12 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
               h.x + h.width / 2 - state.playerX,
               h.y + h.height / 2 - state.playerY
             );
+
+            if (isDodgePhaseCut(state.isDashing, hDist, h.width / 2 + state.playerRadius - 3)) {
+              registerPhaseCut(h.x + h.width / 2, h.y + h.height / 2, h.color);
+              state.hazards.splice(i, 1);
+              continue;
+            }
 
             if (!state.isDashing && hDist < h.width / 2 + state.playerRadius - 3) {
               if (state.hasShield) {
@@ -768,6 +818,9 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
             />
           ))}
         </div>
+        {phaseCutChain > 0 && (
+          <span className="ml-1 text-amber-300 text-[10px] font-black">PHASE CUT x{phaseCutChain}</span>
+        )}
       </button>
     </div>
   );
