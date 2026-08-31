@@ -4,6 +4,15 @@ import { sounds } from '../lib/sound';
 import { RHYTHM_SONGS, SongDefinition, musicEngine } from '../lib/rhythmSongs';
 import { Music, Flame, Zap, Award, Shield, Sparkles, Volume2, VolumeX, Play, Disc } from 'lucide-react';
 import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
+import {
+  RHYTHM_HIT_WINDOWS_MS,
+  RHYTHM_LATENCY_STEP_MS,
+  RHYTHM_LATENCY_STORAGE_KEY,
+  RHYTHM_MISS_WINDOW_MS,
+  clampRhythmLatencyOffset,
+  getLatencyCompensatedBeat,
+  getSignedTimingErrorMs,
+} from '../lib/rhythmTiming';
 
 interface ActiveNote {
   id: number;
@@ -62,6 +71,23 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
 
   const [selectedSongIndex, setSelectedSongIndex] = useState(0);
   const currentSong = RHYTHM_SONGS[selectedSongIndex];
+  const [latencyOffsetMs, setLatencyOffsetMs] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    const stored = Number(window.localStorage.getItem(RHYTHM_LATENCY_STORAGE_KEY));
+    return Number.isFinite(stored) ? clampRhythmLatencyOffset(stored) : 0;
+  });
+  const latencyOffsetRef = useRef(latencyOffsetMs);
+  latencyOffsetRef.current = latencyOffsetMs;
+  const [estimatedLatencyMs, setEstimatedLatencyMs] = useState(0);
+
+  const updateLatencyOffset = useCallback((value: number) => {
+    const next = clampRhythmLatencyOffset(value);
+    latencyOffsetRef.current = next;
+    setLatencyOffsetMs(next);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(RHYTHM_LATENCY_STORAGE_KEY, String(next));
+    }
+  }, []);
 
   const [activeLanes, setActiveLanes] = useState<boolean[]>([false, false, false, false]);
   const [hudStats, setHudStats] = useRenderPublishedState({
@@ -135,19 +161,22 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
     const state = gameStateRef.current;
     state.laneHitFlash[laneIndex] = 1.0;
 
-    // Musical timing windows
-    const WINDOW_PERFECT = 0.20;
-    const WINDOW_GREAT = 0.38;
-    const WINDOW_GOOD = 0.60;
-
+    const judgementBeat = getLatencyCompensatedBeat(
+      state.currentBeat,
+      state.song.bpm,
+      latencyOffsetRef.current,
+    );
     let closestNote: ActiveNote | null = null;
-    let closestBeatDelta = Infinity;
+    let closestTimingErrorMs = Infinity;
+    let closestSignedErrorMs = 0;
 
     for (const note of state.notes) {
       if (note.lane === laneIndex && !note.isHit && !note.isMissed) {
-        const delta = Math.abs(note.beatTime - state.currentBeat);
-        if (delta < closestBeatDelta && delta <= WINDOW_GOOD) {
-          closestBeatDelta = delta;
+        const signedErrorMs = getSignedTimingErrorMs(note.beatTime, judgementBeat, state.song.bpm);
+        const timingErrorMs = Math.abs(signedErrorMs);
+        if (timingErrorMs < closestTimingErrorMs && timingErrorMs <= RHYTHM_HIT_WINDOWS_MS.good) {
+          closestTimingErrorMs = timingErrorMs;
+          closestSignedErrorMs = signedErrorMs;
           closestNote = note;
         }
       }
@@ -159,12 +188,12 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       let rating: 'PERFECT' | 'GREAT' | 'GOOD' = 'GOOD';
       let ratingColor = '#FACC15';
 
-      if (closestBeatDelta <= WINDOW_PERFECT) {
+      if (closestTimingErrorMs <= RHYTHM_HIT_WINDOWS_MS.perfect) {
         rating = 'PERFECT';
         points = 350;
         ratingColor = '#38BDF8';
         state.perfectHits++;
-      } else if (closestBeatDelta <= WINDOW_GREAT) {
+      } else if (closestTimingErrorMs <= RHYTHM_HIT_WINDOWS_MS.great) {
         rating = 'GREAT';
         points = 180;
         ratingColor = '#34D399';
@@ -245,7 +274,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       state.popups.push({
         id: state.nextPopupId++,
         text: rating,
-        subtext: `+${earned.toLocaleString()}`,
+        subtext: `${closestSignedErrorMs > 0 ? '+' : ''}${Math.round(closestSignedErrorMs)}ms • +${earned.toLocaleString()}`,
         color: ratingColor,
         lane: laneIndex,
         life: 1.0,
@@ -297,6 +326,10 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
   useEffect(() => {
     musicEngine.setMuted(!soundEnabled);
   }, [soundEnabled]);
+
+  useEffect(() => {
+    setEstimatedLatencyMs(musicEngine.getEstimatedOutputLatencyMs());
+  }, [selectedSongIndex, soundEnabled]);
 
   // Keyboard events
   useEffect(() => {
@@ -365,10 +398,15 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
           }
         }
 
-        // Update active notes: check missed notes (fallen past hit zone)
-        const MISS_THRESHOLD_BEATS = 0.65;
+        // Update active notes using the same fixed-ms, latency-compensated clock as judgement.
+        const judgementBeat = getLatencyCompensatedBeat(
+          state.currentBeat,
+          state.song.bpm,
+          latencyOffsetRef.current,
+        );
         for (const note of state.notes) {
-          if (!note.isHit && !note.isMissed && state.currentBeat - note.beatTime > MISS_THRESHOLD_BEATS) {
+          const lateByMs = getSignedTimingErrorMs(note.beatTime, judgementBeat, state.song.bpm);
+          if (!note.isHit && !note.isMissed && lateByMs > RHYTHM_MISS_WINDOW_MS) {
             note.isMissed = true;
             state.combo = 0;
             state.multiplier = 1;
@@ -445,6 +483,11 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       // ==========================================
       const laneW = curW / 4;
       const HIT_Y = 0.86 * curH;
+      const displayBeat = getLatencyCompensatedBeat(
+        state.currentBeat,
+        state.song.bpm,
+        latencyOffsetRef.current,
+      );
 
       // 1. Futuristic Cyber Highway Background
       const bgGrad = ctx.createLinearGradient(0, 0, 0, curH);
@@ -536,7 +579,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       // Check for simultaneous chord notes to connect with laser bar
       const visibleNotes = state.notes.filter((n) => {
         if (n.isHit) return false;
-        const delta = n.beatTime - state.currentBeat;
+        const delta = n.beatTime - displayBeat;
         return delta <= state.beatsAhead && delta >= -0.8;
       });
 
@@ -550,7 +593,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
 
       for (const [, chordGroup] of notesByBeat) {
         if (chordGroup.length > 1) {
-          const beatsRemaining = chordGroup[0].beatTime - state.currentBeat;
+          const beatsRemaining = chordGroup[0].beatTime - displayBeat;
           const ny = HIT_Y - (beatsRemaining / state.beatsAhead) * HIT_Y;
           const minLane = Math.min(...chordGroup.map((c) => c.lane));
           const maxLane = Math.max(...chordGroup.map((c) => c.lane));
@@ -567,7 +610,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       }
 
       for (const note of visibleNotes) {
-        const beatsRemaining = note.beatTime - state.currentBeat;
+        const beatsRemaining = note.beatTime - displayBeat;
         const ny = HIT_Y - (beatsRemaining / state.beatsAhead) * HIT_Y;
         const nx = note.lane * laneW + 8;
         const nw = laneW - 16;
@@ -709,6 +752,36 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div
+            className="flex items-center rounded-xl bg-[#18181B]/95 border border-[#27272A] overflow-hidden font-mono text-[10px]"
+            title={`Audio sync compensation. Browser estimate: ${estimatedLatencyMs}ms. Positive values delay visual/judgement timing to match delayed audio.`}
+          >
+            <button
+              type="button"
+              onClick={() => updateLatencyOffset(latencyOffsetMs - RHYTHM_LATENCY_STEP_MS)}
+              className="px-2 py-1 text-[#A1A1AA] hover:text-white hover:bg-[#27272A] cursor-pointer"
+              aria-label="Reduce rhythm latency compensation by 10 milliseconds"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              onClick={() => updateLatencyOffset(estimatedLatencyMs)}
+              className="px-1.5 py-1 text-cyan-300 hover:text-white hover:bg-[#27272A] cursor-pointer tabular-nums"
+              title="Use the browser's estimated audio output latency"
+            >
+              SYNC {latencyOffsetMs >= 0 ? '+' : ''}{latencyOffsetMs}ms
+            </button>
+            <button
+              type="button"
+              onClick={() => updateLatencyOffset(latencyOffsetMs + RHYTHM_LATENCY_STEP_MS)}
+              className="px-2 py-1 text-[#A1A1AA] hover:text-white hover:bg-[#27272A] cursor-pointer"
+              aria-label="Increase rhythm latency compensation by 10 milliseconds"
+            >
+              +
+            </button>
           </div>
 
           {/* Section Indicator */}

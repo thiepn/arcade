@@ -4,6 +4,7 @@ import { sounds } from '../lib/sound';
 import { useSafeTimeout } from '../hooks/useGameLoop';
 import { haptics } from '../lib/haptics';
 import { Hammer, RefreshCw, Sparkles } from 'lucide-react';
+import { findNextMergeDecision } from '../lib/mergeRules';
 
 const COLS = 4;
 const ROWS = 6;
@@ -123,43 +124,24 @@ export const MergeGame: React.FC<GameComponentProps> = ({
     let mergeStreak = 0;
 
     while (hadMerge) {
-      hadMerge = false;
-      for (let c = 0; c < COLS; c++) {
-        for (let r = 0; r < ROWS; r++) {
-          const tile = newBoard[c][r];
-          if (!tile) continue;
-
-          // Check below
-          if (r < ROWS - 1 && newBoard[c][r + 1]?.val === tile.val) {
-            newBoard[c][r + 1] = {
-              val: tile.val * 2,
-              id: nextTileId.current++,
-              isMerging: true,
-            };
-            newBoard[c][r] = null;
-            currentScore += tile.val * 2;
-            hadMerge = true;
-            mergeStreak++;
-            break;
-          }
-          // Check right
-          if (c < COLS - 1 && newBoard[c + 1][r]?.val === tile.val) {
-            newBoard[c + 1][r] = {
-              val: tile.val * 2,
-              id: nextTileId.current++,
-              isMerging: true,
-            };
-            newBoard[c][r] = null;
-            currentScore += tile.val * 2;
-            hadMerge = true;
-            mergeStreak++;
-            break;
-          }
-        }
-        if (hadMerge) break;
+      const valueBoard = newBoard.map((column) => column.map((tile) => tile?.val ?? null));
+      const decision = findNextMergeDecision(valueBoard, colIndex);
+      if (!decision) {
+        hadMerge = false;
+        break;
       }
 
-      // Drop physics
+      newBoard[decision.target.col][decision.target.row] = {
+        val: decision.resultValue,
+        id: nextTileId.current++,
+        isMerging: true,
+      };
+      newBoard[decision.source.col][decision.source.row] = null;
+      currentScore += decision.resultValue;
+      mergeStreak++;
+
+      // Gravity remains vertical, but horizontal merge destinations are selected
+      // by the mirror-symmetric resolver rather than left-to-right scan order.
       for (let c = 0; c < COLS; c++) {
         const colTiles = newBoard[c].filter((t) => t !== null) as TileInfo[];
         const newCol: (TileInfo | null)[] = Array(ROWS - colTiles.length)
