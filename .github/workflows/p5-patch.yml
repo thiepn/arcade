@@ -32,6 +32,10 @@ jobs:
               "'    \"quality:gameplay-p4\": \"bun scripts/audit-gameplay-p4.ts\",',",
               "'    \"quality:gameplay-p4\": \"bun scripts/audit-gameplay-p4.ts\"',",
           )
+          source = source.replace(
+              "                setWords([...state.words]);\\n                focusDeviceKeyboard();",
+              "                focusDeviceKeyboard();",
+          )
           path.write_text(source)
           PY
           python scripts/patch-p5.py
