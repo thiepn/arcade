@@ -40,6 +40,10 @@ jobs:
               "instructions: 'Follow the named crystal route for multiplier chains. Graze comets after they pass for bonus points. Tap/Space pulses lane+direction; Up/Down is lane-only and A/D reverses only.'",
               "instructions: 'Tap/Space pulses to shift one lane and reverse direction. Follow the named crystal route for multiplier chains and graze comets after they pass; Up/Down is lane-only and A/D reverses only.'",
           )
+          source = source.replace(
+              "description: 'Defend four lanes through distinct typing directives: tap a word to lock your target, prioritize urgent or special threats, and cash higher risk for higher multipliers.'",
+              "description: 'Defend four lanes through four escalating typing waves with distinct directives: tap a word to lock your target, prioritize urgent or special threats, and cash higher risk for higher multipliers.'",
+          )
           path.write_text(source)
           PY
           python scripts/patch-p5.py
