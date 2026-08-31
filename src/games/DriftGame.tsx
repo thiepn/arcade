@@ -5,6 +5,14 @@ import { haptics } from '../lib/haptics';
 import { Flame, Zap, Shield, Sparkles, Gauge, AlertTriangle } from 'lucide-react';
 import { useGameLoop, useRenderPublishedState, useRenderPublishedCallback } from '../hooks/useGameLoop';
 import { DRIFT_FIXED_STEP_SEC, getDriftPhysicsStepBatch } from '../lib/driftRuntime';
+import {
+  DRIFT_STYLE_MAX_CHAIN,
+  DRIFT_STYLE_ROUTES,
+  DriftStyleEvent,
+  advanceDriftStyleRoute,
+  getDriftStyleBonus,
+  getDriftStyleEventLabel,
+} from '../lib/driftStyleRoutes';
 
 interface Particle {
   x: number;
@@ -68,6 +76,9 @@ export const DriftGame: React.FC<GameComponentProps> = ({
   const [steerLeft, setSteerLeft] = useState(false);
   const [steerRight, setSteerRight] = useState(false);
   const [currentSpeedKmh, setCurrentSpeedKmh] = useRenderPublishedState(160, 100);
+  const [styleRouteIndex, setStyleRouteIndex] = useState(0);
+  const [styleRouteProgress, setStyleRouteProgress] = useState(0);
+  const [styleChain, setStyleChain] = useState(0);
 
   const isPausedRef = useRef(isPaused);
   useEffect(() => {
@@ -115,6 +126,9 @@ export const DriftGame: React.FC<GameComponentProps> = ({
     viewportWidth: 0,
     viewportHeight: 0,
     physicsAccumulator: 0,
+    styleRouteIndex: 0,
+    styleRouteProgress: 0,
+    styleChain: 0,
   });
 
 
@@ -160,6 +174,25 @@ export const DriftGame: React.FC<GameComponentProps> = ({
       scale,
     });
   }, []);
+
+  const recordStyleEvent = useCallback((event: DriftStyleEvent) => {
+    const state = gameStateRef.current;
+    const next = advanceDriftStyleRoute(state.styleRouteIndex, state.styleRouteProgress, event);
+    state.styleRouteIndex = next.routeIndex;
+    state.styleRouteProgress = next.progress;
+    if (next.completed) {
+      state.styleChain = Math.min(DRIFT_STYLE_MAX_CHAIN, state.styleChain + 1);
+      const bonus = getDriftStyleBonus(state.styleChain);
+      state.score += bonus;
+      publishScore(state.score);
+      setScore(state.score);
+      addScorePopup(`STYLE ROUTE x${state.styleChain} +${bonus}`, state.carX, state.carY - 48, '#FACC15', 1.2);
+      if (soundEnabled) sounds.playVictory();
+    }
+    setStyleRouteIndex(state.styleRouteIndex);
+    setStyleRouteProgress(state.styleRouteProgress);
+    setStyleChain(state.styleChain);
+  }, [addScorePopup, publishScore, setScore, soundEnabled]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -558,6 +591,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
               setScore(st.score);
               addScorePopup(`APEX HIT! +${bonus}`, gateX, seg.y - 15, '#34D399', 1.2);
               if (soundEnabled) sounds.playVictory();
+              recordStyleEvent('apex');
 
               // Boost Nitro
               st.nitro = Math.min(100, st.nitro + 25);
@@ -583,6 +617,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
               setScore(st.score);
               addScorePopup('+NITRO CELL!', st.carX, st.carY - 30, '#38BDF8');
               if (soundEnabled) sounds.playPop();
+              recordStyleEvent('nitro');
             }
           }
 
@@ -600,6 +635,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
                 setScore(st.score);
                 addScorePopup(`CLOSE PASS! +${bonus}`, st.carX, st.carY - 25, '#FACC15');
                 if (soundEnabled) sounds.playSuccess();
+                recordStyleEvent('rival');
               }
             }
 
@@ -1046,6 +1082,9 @@ export const DriftGame: React.FC<GameComponentProps> = ({
     setSteerRight(false);
   };
 
+  const activeStyleRoute = DRIFT_STYLE_ROUTES[styleRouteIndex];
+  const expectedStyleEvent = getDriftStyleEventLabel(activeStyleRoute.events[styleRouteProgress]);
+
   return (
     <div className="relative w-full h-full min-h-0 flex flex-col bg-[#09090B] overflow-hidden select-none touch-none">
       {/* Top HUD */}
@@ -1099,6 +1138,12 @@ export const DriftGame: React.FC<GameComponentProps> = ({
       {/* Main Canvas Viewport */}
       <div className="flex-1 relative w-full h-full">
         <canvas ref={canvasRef} className="w-full h-full min-h-0 block touch-none" />
+      </div>
+
+      <div className="absolute bottom-[4.5rem] left-1/2 -translate-x-1/2 z-10 max-w-[calc(100%-1rem)] px-3 py-1.5 rounded-xl bg-amber-950/85 border border-amber-400/30 text-[9px] sm:text-[10px] text-amber-100 font-mono-arcade text-center pointer-events-none backdrop-blur-md">
+        <span className="font-black text-amber-300">STYLE ROUTE — {activeStyleRoute.label}</span>
+        <span> • NEXT {expectedStyleEvent}</span>
+        <span className="text-cyan-300"> • {styleRouteProgress}/3 • CHAIN {styleChain}</span>
       </div>
 
       {/* Responsive Touch Steer Paddles & Nitro */}
