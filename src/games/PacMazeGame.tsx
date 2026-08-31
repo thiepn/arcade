@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { Ghost, Zap, Shield, Sparkles, Trophy, Flame } from 'lucide-react';
@@ -17,6 +17,12 @@ import {
   getPacGhostTarget,
   type PacGhostMode,
 } from '../lib/pacGhostAi';
+import {
+  PAC_HUNT_TIMER_FACTOR,
+  canActivatePacHunt,
+  getPacHuntCapturePoints,
+  getPacHuntGhostSpeed,
+} from '../lib/pacHuntMastery';
 
 // Maze Tile Grid Definition
 // 1 = Wall, 0 = Dot, 2 = Power Pellet, 3 = Empty/Spawn, 4 = Fruit Spawn, 9 = Gate
@@ -81,6 +87,8 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
     ghostsEatenStreak: 0,
     level: 1,
     ghostMode: 'SCATTER' as PacGhostMode,
+    huntReady: false,
+    huntActive: false,
   });
 
   const gameStateRef = useRef({
@@ -107,6 +115,8 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
     // Power Pellet mode
     frightenedTimer: 0,
     ghostsEatenStreak: 0,
+    huntReady: false,
+    huntActive: false,
 
     // Fruit
     fruitActive: false,
@@ -127,6 +137,23 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
     nextId: 1,
   });
 
+  const triggerHuntRush = useCallback(() => {
+    const state = gameStateRef.current;
+    if (!canActivatePacHunt(state.huntReady, state.frightenedTimer, state.isAlive) || isPausedRef.current) return;
+    state.huntReady = false;
+    state.huntActive = true;
+    state.frightenedTimer *= PAC_HUNT_TIMER_FACTOR;
+    state.popups.push({
+      id: state.nextId++,
+      x: 0,
+      y: 0,
+      text: 'HUNT RUSH x2',
+      color: '#F43F5E',
+      life: 1.2,
+    });
+    if (soundEnabled) sounds.playFeverMode();
+  }, [soundEnabled]);
+
   // Count dots
   useEffect(() => {
     let dotCount = 0;
@@ -144,6 +171,11 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
   // Capture desktop controls before browser scrolling or shell-level handlers.
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code === 'KeyF' || event.code === 'ShiftLeft' || event.code === 'ShiftRight') {
+        event.preventDefault();
+        triggerHuntRush();
+        return;
+      }
       const direction = getPacDirectionForCode(event.code);
       if (!direction || !shouldCapturePacKey(event)) return;
 
@@ -155,7 +187,7 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
 
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, []);
+  }, [triggerHuntRush]);
 
   // Swipe / Touch Controls
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -237,6 +269,8 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
           state.frightenedTimer -= dt;
           if (state.frightenedTimer <= 0) {
             state.ghostsEatenStreak = 0;
+            state.huntReady = false;
+            state.huntActive = false;
           }
         }
 
@@ -291,6 +325,8 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
             state.score += 100;
             state.frightenedTimer = getPacFrightenedDuration(state.level);
             state.ghostsEatenStreak = 0;
+            state.huntReady = true;
+            state.huntActive = false;
             onScoreUpdate(state.score);
             if (soundEnabled) sounds.playPowerUp();
 
@@ -347,6 +383,8 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
             state.ghostMode = 'SCATTER';
             state.frightenedTimer = 0;
             state.ghostsEatenStreak = 0;
+            state.huntReady = false;
+            state.huntActive = false;
             state.px = 9;
             state.py = 16;
             state.dirX = 0;
@@ -365,7 +403,10 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
 
         // Ghost AI Movement
         const isFrightened = state.frightenedTimer > 0;
-        const ghostSpeed = getPacGhostSpeed(state.level, isFrightened) * dt;
+        const ghostSpeed = getPacHuntGhostSpeed(
+          getPacGhostSpeed(state.level, isFrightened),
+          state.huntActive && isFrightened,
+        ) * dt;
 
         for (const ghost of state.ghosts) {
           const gCol = Math.round(ghost.x);
@@ -441,7 +482,8 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
               ghost.dirX = 0;
               ghost.dirY = -1;
               state.ghostsEatenStreak++;
-              const pts = 200 * Math.pow(2, state.ghostsEatenStreak - 1);
+              const basePts = 200 * Math.pow(2, state.ghostsEatenStreak - 1);
+              const pts = getPacHuntCapturePoints(basePts, state.huntActive);
               state.score += pts;
               onScoreUpdate(state.score);
               if (soundEnabled) sounds.playDroneDestroy();
@@ -673,7 +715,9 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
           prev.multiplier === mult &&
           prev.ghostsEatenStreak === state.ghostsEatenStreak &&
           prev.level === state.level &&
-          prev.ghostMode === state.ghostMode
+          prev.ghostMode === state.ghostMode &&
+          prev.huntReady === state.huntReady &&
+          prev.huntActive === state.huntActive
         ) {
           return prev;
         }
@@ -686,6 +730,8 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
           ghostsEatenStreak: state.ghostsEatenStreak,
           level: state.level,
           ghostMode: state.ghostMode,
+          huntReady: state.huntReady,
+          huntActive: state.huntActive,
         };
       });
 
@@ -725,8 +771,24 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
           )}
         </div>
 
-        <div className="px-2.5 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-zinc-400 font-mono text-xs font-bold backdrop-blur-md">
-          DOTS: <span className="text-white">{hudState.dotsLeft}</span>
+        <div className="flex items-center gap-2">
+          {(hudState.huntReady || hudState.huntActive) && (
+            <button
+              type="button"
+              onClick={triggerHuntRush}
+              disabled={!hudState.huntReady}
+              className={`pointer-events-auto px-2.5 py-1 rounded-xl border font-mono text-[10px] font-black ${
+                hudState.huntActive
+                  ? 'bg-rose-500/30 border-rose-400 text-rose-200 animate-pulse'
+                  : 'bg-rose-500/15 border-rose-500/60 text-rose-300 hover:bg-rose-500/25'
+              } disabled:cursor-default`}
+            >
+              {hudState.huntActive ? 'HUNT x2' : 'HUNT RUSH · F'}
+            </button>
+          )}
+          <div className="px-2.5 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-zinc-400 font-mono text-xs font-bold backdrop-blur-md">
+            DOTS: <span className="text-white">{hudState.dotsLeft}</span>
+          </div>
         </div>
       </div>
 

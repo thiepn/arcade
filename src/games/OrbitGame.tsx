@@ -4,6 +4,17 @@ import { sounds } from '../lib/sound';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { getFrameInvariantBlend, getFrameInvariantDecay, getFrameScale } from '../lib/frameRateRuntime';
 import { getOrbitRouteLane, getOrbitRouteName, getOrbitRouteMultiplier, isOrbitNearMiss } from '../lib/orbitMastery';
+import {
+  ORBIT_FORMATION_COOLDOWN_SEC,
+  ORBIT_FORMATION_GRACE_SEC,
+  ORBIT_FORMATION_RESOLVE_SEC,
+  ORBIT_FORMATION_WARNING_SEC,
+  getOrbitFormationBonus,
+  getOrbitLaneName,
+  getOrbitThreatFormation,
+  type OrbitThreatFormation,
+  type OrbitThreatTarget,
+} from '../lib/orbitThreatMastery';
 
 interface Particle {
   x: number;
@@ -84,6 +95,14 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
     routeChain: 0,
     nearMissChain: 0,
     lastNearMissAt: -99,
+    formationIndex: 0,
+    pendingFormation: null as OrbitThreatFormation | null,
+    formationWarningTimer: 0,
+    formationResolveTimer: 0,
+    formationGraceTimer: 0,
+    formationCooldownTimer: 4.5,
+    formationSafeLane: 1 as 0 | 1 | 2,
+    formationChain: 0,
     isAlive: true,
     hazardSpawnElapsedMs: 0,
     crystalSpawnElapsedMs: 0,
@@ -153,6 +172,38 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
       vy: Math.sin(targetAngle) * speed,
       radius: 8 + Math.random() * 3,
       color: '#F43F5E',
+      trail: [],
+      nearMissAwarded: false,
+    });
+  }, []);
+
+  const spawnFormationHazard = useCallback((
+    target: OrbitThreatTarget,
+    w: number,
+    h: number,
+    cx: number,
+    cy: number,
+  ) => {
+    const state = gameStateRef.current;
+    const targetAngle = state.playerAngle + target.leadRadians * state.direction;
+    const laneRadius = state.baseRadii[target.lane];
+    const targetX = cx + Math.cos(targetAngle) * laneRadius;
+    const targetY = cy + Math.sin(targetAngle) * laneRadius;
+    const spawnDist = Math.max(w, h) * 0.72;
+    const spawnX = cx + Math.cos(targetAngle) * spawnDist;
+    const spawnY = cy + Math.sin(targetAngle) * spawnDist;
+    const dx = targetX - spawnX;
+    const dy = targetY - spawnY;
+    const distance = Math.max(1, Math.hypot(dx, dy));
+    const speed = 3.3 + Math.min(1.5, state.gameTime * 0.025);
+
+    state.hazards.push({
+      x: spawnX,
+      y: spawnY,
+      vx: (dx / distance) * speed,
+      vy: (dy / distance) * speed,
+      radius: 9,
+      color: '#FB7185',
       trail: [],
       nearMissAwarded: false,
     });
@@ -267,7 +318,62 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
 
       if (!isPausedRef.current && state.isAlive) {
         state.gameTime += dt / 1000;
+        const frameSeconds = dt / 1000;
         state.corePulse += 0.05 * deltaRatio;
+
+        if (state.formationCooldownTimer > 0) {
+          state.formationCooldownTimer = Math.max(0, state.formationCooldownTimer - frameSeconds);
+        }
+        if (state.formationGraceTimer > 0) {
+          state.formationGraceTimer = Math.max(0, state.formationGraceTimer - frameSeconds);
+        }
+        if (state.formationWarningTimer > 0) {
+          state.formationWarningTimer = Math.max(0, state.formationWarningTimer - frameSeconds);
+          if (state.formationWarningTimer === 0 && state.pendingFormation) {
+            const formation = state.pendingFormation;
+            formation.targets.forEach((target) => {
+              spawnFormationHazard(target, curW, curH, cx, cy);
+            });
+            state.formationSafeLane = formation.safeLane;
+            state.formationResolveTimer = ORBIT_FORMATION_RESOLVE_SEC;
+            state.pendingFormation = null;
+          }
+        }
+        if (state.formationResolveTimer > 0) {
+          state.formationResolveTimer = Math.max(0, state.formationResolveTimer - frameSeconds);
+          if (state.formationResolveTimer === 0) {
+            if (state.currentLane === state.formationSafeLane) {
+              state.formationChain++;
+              const bonus = getOrbitFormationBonus(state.formationChain);
+              state.score += bonus;
+              onScoreUpdate(state.score);
+              state.floatingTexts.push({
+                x: cx,
+                y: cy - state.baseRadii[state.currentLane] - 20,
+                text: `FORMATION x${Math.min(5, state.formationChain)} +${bonus}`,
+                color: '#34D399',
+                life: 0,
+                maxLife: 36,
+              });
+              if (soundEnabled) sounds.playSuccess();
+            } else {
+              state.formationChain = 0;
+            }
+          }
+        }
+        if (
+          state.gameTime >= 4 &&
+          state.formationCooldownTimer <= 0 &&
+          state.formationWarningTimer <= 0 &&
+          state.formationResolveTimer <= 0 &&
+          !state.pendingFormation
+        ) {
+          state.pendingFormation = getOrbitThreatFormation(state.formationIndex++);
+          state.formationWarningTimer = ORBIT_FORMATION_WARNING_SEC;
+          state.formationGraceTimer = ORBIT_FORMATION_WARNING_SEC + ORBIT_FORMATION_GRACE_SEC;
+          state.formationCooldownTimer = ORBIT_FORMATION_COOLDOWN_SEC;
+          if (soundEnabled) sounds.playTick();
+        }
 
         // Smooth radius transition between lanes
         state.currentRadius += (state.targetRadius - state.currentRadius) * getFrameInvariantBlend(0.18, deltaRatio);
@@ -295,7 +401,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
         const hazardInterval = Math.max(700, 1800 - state.gameTime * 30);
         state.hazardSpawnElapsedMs += dt;
         state.crystalSpawnElapsedMs += dt;
-        if (state.hazardSpawnElapsedMs > hazardInterval) {
+        if (state.hazardSpawnElapsedMs > hazardInterval && state.formationGraceTimer <= 0) {
           spawnHazard(curW, curH, cx, cy);
           state.hazardSpawnElapsedMs = 0;
         }
@@ -436,19 +542,25 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
         ctx.setLineDash([]);
       });
 
-      // Route / graze mastery HUD is rendered on-canvas so it stays frame-local.
+      // Route / graze / formation mastery HUD is rendered on-canvas so it stays frame-local.
+      const masteryHudWidth = Math.max(220, Math.min(356, curW - 20));
       ctx.fillStyle = 'rgba(24, 24, 27, 0.88)';
-      ctx.fillRect(cx - 126, 12, 252, 26);
+      ctx.fillRect(cx - masteryHudWidth / 2, 12, masteryHudWidth, 28);
       ctx.strokeStyle = 'rgba(63, 63, 70, 0.9)';
-      ctx.strokeRect(cx - 126, 12, 252, 26);
-      ctx.fillStyle = '#38BDF8';
-      ctx.font = 'bold 10px monospace';
+      ctx.strokeRect(cx - masteryHudWidth / 2, 12, masteryHudWidth, 28);
+      ctx.fillStyle = state.pendingFormation ? '#FB7185' : '#38BDF8';
+      ctx.font = 'bold 9px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
+      const threatLabel = state.pendingFormation
+        ? `${state.pendingFormation.name} • SAFE ${getOrbitLaneName(state.pendingFormation.safeLane)}`
+        : state.formationResolveTimer > 0
+          ? `FORMATION • SAFE ${getOrbitLaneName(state.formationSafeLane)}`
+          : 'THREAT SCAN';
       ctx.fillText(
-        `${getOrbitRouteName(state.routeIndex)} • ROUTE x${getOrbitRouteMultiplier(state.routeChain)} • GRAZE x${Math.max(1, state.nearMissChain)}`,
+        `${threatLabel} • ${getOrbitRouteName(state.routeIndex)} • FORMATION x${Math.max(1, state.formationChain)} • ROUTE x${getOrbitRouteMultiplier(state.routeChain)} • GRAZE x${Math.max(1, state.nearMissChain)}`,
         cx,
-        25,
+        26,
       );
 
       // Blazing Stellar Center Star Core
