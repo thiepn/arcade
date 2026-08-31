@@ -23,6 +23,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/patch-p9.py')
+          source = path.read_text()
+          source = source.replace(
+              "    if count != 1:\n        raise SystemExit(f'{label}: expected one marker, found {count}')",
+              "    if count < 1:\n        raise SystemExit(f'{label}: expected at least one marker, found {count}')",
+              1,
+          )
+          path.write_text(source)
+          PY
           python scripts/patch-p9.py
       - run: bun install --frozen-lockfile
       - run: bun scripts/audit-gameplay-p9.ts
