@@ -88,3 +88,4 @@ jobs:
           fi
           git commit -m 'Wire P3 browser gameplay certification'
           git push origin HEAD:gameplay/p3-browser-certification
+# trigger: p3-browser-certification
