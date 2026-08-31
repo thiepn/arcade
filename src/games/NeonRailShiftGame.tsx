@@ -13,6 +13,11 @@ import {
   getNeonRailSpeed,
   type NeonRailLane,
 } from '../lib/neonRailShift';
+import {
+  createNeonRailChallengePattern,
+  createNeonRailPhrase,
+  type NeonRailPhraseName,
+} from '../lib/neonRailDepth';
 
 type RailObjectKind = 'barrier' | 'core';
 
@@ -22,6 +27,7 @@ interface RailObject {
   lane: NeonRailLane;
   y: number;
   previousY: number;
+  phaseCore?: boolean;
 }
 
 interface RailParticle {
@@ -61,6 +67,7 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
     combo: 0,
     speed: 1,
     phaseCooldown: 0,
+    phraseName: 'SWITCHBACK' as NeonRailPhraseName,
   });
 
   const gameStateRef = useRef({
@@ -74,6 +81,9 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
     visualLane: 1,
     lastSafeLane: 1 as NeonRailLane,
     rowIndex: 0,
+    phraseLanes: [1] as NeonRailLane[],
+    phraseStep: 0,
+    phraseName: 'SWITCHBACK' as NeonRailPhraseName,
     spawnTimer: 0.75,
     phaseCooldown: 0,
     phaseTimer: 0,
@@ -183,6 +193,9 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
     state.visualLane = 1;
     state.lastSafeLane = 1;
     state.rowIndex = 0;
+    state.phraseLanes = [1];
+    state.phraseStep = 0;
+    state.phraseName = 'SWITCHBACK';
     state.spawnTimer = 0.75;
     state.phaseCooldown = 0;
     state.phaseTimer = 0;
@@ -217,10 +230,16 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
 
         state.spawnTimer -= dt;
         if (state.spawnTimer <= 0) {
-          const pattern = createNeonRailPattern(
-            state.lastSafeLane,
+          if (state.phraseStep >= state.phraseLanes.length) {
+            const phrase = createNeonRailPhrase(state.lastSafeLane, Math.random());
+            state.phraseLanes = phrase.lanes;
+            state.phraseStep = 0;
+            state.phraseName = phrase.name;
+          }
+          const safeLane = state.phraseLanes[state.phraseStep++];
+          const pattern = createNeonRailChallengePattern(
+            safeLane,
             state.rowIndex,
-            Math.random(),
             Math.random(),
           );
           state.lastSafeLane = pattern.safeLane;
@@ -239,8 +258,9 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
             id: state.nextId++,
             kind: 'core',
             lane: pattern.coreLane,
-            y: -0.1,
-            previousY: -0.1,
+            y: pattern.phaseOpportunity ? -0.18 : -0.1,
+            previousY: pattern.phaseOpportunity ? -0.18 : -0.1,
+            phaseCore: pattern.phaseOpportunity,
           });
           state.spawnTimer += getNeonRailSpawnInterval(state.elapsed);
         }
@@ -298,15 +318,20 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
               if (object.lane === state.playerLane) {
                 state.combo++;
                 const multiplier = Math.min(5, 1 + Math.floor(state.combo / 4));
-                const points = 120 * multiplier;
+                const phaseRouteMultiplier = object.phaseCore ? 3 : 1;
+                const points = 120 * multiplier * phaseRouteMultiplier;
                 state.bonusScore += points;
                 state.score = Math.floor(state.survivalScore + state.bonusScore);
                 state.popups.push({
                   id: state.nextId++,
                   x: getNeonRailLaneX(object.lane, NEON_RAIL_PLAYER_Y, width),
                   y: playerScreenY - 20,
-                  text: state.combo >= 4 ? `CHAIN x${multiplier} +${points}` : `CORE +${points}`,
-                  color: multiplier > 1 ? '#FACC15' : '#34D399',
+                  text: object.phaseCore
+                    ? `PHASE ROUTE x3 +${points}`
+                    : state.combo >= 4
+                    ? `CHAIN x${multiplier} +${points}`
+                    : `CORE +${points}`,
+                  color: object.phaseCore || multiplier > 1 ? '#FACC15' : '#34D399',
                   life: 0.8,
                 });
                 if (soundEnabled) sounds.playCombo(Math.min(18, state.combo));
@@ -346,6 +371,7 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
             combo: state.combo,
             speed: currentSpeed / 0.34,
             phaseCooldown: state.phaseCooldown,
+            phraseName: state.phraseName,
           });
         }
       }
@@ -447,9 +473,9 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
           ctx.save();
           ctx.translate(x, y);
           ctx.rotate(state.elapsed * 2.8 + object.id);
-          ctx.fillStyle = '#34D399';
-          ctx.strokeStyle = '#A7F3D0';
-          ctx.shadowColor = '#34D399';
+          ctx.fillStyle = object.phaseCore ? '#FACC15' : '#34D399';
+          ctx.strokeStyle = object.phaseCore ? '#FEF08A' : '#A7F3D0';
+          ctx.shadowColor = object.phaseCore ? '#FACC15' : '#34D399';
           ctx.shadowBlur = 16 * scale;
           ctx.lineWidth = 1.5;
           ctx.beginPath();
@@ -546,6 +572,9 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
         <div className="flex flex-wrap items-center gap-1.5">
           <div className="rounded-xl border border-cyan-400/25 bg-slate-950/80 px-2.5 py-1 font-mono text-xs font-black text-cyan-300 backdrop-blur-md">
             SCORE {hudState.score.toLocaleString()}
+          </div>
+          <div className="rounded-xl border border-slate-600/40 bg-slate-950/75 px-2 py-1 font-mono text-[9px] font-black text-slate-300">
+            {hudState.phraseName.replace('_', ' ')}
           </div>
           {hudState.combo > 1 && (
             <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-2 py-1 font-mono text-[10px] font-black text-amber-300">

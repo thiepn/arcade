@@ -8,6 +8,7 @@ import {
   TYPE_RUSH_WPM_RENDER_INTERVAL_MS,
   shouldSyncTypeRushUi,
 } from '../lib/typeRushRuntime';
+import { chooseTypeRushWord, getTypeRushWave } from '../lib/typeRushProgression';
 
 interface FallingWord {
   id: number;
@@ -23,12 +24,6 @@ interface FallingWord {
 
 const LANES = [16, 38, 62, 84];
 
-const WORD_BANK = [
-  'CODE', 'CYBER', 'NEXUS', 'PIXEL', 'LASER', 'SYNTH', 'QUANTUM', 'NEO',
-  'SPEED', 'ARCADE', 'PULSE', 'ORBIT', 'VECTOR', 'MATRIX', 'GRID', 'FLOW',
-  'FLASH', 'HYPER', 'TURBO', 'SONIC', 'DRIVE', 'CHIP', 'BYTE', 'WAVE',
-  'COSMOS', 'TITAN', 'SHADOW', 'RADAR', 'BLAST', 'CHRONO', 'SPARK', 'DRIFT'
-];
 
 export const TypeRushGame: React.FC<GameComponentProps> = ({
   onGameOver,
@@ -50,6 +45,7 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [wpm, setWpm] = useState(0);
+  const [waveLabel, setWaveLabel] = useState('BOOT');
   const [turretAngle, setTurretAngle] = useState(0);
   const [lastInputChar, setLastInputChar] = useState('');
   const [inputValue, setInputValue] = useState('');
@@ -66,6 +62,7 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
     startTime: Date.now(),
     lastSpawn: 0,
     gameTime: 0,
+    waveIndex: 0,
     freezeTimer: 0,
     isAlive: true,
   });
@@ -85,11 +82,12 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
     const state = gameStateRef.current;
     if (!state.isAlive || isPausedRef.current) return;
 
-    const availableWords = WORD_BANK.filter(
-      (w) => !state.words.some((sw) => sw.word === w)
+    const wave = getTypeRushWave(state.gameTime);
+    const chosen = chooseTypeRushWord(
+      wave,
+      state.words.map((word) => word.word),
+      Math.random(),
     );
-    const chosen =
-      availableWords[Math.floor(Math.random() * availableWords.length)] || 'LASER';
 
     const randType = Math.random();
     let type: 'standard' | 'bomb' | 'freeze' | 'hyper' = 'standard';
@@ -123,7 +121,8 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
       }
     }
 
-    const baseSpeed = 0.15 + Math.min(0.22, state.gameTime * 0.0035);
+    const baseSpeed =
+      (0.15 + Math.min(0.18, state.gameTime * 0.0028)) * wave.speedMultiplier;
     const newWord: FallingWord = {
       id: state.nextId++,
       word: chosen,
@@ -179,7 +178,8 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
       // Completed word!
       if (target.typedIndex >= target.word.length) {
         const multiplier = state.streak >= 10 ? 3 : state.streak >= 5 ? 2 : 1;
-        let pts = target.word.length * 100 * multiplier;
+        const wave = getTypeRushWave(state.gameTime);
+        let pts = Math.round(target.word.length * 100 * multiplier * wave.scoreMultiplier);
 
         if (target.type === 'bomb') {
           pts += state.words.length * 200;
@@ -236,11 +236,13 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
     state.charsTyped = 0;
     state.words = [];
     state.gameTime = 0;
+    state.waveIndex = 0;
     state.freezeTimer = 0;
     setLives(3);
     setScore(0);
     setStreak(0);
     setWpm(0);
+    setWaveLabel('BOOT');
     setWords([]);
 
     let animationId: number;
@@ -275,9 +277,15 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
           lastWpmRenderSync = currentTime;
         }
 
-        // Spawning timer (scaled for reasonable pace and reading room)
-        const spawnInterval = Math.max(1200, 2400 - state.gameTime * 25);
-        if (currentTime - state.lastSpawn > spawnInterval && state.words.length < 4) {
+        // Four authored waves increase vocabulary length, density, speed, and reward.
+        const wave = getTypeRushWave(state.gameTime);
+        if (wave.index !== state.waveIndex) {
+          state.waveIndex = wave.index;
+          setWaveLabel(wave.label);
+          if (soundEnabledRef.current) sounds.playChime(700 + wave.index * 120);
+        }
+        const spawnInterval = wave.spawnIntervalMs;
+        if (currentTime - state.lastSpawn > spawnInterval && state.words.length < wave.maxWords) {
           spawnWord();
           state.lastSpawn = currentTime;
         }
@@ -381,6 +389,9 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
             </div>
           )}
 
+          <div className="font-mono-arcade text-[10px] text-[#FACC15] bg-[#18181B]/95 px-2.5 py-1.5 rounded-xl border border-[#FACC15]/25 shadow-md backdrop-blur">
+            {waveLabel} WAVE
+          </div>
           <div className="font-mono-arcade text-xs text-[#38BDF8] bg-[#18181B]/95 px-3 py-1.5 rounded-xl border border-[#27272A] shadow-md backdrop-blur">
             {wpm} WPM
           </div>

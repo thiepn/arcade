@@ -30,6 +30,7 @@
     "quality:hud-render": "bun scripts/audit-hud-render-performance.ts",
     "quality:gameplay-p0": "bun scripts/audit-gameplay-p0.ts",
     "quality:gameplay-p1": "bun scripts/audit-gameplay-p1.ts",
+    "quality:gameplay-p2": "bun scripts/audit-gameplay-p2.ts",
     "quality:lifecycle": "bun scripts/audit-game-lifecycle.ts",
     "quality:mobile": "bun scripts/audit-mobile-runtime.ts",
     "quality:rope": "bun scripts/audit-laser-rope-presentation.ts",

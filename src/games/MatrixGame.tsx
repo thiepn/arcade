@@ -3,6 +3,12 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { Heart, Zap, Sparkles, RefreshCw, Terminal, CheckCircle2, Flame, Award } from 'lucide-react';
 import { useSafeTimeout } from '../hooks/useGameLoop';
+import {
+  applyMatrixProtocol,
+  getMatrixProtocolForRound,
+  getMatrixProtocolPrompt,
+  type MatrixProtocol,
+} from '../lib/matrixProtocols';
 
 interface MatrixNode {
   id: number;
@@ -46,9 +52,12 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
   const [replaysLeft, setReplaysLeft] = useState<number>(2);
   const [statusMessage, setStatusMessage] = useState<string>('OBSERVE PATTERN');
   const [timerProgress, setTimerProgress] = useState<number>(100);
+  const [protocol, setProtocol] = useState<MatrixProtocol>('FORWARD');
 
   const gameStateRef = useRef({
     sequence: [] as number[],
+    expectedSequence: [] as number[],
+    protocol: 'FORWARD' as MatrixProtocol,
     playerStep: 0,
     score: 0,
     lives: 3,
@@ -87,7 +96,7 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
           if (step === seq.length - 1) {
             setIsShowingSequence(false);
             gameStateRef.current.isInputLocked = false;
-            setStatusMessage('REPLICATE PATTERN!');
+            setStatusMessage(getMatrixProtocolPrompt(gameStateRef.current.protocol));
             gameStateRef.current.timer = 100;
             setTimerProgress(100);
           }
@@ -109,8 +118,12 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
       newSeq.push(Math.floor(Math.random() * 9));
     }
 
+    const nextProtocol = getMatrixProtocolForRound(round);
     state.sequence = newSeq;
+    state.protocol = nextProtocol;
+    state.expectedSequence = applyMatrixProtocol(newSeq, nextProtocol);
     setSequence(newSeq);
+    setProtocol(nextProtocol);
 
     const playbackSpeed = Math.max(180, 340 - round * 15);
     playSequencePlayback(newSeq, playbackSpeed);
@@ -125,7 +138,7 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
     if (soundEnabled) sounds.playMatrixNode(nodeIdx);
     scheduleWhenActive(() => setActiveNode(null), 180);
 
-    const expected = state.sequence[state.playerStep];
+    const expected = state.expectedSequence[state.playerStep];
 
     if (nodeIdx === expected) {
       // Correct step
@@ -271,6 +284,8 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
       <div className="w-full flex items-center justify-between z-10">
         <div className="flex items-center gap-3 bg-[#18181B]/90 border border-[#27272A] px-3.5 py-1.5 rounded-xl font-mono-arcade text-xs backdrop-blur-md">
           <span className="text-white font-bold">ROUND {roundLevel}</span>
+          <span className="text-[#71717A]">|</span>
+          <span className="text-cyan-300 font-bold">PROTOCOL {protocol.replace('_', '+')}</span>
           <span className="text-[#71717A]">|</span>
           <div className="flex items-center gap-1 text-[#F43F5E]">
             {Array.from({ length: 3 }).map((_, i) => (
