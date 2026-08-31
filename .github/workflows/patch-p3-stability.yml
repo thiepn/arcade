@@ -63,3 +63,4 @@ jobs:
           fi
           git commit -m 'Stabilize P3 browser certification'
           git push origin HEAD:gameplay/p3-browser-stabilization
+# trigger: deterministic-pause-and-gameplay-long-task-scope
