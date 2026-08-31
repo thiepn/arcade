@@ -1,8 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
-import { Target, Award, Play, Sparkles } from 'lucide-react';
+import { Activity, Sparkles, Target } from 'lucide-react';
 import { useSafeTimeout } from '../hooks/useGameLoop';
+import {
+  PERFECT_STOP_ROUNDS,
+  getPerfectStopMarkerSpeed,
+  getPerfectStopTargetPosition,
+  judgePerfectStop,
+  type PerfectStopJudgement,
+} from '../lib/perfectStopGameplay';
 
 export const PerfectStopGame: React.FC<GameComponentProps> = ({
   onGameOver,
@@ -10,31 +17,45 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
   isPaused,
   soundEnabled,
 }) => {
-  const [round, setRound] = useState(1);
+  const [roundIndex, setRoundIndex] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
-  const [stoppedAccuracy, setStoppedAccuracy] = useState<number | null>(null);
+  const [result, setResult] = useState<PerfectStopJudgement | null>(null);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const setSafeTimeout = useSafeTimeout();
 
-  const maxRounds = 5;
-  const markerPosRef = useRef(0); // 0 to 100
+  const markerPosRef = useRef(0);
+  const targetPosRef = useRef(PERFECT_STOP_ROUNDS[0].targetStart);
   const markerElementRef = useRef<HTMLDivElement>(null);
+  const targetElementRef = useRef<HTMLDivElement>(null);
   const markerDirRef = useRef(1);
-  const markerSpeedRef = useRef(2.2);
+  const elapsedRef = useRef(0);
+  const nextFlipRef = useRef(Number.POSITIVE_INFINITY);
   const animationFrameRef = useRef<number | null>(null);
 
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
 
-  const startRound = (roundNum: number) => {
-    setStoppedAccuracy(null);
+  const roundConfig = PERFECT_STOP_ROUNDS[roundIndex];
+  const maxRounds = PERFECT_STOP_ROUNDS.length;
+
+  const startRound = (index: number) => {
+    const config = PERFECT_STOP_ROUNDS[index];
+    const startPosition = index % 2 === 0 ? 0 : 100;
+    const direction = index % 2 === 0 ? 1 : -1;
+
+    setResult(null);
     setIsRunning(true);
-    markerPosRef.current = 0;
-    if (markerElementRef.current) markerElementRef.current.style.left = '0%';
-    markerDirRef.current = 1;
-    // Speed ramps up with difficulty curve
-    markerSpeedRef.current = 2.2 + (roundNum - 1) * 0.85;
+    markerPosRef.current = startPosition;
+    targetPosRef.current = getPerfectStopTargetPosition(config, 0);
+    markerDirRef.current = direction;
+    elapsedRef.current = 0;
+    nextFlipRef.current = config.flipIntervalMs > 0
+      ? config.flipIntervalMs
+      : Number.POSITIVE_INFINITY;
+
+    if (markerElementRef.current) markerElementRef.current.style.left = `${startPosition}%`;
+    if (targetElementRef.current) targetElementRef.current.style.left = `${targetPosRef.current}%`;
     if (soundEnabled) sounds.playPop();
   };
 
@@ -42,49 +63,36 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
     if (!isRunning || isPausedRef.current) return;
     setIsRunning(false);
 
-    const pos = markerPosRef.current;
-    const distFromCenter = Math.abs(pos - 50);
-    // Accuracy from 0.0% to 100.0%
-    const accuracy = Math.max(
-      0,
-      Math.round((100 - distFromCenter * 2) * 10) / 10
+    const judgement = judgePerfectStop(
+      markerPosRef.current,
+      targetPosRef.current,
+      roundConfig,
+      streak,
     );
-    setStoppedAccuracy(accuracy);
+    setResult(judgement);
+    setStreak(judgement.nextStreak);
 
-    let roundPts = Math.round(accuracy * 15);
-    let newStreak = streak;
-
-    if (accuracy >= 97) {
-      newStreak++;
-      roundPts *= 2.5;
-      if (soundEnabled) sounds.playLaser();
-    } else if (accuracy >= 88) {
-      newStreak++;
-      roundPts *= 1.5;
-      if (soundEnabled) sounds.playCombo(newStreak);
-    } else {
-      newStreak = 0;
-      if (soundEnabled) sounds.playHit();
-    }
-
-    setStreak(newStreak);
-    const newScore = Math.round(score + roundPts);
+    const newScore = score + judgement.points;
     setScore(newScore);
     onScoreUpdate(newScore);
 
-    if (round >= maxRounds) {
-      setSafeTimeout(() => {
-        onGameOver(newScore);
-      }, 1400);
+    if (soundEnabled) {
+      if (judgement.rating === 'PERFECT') sounds.playLaser();
+      else if (judgement.rating === 'GREAT') sounds.playCombo(Math.max(1, judgement.nextStreak));
+      else if (judgement.rating === 'GOOD') sounds.playPop();
+      else sounds.playHit();
+    }
+
+    if (roundIndex >= maxRounds - 1) {
+      setSafeTimeout(() => onGameOver(newScore), 1400);
     }
   };
 
   const handleNextRound = () => {
-    if (round < maxRounds) {
-      const nextR = round + 1;
-      setRound(nextR);
-      startRound(nextR);
-    }
+    if (roundIndex >= maxRounds - 1 || !result) return;
+    const nextIndex = roundIndex + 1;
+    setRoundIndex(nextIndex);
+    startRound(nextIndex);
   };
 
   useEffect(() => {
@@ -95,17 +103,35 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
       lastTime = currentTime;
 
       if (isRunning && !isPausedRef.current) {
-        markerPosRef.current +=
-          markerSpeedRef.current * markerDirRef.current * (dt / 16);
-        if (markerPosRef.current >= 100) {
-          markerPosRef.current = 100;
+        const config = PERFECT_STOP_ROUNDS[roundIndex];
+        elapsedRef.current += dt;
+        const elapsed = elapsedRef.current;
+
+        if (config.flipIntervalMs > 0 && elapsed >= nextFlipRef.current) {
+          markerDirRef.current *= -1;
+          while (elapsed >= nextFlipRef.current) {
+            nextFlipRef.current += config.flipIntervalMs;
+          }
+        }
+
+        const speed = getPerfectStopMarkerSpeed(config, elapsed);
+        markerPosRef.current += speed * markerDirRef.current * (dt / 1000);
+
+        if (markerPosRef.current > 100) {
+          markerPosRef.current = 200 - markerPosRef.current;
           markerDirRef.current = -1;
-        } else if (markerPosRef.current <= 0) {
-          markerPosRef.current = 0;
+        } else if (markerPosRef.current < 0) {
+          markerPosRef.current = -markerPosRef.current;
           markerDirRef.current = 1;
         }
+
+        targetPosRef.current = getPerfectStopTargetPosition(config, elapsed);
+
         if (markerElementRef.current) {
           markerElementRef.current.style.left = `${markerPosRef.current}%`;
+        }
+        if (targetElementRef.current) {
+          targetElementRef.current.style.left = `${targetPosRef.current}%`;
         }
       }
 
@@ -114,96 +140,112 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
 
     animationFrameRef.current = requestAnimationFrame(loop);
     return () => {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [isRunning]);
+  }, [isRunning, roundIndex]);
 
   useEffect(() => {
-    startRound(1);
+    startRound(0);
   }, []);
+
+  const ratingClass = result?.rating === 'PERFECT'
+    ? 'text-[#38BDF8] border-[#38BDF8]/40 bg-[#38BDF8]/10 shadow-[0_0_14px_rgba(56,189,248,0.3)]'
+    : result?.rating === 'GREAT'
+      ? 'text-[#34D399] border-[#34D399]/40 bg-[#34D399]/10'
+      : result?.rating === 'GOOD'
+        ? 'text-[#FACC15] border-[#FACC15]/40 bg-[#FACC15]/10'
+        : 'text-[#F43F5E] border-[#F43F5E]/40 bg-[#F43F5E]/10';
 
   return (
     <div
-      className="relative w-full h-full flex flex-col items-center justify-between p-6 select-none cursor-pointer bg-[#0A0A0B] touch-none"
+      className="relative w-full h-full flex flex-col items-center justify-between p-4 sm:p-6 select-none cursor-pointer bg-[#0A0A0B] touch-none"
       onPointerDown={(e) => {
         if (e.button !== 0 && e.pointerType === 'mouse') return;
+        e.preventDefault();
         if (isRunning) handleStop();
-        else if (stoppedAccuracy !== null && round < maxRounds) handleNextRound();
+        else if (result && roundIndex < maxRounds - 1) handleNextRound();
       }}
       onKeyDown={(e) => {
         if (e.code === 'Space' || e.code === 'Enter') {
           e.preventDefault();
           if (isRunning) handleStop();
-          else if (stoppedAccuracy !== null && round < maxRounds) handleNextRound();
+          else if (result && roundIndex < maxRounds - 1) handleNextRound();
         }
       }}
       tabIndex={0}
     >
-      {/* Top Bar */}
-      <div className="w-full flex items-center justify-between pointer-events-none">
-        <span className="font-mono-arcade text-xs text-[#A1A1AA] bg-[#18181B] px-3.5 py-1.5 rounded-xl border border-[#27272A]">
-          SECTOR {round} / {maxRounds}
-        </span>
-        {streak > 1 && (
-          <span className="font-mono-arcade text-xs text-[#FACC15] bg-[#18181B] px-3.5 py-1.5 rounded-xl border border-[#FACC15]/30 flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5" /> STREAK x{streak}
+      <div className="w-full flex items-start justify-between gap-2 pointer-events-none">
+        <div className="flex flex-col gap-1.5">
+          <span className="font-mono-arcade text-xs text-[#A1A1AA] bg-[#18181B] px-3 py-1.5 rounded-xl border border-[#27272A] w-fit">
+            SECTOR {roundIndex + 1} / {maxRounds}
           </span>
-        )}
+          <span className="font-mono-arcade text-[10px] text-[#38BDF8] bg-[#38BDF8]/10 px-2.5 py-1 rounded-lg border border-[#38BDF8]/20 w-fit">
+            {roundConfig.label}
+          </span>
+        </div>
+
+        <div className="flex flex-col items-end gap-1.5">
+          <span className="font-mono-arcade text-xs text-white bg-[#18181B] px-3 py-1.5 rounded-xl border border-[#27272A] tabular-nums">
+            {score.toLocaleString()} PTS
+          </span>
+          {streak > 1 && (
+            <span className="font-mono-arcade text-[10px] text-[#FACC15] bg-[#18181B] px-2.5 py-1 rounded-lg border border-[#FACC15]/30 flex items-center gap-1">
+              <Sparkles className="w-3 h-3" /> STREAK x{streak}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Main Timing Scale */}
-      <div className="w-full max-w-md flex flex-col items-center gap-8 pointer-events-none">
-        {/* Rating feedback */}
-        <div className="h-20 flex flex-col items-center justify-center">
-          {stoppedAccuracy !== null ? (
-            <div className="flex flex-col items-center gap-1">
-              <span className="text-5xl font-mono-arcade font-black text-white">
-                {stoppedAccuracy}%
-              </span>
-              <span
-                className={`text-xs font-bold font-mono-arcade px-3.5 py-1 rounded-full border ${
-                  stoppedAccuracy >= 97
-                    ? 'text-[#38BDF8] border-[#38BDF8]/40 bg-[#38BDF8]/10 shadow-[0_0_12px_rgba(56,189,248,0.3)]'
-                    : stoppedAccuracy >= 88
-                    ? 'text-[#34D399] border-[#34D399]/40 bg-[#34D399]/10'
-                    : stoppedAccuracy >= 75
-                    ? 'text-[#FACC15] border-[#FACC15]/40 bg-[#FACC15]/10'
-                    : 'text-[#71717A] border-[#27272A] bg-[#18181B]'
-                }`}
-              >
-                {stoppedAccuracy >= 97
-                  ? '🎯 DIAMOND BULLSEYE!'
-                  : stoppedAccuracy >= 88
-                  ? '⚡ PINPOINT ACCURACY'
-                  : stoppedAccuracy >= 75
-                  ? '👌 GOOD TIMING'
-                  : 'OFF TARGET'}
-              </span>
-            </div>
+      <div className="w-full max-w-lg flex flex-col items-center gap-5 sm:gap-7 pointer-events-none">
+        <div className="min-h-24 flex flex-col items-center justify-center text-center gap-2">
+          {result ? (
+            <>
+              <div className="flex items-end gap-2">
+                <span className="text-5xl sm:text-6xl font-mono-arcade font-black text-white tabular-nums">
+                  {result.accuracy}%
+                </span>
+                <span className="font-mono-arcade text-xs text-[#A1A1AA] mb-2">
+                  Δ {result.distance.toFixed(1)}
+                </span>
+              </div>
+              <div className={`px-4 py-1.5 rounded-full border font-mono-arcade font-black text-xs tracking-wider ${ratingClass}`}>
+                {result.rating} • +{result.points.toLocaleString()}
+              </div>
+            </>
           ) : (
-            <div className="flex items-center gap-2 text-xs font-mono-arcade text-[#A1A1AA] bg-[#18181B] px-4 py-2 rounded-xl border border-[#27272A]">
-              <Target className="w-4 h-4 text-[#38BDF8]" />
-              <span>LOCK ON CENTER 50.0% MARK</span>
-            </div>
+            <>
+              <div className="flex items-center gap-2 text-sm font-mono-arcade text-white">
+                <Target className="w-5 h-5 text-[#38BDF8]" />
+                <span>STOP INSIDE THE TARGET BEACON</span>
+              </div>
+              <p className="max-w-sm text-[11px] leading-relaxed font-mono-arcade text-[#71717A]">
+                {roundConfig.hint}
+              </p>
+            </>
           )}
         </div>
 
-        {/* The Track Slider */}
         <div className="w-full bg-[#18181B] p-4 rounded-2xl border border-[#27272A] shadow-2xl relative">
-          {/* Target Center Zone Highlighting */}
-          <div className="relative h-14 bg-[#09090B] rounded-xl overflow-hidden border border-[#27272A] flex items-center">
-            {/* Center Bullseye marker */}
-            <div className="absolute left-1/2 -translate-x-1/2 w-8 h-full bg-[#38BDF8]/20 border-x border-[#38BDF8]/50 flex items-center justify-center">
-              <div className="w-0.5 h-full bg-[#38BDF8] shadow-[0_0_8px_#38BDF8]" />
+          <div className="relative h-16 bg-[#09090B] rounded-xl overflow-hidden border border-[#27272A] flex items-center">
+            <div
+              ref={targetElementRef}
+              className="absolute top-0 bottom-0 -translate-x-1/2 border-x border-[#34D399]/50 bg-[#34D399]/10 flex items-center justify-center"
+              style={{
+                left: `${roundConfig.targetStart}%`,
+                width: `${roundConfig.goodWindow * 2}%`,
+              }}
+            >
+              <div
+                className="h-full bg-[#38BDF8]/15 border-x border-[#38BDF8]/60 flex items-center justify-center"
+                style={{ width: `${Math.max(8, (roundConfig.perfectWindow / roundConfig.goodWindow) * 100)}%` }}
+              >
+                <div className="w-0.5 h-full bg-[#38BDF8] shadow-[0_0_10px_#38BDF8]" />
+              </div>
             </div>
 
-            {/* Emerald Good Zone */}
-            <div className="absolute left-1/2 -translate-x-1/2 w-28 h-full bg-[#34D399]/10 border-x border-[#34D399]/20" />
-
-            {/* Moving Cursor Indicator */}
             <div
               ref={markerElementRef}
-              className="absolute top-0 bottom-0 w-3 -ml-1.5 transition-none flex flex-col items-center justify-between py-1 pointer-events-none"
+              className="absolute top-0 bottom-0 w-3 -ml-1.5 transition-none flex flex-col items-center justify-between py-1 pointer-events-none z-10"
               style={{ left: '0%' }}
             >
               <div className="w-3 h-3 bg-white rounded-full shadow-[0_0_12px_#FFFFFF]" />
@@ -212,29 +254,47 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
             </div>
           </div>
 
-          {/* Scale Labels */}
           <div className="mt-3 flex justify-between text-[10px] font-mono-arcade text-[#71717A] px-1">
-            <span>0%</span>
-            <span>25%</span>
-            <span className="text-[#38BDF8] font-bold">50% TARGET</span>
-            <span>75%</span>
-            <span>100%</span>
+            <span>0</span>
+            <span>25</span>
+            <span className="text-[#A1A1AA]">50</span>
+            <span>75</span>
+            <span>100</span>
           </div>
+
+          {(roundConfig.targetAmplitude > 0 || roundConfig.flipIntervalMs > 0 || roundConfig.speedPulse > 0) && (
+            <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+              {roundConfig.targetAmplitude > 0 && (
+                <span className="px-2 py-1 rounded-lg bg-violet-500/10 border border-violet-500/25 text-violet-300 text-[9px] font-mono-arcade">
+                  MOVING TARGET
+                </span>
+              )}
+              {roundConfig.speedPulse > 0 && (
+                <span className="px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[9px] font-mono-arcade">
+                  SPEED PULSE
+                </span>
+              )}
+              {roundConfig.flipIntervalMs > 0 && (
+                <span className="px-2 py-1 rounded-lg bg-rose-500/10 border border-rose-500/25 text-rose-300 text-[9px] font-mono-arcade flex items-center gap-1">
+                  <Activity className="w-3 h-3" /> AUTO REVERSE
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Action Button Prompter */}
         <div>
           {isRunning ? (
             <div className="px-6 py-2.5 rounded-xl bg-[#38BDF8] text-[#09090B] font-mono-arcade font-bold text-xs shadow-lg shadow-[#38BDF8]/20 animate-pulse">
-              TAP OR SPACE TO STOP
+              TAP OR SPACE TO LOCK
             </div>
-          ) : round < maxRounds ? (
+          ) : roundIndex < maxRounds - 1 ? (
             <div className="px-6 py-2.5 rounded-xl bg-[#18181B] text-white font-mono-arcade font-bold text-xs border border-[#27272A]">
-              TAP FOR SECTOR {round + 1}
+              TAP FOR {PERFECT_STOP_ROUNDS[roundIndex + 1].label}
             </div>
           ) : (
             <div className="px-6 py-2.5 rounded-xl bg-[#34D399] text-[#09090B] font-mono-arcade font-bold text-xs">
-              FINAL SCORE: {score}
+              FINAL SCORE: {score.toLocaleString()}
             </div>
           )}
         </div>
