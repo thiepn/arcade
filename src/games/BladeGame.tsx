@@ -6,6 +6,7 @@ import { Heart, Flame, Shield } from 'lucide-react';
 import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
 import { rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
 import { createBladeLaunchTrajectory, getBladeGravity, getBladeSimulationStepBatch } from '../lib/bladeTrajectory';
+import { resolveBladePrecisionSlice } from '../lib/bladePrecisionMastery';
 
 interface TargetItem {
   id: number;
@@ -89,6 +90,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
     multiplier: 1,
     comboTimerRatio: 0,
     hasShield: false,
+    precisionChain: 0,
   }, 50);
 
   const gameStateRef = useRef({
@@ -99,6 +101,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
     maxComboTimer: 75, // ~1.25 seconds to chain next slice
     maxCombo: 0,
     multiplier: 1,
+    precisionChain: 0,
     isAlive: true,
     hasShield: false,
     shake: 0,
@@ -295,6 +298,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
           // BOMB DETONATION
           if (target.type === 'bomb') {
             target.sliced = true;
+            state.precisionChain = 0;
             if (state.hasShield) {
               state.hasShield = false;
               state.shake = 10;
@@ -306,6 +310,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
               state.combo = 0;
               state.comboTimer = 0;
               state.multiplier = 1;
+              state.precisionChain = 0;
               state.strokeCuts = 0;
               state.shake = 18;
               if (soundEnabled) sounds.playExplosion();
@@ -383,11 +388,27 @@ export const BladeGame: React.FC<GameComponentProps> = ({
             addPopup('🛡️ SHIELD READY', target.x, target.y - 25, '#A855F7', 1.2);
           }
 
+          // Optional center-cut mastery. Ordinary valid slices still score normally.
+          const precision = resolveBladePrecisionSlice(dist, target.radius, state.precisionChain);
+          state.precisionChain = precision.chain;
+
           // Points calculation
           const earned = target.points * mult;
-          state.score += earned;
+          state.score += earned + precision.bonus;
           onScoreUpdate(state.score);
           addPopup(`+${earned}`, target.x, target.y - 15, target.color, 1.0);
+          if (precision.precise) {
+            addPopup(
+              precision.razorRush
+                ? `RAZOR RUSH x${precision.chain}! +${precision.bonus}`
+                : `CENTER CUT x${precision.chain} +${precision.bonus}`,
+              target.x,
+              target.y - 34,
+              precision.razorRush ? '#FACC15' : '#38BDF8',
+              precision.razorRush ? 1.3 : 1.05,
+            );
+            if (precision.razorRush && soundEnabled) sounds.playVictory();
+          }
 
           // Split into 2 separating halves
           const separation = 4.0;
@@ -523,6 +544,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
     state.combo = 0;
     state.comboTimer = 0;
     state.multiplier = 1;
+    state.precisionChain = 0;
     state.isAlive = true;
     state.hasShield = false;
     state.targets = [];
@@ -637,6 +659,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
               state.combo = 0;
               state.comboTimer = 0;
               state.multiplier = 1;
+              state.precisionChain = 0;
             }
             state.targets.splice(i, 1);
           } else if (t.sliced) {
@@ -842,7 +865,8 @@ export const BladeGame: React.FC<GameComponentProps> = ({
           prev.combo === state.combo &&
           prev.multiplier === state.multiplier &&
           prev.comboTimerRatio === ratio &&
-          prev.hasShield === state.hasShield
+          prev.hasShield === state.hasShield &&
+          prev.precisionChain === state.precisionChain
         ) {
           return prev;
         }
@@ -852,6 +876,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
           multiplier: state.multiplier,
           comboTimerRatio: ratio,
           hasShield: state.hasShield,
+          precisionChain: state.precisionChain,
         };
       });
 
@@ -891,6 +916,11 @@ export const BladeGame: React.FC<GameComponentProps> = ({
               <span>SHIELD</span>
             </div>
           )}
+          {hudState.precisionChain > 0 && (
+            <div className="px-2 py-1 rounded-xl bg-cyan-500/20 border border-cyan-500/50 text-cyan-300 font-mono text-xs font-black">
+              RAZOR x{hudState.precisionChain}
+            </div>
+          )}
         </div>
 
         {/* Combo Pill with decay timer bar */}
@@ -914,7 +944,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
       <canvas ref={canvasRef} className="w-full h-full block cursor-crosshair" />
 
       <div className="absolute bottom-2 text-[11px] font-mono text-zinc-500 pointer-events-none">
-        SWIPE / DRAG BLADE TO SLICE • DODGE RED EMP BOMBS
+        SWIPE / DRAG TO SLICE • CENTER CUTS BUILD RAZOR • DODGE RED EMP BOMBS
       </div>
     </div>
   );

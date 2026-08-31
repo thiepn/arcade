@@ -4,6 +4,7 @@ import { sounds } from '../lib/sound';
 import { RotateCw, ArrowDown, ArrowLeft, ArrowRight, ChevronsDown, Zap, Trophy } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { getBlockDropLayout, resolveBlockDropHold } from '../lib/blockDropSupport';
+import { drawBlockDropBagPiece, resolveBlockDropLineMastery } from '../lib/blockDropMastery';
 
 const COLS = 10;
 const ROWS = 20;
@@ -18,8 +19,6 @@ const SHAPES: Record<TetrominoType, { shape: number[][]; color: string }> = {
   T: { shape: [[0, 1, 0], [1, 1, 1], [0, 0, 0]], color: '#A855F7' },
   Z: { shape: [[1, 1, 0], [0, 1, 1], [0, 0, 0]], color: '#EF4444' },
 };
-
-const TETROMINO_KEYS: TetrominoType[] = ['I', 'J', 'L', 'O', 'S', 'T', 'Z'];
 
 interface ActivePiece {
   type: TetrominoType;
@@ -104,6 +103,8 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
     nextType: 'T' as TetrominoType,
     holdType: null as TetrominoType | null,
     canHold: true,
+    clearChain: 0,
+    backToBack: false,
   });
 
   const gameStateRef = useRef({
@@ -118,6 +119,9 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
     nextPieceType: 'T' as TetrominoType,
     holdPieceType: null as TetrominoType | null,
     canHold: true,
+    pieceBag: [] as TetrominoType[],
+    clearChain: 0,
+    backToBack: false,
     dropTimer: 0,
     dropInterval: 0.8, // sec per step
     lockTimer: 0, // Lock delay timer for spin-slotting
@@ -129,9 +133,8 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
     nextId: 1,
   });
 
-  const getRandomPieceType = (): TetrominoType => {
-    return TETROMINO_KEYS[Math.floor(Math.random() * TETROMINO_KEYS.length)];
-  };
+  const getRandomPieceType = (): TetrominoType =>
+    drawBlockDropBagPiece(gameStateRef.current.pieceBag);
 
   const spawnPiece = (type: TetrominoType): ActivePiece => {
     const data = SHAPES[type];
@@ -309,17 +312,26 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
       }
     }
 
+    const lineMastery = resolveBlockDropLineMastery({
+      clearedLines,
+      level: state.level,
+      clearChain: state.clearChain,
+      backToBack: state.backToBack,
+    });
+    state.clearChain = lineMastery.clearChain;
+    state.backToBack = lineMastery.backToBack;
+
     if (clearedLines > 0) {
       state.lines += clearedLines;
       const pts = [0, 100, 300, 500, 1000][clearedLines] * state.level;
-      state.score += pts;
+      state.score += pts + lineMastery.masteryBonus;
       onScoreUpdate(state.score);
       if (soundEnabled) sounds.playLineClear();
 
       state.level = Math.floor(state.lines / 10) + 1;
       state.dropInterval = Math.max(0.12, 0.8 - (state.level - 1) * 0.08);
 
-      const label = clearedLines === 4 ? 'TETRIS! +1000' : `+${pts} LINES!`;
+      const label = clearedLines === 4 ? `TETRIS! +${pts}` : `+${pts} LINES!`;
       state.popups.push({
         id: state.nextId++,
         x: 100,
@@ -328,6 +340,26 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
         color: clearedLines === 4 ? '#06B6D4' : '#FACC15',
         life: 1.2,
       });
+      if (lineMastery.comboBonus > 0) {
+        state.popups.push({
+          id: state.nextId++,
+          x: 100,
+          y: 205,
+          text: `CLEAR CHAIN x${state.clearChain} +${lineMastery.comboBonus}`,
+          color: '#34D399',
+          life: 1.2,
+        });
+      }
+      if (lineMastery.backToBackBonus > 0) {
+        state.popups.push({
+          id: state.nextId++,
+          x: 100,
+          y: 230,
+          text: `B2B TETRIS +${lineMastery.backToBackBonus}`,
+          color: '#EC4899',
+          life: 1.2,
+        });
+      }
     }
 
     // Spawn next piece. A fresh placement restores exactly one Hold/Swap action.
@@ -381,10 +413,13 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
     state.level = 1;
     state.isAlive = true;
     state.grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
-    state.nextPieceType = getRandomPieceType();
+    state.pieceBag = [];
     state.currentPiece = spawnPiece(getRandomPieceType());
+    state.nextPieceType = getRandomPieceType();
     state.holdPieceType = null;
     state.canHold = true;
+    state.clearChain = 0;
+    state.backToBack = false;
     state.dropTimer = 0;
     state.lockTimer = 0;
     state.lockResets = 0;
@@ -577,7 +612,9 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
             prev.level === state.level &&
             prev.nextType === state.nextPieceType &&
             prev.holdType === state.holdPieceType &&
-            prev.canHold === state.canHold
+            prev.canHold === state.canHold &&
+            prev.clearChain === state.clearChain &&
+            prev.backToBack === state.backToBack
           ) {
             return prev;
           }
@@ -588,6 +625,8 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
             nextType: state.nextPieceType,
             holdType: state.holdPieceType,
             canHold: state.canHold,
+            clearChain: state.clearChain,
+            backToBack: state.backToBack,
           };
         });
       }
@@ -611,6 +650,16 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
           <div className="px-2.5 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-emerald-400 font-mono text-xs font-bold backdrop-blur-md">
             LINES: {hudState.lines}
           </div>
+          {hudState.clearChain > 1 && (
+            <div className="px-2.5 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-mono text-xs font-black backdrop-blur-md">
+              CHAIN x{hudState.clearChain}
+            </div>
+          )}
+          {hudState.backToBack && (
+            <div className="px-2.5 py-1 rounded-xl bg-pink-500/15 border border-pink-500/40 text-pink-300 font-mono text-xs font-black backdrop-blur-md">
+              B2B READY
+            </div>
+          )}
         </div>
       </div>
 
