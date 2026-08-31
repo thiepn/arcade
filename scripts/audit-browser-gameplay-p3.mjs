@@ -88,15 +88,18 @@ const canvasSignal = async (page) => page.evaluate(() => {
   try {
     const ctx = canvas.getContext('2d');
     if (ctx && canvas.width > 0 && canvas.height > 0) {
-      const xs = [0.15, 0.35, 0.5, 0.65, 0.85];
-      const ys = [0.15, 0.35, 0.5, 0.65, 0.85];
-      for (const xp of xs) {
-        for (const yp of ys) {
-          const x = Math.max(0, Math.min(canvas.width - 1, Math.floor(canvas.width * xp)));
-          const y = Math.max(0, Math.min(canvas.height - 1, Math.floor(canvas.height * yp)));
-          const data = ctx.getImageData(x, y, 1, 1).data;
-          sampled++;
-          if (data[3] > 0 || data[0] + data[1] + data[2] > 0) nonTransparent++;
+      const probe = document.createElement('canvas');
+      probe.width = 64;
+      probe.height = 64;
+      const probeCtx = probe.getContext('2d');
+      if (probeCtx) {
+        probeCtx.drawImage(canvas, 0, 0, probe.width, probe.height);
+        const data = probeCtx.getImageData(0, 0, probe.width, probe.height).data;
+        sampled = probe.width * probe.height;
+        for (let index = 0; index < data.length; index += 4) {
+          if (data[index + 3] > 0 || data[index] + data[index + 1] + data[index + 2] > 0) {
+            nonTransparent++;
+          }
         }
       }
     }
@@ -259,8 +262,8 @@ const runGame = async (page, profile, gameId, keys) => {
     await page.locator('#game-pause-btn').click();
     await page.getByText('GAME PAUSED', { exact: true }).waitFor({ state: 'visible', timeout: 2500 });
     const pauseText = await page.locator('.game-shell').innerText();
-    assert(pauseText.includes('How To Play'), 'pause modal lacks How To Play guidance');
-    const instructions = await page.locator('.game-shell').locator('text=How To Play').locator('..').innerText().catch(() => '');
+    assert(/how to play/i.test(pauseText), 'pause modal lacks How To Play guidance');
+    const instructions = await page.getByText(/how to play/i).first().locator('..').innerText().catch(() => '');
     assert(instructions.length >= 20, 'How To Play guidance is empty or too short');
     await page.locator('#game-pause-btn').click();
     await page.waitForTimeout(80);
