@@ -5,7 +5,10 @@ export type PerfectStopPatternId =
   | 'micro-zone'
   | 'drift-target'
   | 'reverse-pulse'
-  | 'final-chaos';
+  | 'final-chaos'
+  | 'afterimage'
+  | 'phase-break'
+  | 'zero-margin';
 
 export type PerfectStopRating = 'PERFECT' | 'GREAT' | 'GOOD' | 'MISS';
 

@@ -10,6 +10,7 @@ import {
   usesInhibitionDecoy,
   type ReactionChoice,
 } from '../lib/reactionGameplay';
+import { REACTION_OVERTIME_ROUNDS, isReactionOvertimeUnlocked } from '../lib/reactionOvertime';
 
 type StateMode = 'WAITING' | 'DECOY' | 'READY' | 'RESULT';
 
@@ -35,6 +36,7 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
   const [score, setScore] = useState(0);
   const [history, setHistory] = useState<number[]>([]);
   const [mistakes, setMistakes] = useState(0);
+  const [overtimeUnlocked, setOvertimeUnlocked] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const startTimeRef = useRef(0);
@@ -48,8 +50,15 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
   const lightsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const setSafeTimeout = useSafeTimeout();
 
-  const roundConfig = REACTION_ROUNDS[roundIndex];
-  const maxRounds = REACTION_ROUNDS.length;
+  const getSessionRound = (index: number) =>
+    index < REACTION_ROUNDS.length
+      ? REACTION_ROUNDS[index]
+      : REACTION_OVERTIME_ROUNDS[index - REACTION_ROUNDS.length];
+  const roundConfig = getSessionRound(roundIndex);
+  const maxRounds = REACTION_ROUNDS.length + REACTION_OVERTIME_ROUNDS.length;
+  const displayRoundTotal = overtimeUnlocked || roundIndex >= REACTION_ROUNDS.length
+    ? maxRounds
+    : REACTION_ROUNDS.length;
 
   const clearRoundTimers = useCallback(() => {
     if (timerTimeoutRef.current) {
@@ -136,7 +145,9 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
       ? { points: 0, grade: 'LATE' as const }
       : scoreReactionAttempt(roundConfig, reactionTimeMs, correct);
 
-    if (!correct) setMistakes((previous) => previous + 1);
+    const nextMistakes = mistakes + (correct ? 0 : 1);
+    const nextCorrectCount = history.length + (reactionTimeMs !== null && correct ? 1 : 0);
+    if (!correct) setMistakes(nextMistakes);
     if (reactionTimeMs !== null && correct) {
       setHistory((previous) => [...previous, reactionTimeMs]);
     }
@@ -155,7 +166,15 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
       else sounds.playPop();
     }
 
-    if (roundIndex >= maxRounds - 1) {
+    if (roundIndex === REACTION_ROUNDS.length - 1) {
+      const unlocksOvertime = isReactionOvertimeUnlocked(nextCorrectCount, nextMistakes);
+      setOvertimeUnlocked(unlocksOvertime);
+      if (unlocksOvertime) {
+        if (soundEnabledRef.current) sounds.playSuccess();
+      } else {
+        setSafeTimeout(() => onGameOver(newScore), 1500);
+      }
+    } else if (roundIndex >= maxRounds - 1) {
       setSafeTimeout(() => onGameOver(newScore), 1500);
     }
   };
@@ -164,6 +183,7 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
     if (isPausedRef.current) return;
 
     if (mode === 'RESULT') {
+      if (roundIndex === REACTION_ROUNDS.length - 1 && !overtimeUnlocked) return;
       if (roundIndex < maxRounds - 1) {
         const nextIndex = roundIndex + 1;
         setRoundIndex(nextIndex);
@@ -274,11 +294,16 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2 bg-[#18181B]/90 px-3 py-1.5 rounded-xl border border-[#27272A] font-mono-arcade text-xs">
             <span className="text-[#A1A1AA]">ROUND</span>
-            <span className="text-white font-bold">{roundIndex + 1} / {maxRounds}</span>
+            <span className="text-white font-bold">{roundIndex + 1} / {displayRoundTotal}</span>
           </div>
           <span className="px-2.5 py-1 rounded-lg bg-violet-500/10 border border-violet-500/25 text-violet-300 text-[10px] font-mono-arcade w-fit">
             {roundConfig.label}
           </span>
+          {roundIndex >= REACTION_ROUNDS.length && (
+            <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-mono-arcade w-fit">
+              OVERTIME
+            </span>
+          )}
         </div>
 
         <div className="flex flex-col items-end gap-1.5">
@@ -386,9 +411,15 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
               </>
             )}
 
+            {roundIndex === REACTION_ROUNDS.length - 1 && overtimeUnlocked && (
+              <div className="px-4 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono-arcade text-xs font-black">
+                OVERTIME UNLOCKED
+              </div>
+            )}
+
             <div className="mt-2 px-5 py-2 rounded-xl bg-[#18181B] border border-[#27272A] font-mono-arcade text-xs text-[#A1A1AA] flex items-center gap-2">
               <Play className="w-3.5 h-3.5 text-[#34D399]" />
-              <span>{roundIndex < maxRounds - 1 ? `TAP FOR ${REACTION_ROUNDS[roundIndex + 1].label}` : 'CALCULATING FINAL SCORE...'}</span>
+              <span>{roundIndex < maxRounds - 1 && !(roundIndex === REACTION_ROUNDS.length - 1 && !overtimeUnlocked) ? `TAP FOR ${getSessionRound(roundIndex + 1).label}` : 'CALCULATING FINAL SCORE...'}</span>
             </div>
           </div>
         )}

@@ -10,6 +10,9 @@ import {
   judgePerfectStop,
   type PerfectStopJudgement,
 } from '../lib/perfectStopGameplay';
+import { PERFECT_STOP_ENCORE_ROUNDS, isPerfectStopEncoreUnlocked } from '../lib/perfectStopEncore';
+
+const PERFECT_STOP_SESSION_ROUNDS = [...PERFECT_STOP_ROUNDS, ...PERFECT_STOP_ENCORE_ROUNDS];
 
 export const PerfectStopGame: React.FC<GameComponentProps> = ({
   onGameOver,
@@ -22,6 +25,8 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
   const [result, setResult] = useState<PerfectStopJudgement | null>(null);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [masterHits, setMasterHits] = useState(0);
+  const [encoreUnlocked, setEncoreUnlocked] = useState(false);
   const setSafeTimeout = useSafeTimeout();
 
   const markerPosRef = useRef(0);
@@ -36,11 +41,14 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
 
-  const roundConfig = PERFECT_STOP_ROUNDS[roundIndex];
-  const maxRounds = PERFECT_STOP_ROUNDS.length;
+  const roundConfig = PERFECT_STOP_SESSION_ROUNDS[roundIndex];
+  const maxRounds = PERFECT_STOP_SESSION_ROUNDS.length;
+  const displayRoundTotal = encoreUnlocked || roundIndex >= PERFECT_STOP_ROUNDS.length
+    ? maxRounds
+    : PERFECT_STOP_ROUNDS.length;
 
   const startRound = (index: number) => {
-    const config = PERFECT_STOP_ROUNDS[index];
+    const config = PERFECT_STOP_SESSION_ROUNDS[index];
     const startPosition = index % 2 === 0 ? 0 : 100;
     const direction = index % 2 === 0 ? 1 : -1;
 
@@ -71,6 +79,9 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
     );
     setResult(judgement);
     setStreak(judgement.nextStreak);
+    const isMasterHit = judgement.rating === 'PERFECT' || judgement.rating === 'GREAT';
+    const nextMasterHits = masterHits + (roundIndex < PERFECT_STOP_ROUNDS.length && isMasterHit ? 1 : 0);
+    if (roundIndex < PERFECT_STOP_ROUNDS.length && isMasterHit) setMasterHits(nextMasterHits);
 
     const newScore = score + judgement.points;
     setScore(newScore);
@@ -83,13 +94,23 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
       else sounds.playHit();
     }
 
-    if (roundIndex >= maxRounds - 1) {
+    if (roundIndex === PERFECT_STOP_ROUNDS.length - 1) {
+      const unlocksEncore = isPerfectStopEncoreUnlocked(nextMasterHits);
+      setEncoreUnlocked(unlocksEncore);
+      if (unlocksEncore) {
+        if (soundEnabled) sounds.playSuccess();
+      } else {
+        setSafeTimeout(() => onGameOver(newScore), 1400);
+      }
+    } else if (roundIndex >= maxRounds - 1) {
       setSafeTimeout(() => onGameOver(newScore), 1400);
     }
   };
 
   const handleNextRound = () => {
-    if (roundIndex >= maxRounds - 1 || !result) return;
+    if (!result) return;
+    if (roundIndex === PERFECT_STOP_ROUNDS.length - 1 && !encoreUnlocked) return;
+    if (roundIndex >= maxRounds - 1) return;
     const nextIndex = roundIndex + 1;
     setRoundIndex(nextIndex);
     startRound(nextIndex);
@@ -103,7 +124,7 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
       lastTime = currentTime;
 
       if (isRunning && !isPausedRef.current) {
-        const config = PERFECT_STOP_ROUNDS[roundIndex];
+        const config = PERFECT_STOP_SESSION_ROUNDS[roundIndex];
         elapsedRef.current += dt;
         const elapsed = elapsedRef.current;
 
@@ -177,10 +198,13 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
       <div className="w-full flex items-start justify-between gap-2 pointer-events-none">
         <div className="flex flex-col gap-1.5">
           <span className="font-mono-arcade text-xs text-[#A1A1AA] bg-[#18181B] px-3 py-1.5 rounded-xl border border-[#27272A] w-fit">
-            SECTOR {roundIndex + 1} / {maxRounds}
+            SECTOR {roundIndex + 1} / {displayRoundTotal}
           </span>
           <span className="font-mono-arcade text-[10px] text-[#38BDF8] bg-[#38BDF8]/10 px-2.5 py-1 rounded-lg border border-[#38BDF8]/20 w-fit">
             {roundConfig.label}
+          </span>
+          <span className="font-mono-arcade text-[9px] text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20 w-fit">
+            MASTER {Math.min(masterHits, 4)} / 4
           </span>
         </div>
 
@@ -284,13 +308,18 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
         </div>
 
         <div>
+          {roundIndex === PERFECT_STOP_ROUNDS.length - 1 && encoreUnlocked && result && (
+            <div className="mb-2 px-5 py-2 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono-arcade font-black text-xs text-center">
+              MASTER ENCORE UNLOCKED
+            </div>
+          )}
           {isRunning ? (
             <div className="px-6 py-2.5 rounded-xl bg-[#38BDF8] text-[#09090B] font-mono-arcade font-bold text-xs shadow-lg shadow-[#38BDF8]/20 animate-pulse">
               TAP OR SPACE TO LOCK
             </div>
-          ) : roundIndex < maxRounds - 1 ? (
+          ) : roundIndex < maxRounds - 1 && !(roundIndex === PERFECT_STOP_ROUNDS.length - 1 && !encoreUnlocked) ? (
             <div className="px-6 py-2.5 rounded-xl bg-[#18181B] text-white font-mono-arcade font-bold text-xs border border-[#27272A]">
-              TAP FOR {PERFECT_STOP_ROUNDS[roundIndex + 1].label}
+              TAP FOR {PERFECT_STOP_SESSION_ROUNDS[roundIndex + 1].label}
             </div>
           ) : (
             <div className="px-6 py-2.5 rounded-xl bg-[#34D399] text-[#09090B] font-mono-arcade font-bold text-xs">
