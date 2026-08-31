@@ -3,6 +3,13 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
+import {
+  LASER_ROPE_REDLINE_DURATION_SEC,
+  canActivateLaserRopeRedline,
+  getLaserRopeRedlineCharges,
+  getLaserRopeRedlineReward,
+  getLaserRopeRedlineSpeed,
+} from '../lib/laserRopeRedline';
 
 interface OrbItem {
   id: number;
@@ -32,6 +39,9 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
     feverPercent: 0,
     hasShield: false,
     laserMode: 'LOW' as 'LOW' | 'HIGH' | 'DUAL',
+    redlineCharges: 1,
+    redlineActive: false,
+    redlinePercent: 0,
   }, 80);
 
   const gameStateRef = useRef({
@@ -62,6 +72,11 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
     feverCharge: 0,
     isFeverActive: false,
     feverDuration: 0,
+
+    // P12 Redline mastery: voluntarily trade speed for a larger payout.
+    redlineCharges: 1,
+    redlineActive: false,
+    redlineTimer: 0,
 
     // Collectibles
     orbs: [] as OrbItem[],
@@ -127,6 +142,15 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
     }
   };
 
+  const triggerRedline = () => {
+    const state = gameStateRef.current;
+    if (isPausedRef.current || !canActivateLaserRopeRedline(state.redlineCharges, state.redlineActive, state.isAlive)) return;
+    state.redlineCharges--;
+    state.redlineActive = true;
+    state.redlineTimer = LASER_ROPE_REDLINE_DURATION_SEC;
+    if (soundEnabled) sounds.playFeverMode();
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
@@ -135,6 +159,9 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
       } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
         e.preventDefault();
         triggerSlide();
+      } else if (e.code === 'KeyF' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        e.preventDefault();
+        triggerRedline();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -167,6 +194,14 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
           if (state.feverDuration <= 0) {
             state.isFeverActive = false;
             state.feverCharge = 0;
+          }
+        }
+
+        if (state.redlineActive) {
+          state.redlineTimer -= dt;
+          if (state.redlineTimer <= 0) {
+            state.redlineTimer = 0;
+            state.redlineActive = false;
           }
         }
 
@@ -246,6 +281,10 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
         state.sweepSpeed += (state.speedTarget - state.sweepSpeed) * sweepSmoothing;
 
         const prevAngle = state.sweepAngle;
+        if (state.redlineActive) {
+          const redlineExtraSpeed = getLaserRopeRedlineSpeed(effectiveSpeed, true) - effectiveSpeed;
+          state.sweepAngle += redlineExtraSpeed * state.direction * dt;
+        }
         state.sweepAngle += effectiveSpeed * state.direction * dt;
 
         // Spawn bonus orbs
@@ -369,6 +408,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
             if (evaded) {
               // Successfully cleared laser!
               state.jumpStreak++;
+              state.redlineCharges = getLaserRopeRedlineCharges(state.jumpStreak, state.redlineCharges);
               state.feverCharge = Math.min(100, state.feverCharge + 15);
               if (state.feverCharge >= 100 && !state.isFeverActive) {
                 state.isFeverActive = true;
@@ -390,7 +430,12 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
 
               const basePts = 150;
               const feverMult = state.isFeverActive ? 2 : 1;
-              const earnedPts = basePts * state.multiplier * feverMult;
+              const earnedPts = getLaserRopeRedlineReward(
+                basePts,
+                state.multiplier,
+                feverMult,
+                state.redlineActive,
+              );
               state.score += earnedPts;
               onScoreUpdate(state.score);
               if (soundEnabled) sounds.playScore();
@@ -675,6 +720,9 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
         const feverPercent = state.isFeverActive
           ? Math.round((state.feverDuration / 6.0) * 100)
           : Math.round(state.feverCharge);
+        const redlinePercent = state.redlineActive
+          ? Math.round((state.redlineTimer / LASER_ROPE_REDLINE_DURATION_SEC) * 100)
+          : 0;
 
         if (
           prev.score === state.score &&
@@ -683,7 +731,10 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
           prev.multiplier === state.multiplier &&
           prev.feverPercent === feverPercent &&
           prev.hasShield === state.hasShield &&
-          prev.laserMode === state.laserMode
+          prev.laserMode === state.laserMode &&
+          prev.redlineCharges === state.redlineCharges &&
+          prev.redlineActive === state.redlineActive &&
+          prev.redlinePercent === redlinePercent
         ) {
           return prev;
         }
@@ -695,6 +746,9 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
           feverPercent,
           hasShield: state.hasShield,
           laserMode: state.laserMode,
+          redlineCharges: state.redlineCharges,
+          redlineActive: state.redlineActive,
+          redlinePercent,
         };
       });
 
@@ -758,6 +812,19 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
       </div>
 
       <canvas ref={canvasRef} className="w-full h-full min-h-0 block" />
+
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          triggerRedline();
+        }}
+        disabled={hudState.redlineCharges <= 0 || hudState.redlineActive}
+        className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-xl bg-rose-500/20 border border-rose-400/60 text-rose-200 font-mono text-[10px] font-black disabled:opacity-45 pointer-events-auto"
+        aria-label="Activate Redline"
+      >
+        {hudState.redlineActive ? `REDLINE ${hudState.redlinePercent}%` : `REDLINE (${hudState.redlineCharges}) · F/SHIFT`}
+      </button>
 
       {/* On-screen Jump & Slide Controls */}
       <div className="absolute bottom-2.5 left-2.5 right-2.5 sm:bottom-3 sm:left-4 sm:right-4 flex items-center justify-between gap-2 pointer-events-auto z-10">

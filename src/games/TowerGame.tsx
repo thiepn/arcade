@@ -5,6 +5,15 @@ import { Rocket, Shield, ArrowUp, Flame, Magnet } from 'lucide-react';
 import { useGameLoop, useSafeTimeout, useRenderPublishedState, useRenderPublishedCallback } from '../hooks/useGameLoop';
 import { clamp } from '../lib/gameCoordinates';
 import { TOWER_FIXED_STEP_SEC, getTowerPhysicsStepBatch } from '../lib/towerRuntime';
+import {
+  TOWER_APEX_DURATION_SEC,
+  canActivateTowerApexDrive,
+  getTowerApexBounceVelocity,
+  getTowerApexCharges,
+  getTowerApexReward,
+  getTowerPrecisionBonus,
+  isTowerPrecisionLanding,
+} from '../lib/towerApexMastery';
 
 interface Platform {
   id: number;
@@ -88,6 +97,10 @@ export const TowerGame: React.FC<GameComponentProps> = ({
     laserDistance: 100,
     comboStreak: 0,
     multiplier: 1,
+    apexCharges: 1,
+    apexActive: false,
+    apexPercent: 0,
+    apexStreak: 0,
   }, 100);
 
   const gameStateRef = useRef({
@@ -113,6 +126,10 @@ export const TowerGame: React.FC<GameComponentProps> = ({
     magnetTimer: 0,
     comboBounces: 0,
     multiplier: 1,
+    apexCharges: 1,
+    apexActive: false,
+    apexTimer: 0,
+    apexPrecisionStreak: 0,
 
     // World & Camera
     cameraY: 0,
@@ -142,6 +159,15 @@ export const TowerGame: React.FC<GameComponentProps> = ({
     physicsAccumulator: 0,
   });
 
+  const triggerApexDrive = () => {
+    const state = gameStateRef.current;
+    if (isPausedRef.current || !canActivateTowerApexDrive(state.apexCharges, state.apexActive, state.isAlive)) return;
+    state.apexCharges--;
+    state.apexActive = true;
+    state.apexTimer = TOWER_APEX_DURATION_SEC;
+    if (soundEnabled) sounds.playFeverMode();
+  };
+
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -154,6 +180,10 @@ export const TowerGame: React.FC<GameComponentProps> = ({
         state.rightPressed = true;
       }
       // Wall Jump or Micro Burst
+      if (e.code === 'KeyF' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        e.preventDefault();
+        triggerApexDrive();
+      }
       if ((e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') && state.isAlive) {
         if (state.isTouchingWallLeft) {
           state.vx = 8 * Math.min(1.8, Math.max(0.85, state.viewportWidth / 420));
@@ -350,6 +380,10 @@ export const TowerGame: React.FC<GameComponentProps> = ({
     state.hasShield = false;
     state.jetpackActive = false;
     state.magnetActive = false;
+    state.apexCharges = 1;
+    state.apexActive = false;
+    state.apexTimer = 0;
+    state.apexPrecisionStreak = 0;
     state.physicsAccumulator = 0;
 
     generateWorldUpTo(1800, initialWidth);
@@ -399,6 +433,14 @@ export const TowerGame: React.FC<GameComponentProps> = ({
       if (!isPausedRef.current && state.isAlive) {
         for (let simStep = 0; simStep < batch.steps && state.isAlive; simStep++) {
           const dt = TOWER_FIXED_STEP_SEC;
+        if (state.apexActive) {
+          state.apexTimer -= dt;
+          if (state.apexTimer <= 0) {
+            state.apexTimer = 0;
+            state.apexActive = false;
+          }
+        }
+
         // Screen Shake decay
         if (state.screenShake > 0) {
           state.screenShake = Math.max(0, state.screenShake - dt * 15);
@@ -695,8 +737,30 @@ export const TowerGame: React.FC<GameComponentProps> = ({
             ) {
               state.py = platTop + state.radius;
 
+              const precisionLanding = isTowerPrecisionLanding(state.px, plat.x, plat.w);
+              if (precisionLanding) {
+                state.apexPrecisionStreak++;
+                state.apexCharges = getTowerApexCharges(state.apexPrecisionStreak, state.apexCharges);
+                const precisionBonus = getTowerApexReward(
+                  getTowerPrecisionBonus(state.apexPrecisionStreak),
+                  state.apexActive,
+                );
+                state.score += precisionBonus;
+                publishScore(state.score);
+                state.popups.push({
+                  id: state.nextId++,
+                  x: state.px,
+                  y: state.py + 34,
+                  text: `APEX x${state.apexPrecisionStreak} +${precisionBonus}`,
+                  color: '#FACC15',
+                  life: 1.0,
+                });
+              } else {
+                state.apexPrecisionStreak = 0;
+              }
+
               if (plat.type === 'spring') {
-                state.vy = 23;
+                state.vy = getTowerApexBounceVelocity(23, state.apexActive);
                 state.squashX = 0.6;
                 state.squashY = 1.4;
                 state.comboBounces += 2;
@@ -715,7 +779,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
                   });
                 }
               } else if (plat.type === 'crumble') {
-                state.vy = 13.5;
+                state.vy = getTowerApexBounceVelocity(13.5, state.apexActive);
                 state.squashX = 0.75;
                 state.squashY = 1.25;
                 plat.broken = true;
@@ -735,7 +799,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
                   });
                 }
               } else {
-                state.vy = 13.8;
+                state.vy = getTowerApexBounceVelocity(13.8, state.apexActive);
                 state.squashX = 0.75;
                 state.squashY = 1.25;
                 state.comboBounces++;
@@ -823,7 +887,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
         if (state.py > state.maxAltitude) {
           const deltaAlt = Math.floor(state.py - state.maxAltitude);
           state.maxAltitude = state.py;
-          state.score += deltaAlt * 2;
+          state.score += getTowerApexReward(deltaAlt * 2, state.apexActive);
           publishScore(state.score);
         }
 
@@ -1185,6 +1249,10 @@ export const TowerGame: React.FC<GameComponentProps> = ({
         laserDistance: Math.max(0, Math.round(state.py - state.laserY)),
         comboStreak: state.comboBounces,
         multiplier: state.multiplier,
+        apexCharges: state.apexCharges,
+        apexActive: state.apexActive,
+        apexPercent: state.apexActive ? Math.round((state.apexTimer / TOWER_APEX_DURATION_SEC) * 100) : 0,
+        apexStreak: state.apexPrecisionStreak,
       });
 
       return state.isAlive;
@@ -1253,10 +1321,24 @@ export const TowerGame: React.FC<GameComponentProps> = ({
       {/* Main Canvas */}
       <canvas ref={canvasRef} className="w-full h-full block cursor-pointer" />
 
+      <button
+        type="button"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          triggerApexDrive();
+        }}
+        disabled={hudState.apexCharges <= 0 || hudState.apexActive}
+        className="absolute bottom-10 right-3 z-20 px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-400/60 text-amber-200 font-mono text-[10px] font-black disabled:opacity-45 pointer-events-auto"
+        aria-label="Activate Apex Drive"
+      >
+        {hudState.apexActive ? `APEX ${hudState.apexPercent}%` : `APEX (${hudState.apexCharges}) · F/SHIFT`}
+      </button>
+
       {/* Controls Overlay Helper */}
       <div className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none z-10">
         <div className="px-3 py-1 rounded-full bg-[#121215]/85 border border-[#27272A] text-[10px] text-[#A1A1AA] font-mono backdrop-blur-md">
-          <span>Move: <b className="text-white">A / D</b> or <b className="text-white">← / →</b> • Wall Jump: <b className="text-white">Space</b> or <b className="text-white">Touch Spire</b> • Stomp Drones</span>
+          <span>Move: <b className="text-white">A / D</b> or <b className="text-white">← / →</b> • Wall Jump: <b className="text-white">Space</b> or <b className="text-white">Touch Spire</b> • Stomp Drones • Precision centers earn Apex</span>
         </div>
       </div>
     </div>
