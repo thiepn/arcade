@@ -39,6 +39,16 @@ jobs:
           p.write_text(text)
           PY
           python scripts/patch-p12.py
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/data/games.ts')
+          text = p.read_text()
+          old = "controlsHint: 'Jump: Space/W/↑ • Slide: S/↓ • F/Shift: Redline • Tap',"
+          new = "controlsHint: 'Jump: Space / W / ↑ • Slide: S / ↓ • Tap Buttons',"
+          if old not in text:
+              raise SystemExit('P12/Phase C Laser Rope controls marker missing')
+          p.write_text(text.replace(old, new, 1))
+          PY
       - run: bun install --frozen-lockfile
       - run: bun scripts/audit-gameplay-p12.ts
       - run: bun run quality:games
