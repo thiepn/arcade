@@ -3,6 +3,7 @@ import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { getFrameInvariantBlend, getFrameInvariantDecay, getFrameScale } from '../lib/frameRateRuntime';
+import { getOrbitRouteLane, getOrbitRouteName, getOrbitRouteMultiplier, isOrbitNearMiss } from '../lib/orbitMastery';
 
 interface Particle {
   x: number;
@@ -23,6 +24,7 @@ interface CometHazard {
   radius: number;
   color: string;
   trail: { x: number; y: number; alpha: number }[];
+  nearMissAwarded: boolean;
 }
 
 interface EnergyCrystal {
@@ -32,6 +34,7 @@ interface EnergyCrystal {
   pulse: number;
   color: string;
   spin: number;
+  routeIndex: number;
 }
 
 interface FloatingText {
@@ -76,6 +79,11 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
     starBg: [] as StarBg[],
     score: 0,
     combo: 1,
+    routeIndex: 0,
+    lastRouteIndex: -1,
+    routeChain: 0,
+    nearMissChain: 0,
+    lastNearMissAt: -99,
     isAlive: true,
     hazardSpawnElapsedMs: 0,
     crystalSpawnElapsedMs: 0,
@@ -146,18 +154,22 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
       radius: 8 + Math.random() * 3,
       color: '#F43F5E',
       trail: [],
+      nearMissAwarded: false,
     });
   }, []);
 
   const spawnCrystal = useCallback(() => {
     const state = gameStateRef.current;
-    const lane = Math.floor(Math.random() * 3);
+    const routeIndex = state.routeIndex++;
+    const lane = getOrbitRouteLane(routeIndex);
+    const forwardArc = state.direction > 0 ? 0.8 : -0.8;
     state.crystals.push({
-      angle: Math.random() * Math.PI * 2,
+      angle: state.playerAngle + forwardArc + (Math.random() - 0.5) * 0.25,
       lane,
       radius: state.baseRadii[lane],
       pulse: Math.random() * Math.PI * 2,
       spin: 0,
+      routeIndex,
       color: lane === 0 ? '#FB923C' : lane === 1 ? '#38BDF8' : '#34D399',
     });
   }, []);
@@ -305,8 +317,12 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
 
           const dist = Math.hypot(playerX - crX, playerY - crY);
           if (dist < 18) {
-            // Picked up crystal!
-            state.score += 150 * state.combo;
+            // Route chains reward collecting authored lane targets in sequence.
+            state.routeChain = c.routeIndex === state.lastRouteIndex + 1 ? state.routeChain + 1 : 1;
+            state.lastRouteIndex = c.routeIndex;
+            const routeMultiplier = getOrbitRouteMultiplier(state.routeChain);
+            const routePoints = 150 * routeMultiplier;
+            state.score += routePoints;
             state.combo = Math.min(8, state.combo + 1);
             onScoreUpdate(state.score);
             if (soundEnabled) sounds.playScore();
@@ -314,7 +330,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
             state.floatingTexts.push({
               x: crX,
               y: crY,
-              text: `+${150 * state.combo}`,
+              text: `ROUTE x${routeMultiplier} +${routePoints}`,
               color: c.color,
               life: 0,
               maxLife: 35,
@@ -350,9 +366,30 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
           if (h.trail.length > 8) h.trail.pop();
           h.trail.forEach((tr) => (tr.alpha *= getFrameInvariantDecay(0.85, deltaRatio)));
 
-          // Collision with ship
-          const distToShip = Math.hypot(playerX - h.x, playerY - h.y);
-          if (distToShip < h.radius + 7) {
+          // Collision / graze mastery. A graze only scores once the comet is moving away.
+          const dxShip = h.x - playerX;
+          const dyShip = h.y - playerY;
+          const distToShip = Math.hypot(dxShip, dyShip);
+          const collisionRadius = h.radius + 7;
+          const relativeDot = dxShip * h.vx + dyShip * h.vy;
+          if (!h.nearMissAwarded && isOrbitNearMiss(distToShip, collisionRadius, relativeDot)) {
+            h.nearMissAwarded = true;
+            state.nearMissChain = state.gameTime - state.lastNearMissAt <= 6 ? state.nearMissChain + 1 : 1;
+            state.lastNearMissAt = state.gameTime;
+            const grazePoints = 100 * Math.min(5, state.nearMissChain);
+            state.score += grazePoints;
+            onScoreUpdate(state.score);
+            state.floatingTexts.push({
+              x: playerX,
+              y: playerY - 18,
+              text: `GRAZE x${state.nearMissChain} +${grazePoints}`,
+              color: '#FACC15',
+              life: 0,
+              maxLife: 30,
+            });
+            if (soundEnabled) sounds.playChime(820);
+          }
+          if (distToShip < collisionRadius) {
             state.isAlive = false;
             state.shake = 16;
             if (soundEnabled) sounds.playGameOver();
@@ -398,6 +435,21 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
         ctx.stroke();
         ctx.setLineDash([]);
       });
+
+      // Route / graze mastery HUD is rendered on-canvas so it stays frame-local.
+      ctx.fillStyle = 'rgba(24, 24, 27, 0.88)';
+      ctx.fillRect(cx - 126, 12, 252, 26);
+      ctx.strokeStyle = 'rgba(63, 63, 70, 0.9)';
+      ctx.strokeRect(cx - 126, 12, 252, 26);
+      ctx.fillStyle = '#38BDF8';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(
+        `${getOrbitRouteName(state.routeIndex)} • ROUTE x${getOrbitRouteMultiplier(state.routeChain)} • GRAZE x${Math.max(1, state.nearMissChain)}`,
+        cx,
+        25,
+      );
 
       // Blazing Stellar Center Star Core
       const coreR = 24 + Math.sin(state.corePulse) * 2;

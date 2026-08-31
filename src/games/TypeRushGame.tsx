@@ -9,6 +9,7 @@ import {
   shouldSyncTypeRushUi,
 } from '../lib/typeRushRuntime';
 import { chooseTypeRushWord, getTypeRushWave } from '../lib/typeRushProgression';
+import { getTypeRushDirective, getTypeRushSpecialWeight, getTypeRushTargetBonus } from '../lib/typeRushMastery';
 
 interface FallingWord {
   id: number;
@@ -90,16 +91,17 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
     );
 
     const randType = Math.random();
+    const specialWeight = getTypeRushSpecialWeight(wave.index);
     let type: 'standard' | 'bomb' | 'freeze' | 'hyper' = 'standard';
     let color = '#38BDF8';
 
-    if (randType < 0.12) {
+    if (randType < specialWeight.bomb) {
       type = 'bomb';
       color = '#F43F5E';
-    } else if (randType < 0.22) {
+    } else if (randType < specialWeight.freeze) {
       type = 'freeze';
       color = '#A78BFA';
-    } else if (randType < 0.32) {
+    } else if (randType < specialWeight.hyper) {
       type = 'hyper';
       color = '#FACC15';
     }
@@ -179,7 +181,8 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
       if (target.typedIndex >= target.word.length) {
         const multiplier = state.streak >= 10 ? 3 : state.streak >= 5 ? 2 : 1;
         const wave = getTypeRushWave(state.gameTime);
-        let pts = Math.round(target.word.length * 100 * multiplier * wave.scoreMultiplier);
+        const targetBonus = getTypeRushTargetBonus(target.y, target.type, wave.index);
+        let pts = Math.round(target.word.length * 100 * multiplier * wave.scoreMultiplier * targetBonus);
 
         if (target.type === 'bomb') {
           pts += state.words.length * 200;
@@ -389,8 +392,9 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
             </div>
           )}
 
-          <div className="font-mono-arcade text-[10px] text-[#FACC15] bg-[#18181B]/95 px-2.5 py-1.5 rounded-xl border border-[#FACC15]/25 shadow-md backdrop-blur">
-            {waveLabel} WAVE
+          <div className="font-mono-arcade text-[10px] text-[#FACC15] bg-[#18181B]/95 px-2.5 py-1.5 rounded-xl border border-[#FACC15]/25 shadow-md backdrop-blur text-center">
+            <div>{waveLabel} WAVE</div>
+            <div className="text-[8px] text-[#A1A1AA]">{getTypeRushDirective(gameStateRef.current.waveIndex)}</div>
           </div>
           <div className="font-mono-arcade text-xs text-[#38BDF8] bg-[#18181B]/95 px-3 py-1.5 rounded-xl border border-[#27272A] shadow-md backdrop-blur">
             {wpm} WPM
@@ -427,9 +431,20 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
           const isTargeted = activeWordId === w.id;
 
           return (
-            <div
+            <button
+              type="button"
               key={w.id}
-              className={`absolute pointer-events-none -translate-x-1/2 transition-all duration-75 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl font-mono-arcade text-xs sm:text-sm font-bold tracking-wider border shadow-xl flex items-center gap-1.5 cursor-default select-none ${
+              onClick={(event) => {
+                event.stopPropagation();
+                const state = gameStateRef.current;
+                const previous = state.words.find((word) => word.id === state.activeWordId);
+                if (previous && previous.id !== w.id) previous.typedIndex = 0;
+                state.activeWordId = w.id;
+                setActiveWordId(w.id);
+                focusDeviceKeyboard();
+              }}
+              aria-label={`Target ${w.word}`}
+              className={`absolute pointer-events-auto -translate-x-1/2 transition-all duration-75 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl font-mono-arcade text-xs sm:text-sm font-bold tracking-wider border shadow-xl flex items-center gap-1.5 cursor-default select-none ${
                 isTargeted
                   ? 'bg-[#18181B] border-white text-white shadow-[0_0_20px_rgba(56,189,248,0.6)] scale-105 z-20'
                   : 'bg-[#18181B]/95 border-[#27272A]'
@@ -450,7 +465,8 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
                 </span>
                 <span className="text-white">{w.word.substring(w.typedIndex)}</span>
               </span>
-            </div>
+              <span className="text-[8px] text-[#71717A]">{getTypeRushTargetBonus(w.y, w.type, gameStateRef.current.waveIndex).toFixed(1)}x</span>
+            </button>
           );
         })}
       </div>
