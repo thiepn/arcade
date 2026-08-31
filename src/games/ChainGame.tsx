@@ -5,6 +5,13 @@ import { Sparkles, Bomb, Zap, Snowflake, Shield, AlertTriangle, BatteryCharging 
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { clamp, rescalePoint, rescaleVelocity } from '../lib/gameCoordinates';
 import { getArcadeStepBatch, getFrameScale } from '../lib/frameRateRuntime';
+import {
+  advanceChainResonance,
+  formatChainResonanceTool,
+  getChainResonanceBonus,
+  getChainResonanceOrder,
+  isChainResonanceComplete,
+} from '../lib/chainResonanceMastery';
 
 interface ParticleNode {
   id: number;
@@ -82,6 +89,9 @@ export const ChainGame: React.FC<GameComponentProps> = ({
   const [totalOrbs, setTotalOrbs] = useState(20);
   const [selectedTool, setSelectedTool] = useState<DetonatorTool>('plasma');
   const [comboBanner, setComboBanner] = useState<string | null>(null);
+  const [resonanceStep, setResonanceStep] = useState(0);
+  const [resonanceChain, setResonanceChain] = useState(0);
+  const [resonanceFailed, setResonanceFailed] = useState(false);
 
   const gameStateRef = useRef({
     particles: [] as ParticleNode[],
@@ -98,6 +108,9 @@ export const ChainGame: React.FC<GameComponentProps> = ({
     isFinished: false,
     shake: 0,
     selectedTool: 'plasma' as DetonatorTool,
+    resonanceStep: 0,
+    resonanceChain: 0,
+    resonanceFailed: false,
     viewportWidth: 400,
     viewportHeight: 600,
     physicsAccumulator: 0,
@@ -206,6 +219,15 @@ export const ChainGame: React.FC<GameComponentProps> = ({
     setChargesLeft(state.chargesLeft);
 
     const tool = state.selectedTool;
+    const nextResonance = advanceChainResonance(
+      state.wave,
+      { step: state.resonanceStep, failed: state.resonanceFailed },
+      tool,
+    );
+    state.resonanceStep = nextResonance.step;
+    state.resonanceFailed = nextResonance.failed;
+    setResonanceStep(nextResonance.step);
+    setResonanceFailed(nextResonance.failed);
 
     if (tool === 'plasma') {
       // PLASMA DETONATOR: Huge concussive blast (radius 76px) that shatters shields & hazards
@@ -332,10 +354,16 @@ export const ChainGame: React.FC<GameComponentProps> = ({
     state.lightningArcs = [];
     state.floatingTexts = [];
     state.physicsAccumulator = 0;
+    state.resonanceStep = 0;
+    state.resonanceChain = 0;
+    state.resonanceFailed = false;
     state.particles = initParticles(400, 600, 1);
     setChargesLeft(3);
     setChainCount(0);
     setWave(1);
+    setResonanceStep(0);
+    setResonanceChain(0);
+    setResonanceFailed(false);
 
     const handlePointerDown = (e: MouseEvent | TouchEvent) => {
       if ('touches' in e) e.preventDefault();
@@ -633,9 +661,19 @@ export const ChainGame: React.FC<GameComponentProps> = ({
           if (targetReached) {
             if (soundEnabled) sounds.playSuccess();
 
+            const resonanceComplete = isChainResonanceComplete({
+              step: state.resonanceStep,
+              failed: state.resonanceFailed,
+            });
+            state.resonanceChain = resonanceComplete ? state.resonanceChain + 1 : 0;
+            const resonanceBonus = resonanceComplete
+              ? getChainResonanceBonus(state.resonanceChain)
+              : 0;
+            setResonanceChain(state.resonanceChain);
+
             const chargeBonus = state.chargesLeft * 1200;
             const wipeBonus = allOrbsCleared ? 2500 : 0;
-            const waveBonus = state.chainCount * 250 + chargeBonus + wipeBonus;
+            const waveBonus = state.chainCount * 250 + chargeBonus + wipeBonus + resonanceBonus;
             state.score += waveBonus;
             onScoreUpdate(state.score);
 
@@ -652,10 +690,14 @@ export const ChainGame: React.FC<GameComponentProps> = ({
               state.chargesLeft = 3;
               state.isFinished = false;
               state.chainCount = 0;
+              state.resonanceStep = 0;
+              state.resonanceFailed = false;
               state.lightningArcs = [];
               state.vortexes = [];
               setChargesLeft(3);
               setChainCount(0);
+              setResonanceStep(0);
+              setResonanceFailed(false);
               state.particles = initParticles(curW, curH, state.wave);
             }, 1600);
           } else {
@@ -843,6 +885,8 @@ export const ChainGame: React.FC<GameComponentProps> = ({
   };
 
   const progressPercent = Math.min(100, Math.round((chainCount / targetMin) * 100));
+  const resonanceOrder = getChainResonanceOrder(wave);
+  const resonanceLabel = resonanceOrder.order.map(formatChainResonanceTool).join(' → ');
   const toolPurpose =
     selectedTool === 'plasma'
       ? 'PLASMA — BREAK SHIELDS / NULLIFIERS'
@@ -885,6 +929,10 @@ export const ChainGame: React.FC<GameComponentProps> = ({
             />
           </div>
         </div>
+      </div>
+
+      <div className="absolute top-14 left-1/2 -translate-x-1/2 max-w-[calc(100%-1rem)] px-3 py-1 rounded-full bg-black/70 border border-fuchsia-400/30 font-mono-arcade text-[9px] sm:text-[10px] text-fuchsia-200 whitespace-nowrap pointer-events-none z-20">
+        RESONANCE {resonanceOrder.name}: {resonanceLabel} · {resonanceFailed ? 'BROKEN' : `${resonanceStep}/3`} · CHAIN x{Math.max(1, resonanceChain)}
       </div>
 
       {/* Wave Clear / Combo Banner */}
