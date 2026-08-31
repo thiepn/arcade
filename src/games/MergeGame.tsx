@@ -5,6 +5,7 @@ import { useSafeTimeout } from '../hooks/useGameLoop';
 import { haptics } from '../lib/haptics';
 import { Hammer, RefreshCw, Sparkles } from 'lucide-react';
 import { findNextMergeDecision } from '../lib/mergeRules';
+import { getMergeContract, isMergeContractComplete } from '../lib/mergeMastery';
 
 const COLS = 4;
 const ROWS = 6;
@@ -45,12 +46,14 @@ export const MergeGame: React.FC<GameComponentProps> = ({
       .map(() => Array(ROWS).fill(null))
   );
 
-  const [nextTile, setNextTile] = useState<number>(2);
+  const [tileQueue, setTileQueue] = useState<number[]>([2, 2, 4]);
+  const nextTile = tileQueue[0];
   const [selectedCol, setSelectedCol] = useState<number>(1);
   const [hammerActive, setHammerActive] = useState<boolean>(false);
   const [hammerCharges, setHammerCharges] = useState<number>(1);
   const [swapsLeft, setSwapsLeft] = useState<number>(2);
   const [score, setScore] = useState(0);
+  const [contractLevel, setContractLevel] = useState(1);
   const [isGameOver, setIsGameOver] = useState(false);
   const nextTileId = useRef(1);
   const setSafeTimeout = useSafeTimeout();
@@ -61,13 +64,13 @@ export const MergeGame: React.FC<GameComponentProps> = ({
   };
 
   useEffect(() => {
-    setNextTile(getNewTileValue());
+    setTileQueue([getNewTileValue(), getNewTileValue(), getNewTileValue()]);
   }, []);
 
   const handleSwapNext = () => {
     if (swapsLeft <= 0 || isPaused || isGameOver) return;
     setSwapsLeft((prev) => prev - 1);
-    setNextTile(getNewTileValue());
+    setTileQueue((queue) => [getNewTileValue(), queue[1], queue[2]]);
     if (soundEnabled) sounds.playPop();
   };
 
@@ -162,6 +165,17 @@ export const MergeGame: React.FC<GameComponentProps> = ({
       haptics.light();
     }
 
+    const highestTile = Math.max(0, ...newBoard.flat().map((tile) => tile?.val ?? 0));
+    const activeContract = getMergeContract(contractLevel);
+    if (isMergeContractComplete(activeContract, { mergeStreak, highestTile })) {
+      currentScore += activeContract.bonus;
+      setContractLevel((level) => level + 1);
+      setHammerCharges((charges) => Math.min(2, charges + 1));
+      setSwapsLeft((swaps) => Math.min(3, swaps + 1));
+      haptics.combo();
+      if (soundEnabled) sounds.playSuccess();
+    }
+
     setBoard(newBoard);
     setScore(currentScore);
     onScoreUpdate(currentScore);
@@ -178,7 +192,7 @@ export const MergeGame: React.FC<GameComponentProps> = ({
       return;
     }
 
-    setNextTile(getNewTileValue());
+    setTileQueue((queue) => [queue[1], queue[2], getNewTileValue()]);
   };
 
   useEffect(() => {
@@ -200,19 +214,36 @@ export const MergeGame: React.FC<GameComponentProps> = ({
     return () => window.removeEventListener('keydown', handleKey);
   }, [selectedCol, isGameOver, isPaused, board, nextTile]);
 
-  const nextStyle = TILE_STYLES[nextTile] || TILE_STYLES[2];
+  const contract = getMergeContract(contractLevel);
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center p-3 select-none touch-none">
-      {/* Top HUD: Next Tile & Powerups */}
+      {/* Escalating contract gives every run a short-term planning goal. */}
+      <div className="mb-2 w-full max-w-xs flex items-center justify-between px-3 py-2 rounded-xl bg-[#18181B] border border-[#27272A] font-mono-arcade text-[10px] sm:text-xs">
+        <div>
+          <div className="text-[#71717A]">CONTRACT {contractLevel}</div>
+          <div className="text-[#FACC15] font-bold">{contract.label}</div>
+        </div>
+        <div className="text-[#34D399] font-bold">+{contract.bonus}</div>
+      </div>
+
+      {/* Top HUD: three-tile preview & powerups */}
       <div className="mb-3 flex items-center justify-between w-full max-w-xs px-1">
         <div className="flex items-center gap-2 bg-[#18181B] px-3 py-1.5 rounded-xl border border-[#27272A]">
-          <span className="text-[11px] font-mono-arcade text-[#71717A] font-bold">NEXT:</span>
-          <div
-            className={`w-8 h-8 rounded-lg border flex items-center justify-center font-bold text-xs sm:text-sm shadow-md transition-transform ${nextStyle.bg} ${nextStyle.border} ${nextStyle.text}`}
-            style={{ boxShadow: `0 0 10px ${nextStyle.glow}` }}
-          >
-            {nextTile}
+          <span className="text-[11px] font-mono-arcade text-[#71717A] font-bold">QUEUE:</span>
+          <div className="flex items-center gap-1">
+            {tileQueue.map((value, index) => {
+              const style = TILE_STYLES[value] || TILE_STYLES[2];
+              return (
+                <div
+                  key={`${value}-${index}`}
+                  className={`${index === 0 ? 'w-8 h-8' : 'w-6 h-6 opacity-65'} rounded-lg border flex items-center justify-center font-bold text-[10px] sm:text-xs ${style.bg} ${style.border} ${style.text}`}
+                  style={{ boxShadow: index === 0 ? `0 0 10px ${style.glow}` : undefined }}
+                >
+                  {value}
+                </div>
+              );
+            })}
           </div>
           <button
             type="button"
