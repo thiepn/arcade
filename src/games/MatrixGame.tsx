@@ -9,6 +9,14 @@ import {
   getMatrixProtocolPrompt,
   type MatrixProtocol,
 } from '../lib/matrixProtocols';
+import {
+  MATRIX_OVERCLOCK,
+  canArmMatrixOverclock,
+  getMatrixClearPoints,
+  getMatrixPlaybackSpeed,
+  getMatrixSequenceLength,
+  getMatrixStepPoints,
+} from '../lib/matrixMastery';
 
 interface MatrixNode {
   id: number;
@@ -53,6 +61,8 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
   const [statusMessage, setStatusMessage] = useState<string>('OBSERVE PATTERN');
   const [timerProgress, setTimerProgress] = useState<number>(100);
   const [protocol, setProtocol] = useState<MatrixProtocol>('FORWARD');
+  const [overclockActive, setOverclockActive] = useState(false);
+  const [overclockArmed, setOverclockArmed] = useState(false);
 
   const gameStateRef = useRef({
     sequence: [] as number[],
@@ -67,6 +77,8 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
     timer: 100,
     timerInterval: null as any,
     isInputLocked: true,
+    overclockActive: false,
+    overclockArmed: false,
   });
 
   const scheduleWhenActive = useCallback((fn: () => void, delay: number) => {
@@ -111,8 +123,15 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
     setPlayerStep(0);
     setRoundLevel(round);
 
-    // Initial 3 items, +1 every 2 rounds
-    const length = 3 + Math.floor((round - 1) * 0.7);
+    const nextOverclockActive = state.overclockArmed;
+    state.overclockArmed = false;
+    state.overclockActive = nextOverclockActive;
+    setOverclockArmed(false);
+    setOverclockActive(nextOverclockActive);
+
+    // Initial 3 items, +1 every 2 rounds. Overclock deliberately adds memory load.
+    const baseLength = 3 + Math.floor((round - 1) * 0.7);
+    const length = getMatrixSequenceLength(baseLength, nextOverclockActive);
     const newSeq: number[] = [];
     for (let i = 0; i < length; i++) {
       newSeq.push(Math.floor(Math.random() * 9));
@@ -125,7 +144,10 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
     setSequence(newSeq);
     setProtocol(nextProtocol);
 
-    const playbackSpeed = Math.max(180, 340 - round * 15);
+    const playbackSpeed = getMatrixPlaybackSpeed(
+      Math.max(180, 340 - round * 15),
+      nextOverclockActive,
+    );
     playSequencePlayback(newSeq, playbackSpeed);
   }, [playSequencePlayback]);
 
@@ -148,15 +170,26 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
       state.combo++;
       setCombo(state.combo);
 
-      const stepPoints = 100 + state.combo * 25;
+      const stepPoints = getMatrixStepPoints(
+        100 + state.combo * 25,
+        state.overclockActive,
+      );
       state.score += stepPoints;
       onScoreUpdate(state.score);
 
       // Check if sequence completed
       if (state.playerStep >= state.sequence.length) {
         state.isInputLocked = true;
-        setStatusMessage('CYBER LINK VERIFIED! +1000');
-        state.score += 1000 + Math.floor(state.timer * 10);
+        const clearPoints = getMatrixClearPoints(
+          1000 + Math.floor(state.timer * 10),
+          state.overclockActive,
+        );
+        setStatusMessage(
+          state.overclockActive
+            ? `OVERCLOCK VERIFIED! +${clearPoints}`
+            : `CYBER LINK VERIFIED! +${clearPoints}`,
+        );
+        state.score += clearPoints;
         onScoreUpdate(state.score);
         if (soundEnabled) sounds.playSuccess();
 
@@ -192,13 +225,21 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
 
   const handleReplayPattern = useCallback(() => {
     const state = gameStateRef.current;
-    if (replaysLeft <= 0 || isShowingSequence || !state.isAlive) return;
+    if (state.overclockActive || replaysLeft <= 0 || isShowingSequence || !state.isAlive) return;
 
     setReplaysLeft((prev) => prev - 1);
     state.playerStep = 0;
     setPlayerStep(0);
     playSequencePlayback(state.sequence);
   }, [isShowingSequence, playSequencePlayback, replaysLeft]);
+
+  const toggleOverclock = useCallback(() => {
+    const state = gameStateRef.current;
+    if (!canArmMatrixOverclock(state.round, state.lives) || isPausedRef.current) return;
+    state.overclockArmed = !state.overclockArmed;
+    setOverclockArmed(state.overclockArmed);
+    if (soundEnabledRef.current) sounds.playPowerUp();
+  }, []);
 
   // Initial mount
   useEffect(() => {
@@ -271,12 +312,14 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
         handleNodeClick(keyMap[key]);
       } else if (key === 'R') {
         handleReplayPattern();
+      } else if (key === 'O') {
+        toggleOverclock();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNodeClick, handleReplayPattern]);
+  }, [handleNodeClick, handleReplayPattern, toggleOverclock]);
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-between p-4 select-none bg-[#090D16] overflow-hidden">
@@ -286,6 +329,11 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
           <span className="text-white font-bold">ROUND {roundLevel}</span>
           <span className="text-[#71717A]">|</span>
           <span className="text-cyan-300 font-bold">PROTOCOL {protocol.replace('_', '+')}</span>
+          {overclockActive && (
+            <span className="rounded-md border border-fuchsia-400/35 bg-fuchsia-500/15 px-1.5 py-0.5 text-[9px] font-black text-fuchsia-300">
+              OVERCLOCK
+            </span>
+          )}
           <span className="text-[#71717A]">|</span>
           <div className="flex items-center gap-1 text-[#F43F5E]">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -306,10 +354,22 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={toggleOverclock}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono-arcade text-[10px] border transition-all cursor-pointer backdrop-blur-md ${
+              overclockArmed
+                ? 'bg-fuchsia-500/20 text-fuchsia-200 border-fuchsia-400/45'
+                : 'bg-[#18181B]/90 hover:bg-[#27272A] text-fuchsia-300 border-fuchsia-500/25'
+            }`}
+            title={`Next round: +${MATRIX_OVERCLOCK.sequenceBonus} nodes, faster playback, boosted scoring, no manual replay`}
+          >
+            <Zap className="w-3.5 h-3.5" /> {overclockArmed ? 'OVERCLOCK ARMED' : 'OVERCLOCK NEXT'} [O]
+          </button>
+          <button
+            type="button"
             onClick={handleReplayPattern}
-            disabled={replaysLeft <= 0 || isShowingSequence}
+            disabled={overclockActive || replaysLeft <= 0 || isShowingSequence}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono-arcade text-xs border transition-all cursor-pointer backdrop-blur-md ${
-              replaysLeft > 0 && !isShowingSequence
+              !overclockActive && replaysLeft > 0 && !isShowingSequence
                 ? 'bg-[#18181B]/90 hover:bg-[#27272A] text-amber-300 border-amber-500/30'
                 : 'bg-zinc-900/50 text-zinc-600 border-zinc-800 cursor-not-allowed'
             }`}
@@ -381,7 +441,7 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
       {/* Bottom Hint */}
       <div className="flex items-center gap-2 bg-[#18181B]/90 border border-[#27272A] px-4 py-1.5 rounded-full font-mono-arcade text-xs text-[#A1A1AA] pointer-events-none z-10 backdrop-blur-md">
         <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-        <span>TAP PADS OR USE KEYS [QWE / ASD / ZXC]</span>
+        <span>TAP PADS OR USE KEYS [QWE / ASD / ZXC] • [O] ARM OVERCLOCK</span>
       </div>
     </div>
   );
