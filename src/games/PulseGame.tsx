@@ -5,6 +5,15 @@ import { haptics } from '../lib/haptics';
 import { Heart, Zap, Flame, Music, Activity, Disc3 } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { getFrameInvariantBlend, getFrameInvariantDecay } from '../lib/frameRateRuntime';
+import {
+  PULSE_WAGER_MAX_CHARGES,
+  PULSE_WAGER_START_CHARGES,
+  PULSE_WAGER_WINDOW_PX,
+  canArmPulseWager,
+  getPulseWagerReward,
+  isPulseWagerHit,
+  shouldEarnPulseWager,
+} from '../lib/pulseMastery';
 
 interface Particle {
   x: number;
@@ -53,6 +62,11 @@ export const PulseGame: React.FC<GameComponentProps> = ({
   const [feverMode, setFeverMode] = useState(false);
   const [currentBpm, setCurrentBpm] = useState(84);
   const [patternInfo, setPatternInfo] = useState<GroovePattern>(GROOVE_PATTERNS[0]);
+  const [wagerHud, setWagerHud] = useState({
+    charges: PULSE_WAGER_START_CHARGES,
+    armed: false,
+    streak: 0,
+  });
   const [lastFeedback, setLastFeedback] = useState<{
     text: string;
     subtext: string;
@@ -68,6 +82,9 @@ export const PulseGame: React.FC<GameComponentProps> = ({
     pattern: GROOVE_PATTERNS[0],
     beatIndex: 0,
     combo: 0,
+    syncWagerCharges: PULSE_WAGER_START_CHARGES,
+    syncWagerArmed: false,
+    syncWagerStreak: 0,
     score: 0,
     lives: 3,
     bpm: 84,
@@ -79,6 +96,24 @@ export const PulseGame: React.FC<GameComponentProps> = ({
     shake: 0,
     lastHitTime: 0,
   });
+
+  const publishWagerHud = () => {
+    const state = gameStateRef.current;
+    setWagerHud({
+      charges: state.syncWagerCharges,
+      armed: state.syncWagerArmed,
+      streak: state.syncWagerStreak,
+    });
+  };
+
+  const armSyncWager = () => {
+    const state = gameStateRef.current;
+    if (!canArmPulseWager(state.syncWagerCharges, state.syncWagerArmed, state.isAlive) || isPausedRef.current) return;
+    state.syncWagerCharges--;
+    state.syncWagerArmed = true;
+    publishWagerHud();
+    if (soundEnabledRef.current) sounds.playPowerUp();
+  };
 
   const nextBeat = useCallback(() => {
     const state = gameStateRef.current;
@@ -125,6 +160,10 @@ export const PulseGame: React.FC<GameComponentProps> = ({
   const triggerHit = useCallback(() => {
     const state = gameStateRef.current;
     if (!state.isAlive || isPausedRef.current) return;
+    const wagerAttempt = state.syncWagerArmed;
+    if (wagerAttempt) {
+      state.syncWagerArmed = false;
+    }
 
     // Safety threshold against spamming
     if (state.direction === 1 && state.currentRadius < state.targetRadius * 0.45) {
@@ -133,6 +172,10 @@ export const PulseGame: React.FC<GameComponentProps> = ({
       state.combo = 0;
       setCombo(0);
       setFeverMode(false);
+      if (wagerAttempt) {
+        state.syncWagerStreak = 0;
+        publishWagerHud();
+      }
       setLastFeedback({
         text: 'EARLY MISS',
         subtext: 'WAIT FOR THE BEAT',
@@ -159,6 +202,10 @@ export const PulseGame: React.FC<GameComponentProps> = ({
       state.combo = 0;
       setCombo(0);
       setFeverMode(false);
+      if (wagerAttempt) {
+        state.syncWagerStreak = 0;
+        publishWagerHud();
+      }
       setLastFeedback({
         text: 'EARLY MISS',
         subtext: 'WAIT FOR COLLAPSE',
@@ -264,6 +311,26 @@ export const PulseGame: React.FC<GameComponentProps> = ({
       }
     }
 
+    if (wagerAttempt) {
+      if (isPulseWagerHit(absDiff)) {
+        state.syncWagerStreak++;
+        const wagerReward = getPulseWagerReward(state.combo, state.syncWagerStreak);
+        state.score += wagerReward;
+        setLastFeedback({
+          text: `SYNC WAGER x${state.syncWagerStreak}!`,
+          subtext: `±${PULSE_WAGER_WINDOW_PX}px BONUS • +${wagerReward}`,
+          color: 'text-fuchsia-300',
+        });
+        if (soundEnabledRef.current) sounds.playVictory();
+      } else {
+        state.syncWagerStreak = 0;
+      }
+    }
+    if (shouldEarnPulseWager(state.combo)) {
+      state.syncWagerCharges = Math.min(PULSE_WAGER_MAX_CHARGES, state.syncWagerCharges + 1);
+    }
+    publishWagerHud();
+
     setCombo(state.combo);
     setFeverMode(state.combo >= 5);
     onScoreUpdate(state.score);
@@ -308,6 +375,10 @@ export const PulseGame: React.FC<GameComponentProps> = ({
     state.score = 0;
     state.lives = 3;
     state.combo = 0;
+    state.syncWagerCharges = PULSE_WAGER_START_CHARGES;
+    state.syncWagerArmed = false;
+    state.syncWagerStreak = 0;
+    setWagerHud({ charges: PULSE_WAGER_START_CHARGES, armed: false, streak: 0 });
     state.bpm = 84;
     state.currentRadius = 15;
     state.direction = 1;
@@ -328,6 +399,11 @@ export const PulseGame: React.FC<GameComponentProps> = ({
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyF') {
+        e.preventDefault();
+        armSyncWager();
+        return;
+      }
       if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') {
         e.preventDefault();
         triggerHit();
@@ -392,6 +468,11 @@ export const PulseGame: React.FC<GameComponentProps> = ({
           setLives(state.lives);
           setCombo(0);
           setFeverMode(false);
+          if (state.syncWagerArmed) {
+            state.syncWagerArmed = false;
+            state.syncWagerStreak = 0;
+            publishWagerHud();
+          }
           setLastFeedback({ text: 'MISSED BEAT', subtext: 'TOO LATE', color: 'text-[#F43F5E]' });
           state.shake = 10;
           if (soundEnabledRef.current) sounds.playBuzz();
@@ -454,6 +535,19 @@ export const PulseGame: React.FC<GameComponentProps> = ({
       ctx.arc(cx, cy, state.targetRadius + 8, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
+
+      if (state.syncWagerArmed) {
+        ctx.strokeStyle = 'rgba(232, 121, 249, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.arc(cx, cy, state.targetRadius - PULSE_WAGER_WINDOW_PX, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, state.targetRadius + PULSE_WAGER_WINDOW_PX, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
 
       // Center Core
       const coreR = 16 + Math.sin(state.pulseTime * 4) * 3;
@@ -541,6 +635,23 @@ export const PulseGame: React.FC<GameComponentProps> = ({
           </p>
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={armSyncWager}
+        disabled={wagerHud.charges <= 0 || wagerHud.armed}
+        className={`absolute bottom-12 left-1/2 z-20 -translate-x-1/2 rounded-xl border px-3.5 py-2 font-mono-arcade text-[10px] font-black transition-all ${
+          wagerHud.armed
+            ? 'border-fuchsia-300 bg-fuchsia-500/20 text-fuchsia-200'
+            : wagerHud.charges > 0
+            ? 'border-amber-400/45 bg-zinc-950/85 text-amber-200 hover:bg-amber-500/15'
+            : 'cursor-not-allowed border-zinc-800 bg-zinc-950/70 text-zinc-600'
+        }`}
+      >
+        {wagerHud.armed
+          ? `SYNC WAGER ARMED • ±${PULSE_WAGER_WINDOW_PX}px${wagerHud.streak > 0 ? ` • x${wagerHud.streak}` : ''}`
+          : `ARM SYNC WAGER [F/SHIFT] • ${wagerHud.charges}/${PULSE_WAGER_MAX_CHARGES}`}
+      </button>
 
       {/* Bottom Cue */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#18181B]/90 border border-[#27272A] px-4 py-1.5 rounded-full font-mono-arcade text-xs text-[#A1A1AA] pointer-events-none backdrop-blur-md">

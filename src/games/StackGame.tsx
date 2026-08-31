@@ -1,10 +1,18 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { clamp } from '../lib/gameCoordinates';
 import { getArcadeStepBatch, getFrameInvariantBlend, getFrameInvariantDecay, getFrameScale } from '../lib/frameRateRuntime';
+import {
+  STACK_FOCUS_MAX_CHARGES,
+  STACK_FOCUS_START_CHARGES,
+  canArmStackFocus,
+  getStackFocusReward,
+  getStackPerfectWindow,
+  shouldEarnStackFocus,
+} from '../lib/stackMastery';
 
 interface Block {
   x: number;
@@ -54,6 +62,11 @@ export const StackGame: React.FC<GameComponentProps> = ({
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
   const setSafeTimeout = useSafeTimeout();
+  const [focusHud, setFocusHud] = useState({
+    charges: STACK_FOCUS_START_CHARGES,
+    armed: false,
+    chain: 0,
+  });
 
   const gameStateRef = useRef({
     blocks: [] as Block[],
@@ -67,6 +80,9 @@ export const StackGame: React.FC<GameComponentProps> = ({
     direction: 1,
     score: 0,
     perfectStreak: 0,
+    focusCharges: STACK_FOCUS_START_CHARGES,
+    focusArmed: false,
+    focusChain: 0,
     isAlive: true,
     cameraY: 0,
     targetCameraY: 0,
@@ -75,6 +91,24 @@ export const StackGame: React.FC<GameComponentProps> = ({
     viewportWidth: 500,
     physicsAccumulator: 0,
   });
+
+  const publishFocusHud = () => {
+    const state = gameStateRef.current;
+    setFocusHud({
+      charges: state.focusCharges,
+      armed: state.focusArmed,
+      chain: state.focusChain,
+    });
+  };
+
+  const armFocus = () => {
+    const state = gameStateRef.current;
+    if (!canArmStackFocus(state.focusCharges, state.focusArmed, state.isAlive) || isPausedRef.current) return;
+    state.focusCharges--;
+    state.focusArmed = true;
+    publishFocusHud();
+    if (soundEnabled) sounds.playPowerUp();
+  };
 
   const getHue = (index: number) => {
     return (index * 24 + 190) % 360;
@@ -88,9 +122,15 @@ export const StackGame: React.FC<GameComponentProps> = ({
     if (!prevBlock) return;
     const diff = state.currentX - prevBlock.x;
     const absDiff = Math.abs(diff);
+    const focusAttempt = state.focusArmed;
+    const perfectWindow = getStackPerfectWindow(focusAttempt);
+    if (focusAttempt) {
+      state.focusArmed = false;
+    }
 
-    // Perfect alignment threshold (within 4 pixels)
-    if (absDiff <= 4) {
+    // Focus deliberately tightens only the perfect snap window; an overlapping
+    // miss still resolves as an ordinary sliced placement instead of ending the run.
+    if (absDiff <= perfectWindow) {
       state.perfectStreak++;
       state.currentX = prevBlock.x; // Snap perfectly
 
@@ -102,6 +142,23 @@ export const StackGame: React.FC<GameComponentProps> = ({
       }
 
       state.score += 1;
+      if (focusAttempt) {
+        state.focusChain++;
+        const reward = getStackFocusReward(state.blocks.length + 1, state.focusChain);
+        state.score += reward;
+        state.floatingTexts.push({
+          x: state.currentX + state.currentWidth / 2,
+          y: state.blocks.length * state.currentHeight + 38,
+          text: `FOCUS x${state.focusChain} +${reward}`,
+          color: '#FACC15',
+          life: 0,
+          maxLife: 44,
+        });
+      }
+      if (shouldEarnStackFocus(state.perfectStreak)) {
+        state.focusCharges = Math.min(STACK_FOCUS_MAX_CHARGES, state.focusCharges + 1);
+      }
+      publishFocusHud();
       onScoreUpdate(state.score);
 
       // Trigger Shockwave Ring
@@ -142,7 +199,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
       // Spawn next hovering block
       state.direction *= -1;
       state.currentX = state.direction === 1 ? -state.currentWidth : state.viewportWidth + state.currentWidth * 0.15;
-      state.speed = 3.5 * clamp(state.viewportWidth / 500, 0.85, 1.7) + Math.min(4.5, state.score * 0.08);
+      state.speed = 3.5 * clamp(state.viewportWidth / 500, 0.85, 1.7) + Math.min(4.5, Math.max(0, state.blocks.length - 1) * 0.08);
 
       if (state.blocks.length > 5) {
         state.targetCameraY = (state.blocks.length - 5) * state.currentHeight;
@@ -150,6 +207,18 @@ export const StackGame: React.FC<GameComponentProps> = ({
       return;
     }
 
+    if (focusAttempt) {
+      state.focusChain = 0;
+      publishFocusHud();
+      state.floatingTexts.push({
+        x: state.currentX + state.currentWidth / 2,
+        y: state.blocks.length * state.currentHeight + 22,
+        text: 'FOCUS MISSED — STACK CONTINUES',
+        color: '#FB923C',
+        life: 0,
+        maxLife: 36,
+      });
+    }
     state.perfectStreak = 0;
 
     // Check complete miss
@@ -215,7 +284,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
     // Spawn next hovering block
     state.direction *= -1;
     state.currentX = state.direction === 1 ? -state.currentWidth : state.viewportWidth + state.currentWidth * 0.15;
-    state.speed = 3.5 * clamp(state.viewportWidth / 500, 0.85, 1.7) + Math.min(4.5, state.score * 0.08);
+    state.speed = 3.5 * clamp(state.viewportWidth / 500, 0.85, 1.7) + Math.min(4.5, Math.max(0, state.blocks.length - 1) * 0.08);
 
     if (state.blocks.length > 5) {
       state.targetCameraY = (state.blocks.length - 5) * state.currentHeight;
@@ -230,6 +299,10 @@ export const StackGame: React.FC<GameComponentProps> = ({
     state.isAlive = true;
     state.score = 0;
     state.perfectStreak = 0;
+    state.focusCharges = STACK_FOCUS_START_CHARGES;
+    state.focusArmed = false;
+    state.focusChain = 0;
+    setFocusHud({ charges: STACK_FOCUS_START_CHARGES, armed: false, chain: 0 });
     state.cameraY = 0;
     state.targetCameraY = 0;
     state.shake = 0;
@@ -262,6 +335,11 @@ export const StackGame: React.FC<GameComponentProps> = ({
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyF') {
+        e.preventDefault();
+        armFocus();
+        return;
+      }
       if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') {
         e.preventDefault();
         placeBlock();
@@ -430,7 +508,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
       ctx.fillStyle = '#A1A1AA';
       ctx.font = 'bold 11px monospace';
       ctx.textAlign = 'right';
-      ctx.fillText(`${state.score * 10}m ALTITUDE`, curW - 20, 36);
+      ctx.fillText(`${Math.max(0, state.blocks.length - 1) * 10}m ALTITUDE`, curW - 20, 36);
 
       // Stacked Blocks (Rendered in pseudo-3D isometric layers)
       state.blocks.forEach((block, idx) => {
@@ -539,6 +617,26 @@ export const StackGame: React.FC<GameComponentProps> = ({
   return (
     <div className="relative w-full h-full flex items-center justify-center select-none game-canvas-container touch-none">
       <canvas ref={canvasRef} className="w-full h-full block cursor-pointer touch-none" />
+
+      <div className="absolute top-3 left-3 z-10 pointer-events-none rounded-xl border border-zinc-700 bg-zinc-950/80 px-3 py-1.5 font-mono text-[10px] font-black text-zinc-200 backdrop-blur-md">
+        FOCUS {focusHud.charges}/{STACK_FOCUS_MAX_CHARGES}
+        {focusHud.chain > 0 ? ` • CHAIN x${focusHud.chain}` : ''}
+      </div>
+
+      <button
+        type="button"
+        onClick={armFocus}
+        disabled={focusHud.charges <= 0 || focusHud.armed}
+        className={`absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-xl border px-4 py-2 font-mono text-[10px] font-black transition-all ${
+          focusHud.armed
+            ? 'border-amber-300 bg-amber-400/25 text-amber-200'
+            : focusHud.charges > 0
+            ? 'border-cyan-400/50 bg-zinc-950/85 text-cyan-200 hover:bg-cyan-500/15'
+            : 'cursor-not-allowed border-zinc-800 bg-zinc-950/70 text-zinc-600'
+        }`}
+      >
+        {focusHud.armed ? 'FOCUS ARMED • 2PX WINDOW' : `ARM FOCUS [F/SHIFT] • ${focusHud.charges} CHARGE${focusHud.charges === 1 ? '' : 'S'}`}
+      </button>
     </div>
   );
 };

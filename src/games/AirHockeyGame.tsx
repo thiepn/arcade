@@ -12,6 +12,15 @@ import {
   capAirHockeyVelocity,
   type AirHockeyDifficultyLevel,
 } from '../lib/airHockeyFairness';
+import {
+  AIR_HOCKEY_POWER_DURATION_SEC,
+  AIR_HOCKEY_POWER_IMPULSE_MULTIPLIER,
+  AIR_HOCKEY_POWER_MALLET_TRANSFER_MULTIPLIER,
+  AIR_HOCKEY_POWER_MAX,
+  canTriggerAirHockeyPower,
+  getAirHockeyPowerGoalBonus,
+  getAirHockeyPowerMeter,
+} from '../lib/airHockeyMastery';
 
 interface Mallet {
   x: number;
@@ -52,6 +61,9 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
     timeLeft: 60,
     combo: 0,
     difficulty: 'MEDIUM' as DifficultyLevel,
+    powerMeter: 0,
+    powerPlayTime: 0,
+    powerStreak: 0,
   });
 
   const gameStateRef = useRef({
@@ -62,6 +74,9 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
     isAlive: true,
     combo: 0,
     difficulty: 'MEDIUM' as DifficultyLevel,
+    powerMeter: 0,
+    powerPlayTimer: 0,
+    powerStreak: 0,
 
     puck: { x: 200, y: 250, vx: 0, vy: 0, radius: 14 } as Puck,
     playerMallet: { x: 200, y: 400, vx: 0, vy: 0, radius: 24, color: '#06B6D4' } as Mallet,
@@ -84,6 +99,22 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
     viewportWidth: 400,
     viewportHeight: 500,
   });
+
+  const triggerPowerPlay = () => {
+    const state = gameStateRef.current;
+    if (!canTriggerAirHockeyPower(state.powerMeter, state.powerPlayTimer, state.isAlive) || isPausedRef.current) return;
+    state.powerMeter = 0;
+    state.powerPlayTimer = AIR_HOCKEY_POWER_DURATION_SEC;
+    state.popups.push({
+      id: state.nextId++,
+      x: state.viewportWidth / 2,
+      y: state.viewportHeight * 0.68,
+      text: 'POWER PLAY ACTIVE!',
+      color: '#FACC15',
+      life: 1.0,
+    });
+    if (soundEnabled) sounds.playPowerUp();
+  };
 
   const updatePointerTarget = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
@@ -111,6 +142,11 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const state = gameStateRef.current;
+      if (e.code === 'Space' || e.code === 'KeyF') {
+        e.preventDefault();
+        triggerPowerPlay();
+        return;
+      }
       const speed = 25 * getAirHockeyTableLayout(
         state.viewportWidth,
         state.viewportHeight,
@@ -146,6 +182,9 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
     state.timeLeft = 60;
     state.isAlive = true;
     state.combo = 0;
+    state.powerMeter = 0;
+    state.powerPlayTimer = 0;
+    state.powerStreak = 0;
     state.isGoalResetting = false;
     state.puckTrail = [];
     state.particles = [];
@@ -289,6 +328,9 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
           state.goalTimer -= dt;
           if (state.goalTimer <= 0) state.isGoalResetting = false;
         }
+        if (state.powerPlayTimer > 0) {
+          state.powerPlayTimer = Math.max(0, state.powerPlayTimer - dt);
+        }
 
         // 1. Update Player Mallet
         const minPlayerY = centerY + state.playerMallet.radius + 4;
@@ -395,7 +437,17 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
             state.playerScore++;
             state.combo++;
             const basePts = diffConfig.pointsPerGoal;
-            const pts = basePts * Math.min(4, state.combo);
+            const meterBeforeGoal = state.powerMeter;
+            state.powerMeter = getAirHockeyPowerMeter(state.powerMeter, 'GOAL');
+            if (meterBeforeGoal < AIR_HOCKEY_POWER_MAX && state.powerMeter >= AIR_HOCKEY_POWER_MAX) {
+              state.popups.push({ id: state.nextId++, x: centerX, y: centerY + 70, text: 'POWER PLAY READY', color: '#FACC15', life: 0.9 });
+            }
+            let powerBonus = 0;
+            if (state.powerPlayTimer > 0) {
+              state.powerStreak++;
+              powerBonus = getAirHockeyPowerGoalBonus(basePts, state.powerStreak);
+            }
+            const pts = basePts * Math.min(4, state.combo) + powerBonus;
             state.gameScore += pts;
             onScoreUpdate(state.gameScore);
             if (soundEnabled) sounds.playVictory();
@@ -404,7 +456,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
               id: state.nextId++,
               x: centerX,
               y: centerY - 40,
-              text: `GOAL! +${pts}`,
+              text: state.powerPlayTimer > 0 ? `POWER GOAL x${state.powerStreak}! +${pts}` : `GOAL! +${pts}`,
               color: '#38BDF8',
               life: 1.0,
             });
@@ -433,6 +485,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
           if (puck.x > goalLeft && puck.x < goalRight && !state.isGoalResetting) {
             state.aiScore++;
             state.combo = 0;
+            state.powerStreak = 0;
             if (soundEnabled) sounds.playExplosion();
 
             state.popups.push({
@@ -481,11 +534,23 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
 
             const relVx = puck.vx - mallet.vx;
             const relVy = puck.vy - mallet.vy;
+            const incomingDefense = isPlayer && puck.y > centerY && puck.vy > 20;
+            const powerActive = isPlayer && state.powerPlayTimer > 0;
             const impulse = -(1 + 0.65) * (relVx * nx + relVy * ny);
 
             if (impulse > 0) {
-              puck.vx += nx * impulse + mallet.vx * 0.4;
-              puck.vy += ny * impulse + mallet.vy * 0.4;
+              const impulseScale = powerActive ? AIR_HOCKEY_POWER_IMPULSE_MULTIPLIER : 1;
+              const transferScale = powerActive ? AIR_HOCKEY_POWER_MALLET_TRANSFER_MULTIPLIER : 1;
+              puck.vx += nx * impulse * impulseScale + mallet.vx * 0.4 * transferScale;
+              puck.vy += ny * impulse * impulseScale + mallet.vy * 0.4 * transferScale;
+
+              if (incomingDefense) {
+                const meterBeforeDefense = state.powerMeter;
+                state.powerMeter = getAirHockeyPowerMeter(state.powerMeter, 'DEFENSE');
+                if (meterBeforeDefense < AIR_HOCKEY_POWER_MAX && state.powerMeter >= AIR_HOCKEY_POWER_MAX) {
+                  state.popups.push({ id: state.nextId++, x: centerX, y: centerY + 70, text: 'POWER PLAY READY', color: '#FACC15', life: 0.9 });
+                }
+              }
 
               if (soundEnabled) sounds.playPuckHit();
 
@@ -598,9 +663,9 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
       ctx.fill();
 
       // Player Mallet
-      ctx.fillStyle = 'rgba(6, 182, 212, 0.2)';
+      ctx.fillStyle = state.powerPlayTimer > 0 ? 'rgba(250, 204, 21, 0.28)' : 'rgba(6, 182, 212, 0.2)';
       ctx.beginPath();
-      ctx.arc(state.playerMallet.x, state.playerMallet.y, state.playerMallet.radius + 4, 0, Math.PI * 2);
+      ctx.arc(state.playerMallet.x, state.playerMallet.y, state.playerMallet.radius + (state.powerPlayTimer > 0 ? 9 : 4), 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = state.playerMallet.color;
@@ -634,7 +699,10 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
           prev.aiScore === state.aiScore &&
           prev.timeLeft === tLeft &&
           prev.combo === state.combo &&
-          prev.difficulty === state.difficulty
+          prev.difficulty === state.difficulty &&
+          prev.powerMeter === Math.round(state.powerMeter) &&
+          prev.powerPlayTime === Math.ceil(state.powerPlayTimer) &&
+          prev.powerStreak === state.powerStreak
         ) {
           return prev;
         }
@@ -644,6 +712,9 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
           timeLeft: tLeft,
           combo: state.combo,
           difficulty: state.difficulty,
+          powerMeter: Math.round(state.powerMeter),
+          powerPlayTime: Math.ceil(state.powerPlayTimer),
+          powerStreak: state.powerStreak,
         };
       });
 
@@ -691,12 +762,40 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
           )}
         </div>
 
-        <div className="px-2.5 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-zinc-300 font-mono text-xs font-bold backdrop-blur-md">
-          TIME: <span className="text-amber-400 font-black">{hudState.timeLeft}s</span>
+        <div className="flex items-center gap-2">
+          <div className={`px-2.5 py-1 rounded-xl border font-mono text-xs font-black backdrop-blur-md ${
+            hudState.powerPlayTime > 0
+              ? 'border-amber-400/70 bg-amber-500/20 text-amber-200'
+              : hudState.powerMeter >= AIR_HOCKEY_POWER_MAX
+              ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-200'
+              : 'border-zinc-700 bg-zinc-900/85 text-zinc-300'
+          }`}>
+            {hudState.powerPlayTime > 0
+              ? `POWER ${hudState.powerPlayTime}s${hudState.powerStreak > 0 ? ` • x${hudState.powerStreak}` : ''}`
+              : `POWER ${hudState.powerMeter}%`}
+          </div>
+          <div className="px-2.5 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-zinc-300 font-mono text-xs font-bold backdrop-blur-md">
+            TIME: <span className="text-amber-400 font-black">{hudState.timeLeft}s</span>
+          </div>
         </div>
       </div>
 
       <canvas ref={canvasRef} className="w-full h-full block cursor-none" />
+
+      <button
+        type="button"
+        onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); triggerPowerPlay(); }}
+        disabled={hudState.powerMeter < AIR_HOCKEY_POWER_MAX || hudState.powerPlayTime > 0}
+        className={`absolute bottom-14 left-1/2 z-20 -translate-x-1/2 rounded-xl border px-4 py-2 font-mono text-[10px] font-black transition-all ${
+          hudState.powerPlayTime > 0
+            ? 'border-amber-300 bg-amber-400/25 text-amber-100'
+            : hudState.powerMeter >= AIR_HOCKEY_POWER_MAX
+            ? 'border-cyan-300 bg-cyan-500/20 text-cyan-100 hover:bg-cyan-500/30'
+            : 'cursor-not-allowed border-zinc-800 bg-zinc-950/75 text-zinc-600'
+        }`}
+      >
+        {hudState.powerPlayTime > 0 ? 'POWER PLAY ACTIVE' : hudState.powerMeter >= AIR_HOCKEY_POWER_MAX ? 'TRIGGER POWER PLAY [SPACE/F]' : 'DEFEND TO CHARGE POWER'}
+      </button>
 
       {/* Difficulty Selection Pills at Bottom */}
       <div className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 flex max-w-[calc(100%-12px)] items-center gap-1 sm:gap-1.5 p-1 bg-zinc-900/90 border border-zinc-800 rounded-2xl backdrop-blur-md z-20 pointer-events-auto shadow-2xl">
