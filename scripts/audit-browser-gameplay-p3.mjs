@@ -237,6 +237,29 @@ const runGame = async (page, profile, gameId, keys) => {
     }
     assert(geometry.title.length > 0, 'game title missing from shell');
 
+    // Cold app/game bootstrap is measured separately from active gameplay. The
+    // first Chromium session can legitimately absorb one-time parse/JIT/cache
+    // work, so keep a generous startup ceiling while preserving a much tighter
+    // gameplay long-task budget below.
+    const startupLongTasks = await page.evaluate(() => (globalThis.__p3LongTasks || []).slice());
+    const startupLongestTask = startupLongTasks.length ? Math.max(...startupLongTasks) : 0;
+    assert(startupLongestTask < 2500, `cold-start long task exceeded 2500ms: ${startupLongestTask.toFixed(0)}ms`);
+
+    // Verify pause/help while the game is still deterministically active. Fast
+    // survival games can otherwise end naturally during the input/RAF smoke,
+    // which should not be misclassified as a broken pause control.
+    await page.locator('#game-pause-btn').click();
+    await page.getByText('GAME PAUSED', { exact: true }).waitFor({ state: 'visible', timeout: 2500 });
+    const pauseText = await page.locator('.game-shell').innerText();
+    assert(/how to play/i.test(pauseText), 'pause modal lacks How To Play guidance');
+    const instructions = await page.getByText(/how to play/i).first().locator('..').innerText().catch(() => '');
+    assert(instructions.length >= 20, 'How To Play guidance is empty or too short');
+    await page.locator('#game-pause-btn').click();
+    await page.waitForTimeout(80);
+
+    // From this point onward, long-task accounting is gameplay-only.
+    await page.evaluate(() => { globalThis.__p3LongTasks = []; });
+
     const beforeFrames = await sampleRaf(page);
     assert(beforeFrames.elapsed < 2500, `RAF liveness too slow before input: ${beforeFrames.elapsed.toFixed(0)}ms`);
     assert(beforeFrames.maxGap < 700, `severe pre-input frame gap: ${beforeFrames.maxGap.toFixed(0)}ms`);
@@ -258,15 +281,6 @@ const runGame = async (page, profile, gameId, keys) => {
     const afterFrames = await sampleRaf(page);
     assert(afterFrames.elapsed < 2500, `RAF liveness too slow after input: ${afterFrames.elapsed.toFixed(0)}ms`);
     assert(afterFrames.maxGap < 700, `severe post-input frame gap: ${afterFrames.maxGap.toFixed(0)}ms`);
-
-    await page.locator('#game-pause-btn').click();
-    await page.getByText('GAME PAUSED', { exact: true }).waitFor({ state: 'visible', timeout: 2500 });
-    const pauseText = await page.locator('.game-shell').innerText();
-    assert(/how to play/i.test(pauseText), 'pause modal lacks How To Play guidance');
-    const instructions = await page.getByText(/how to play/i).first().locator('..').innerText().catch(() => '');
-    assert(instructions.length >= 20, 'How To Play guidance is empty or too short');
-    await page.locator('#game-pause-btn').click();
-    await page.waitForTimeout(80);
 
     await page.locator('#game-restart-btn').click();
     await page.waitForTimeout(120);
@@ -290,6 +304,7 @@ const runGame = async (page, profile, gameId, keys) => {
       rafAvgBefore: Number(beforeFrames.avgGap.toFixed(1)),
       rafAvgAfter: Number(afterFrames.avgGap.toFixed(1)),
       maxFrameGap: Number(Math.max(beforeFrames.maxGap, afterFrames.maxGap).toFixed(1)),
+      startupLongestTask: Number(startupLongestTask.toFixed(1)),
       longestTask: Number(longestTask.toFixed(1)),
       canvas: Boolean(canvasBefore.present),
     };
@@ -332,7 +347,7 @@ try {
         await page.evaluate(() => { globalThis.__p3LongTasks = []; }).catch(() => {});
         const result = await runGame(page, profile, gameId, keys);
         results.push(result);
-        console.log(`PASS ${profile.name.padEnd(7)} ${gameId.padEnd(13)} RAF ${result.rafAvgAfter.toFixed(1)}ms max ${result.maxFrameGap.toFixed(1)}ms long ${result.longestTask.toFixed(1)}ms`);
+        console.log(`PASS ${profile.name.padEnd(7)} ${gameId.padEnd(13)} RAF ${result.rafAvgAfter.toFixed(1)}ms max ${result.maxFrameGap.toFixed(1)}ms gameplay-long ${result.longestTask.toFixed(1)}ms startup-long ${result.startupLongestTask.toFixed(1)}ms`);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         failures.push(`${profile.name}/${gameId}: ${message}`);
