@@ -10,6 +10,11 @@ import {
   getGravityResizeScale,
   remapGravityPoint,
 } from '../lib/gravityRuntime';
+import {
+  getGravityFlightContract,
+  getGravityFlightContractBonus,
+  isGravityFlightContractComplete,
+} from '../lib/gravityFlightContracts';
 
 interface Planet {
   x: number;
@@ -62,6 +67,10 @@ export const GravityGame: React.FC<GameComponentProps> = ({
   const [boostsRemaining, setBoostsRemaining] = useState(4);
   const [isSlowMo, setIsSlowMo] = useState(false);
   const [gravityInverted, setGravityInverted] = useState(false);
+  const [contractStreak, setContractStreak] = useState(0);
+  const [contractBoostsUsed, setContractBoostsUsed] = useState(0);
+  const [contractFlipsUsed, setContractFlipsUsed] = useState(0);
+  const [contractRecallsUsed, setContractRecallsUsed] = useState(0);
 
   const isSlowMoRef = useRef(false);
   isSlowMoRef.current = isSlowMo;
@@ -92,6 +101,10 @@ export const GravityGame: React.FC<GameComponentProps> = ({
     viewportWidth: 0,
     viewportHeight: 0,
     steerImpulsePending: false,
+    contractStreak: 0,
+    boostsUsed: 0,
+    flipsUsed: 0,
+    recallsUsed: 0,
   });
 
   const setupLevel = useCallback((lvl: number, w: number, h: number) => {
@@ -118,6 +131,12 @@ export const GravityGame: React.FC<GameComponentProps> = ({
     state.isAiming = false;
     state.isSteering = false;
     state.boosts = 4;
+    state.boostsUsed = 0;
+    state.flipsUsed = 0;
+    state.recallsUsed = 0;
+    setContractBoostsUsed(0);
+    setContractFlipsUsed(0);
+    setContractRecallsUsed(0);
     state.gravityInverted = false;
     setGravityInverted(false);
     setBoostsRemaining(4);
@@ -294,6 +313,8 @@ export const GravityGame: React.FC<GameComponentProps> = ({
     if (!state.isAlive || isPausedRef.current) return;
 
     state.gravityInverted = !state.gravityInverted;
+    state.flipsUsed++;
+    setContractFlipsUsed(state.flipsUsed);
     setGravityInverted(state.gravityInverted);
 
     state.planets.forEach((p) => {
@@ -395,6 +416,11 @@ export const GravityGame: React.FC<GameComponentProps> = ({
     const state = gameStateRef.current;
     if (!state.isAlive || isPausedRef.current) return;
 
+    if (state.hasLaunched) {
+      state.recallsUsed++;
+      setContractRecallsUsed(state.recallsUsed);
+    }
+
     if (soundEnabled) sounds.playPop();
 
     // Warp particles at current position
@@ -430,6 +456,8 @@ export const GravityGame: React.FC<GameComponentProps> = ({
     if (!state.hasLaunched || !state.isAlive || state.boosts <= 0 || isPausedRef.current) return;
 
     state.boosts--;
+    state.boostsUsed++;
+    setContractBoostsUsed(state.boostsUsed);
     setBoostsRemaining(state.boosts);
 
     const speed = Math.hypot(state.probe.vx, state.probe.vy) || 1;
@@ -785,7 +813,24 @@ export const GravityGame: React.FC<GameComponentProps> = ({
             setHasLaunched(false);
 
             const collectedStars = state.stars.filter((star) => star.collected).length;
-            const sectorBonus = 1000 + collectedStars * 500;
+            const flightContract = getGravityFlightContract(state.level);
+            const contractComplete = isGravityFlightContractComplete(flightContract, {
+              stars: collectedStars,
+              boostsUsed: state.boostsUsed,
+              flipsUsed: state.flipsUsed,
+              recallsUsed: state.recallsUsed,
+            });
+            let contractBonus = 0;
+            if (contractComplete) {
+              state.contractStreak = Math.min(5, state.contractStreak + 1);
+              contractBonus = getGravityFlightContractBonus(state.level, state.contractStreak);
+              setContractStreak(state.contractStreak);
+              if (soundEnabled) sounds.playVictory();
+            } else {
+              state.contractStreak = 0;
+              setContractStreak(0);
+            }
+            const sectorBonus = 1000 + collectedStars * 500 + contractBonus;
             state.score += sectorBonus;
             onScoreUpdate(state.score);
             haptics.combo();
@@ -1058,6 +1103,8 @@ export const GravityGame: React.FC<GameComponentProps> = ({
     },
   });
 
+  const activeFlightContract = getGravityFlightContract(currentLevel);
+
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-between select-none game-canvas-container touch-none bg-[#090D16] overflow-hidden">
       <canvas ref={canvasRef} className="w-full h-full block cursor-crosshair touch-none" />
@@ -1075,6 +1122,13 @@ export const GravityGame: React.FC<GameComponentProps> = ({
         <span className={gravityInverted ? 'text-purple-400 font-bold' : 'text-cyan-400 font-bold'}>
           {gravityInverted ? 'REPULSE FIELD' : 'GRAVITY FIELD'}
         </span>
+      </div>
+
+      <div className="absolute top-14 left-1/2 -translate-x-1/2 max-w-[calc(100%-1rem)] px-3 py-1.5 rounded-xl bg-indigo-950/85 border border-indigo-400/30 text-[9px] sm:text-[10px] text-indigo-100 font-mono-arcade text-center pointer-events-none z-10 backdrop-blur-md">
+        <span className="font-black text-indigo-300">FLIGHT CONTRACT — {activeFlightContract.label}</span>
+        <span> • {activeFlightContract.detail}</span>
+        <span className="text-amber-300"> • STREAK {contractStreak}</span>
+        <span className="text-zinc-400"> • B{contractBoostsUsed} F{contractFlipsUsed} R{contractRecallsUsed}</span>
       </div>
 
       {/* Top Right Quick Controls */}

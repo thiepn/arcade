@@ -16,6 +16,11 @@ import {
   planChronoWall,
   selectNextChronoWall,
 } from '../lib/chronoWavePlanner';
+import {
+  getChronoFocusBonus,
+  getChronoFocusCharges,
+  isChronoFocusHit,
+} from '../lib/chronoFocusMastery';
 
 interface WallPattern {
   radius: number;
@@ -71,6 +76,9 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
   const [shardsCount, setShardsCount] = useState(0);
   const [leftActive, setLeftActive] = useState(false);
   const [rightActive, setRightActive] = useState(false);
+  const [focusCharges, setFocusCharges] = useState(1);
+  const [focusArmed, setFocusArmed] = useState(false);
+  const [focusStreak, setFocusStreak] = useState(0);
 
   const gameStateRef = useRef({
     playerAngle: 0,
@@ -101,6 +109,10 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
     spawnInterval: getChronoSpawnInterval(1),
     rotationSpeed: 0.17, // Agile turning
     speedMultiplier: 1.0,
+    focusCharges: 1,
+    focusArmed: false,
+    focusStreak: 0,
+    cleanPasses: 0,
   });
 
   const addScorePopup = (text: string, x: number, y: number, color = '#FFFFFF') => {
@@ -114,6 +126,17 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
     });
   };
 
+  // P13 Focus Wager: spend a charge to demand a center-line pass on the next wall.
+  const triggerFocus = useCallback(() => {
+    const state = gameStateRef.current;
+    if (!state.isAlive || isPausedRef.current || state.focusArmed || state.focusCharges <= 0) return;
+    state.focusCharges--;
+    state.focusArmed = true;
+    setFocusCharges(state.focusCharges);
+    setFocusArmed(true);
+    if (soundEnabled) sounds.playChime(920);
+  }, [soundEnabled]);
+
   // Trigger EMP Blast
   const triggerEmp = useCallback(() => {
     const state = gameStateRef.current;
@@ -121,6 +144,12 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
 
     state.empCharges--;
     setEmpReady(false);
+    if (state.focusArmed) {
+      state.focusArmed = false;
+      state.focusStreak = 0;
+      setFocusArmed(false);
+      setFocusStreak(0);
+    }
     state.shake = 12;
 
     if (soundEnabled) sounds.playShockwave();
@@ -264,6 +293,9 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
         setRightActive(true);
       } else if (e.key === ' ' || e.key === 'e' || e.key === 'E') {
         triggerEmp();
+      } else if (e.key === 'f' || e.key === 'F' || e.key === 'Shift') {
+        e.preventDefault();
+        triggerFocus();
       }
     };
 
@@ -344,7 +376,7 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
       window.removeEventListener('touchmove', handlePointerMove);
       window.removeEventListener('touchend', handlePointerUp);
     };
-  }, [triggerEmp]);
+  }, [triggerEmp, triggerFocus]);
 
   useGameLoop({
     canvasRef,
@@ -449,6 +481,27 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
               // Successfully passed through the open slot!
               wall.cleared = true;
               state.score += 250;
+              state.cleanPasses++;
+              const chargedFocus = getChronoFocusCharges(state.cleanPasses, state.focusCharges);
+              if (chargedFocus !== state.focusCharges) {
+                state.focusCharges = chargedFocus;
+                setFocusCharges(chargedFocus);
+              }
+              if (state.focusArmed) {
+                if (isChronoFocusHit(state.playerAngle, wall.openSide, wall.openSpan, wall.sides)) {
+                  state.focusStreak = Math.min(5, state.focusStreak + 1);
+                  const focusBonus = getChronoFocusBonus(state.focusStreak);
+                  state.score += focusBonus;
+                  setFocusStreak(state.focusStreak);
+                  addScorePopup(`FOCUS LOCK +${focusBonus}`, cx + Math.cos(state.playerAngle) * pR, cy + Math.sin(state.playerAngle) * pR - 18, '#FACC15');
+                } else {
+                  state.focusStreak = 0;
+                  setFocusStreak(0);
+                  addScorePopup('FOCUS MISSED — SAFE PASS', cx, cy - 36, '#A1A1AA');
+                }
+                state.focusArmed = false;
+                setFocusArmed(false);
+              }
               onScoreUpdate(state.score);
               if (soundEnabled) sounds.playScore();
               addScorePopup('+250', cx + Math.cos(state.playerAngle) * pR, cy + Math.sin(state.playerAngle) * pR, wall.color);
@@ -456,6 +509,12 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
             } else if (state.invulnerableTime <= 0) {
               // Hit the wall!
               wall.cleared = true;
+              if (state.focusArmed) {
+                state.focusArmed = false;
+                state.focusStreak = 0;
+                setFocusArmed(false);
+                setFocusStreak(0);
+              }
               state.lives--;
               state.invulnerableTime = 70; // ~1.2s of mercy invulnerability
               state.shake = 14;
@@ -726,6 +785,10 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
             <Sparkles className="w-3.5 h-3.5" />
             <span>{shardsCount}/3 SHARDS</span>
           </div>
+          <span className="text-[#71717A]">|</span>
+          <span className={focusArmed ? 'text-amber-300 font-black' : 'text-cyan-300 font-bold'}>
+            FOCUS {focusCharges} • STREAK {focusStreak}
+          </span>
         </div>
 
         {empReady && (
@@ -738,6 +801,21 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
           </button>
         )}
       </div>
+
+      <button
+        type="button"
+        onClick={triggerFocus}
+        disabled={focusCharges <= 0 || focusArmed}
+        className={`absolute bottom-20 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-xl border font-mono-arcade text-[10px] font-black pointer-events-auto transition-all ${
+          focusArmed
+            ? 'bg-amber-500/30 border-amber-400 text-amber-200 animate-pulse'
+            : focusCharges > 0
+              ? 'bg-cyan-950/90 border-cyan-400/50 text-cyan-200 hover:bg-cyan-900 cursor-pointer'
+              : 'bg-zinc-900/80 border-zinc-700 text-zinc-600 cursor-not-allowed'
+        }`}
+      >
+        {focusArmed ? 'FOCUS WAGER — CENTER NEXT GAP' : `FOCUS WAGER ×${focusCharges} [F / SHIFT]`}
+      </button>
 
       {/* Bottom Control Bar */}
       <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between gap-3 z-10 pointer-events-auto">
