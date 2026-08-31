@@ -558,11 +558,14 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
       <canvas ref={canvasRef} className="w-full h-full block cursor-pointer" />
 
       {/* Control Instruction Bar */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-[#18181B]/90 border border-[#27272A] px-4 py-2 rounded-2xl font-mono-arcade text-xs text-[#A1A1AA] pointer-events-none">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 max-w-[calc(100%-1.5rem)] flex flex-wrap items-center justify-center gap-x-2 gap-y-1 bg-[#18181B]/90 border border-[#27272A] px-3 py-2 rounded-2xl font-mono-arcade text-[10px] sm:text-xs text-[#A1A1AA] pointer-events-none text-center">
         <span className="text-[#38BDF8] font-bold">TAP / SPACE:</span>
-        <span>SWITCH ORBITAL LANE</span>
+        <span>PULSE = LANE + REVERSE</span>
         <span className="text-[#71717A]">|</span>
-        <span className="text-[#34D399] font-bold">A/D / ARROWS:</span>
+        <span className="text-[#FACC15] font-bold">↑ / ↓:</span>
+        <span>LANE</span>
+        <span className="text-[#71717A]">|</span>
+        <span className="text-[#34D399] font-bold">A/D / ← / →:</span>
         <span>REVERSE</span>
       </div>
     </div>

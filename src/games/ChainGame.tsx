@@ -843,6 +843,12 @@ export const ChainGame: React.FC<GameComponentProps> = ({
   };
 
   const progressPercent = Math.min(100, Math.round((chainCount / targetMin) * 100));
+  const toolPurpose =
+    selectedTool === 'plasma'
+      ? 'PLASMA — BREAK SHIELDS / NULLIFIERS'
+      : selectedTool === 'tesla'
+      ? 'TESLA — BRIDGE DISTANT ORBS'
+      : 'CRYO — PULL ORBS INTO A CLUSTER';
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-between select-none game-canvas-container touch-none">
@@ -889,6 +895,10 @@ export const ChainGame: React.FC<GameComponentProps> = ({
           </span>
         </div>
       )}
+
+      <div className="absolute bottom-14 left-1/2 -translate-x-1/2 max-w-[calc(100%-1rem)] px-3 py-1 rounded-full bg-black/60 border border-white/10 font-mono-arcade text-[9px] sm:text-[10px] text-[#D4D4D8] whitespace-nowrap pointer-events-none z-20">
+        {toolPurpose}
+      </div>
 
       {/* Tactical Detonator Selector with Distinct Purpose Descriptions */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2 bg-[#18181B]/95 border border-[#27272A] p-1 sm:p-1.5 rounded-2xl shadow-2xl z-20">

@@ -50,7 +50,8 @@
     "build:pages": "VITE_BASE_PATH=/arcade/ vite build",
     "quality:ma3": "bun scripts/audit-ma3.mjs",
     "quality:ma4": "bun scripts/audit-ma4.mjs",
-    "quality:browser-p3": "bun scripts/audit-browser-gameplay-p3.mjs"
+    "quality:browser-p3": "bun scripts/audit-browser-gameplay-p3.mjs",
+    "quality:gameplay-p4": "bun scripts/audit-gameplay-p4.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
