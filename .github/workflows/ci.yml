@@ -45,6 +45,7 @@ jobs:
       - run: bun run quality:gameplay-p0
       - run: bun run quality:gameplay-p1
       - run: bun run quality:gameplay-p2
+      - run: bun run quality:gameplay-p4
       - run: bun run quality:lifecycle
       - run: bun run quality:mobile
       - run: bun run quality:rope

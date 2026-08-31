@@ -757,7 +757,7 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
       {!physicsRunning && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#18181B]/90 border border-[#27272A] px-4 py-1.5 rounded-full font-mono-arcade text-xs text-[#A1A1AA] pointer-events-none backdrop-blur-md">
           <Compass className="w-3.5 h-3.5 text-[#38BDF8] animate-spin" />
-          <span>DRAW A LINE TO GUIDE THE BALL INTO THE GREEN GOAL</span>
+          <span>DRAW ONE RAMP • RELEASE TO RUN PHYSICS • STARS ARE OPTIONAL</span>
         </div>
       )}
     </div>

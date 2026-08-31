@@ -5,6 +5,7 @@ import { haptics } from '../lib/haptics';
 import { Zap, Sparkles, Ghost, Flame, Trophy } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { getFrameInvariantDecay, getFrameScale } from '../lib/frameRateRuntime';
+import { getSnakeFirewallCells, getSnakeFirewallStage } from './snakeExperience';
 
 interface Point {
   x: number;
@@ -59,6 +60,7 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
   const [ghostTime, setGhostTime] = useState(0);
   const [multiplier, setMultiplier] = useState(1);
   const [combo, setCombo] = useState(0);
+  const [firewallStage, setFirewallStage] = useState(0);
 
   const gameStateRef = useRef({
     gridW: 22,
@@ -73,6 +75,8 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
     dir: { x: 1, y: 0 } as Point,
     nextDir: { x: 1, y: 0 } as Point,
     foods: [] as FoodItem[],
+    firewalls: [] as Point[],
+    firewallStage: 0,
     particles: [] as Particle[],
     floatingTexts: [] as FloatingText[],
     score: 0,
@@ -103,6 +107,7 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
     const state = gameStateRef.current;
     const occupied = new Set(state.snake.map((p) => `${p.x},${p.y}`));
     state.foods.forEach((f) => occupied.add(`${f.x},${f.y}`));
+    state.firewalls.forEach((cell) => occupied.add(`${cell.x},${cell.y}`));
 
     const available: Point[] = [];
     for (let x = 1; x < state.gridW - 1; x++) {
@@ -174,6 +179,9 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
     // Initial food spawn
     const state = gameStateRef.current;
     state.foods = [];
+    state.firewalls = [];
+    state.firewallStage = 0;
+    setFirewallStage(0);
     spawnFood('regular');
     spawnFood('multiplier');
 
@@ -293,6 +301,20 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
       }
     }
 
+    // Firewall collision. Ghost Phase now has a concrete traversal purpose.
+    const firewallCollision = state.firewalls.some(
+      (cell) => cell.x === newHead.x && cell.y === newHead.y
+    );
+    if (firewallCollision && !isGhost) {
+      state.isAlive = false;
+      state.shake = 16;
+      haptics.gameOver();
+      if (soundEnabled) sounds.playExplosion();
+      addFloatingText('FIREWALL HIT', newHead.x * state.cellSize, newHead.y * state.cellSize, '#F43F5E');
+      setSafeTimeout(() => onGameOver(state.score), 400);
+      return;
+    }
+
     // Self collision
     const selfCollision = state.snake.some(
       (seg, idx) => idx > 0 && seg.x === newHead.x && seg.y === newHead.y
@@ -366,6 +388,24 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
           life: 0,
           maxLife: 18,
         });
+      }
+
+      // Every four growth steps adds another short, navigable firewall phrase.
+      const nextFirewallStage = getSnakeFirewallStage(state.snake.length);
+      if (nextFirewallStage > state.firewallStage) {
+        const blocked = new Set<string>();
+        state.snake.forEach((segment) => blocked.add(`${segment.x},${segment.y}`));
+        state.foods.forEach((food) => blocked.add(`${food.x},${food.y}`));
+        state.firewalls = getSnakeFirewallCells(nextFirewallStage, blocked);
+        state.firewallStage = nextFirewallStage;
+        setFirewallStage(nextFirewallStage);
+        addFloatingText(
+          `FIREWALL LEVEL ${nextFirewallStage}`,
+          newHead.x * state.cellSize,
+          newHead.y * state.cellSize - 18,
+          '#F43F5E',
+        );
+        if (soundEnabled) sounds.playTone(300 + nextFirewallStage * 70, 0.09, 'sawtooth');
       }
 
       // Spawn replacement food
@@ -442,6 +482,27 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
       ctx.strokeStyle = state.ghostTimer > 0 ? '#A855F7' : '#38BDF8';
       ctx.lineWidth = 2.5;
       ctx.strokeRect(0, 0, gridPixelW, gridPixelH);
+
+      // Firewall cells: short static phrases that can be bypassed with Ghost Phase.
+      state.firewalls.forEach((cell) => {
+        const x = cell.x * state.cellSize;
+        const y = cell.y * state.cellSize;
+        const inset = Math.max(2, state.cellSize * 0.12);
+        ctx.save();
+        ctx.globalAlpha = state.ghostTimer > 0 ? 0.42 : 0.92;
+        ctx.shadowColor = '#F43F5E';
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = 'rgba(244, 63, 94, 0.24)';
+        ctx.fillRect(x + inset, y + inset, state.cellSize - inset * 2, state.cellSize - inset * 2);
+        ctx.strokeStyle = '#F43F5E';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + inset, y + inset, state.cellSize - inset * 2, state.cellSize - inset * 2);
+        ctx.beginPath();
+        ctx.moveTo(x + inset + 2, y + state.cellSize - inset - 2);
+        ctx.lineTo(x + state.cellSize - inset - 2, y + inset + 2);
+        ctx.stroke();
+        ctx.restore();
+      });
 
       // Food items
       state.foods.forEach((f) => {
@@ -578,6 +639,10 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
           </div>
 
           <span className="text-[#71717A]">|</span>
+
+          {firewallStage > 0 && (
+            <span className="text-rose-400 font-bold">FW L{firewallStage}</span>
+          )}
 
           {multiplier > 1 && (
             <div className="flex items-center gap-1 text-amber-400 font-bold animate-pulse">
