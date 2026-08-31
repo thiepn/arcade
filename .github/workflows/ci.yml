@@ -84,6 +84,33 @@ jobs:
           bun worker/smoke-test.mjs
       - run: bun run worker:check
       - run: bun run build
+      - name: Browser gameplay certification — 32 games × desktop/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          bunx vite preview --host 127.0.0.1 --port 4173 > /tmp/p3-preview.log 2>&1 &
+          preview_pid=$!
+          cleanup() {
+            kill "$preview_pid" 2>/dev/null || true
+            wait "$preview_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null 2>&1; then
+              break
+            fi
+            if ! kill -0 "$preview_pid" 2>/dev/null; then
+              cat /tmp/p3-preview.log
+              exit 1
+            fi
+            sleep 1
+          done
+          chrome="$(command -v google-chrome || command -v google-chrome-stable || true)"
+          if [ -z "$chrome" ]; then
+            echo 'Chrome executable not found on runner'
+            exit 1
+          fi
+          P3_CHROME_PATH="$chrome" bun run quality:browser-p3
       - run: MA3_EXPECT_BASE=/ bun run quality:ma3
       - run: MA4_EXPECT_BASE=/ bun run quality:ma4
       - run: bun run build:pages
