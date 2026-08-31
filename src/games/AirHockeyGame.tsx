@@ -4,6 +4,14 @@ import { sounds } from '../lib/sound';
 import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
 import { clamp } from '../lib/gameCoordinates';
 import { getAirHockeyTableLayout } from '../lib/airHockeyLayout';
+import {
+  AIR_HOCKEY_DIFFICULTY_CONFIG as DIFFICULTY_CONFIG,
+  AIR_HOCKEY_MAX_PUCK_SPEED,
+  AIR_HOCKEY_PLAYER_MAX_SPEED,
+  advanceMalletTowardsTarget,
+  capAirHockeyVelocity,
+  type AirHockeyDifficultyLevel,
+} from '../lib/airHockeyFairness';
 
 interface Mallet {
   x: number;
@@ -22,34 +30,7 @@ interface Puck {
   radius: number;
 }
 
-type DifficultyLevel = 'EASY' | 'MEDIUM' | 'HARD';
-
-const DIFFICULTY_CONFIG = {
-  EASY: {
-    label: 'CASUAL',
-    aiSpeed: 190,
-    predFactor: 0.04,
-    pointsPerGoal: 500,
-    multiplierBadge: '1.0x PTS',
-    color: '#34D399',
-  },
-  MEDIUM: {
-    label: 'PRO',
-    aiSpeed: 310,
-    predFactor: 0.09,
-    pointsPerGoal: 875,
-    multiplierBadge: '1.75x PTS',
-    color: '#38BDF8',
-  },
-  HARD: {
-    label: 'MASTER',
-    aiSpeed: 460,
-    predFactor: 0.14,
-    pointsPerGoal: 1250,
-    multiplierBadge: '2.5x PTS',
-    color: '#F43F5E',
-  },
-};
+type DifficultyLevel = AirHockeyDifficultyLevel;
 
 export const AirHockeyGame: React.FC<GameComponentProps> = ({
   onGameOver,
@@ -88,6 +69,9 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
 
     targetPlayerX: 200,
     targetPlayerY: 400,
+    aiTargetX: 200,
+    aiTargetY: 100,
+    aiDecisionCooldown: 0,
 
     goalWidth: 140,
     isGoalResetting: false,
@@ -170,6 +154,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
     state.puck.y = 250;
     state.puck.vx = (Math.random() - 0.5) * 60;
     state.puck.vy = 150;
+    state.aiDecisionCooldown = 0;
   }, []);
 
   useGameLoop({
@@ -221,6 +206,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
       state.goalWidth = newTable.goalWidth;
       state.viewportWidth = w;
       state.viewportHeight = h;
+      state.aiDecisionCooldown = 0;
 
       state.puck.x = clamp(
         state.puck.x,
@@ -313,10 +299,15 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
         const boundedTargetX = Math.max(minPlayerX, Math.min(maxPlayerX, state.targetPlayerX));
         const boundedTargetY = Math.max(minPlayerY, Math.min(maxPlayerY, state.targetPlayerY));
 
-        state.playerMallet.vx = (boundedTargetX - state.playerMallet.x) / Math.max(0.016, dt);
-        state.playerMallet.vy = (boundedTargetY - state.playerMallet.y) / Math.max(0.016, dt);
-        state.playerMallet.x = boundedTargetX;
-        state.playerMallet.y = boundedTargetY;
+        const playerMotion = advanceMalletTowardsTarget(
+          state.playerMallet.x,
+          state.playerMallet.y,
+          boundedTargetX,
+          boundedTargetY,
+          AIR_HOCKEY_PLAYER_MAX_SPEED * table.motionScale,
+          dt,
+        );
+        Object.assign(state.playerMallet, playerMotion);
 
         // 2. Update AI Mallet based on selected difficulty
         const diffConfig = DIFFICULTY_CONFIG[state.difficulty] || DIFFICULTY_CONFIG.MEDIUM;
@@ -324,49 +315,48 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
         const aiHomeX = tableCenterX;
         const aiHomeY = tableTop + 55 * table.motionScale;
 
-        let aiTargetX = aiHomeX;
-        let aiTargetY = aiHomeY;
-
         const aiMinX = tableLeft + state.aiMallet.radius + 6;
         const aiMaxX = tableRight - state.aiMallet.radius - 6;
         const aiMinY = tableTop + state.aiMallet.radius + 6;
         const aiMaxY = centerY - state.aiMallet.radius - 10;
 
-        if (state.puck.y < centerY + 20) {
-          if (state.puck.y < state.aiMallet.y - 4) {
-            aiTargetX = state.puck.x > tableCenterX
-              ? aiMinX + 25 * table.motionScale
-              : aiMaxX - 25 * table.motionScale;
-            aiTargetY = Math.max(aiMinY, state.puck.y - 10 * table.motionScale);
+        state.aiDecisionCooldown -= dt;
+        if (state.aiDecisionCooldown <= 0) {
+          state.aiDecisionCooldown = diffConfig.reactionMs / 1000;
+          let aiTargetX = aiHomeX;
+          let aiTargetY = aiHomeY;
+
+          if (state.puck.y < centerY + 20) {
+            if (state.puck.y < state.aiMallet.y - 4) {
+              aiTargetX = state.puck.x > tableCenterX
+                ? aiMinX + 25 * table.motionScale
+                : aiMaxX - 25 * table.motionScale;
+              aiTargetY = Math.max(aiMinY, state.puck.y - 10 * table.motionScale);
+            } else {
+              const predX = state.puck.x + state.puck.vx * diffConfig.predictionSeconds;
+              aiTargetX = Math.max(aiMinX, Math.min(aiMaxX, predX));
+              aiTargetY = Math.min(aiMaxY, Math.max(aiMinY, state.puck.y - 18));
+            }
           } else {
-            const predX = state.puck.x + state.puck.vx * diffConfig.predFactor;
-            aiTargetX = Math.max(aiMinX, Math.min(aiMaxX, predX));
-            aiTargetY = Math.min(aiMaxY, Math.max(aiMinY, state.puck.y - 18));
+            const guardFactor = (state.puck.x - tableCenterX) / (tableRight - tableLeft);
+            aiTargetX = tableCenterX + guardFactor * 50 * table.motionScale;
+            aiTargetY = aiHomeY;
           }
-        } else {
-          const guardFactor = (state.puck.x - tableCenterX) / (tableRight - tableLeft);
-          aiTargetX = tableCenterX + guardFactor * 50 * table.motionScale;
-          aiTargetY = aiHomeY;
+
+          aiTargetX += (Math.random() - 0.5) * 2 * diffConfig.aimErrorPx * table.motionScale;
+          state.aiTargetX = Math.max(aiMinX, Math.min(aiMaxX, aiTargetX));
+          state.aiTargetY = Math.max(aiMinY, Math.min(aiMaxY, aiTargetY));
         }
 
-        aiTargetX = Math.max(aiMinX, Math.min(aiMaxX, aiTargetX));
-        aiTargetY = Math.max(aiMinY, Math.min(aiMaxY, aiTargetY));
-
-        const aiSpeed = diffConfig.aiSpeed * table.motionScale;
-        const aiDX = aiTargetX - state.aiMallet.x;
-        const aiDY = aiTargetY - state.aiMallet.y;
-        const aiDist = Math.hypot(aiDX, aiDY);
-
-        if (aiDist > 2) {
-          state.aiMallet.vx = (aiDX / aiDist) * Math.min(aiSpeed, aiDist / dt);
-          state.aiMallet.vy = (aiDY / aiDist) * Math.min(aiSpeed, aiDist / dt);
-        } else {
-          state.aiMallet.vx = 0;
-          state.aiMallet.vy = 0;
-        }
-
-        state.aiMallet.x += state.aiMallet.vx * dt;
-        state.aiMallet.y += state.aiMallet.vy * dt;
+        const aiMotion = advanceMalletTowardsTarget(
+          state.aiMallet.x,
+          state.aiMallet.y,
+          state.aiTargetX,
+          state.aiTargetY,
+          diffConfig.aiSpeed * table.motionScale,
+          dt,
+        );
+        Object.assign(state.aiMallet, aiMotion);
 
         // 3. Update Puck Physics
         const puck = state.puck;
@@ -377,12 +367,10 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
         puck.vx *= drag;
         puck.vy *= drag;
 
-        const pSpeed = Math.hypot(puck.vx, puck.vy);
-        const maxSpeed = 680 * table.motionScale;
-        if (pSpeed > maxSpeed) {
-          puck.vx = (puck.vx / pSpeed) * maxSpeed;
-          puck.vy = (puck.vy / pSpeed) * maxSpeed;
-        }
+        const maxSpeed = AIR_HOCKEY_MAX_PUCK_SPEED * table.motionScale;
+        const cappedPuck = capAirHockeyVelocity(puck.vx, puck.vy, maxSpeed);
+        puck.vx = cappedPuck.vx;
+        puck.vy = cappedPuck.vy;
 
         state.puckTrail.unshift({ x: puck.x, y: puck.y, alpha: 0.7 });
         if (state.puckTrail.length > 6) state.puckTrail.pop();
@@ -518,6 +506,9 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
 
         checkMalletHit(state.playerMallet, true);
         checkMalletHit(state.aiMallet, false);
+        const postHitPuck = capAirHockeyVelocity(puck.vx, puck.vy, maxSpeed);
+        puck.vx = postHitPuck.vx;
+        puck.vy = postHitPuck.vy;
 
         for (let i = state.particles.length - 1; i >= 0; i--) {
           const p = state.particles[i];

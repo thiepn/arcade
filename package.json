@@ -28,6 +28,7 @@
     "quality:vanguard": "bun scripts/audit-vanguard.ts",
     "quality:frame-rate": "bun scripts/audit-frame-rate-global.ts",
     "quality:hud-render": "bun scripts/audit-hud-render-performance.ts",
+    "quality:gameplay-p0": "bun scripts/audit-gameplay-p0.ts",
     "quality:lifecycle": "bun scripts/audit-game-lifecycle.ts",
     "quality:mobile": "bun scripts/audit-mobile-runtime.ts",
     "quality:rope": "bun scripts/audit-laser-rope-presentation.ts",

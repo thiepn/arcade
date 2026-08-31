@@ -114,6 +114,17 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
     if (soundEnabled) sounds.playPop();
   };
 
+  const pulseOrbit = () => {
+    const state = gameStateRef.current;
+    if (!state.isAlive || isPausedRef.current) return;
+
+    state.currentLane = (state.currentLane + 1) % 3;
+    state.targetRadius = state.baseRadii[state.currentLane];
+    state.direction *= -1;
+    state.warpEffect = 1;
+    if (soundEnabled) sounds.playWarp();
+  };
+
   const setSafeTimeout = useSafeTimeout();
 
   const spawnHazard = useCallback((w: number, h: number, cx: number, cy: number) => {
@@ -155,15 +166,15 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+    const handlePointerDown = (e: PointerEvent) => {
       e.preventDefault();
-      jumpNextLane();
+      pulseOrbit();
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === ' ' || e.key === 'Spacebar') {
         e.preventDefault();
-        jumpNextLane();
+        pulseOrbit();
       } else if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
         jumpPrevLane();
       } else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
@@ -180,13 +191,11 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
       }
     };
 
-    canvas.addEventListener('mousedown', handlePointerDown);
-    canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
+    canvas.addEventListener('pointerdown', handlePointerDown);
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      canvas.removeEventListener('mousedown', handlePointerDown);
-      canvas.removeEventListener('touchstart', handlePointerDown);
+      canvas.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);

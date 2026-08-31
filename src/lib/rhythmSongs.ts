@@ -438,6 +438,17 @@ export class RhythmMusicEngine {
     }
   }
 
+  public getEstimatedOutputLatencyMs() {
+    this.init();
+    if (!this.ctx) return 0;
+    const outputLatency = Number(
+      (this.ctx as AudioContext & { outputLatency?: number }).outputLatency ?? 0,
+    );
+    const baseLatency = Number(this.ctx.baseLatency ?? 0);
+    const totalSeconds = Math.max(0, baseLatency) + Math.max(0, outputLatency);
+    return Math.round(Math.min(0.2, totalSeconds) * 1000);
+  }
+
   public playSong(song: SongDefinition, startBeat: number = 0) {
     this.init();
     this.song = song;
