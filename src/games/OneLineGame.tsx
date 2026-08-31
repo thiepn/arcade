@@ -8,6 +8,12 @@ import {
   getOneLinePhysicsStepBatch,
   remapOneLinePoint,
 } from '../lib/oneLineRuntime';
+import {
+  getOneLineInkRemainingPercent,
+  getOneLineMasteryGoal,
+  getOneLineMasteryReward,
+  isOneLineMasteryClear,
+} from '../lib/oneLineMastery';
 
 interface Point {
   x: number;
@@ -55,6 +61,8 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
   const [starsCount, setStarsCount] = useState(0);
   const [physicsRunning, setPhysicsRunning] = useState(false);
   const [inkPercent, setInkPercent] = useState(100);
+  const [masteryStreak, setMasteryStreak] = useState(0);
+  const [masteryResult, setMasteryResult] = useState('');
 
 
   const gameStateRef = useRef({
@@ -69,6 +77,7 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
     level: 1,
     score: 0,
     attempts: 0,
+    masteryStreak: 0,
     shake: 0,
     lastHitSoundTime: 0,
     lastBounceSoundTime: 0,
@@ -93,6 +102,7 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
     setPhysicsRunning(false);
     setStarsCount(0);
     setInkPercent(100);
+    setMasteryResult('');
     setLevel(lvl);
 
     const obs: Obstacle[] = [];
@@ -236,6 +246,8 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
     const h = state.viewportHeight;
     if (w <= 0 || h <= 0) return;
     if (soundEnabled) sounds.playClick();
+    state.masteryStreak = 0;
+    setMasteryStreak(0);
     generateLevel(state.level, w, h);
   };
 
@@ -559,7 +571,24 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
           setPhysicsRunning(false);
 
           const starsEarned = state.stars.filter((s) => s.collected).length;
-          const stageBonus = 1000 + starsEarned * 500;
+          const masteryGoal = getOneLineMasteryGoal(state.level);
+          const inkBudget = getOneLineInkBudget(curW, curH);
+          const usedInk = calculateTotalLength(state.linePoints);
+          const inkRemaining = getOneLineInkRemainingPercent(usedInk, inkBudget);
+          const mastered = isOneLineMasteryClear(masteryGoal, starsEarned, inkRemaining);
+          let masteryBonus = 0;
+          if (mastered) {
+            state.masteryStreak++;
+            setMasteryStreak(state.masteryStreak);
+            masteryBonus = getOneLineMasteryReward(state.level, state.masteryStreak);
+            setMasteryResult(`MASTER ROUTE x${state.masteryStreak} +${masteryBonus}`);
+          } else {
+            state.masteryStreak = 0;
+            setMasteryStreak(0);
+            setMasteryResult('STANDARD CLEAR • MASTER ROUTE MISSED');
+          }
+
+          const stageBonus = 1000 + starsEarned * 500 + masteryBonus;
           state.score += stageBonus;
           onScoreUpdate(state.score);
 
@@ -717,6 +746,8 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
     },
   });
 
+  const masteryGoal = getOneLineMasteryGoal(level);
+
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-between select-none game-canvas-container touch-none bg-[#090D16] overflow-hidden">
       <canvas ref={canvasRef} className="w-full h-full block cursor-crosshair touch-none" />
@@ -753,11 +784,25 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
         </div>
       </div>
 
+      <div className="absolute top-14 left-4 pointer-events-none z-10">
+        <div className="rounded-lg border border-emerald-400/25 bg-zinc-950/80 px-2.5 py-1.5 font-mono-arcade text-[9px] text-emerald-200 backdrop-blur-md">
+          <span className="font-black">MASTER ROUTE • {masteryGoal.label}</span>
+          <span className="ml-2 text-zinc-400">{masteryGoal.minStars}★ + {masteryGoal.minInkRemainingPercent}% INK</span>
+          {masteryStreak > 0 && <span className="ml-2 text-amber-300">CHAIN x{masteryStreak}</span>}
+        </div>
+      </div>
+
+      {masteryResult && (
+        <div className="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-xl border border-amber-400/35 bg-zinc-950/90 px-4 py-2 font-mono-arcade text-xs font-black text-amber-200 shadow-xl pointer-events-none">
+          {masteryResult}
+        </div>
+      )}
+
       {/* Bottom Hint */}
       {!physicsRunning && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#18181B]/90 border border-[#27272A] px-4 py-1.5 rounded-full font-mono-arcade text-xs text-[#A1A1AA] pointer-events-none backdrop-blur-md">
           <Compass className="w-3.5 h-3.5 text-[#38BDF8] animate-spin" />
-          <span>DRAW ONE RAMP • RELEASE TO RUN PHYSICS • STARS ARE OPTIONAL</span>
+          <span>DRAW ONE RAMP • RELEASE TO RUN PHYSICS • STARS STAY OPTIONAL • MASTER ROUTE REWARDS STAR + INK EFFICIENCY</span>
         </div>
       )}
     </div>
