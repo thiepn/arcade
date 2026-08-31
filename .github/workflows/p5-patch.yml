@@ -36,6 +36,10 @@ jobs:
               "                setWords([...state.words]);\\n                focusDeviceKeyboard();",
               "                focusDeviceKeyboard();",
           )
+          source = source.replace(
+              "instructions: 'Follow the named crystal route for multiplier chains. Graze comets after they pass for bonus points. Tap/Space pulses lane+direction; Up/Down is lane-only and A/D reverses only.'",
+              "instructions: 'Tap/Space pulses to shift one lane and reverse direction. Follow the named crystal route for multiplier chains and graze comets after they pass; Up/Down is lane-only and A/D reverses only.'",
+          )
           path.write_text(source)
           PY
           python scripts/patch-p5.py
