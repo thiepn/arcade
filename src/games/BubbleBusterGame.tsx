@@ -2,6 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
+import {
+  ORB_BURST_MAX_CHARGES,
+  ORB_BURST_START_CHARGES,
+  canArmOrbBurst,
+  canSwapOrbChamber,
+  shouldEarnOrbBurst,
+} from '../lib/orbCannonMastery';
 
 const COLORS = ['#38BDF8', '#EC4899', '#10B981', '#FACC15', '#A855F7'];
 const BUBBLE_RADIUS = 16;
@@ -49,6 +56,9 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
     multiplier: 1,
     nextColor: COLORS[1],
     currentBubbleColor: COLORS[0],
+    burstCharges: ORB_BURST_START_CHARGES,
+    burstArmed: false,
+    canSwap: true,
   });
 
   const gameStateRef = useRef({
@@ -64,6 +74,9 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
     currentBubbleColor: COLORS[0],
     nextBubbleColor: COLORS[1],
     flyingBubble: null as FlyingBubble | null,
+    burstCharges: ORB_BURST_START_CHARGES,
+    burstArmed: false,
+    hasSwappedThisTurn: false,
 
     // Grid (null = empty)
     grid: Array.from({ length: GRID_ROWS }, () => Array(GRID_COLS).fill(null)) as (Bubble | null)[][],
@@ -84,6 +97,24 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
     return { x, y };
   };
 
+  const armBurst = () => {
+    const state = gameStateRef.current;
+    if (!canArmOrbBurst(state.burstCharges, state.burstArmed, Boolean(state.flyingBubble)) || isPausedRef.current || !state.isAlive) return;
+    state.burstCharges--;
+    state.burstArmed = true;
+    if (soundEnabled) sounds.playPowerUp();
+  };
+
+  const swapChamber = () => {
+    const state = gameStateRef.current;
+    if (!canSwapOrbChamber(state.hasSwappedThisTurn, Boolean(state.flyingBubble)) || isPausedRef.current || !state.isAlive) return;
+    const current = state.currentBubbleColor;
+    state.currentBubbleColor = state.nextBubbleColor;
+    state.nextBubbleColor = current;
+    state.hasSwappedThisTurn = true;
+    if (soundEnabled) sounds.playTick();
+  };
+
   // Shoot Action toward specified angle or current cannon angle
   const shootBubble = (targetAngle?: number) => {
     const state = gameStateRef.current;
@@ -102,8 +133,10 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
       color: state.currentBubbleColor,
-      isBomb: Math.random() < 0.08,
+      isBomb: state.burstArmed,
     };
+    state.burstArmed = false;
+    state.hasSwappedThisTurn = false;
 
     state.currentBubbleColor = state.nextBubbleColor;
     state.nextBubbleColor = COLORS[Math.floor(Math.random() * COLORS.length)];
@@ -133,7 +166,13 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const state = gameStateRef.current;
-      if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+      if (e.code === 'KeyF' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        e.preventDefault();
+        armBurst();
+      } else if (e.code === 'KeyQ') {
+        e.preventDefault();
+        swapChamber();
+      } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
         state.cannonAngle = Math.max(-Math.PI + 0.2, state.cannonAngle - 0.1);
       } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
         state.cannonAngle = Math.min(-0.2, state.cannonAngle + 0.1);
@@ -174,6 +213,9 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
     state.popups = [];
     state.currentBubbleColor = COLORS[0];
     state.nextBubbleColor = COLORS[1];
+    state.burstCharges = ORB_BURST_START_CHARGES;
+    state.burstArmed = false;
+    state.hasSwappedThisTurn = false;
 
     // Seed initial 5 rows of bubbles
     state.grid = Array.from({ length: GRID_ROWS }, (_, r) =>
@@ -403,6 +445,10 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
                     life: 1.0,
                   });
                 }
+
+                if (shouldEarnOrbBurst(state.combo, dropCount)) {
+                  state.burstCharges = Math.min(ORB_BURST_MAX_CHARGES, state.burstCharges + 1);
+                }
               } else {
                 state.combo = 0;
                 state.multiplier = 1;
@@ -584,7 +630,10 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
           prev.combo === state.combo &&
           prev.multiplier === state.multiplier &&
           prev.nextColor === state.nextBubbleColor &&
-          prev.currentBubbleColor === state.currentBubbleColor
+          prev.currentBubbleColor === state.currentBubbleColor &&
+          prev.burstCharges === state.burstCharges &&
+          prev.burstArmed === state.burstArmed &&
+          prev.canSwap === !state.hasSwappedThisTurn
         ) {
           return prev;
         }
@@ -595,6 +644,9 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
           multiplier: state.multiplier,
           nextColor: state.nextBubbleColor,
           currentBubbleColor: state.currentBubbleColor,
+          burstCharges: state.burstCharges,
+          burstArmed: state.burstArmed,
+          canSwap: !state.hasSwappedThisTurn,
         };
       });
 
@@ -634,6 +686,27 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
             }}
           />
         </div>
+      </div>
+
+      <div className="absolute bottom-2.5 left-1/2 z-20 flex -translate-x-1/2 gap-2 pointer-events-auto">
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={swapChamber}
+          disabled={!hudState.canSwap}
+          className="rounded-xl border border-zinc-600 bg-[#18181B]/90 px-3 py-1.5 font-mono text-[10px] font-black text-zinc-200 disabled:opacity-35"
+        >
+          SWAP [Q]
+        </button>
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={armBurst}
+          disabled={hudState.burstCharges <= 0 || hudState.burstArmed}
+          className="rounded-xl border border-pink-400/50 bg-[#18181B]/90 px-3 py-1.5 font-mono text-[10px] font-black text-pink-300 disabled:opacity-35"
+        >
+          {hudState.burstArmed ? 'BURST ARMED' : `BURST ${hudState.burstCharges}/2 [F]`}
+        </button>
       </div>
 
       <canvas ref={canvasRef} className="w-full h-full block" />
