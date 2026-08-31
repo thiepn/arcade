@@ -10,6 +10,13 @@ import {
   getSlingshotResizeScale,
   remapSlingshotPoint,
 } from '../lib/slingshotRuntime';
+import {
+  advanceSlingshotMissionProgress,
+  getSlingshotMission,
+  getSlingshotMissionReward,
+  isSlingshotMissionComplete,
+  type SlingshotMissionEvent,
+} from '../lib/slingshotMastery';
 
 interface PlanetNode {
   id: number;
@@ -90,6 +97,12 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
   const [currentSector, setCurrentSector] = useState(1);
   const [isLockedOn, setIsLockedOn] = useRenderPublishedState(false);
   const [sectorName, setSectorName] = useState('SOLAR CORE');
+  const [missionHud, setMissionHud] = useState(() => ({
+    mission: getSlingshotMission(1),
+    progress: 0,
+    streak: 0,
+    complete: false,
+  }));
 
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
@@ -110,6 +123,10 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
     lives: 3,
     combo: 1,
     sector: 1,
+    mission: getSlingshotMission(1),
+    missionProgress: 0,
+    missionComplete: false,
+    missionStreak: 0,
     isAlive: true,
     // Probe state
     probeX: 0,
@@ -139,12 +156,53 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
     viewportHeight: 0,
   });
 
+  const registerMissionEvent = useCallback((event: SlingshotMissionEvent) => {
+    const state = gameStateRef.current;
+    if (state.missionComplete || !state.isAlive) return;
+
+    const nextProgress = advanceSlingshotMissionProgress(
+      state.mission,
+      state.missionProgress,
+      event,
+    );
+    if (nextProgress === state.missionProgress) return;
+    state.missionProgress = nextProgress;
+
+    if (isSlingshotMissionComplete(state.mission, nextProgress)) {
+      state.missionComplete = true;
+      state.missionStreak++;
+      const reward = getSlingshotMissionReward(state.sector, state.missionStreak);
+      state.score += reward;
+      onScoreUpdate(state.score);
+      setScore(state.score);
+      state.popups.push({
+        id: Math.random(),
+        text: `NAV MISSION CLEAR x${state.missionStreak} +${reward}`,
+        x: state.probeX,
+        y: state.probeY - 34,
+        color: '#FACC15',
+        life: 1.2,
+        scale: 1.15,
+      });
+      if (soundEnabled) sounds.playVictory();
+    }
+
+    setMissionHud({
+      mission: state.mission,
+      progress: state.missionProgress,
+      streak: state.missionStreak,
+      complete: state.missionComplete,
+    });
+  }, [onScoreUpdate, soundEnabled]);
+
   const launchProbe = useCallback(() => {
     const state = gameStateRef.current;
     if (!state.isTethered || !state.isAlive || isPausedRef.current) return;
 
     const anchor = state.nodes.find((n) => n.id === state.currentAnchorId);
     if (!anchor) return;
+
+    if (state.isAimingAtNext) registerMissionEvent('LOCKED_LAUNCH');
 
     // Launch tangentially
     state.isTethered = false;
@@ -185,7 +243,7 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
         size: 3 + Math.random() * 2.5,
       });
     }
-  }, [soundEnabled]);
+  }, [registerMissionEvent, soundEnabled]);
 
   const addScorePopup = (text: string, x: number, y: number, color = '#FACC15', scale = 1.0) => {
     gameStateRef.current.popups.push({
@@ -561,12 +619,24 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
                 st.combo++;
                 setCombo(st.combo);
 
+                if (isPerfect) registerMissionEvent('PERFECT_CAPTURE');
+
                 if (node.isWarpGate) {
-                  // Warp into next sector!
+                  // Warp into next sector! Incomplete missions break the navigation chain.
+                  if (!st.missionComplete) st.missionStreak = 0;
                   st.sector++;
                   setCurrentSector(st.sector);
                   const nextName = SECTOR_NAMES[(st.sector - 1) % SECTOR_NAMES.length];
                   setSectorName(nextName);
+                  st.mission = getSlingshotMission(st.sector);
+                  st.missionProgress = 0;
+                  st.missionComplete = false;
+                  setMissionHud({
+                    mission: st.mission,
+                    progress: 0,
+                    streak: st.missionStreak,
+                    complete: false,
+                  });
 
                   st.screenShake = 16;
                   haptics.combo();
@@ -709,6 +779,8 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
             onScoreUpdate(st.score);
             setScore(st.score);
             addScorePopup(`+${starBonus}`, star.x, star.y, '#FACC15');
+            registerMissionEvent('STARDUST');
+            if (star.color === '#FACC15') registerMissionEvent('GOLD_DUST');
             if (soundEnabled) sounds.playPop();
 
             // Stardust glitter particles
@@ -1011,8 +1083,24 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
         </div>
       </div>
 
+      <div className="absolute top-14 left-4 z-10 pointer-events-none max-w-[calc(100%-2rem)]">
+        <div className={`rounded-lg border px-2.5 py-1.5 backdrop-blur-md ${
+          missionHud.complete
+            ? 'border-emerald-400/45 bg-emerald-500/15 text-emerald-200'
+            : 'border-amber-400/35 bg-zinc-950/80 text-amber-200'
+        }`}>
+          <div className="font-mono-arcade text-[9px] font-black">
+            NAV MISSION • {missionHud.mission.label} {missionHud.progress}/{missionHud.mission.target}
+            {missionHud.complete ? ' • CLEAR' : ''}
+          </div>
+          <div className="mt-0.5 font-mono-arcade text-[8px] text-zinc-400">
+            {missionHud.mission.hint}{missionHud.streak > 0 ? ` • NAV x${missionHud.streak}` : ''}
+          </div>
+        </div>
+      </div>
+
       {/* Target Aiming Indicator / Lock-On Banner */}
-      <div className="absolute top-14 left-4 right-4 flex justify-center z-10 pointer-events-none">
+      <div className="absolute top-[5.5rem] left-4 right-4 flex justify-center z-10 pointer-events-none">
         <div
           className={`flex items-center gap-2 px-4 py-1.5 rounded-xl border backdrop-blur-md transition-all duration-150 ${
             isLockedOn

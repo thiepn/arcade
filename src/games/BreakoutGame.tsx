@@ -5,6 +5,13 @@ import { haptics } from '../lib/haptics';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { clamp, rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
 import { ARCADE_FIXED_STEP_SEC, getArcadeStepBatch, getFrameScale } from '../lib/frameRateRuntime';
+import {
+  advanceBreakoutContractProgress,
+  getBreakoutContract,
+  getBreakoutContractReward,
+  isBreakoutContractComplete,
+  type BreakoutContractEvent,
+} from '../lib/breakoutMastery';
 
 interface Brick {
   x: number;
@@ -95,6 +102,10 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
     combo: 0,
     isAlive: true,
     round: 1,
+    contract: getBreakoutContract(1),
+    contractProgress: 0,
+    contractComplete: false,
+    contractStreak: 0,
     keys: { left: false, right: false, space: false },
     lastLaserFire: 0,
     viewportWidth: 400,
@@ -163,6 +174,10 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
     state.score = 0;
     state.combo = 0;
     state.round = 1;
+    state.contract = getBreakoutContract(1);
+    state.contractProgress = 0;
+    state.contractComplete = false;
+    state.contractStreak = 0;
     state.shake = 0;
     state.paddleW = 96;
     state.paddleTargetW = 96;
@@ -300,6 +315,35 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
       state.physicsAccumulator = batch.remainderSec;
       const effectFrameScale = !isPausedRef.current ? getFrameScale(deltaSec) : 0;
 
+      const registerContractEvent = (event: BreakoutContractEvent, value = 1) => {
+        if (state.contractComplete) return;
+        const nextProgress = advanceBreakoutContractProgress(
+          state.contract,
+          state.contractProgress,
+          event,
+          value,
+        );
+        if (nextProgress === state.contractProgress) return;
+        state.contractProgress = nextProgress;
+
+        if (isBreakoutContractComplete(state.contract, nextProgress)) {
+          state.contractComplete = true;
+          state.contractStreak++;
+          const reward = getBreakoutContractReward(state.round, state.contractStreak);
+          state.score += reward;
+          onScoreUpdate(state.score);
+          state.floatingTexts.push({
+            x: curW / 2,
+            y: Math.min(220, curH * 0.34),
+            text: `CONTRACT CLEAR x${state.contractStreak} +${reward}`,
+            color: '#FACC15',
+            life: 0,
+            maxLife: 72,
+          });
+          if (soundEnabled) sounds.playVictory();
+        }
+      };
+
       const spawnWallSparks = (x: number, y: number, color: string, st: typeof state) => {
         for (let i = 0; i < 6; i++) {
           st.particles.push({
@@ -394,6 +438,8 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
                 state.score += 50;
                 onScoreUpdate(state.score);
                 triggerBrickBreak(brick, state, curW, curH, soundEnabled);
+                if (brick.maxHp > 1) registerContractEvent('ARMORED');
+                if (brick.special) registerContractEvent('SPECIAL');
               } else {
                 if (soundEnabled) sounds.playTone(600, 0.04, 'square');
               }
@@ -421,6 +467,7 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
           ) {
             haptics.score();
             applyPowerUp(pUp.type, state, curW, curH, soundEnabled);
+            registerContractEvent('POWER');
             state.powerUps.splice(p, 1);
             continue;
           }
@@ -528,6 +575,7 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
               }
 
               state.combo++;
+              registerContractEvent('COMBO', state.combo);
               const pts = 50 * Math.min(6, state.combo);
               state.score += pts;
               onScoreUpdate(state.score);
@@ -538,6 +586,8 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
                 brick.alive = false;
                 haptics.score();
                 triggerBrickBreak(brick, state, curW, curH, soundEnabled);
+                if (brick.maxHp > 1) registerContractEvent('ARMORED');
+                if (brick.special) registerContractEvent('SPECIAL');
               } else {
                 haptics.light();
                 if (soundEnabled) sounds.playTone(550, 0.05, 'triangle');
@@ -579,7 +629,11 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
         // Check wave clear
         const remaining = state.bricks.filter((b) => b.alive).length;
         if (remaining === 0) {
+          if (!state.contractComplete) state.contractStreak = 0;
           state.round++;
+          state.contract = getBreakoutContract(state.round);
+          state.contractProgress = 0;
+          state.contractComplete = false;
           state.score += 1000 * state.round;
           onScoreUpdate(state.score);
           haptics.combo();
@@ -627,6 +681,30 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
         ctx.lineTo(curW, y);
         ctx.stroke();
       }
+
+      // Round contract HUD: optional mastery objective layered over the base brick-breaker loop.
+      ctx.save();
+      const contractWidth = Math.min(340, Math.max(210, curW - 24));
+      ctx.fillStyle = 'rgba(9, 9, 11, 0.86)';
+      ctx.beginPath();
+      ctx.roundRect(12, 12, contractWidth, 46, 10);
+      ctx.fill();
+      ctx.strokeStyle = state.contractComplete ? '#34D399' : '#FACC15';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = state.contractComplete ? '#6EE7B7' : '#FDE047';
+      ctx.font = '900 10px ui-monospace, monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`R${state.round} • CONTRACT ${state.contract.label}`, 20, 28);
+      ctx.fillStyle = '#D4D4D8';
+      ctx.font = '700 9px ui-monospace, monospace';
+      ctx.fillText(
+        `${Math.min(state.contractProgress, state.contract.target)}/${state.contract.target}${state.contractComplete ? ' CLEAR' : ''} • CONTRACT CHAIN x${state.contractStreak}`,
+        20,
+        44,
+      );
+      ctx.restore();
 
       // Draw Bricks
       state.bricks.forEach((brick) => {
