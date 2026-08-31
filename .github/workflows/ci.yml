@@ -43,6 +43,7 @@ jobs:
       - run: bun run quality:frame-rate
       - run: bun run quality:hud-render
       - run: bun run quality:gameplay-p0
+      - run: bun run quality:gameplay-p1
       - run: bun run quality:lifecycle
       - run: bun run quality:mobile
       - run: bun run quality:rope
