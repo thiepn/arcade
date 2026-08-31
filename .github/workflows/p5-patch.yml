@@ -47,6 +47,16 @@ jobs:
           path.write_text(source)
           PY
           python scripts/patch-p5.py
+          python - <<'PY'
+          from pathlib import Path
+          package = Path('package.json')
+          text = package.read_text()
+          text = text.replace(
+              '    "quality:gameplay-p5": "bun scripts/audit-gameplay-p5.ts",\n  },',
+              '    "quality:gameplay-p5": "bun scripts/audit-gameplay-p5.ts"\n  },',
+          )
+          package.write_text(text)
+          PY
       - run: bun install --frozen-lockfile
       - run: bun run quality:gameplay-p5
       - run: bun run quality:games
