@@ -11,6 +11,7 @@ import {
   normalizeKnifeAngle,
   shortestKnifeAngleDistance,
 } from '../lib/knifeTargetAim';
+import { getKnifeStageConfig, getKnifeStageRotationSpeed } from '../lib/knifeStageProgression';
 
 interface EmbeddedBlade {
   angle: number;
@@ -43,6 +44,7 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
     knivesLeft: 8,
     combo: 0,
     multiplier: 1,
+    stageLabel: 'STEADY CORE',
   });
 
   const gameStateRef = useRef({
@@ -57,8 +59,11 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
     // Target Core
     coreAngle: 0,
     coreSpeed: 2.2,
+    coreDirection: 1 as -1 | 1,
     coreRadius: 65,
-    speedChangeTimer: 2.5,
+    stageElapsed: 0,
+    reverseTimer: 0,
+    stageLabel: 'STEADY CORE',
 
     // Blades / mounted target objects use standard local polar angles.
     embeddedBlades: [] as EmbeddedBlade[],
@@ -155,15 +160,17 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
 
   const initStage = useCallback((stageNum: number) => {
     const state = gameStateRef.current;
+    const config = getKnifeStageConfig(stageNum);
     state.stage = stageNum;
+    state.stageLabel = config.label;
     state.coreAngle = 0;
-    state.coreSpeed =
-      (1.8 + stageNum * 0.3) * (Math.random() < 0.5 ? 1 : -1);
-    state.speedChangeTimer = Math.random() * 2 + 1.5;
+    state.stageElapsed = 0;
+    state.coreDirection = Math.random() < 0.5 ? 1 : -1;
+    state.reverseTimer = config.reverseInterval;
+    state.coreSpeed = getKnifeStageRotationSpeed(config, 0, state.coreDirection);
 
-    const knifeCount = Math.min(14, 7 + stageNum);
-    state.totalKnivesForStage = knifeCount;
-    state.knivesRemaining = knifeCount;
+    state.totalKnivesForStage = config.knifeCount;
+    state.knivesRemaining = config.knifeCount;
     state.isThrowing = false;
     state.flyingBladeProgress = 0;
     state.aimWorldAngle = Math.PI / 2;
@@ -172,29 +179,26 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
     state.apples = [];
     state.shields = [];
 
-    if (stageNum > 1) {
-      const preBladeCount = Math.min(4, Math.floor(stageNum / 2));
-      for (let i = 0; i < preBladeCount; i++) {
-        state.embeddedBlades.push({
-          angle: normalizeKnifeAngle(
-            (i / preBladeCount) * Math.PI * 2 + Math.random() * 0.4,
-          ),
-        });
-      }
+    for (let i = 0; i < config.preBladeCount; i++) {
+      state.embeddedBlades.push({
+        angle: normalizeKnifeAngle(
+          (i / Math.max(1, config.preBladeCount)) * Math.PI * 2 + Math.random() * 0.22,
+        ),
+      });
     }
 
-    const appleCount = Math.floor(Math.random() * 2) + 1;
-    for (let i = 0; i < appleCount; i++) {
+    const appleOffset = Math.random() * Math.PI * 2;
+    for (let i = 0; i < config.appleCount; i++) {
       state.apples.push({
-        angle: Math.random() * Math.PI * 2,
+        angle: normalizeKnifeAngle(appleOffset + (i / config.appleCount) * Math.PI * 2),
         sliced: false,
       });
     }
 
-    if (stageNum % 4 === 0) {
+    for (let i = 0; i < config.shieldCount; i++) {
       state.shields.push({
-        startAngle: 0,
-        spanAngle: 0.8,
+        startAngle: normalizeKnifeAngle(0.25 + (i / config.shieldCount) * Math.PI * 2),
+        spanAngle: config.shieldSpan,
       });
     }
   }, []);
@@ -218,14 +222,21 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
       const throwOrigin = { x: coreX, y: bottomKnifeY };
 
       if (!isPausedRef.current && state.isAlive) {
-        state.speedChangeTimer -= dt;
-        if (state.speedChangeTimer <= 0) {
-          state.speedChangeTimer = Math.random() * 2.5 + 1.2;
-          const targetDir = Math.random() < 0.5 ? 1 : -1;
-          state.coreSpeed =
-            (2.0 + state.stage * 0.35 + Math.random() * 1.5) * targetDir;
+        const stageConfig = getKnifeStageConfig(state.stage);
+        state.stageElapsed += dt;
+        if (stageConfig.reverseInterval > 0) {
+          state.reverseTimer -= dt;
+          if (state.reverseTimer <= 0) {
+            state.coreDirection *= -1;
+            state.reverseTimer += stageConfig.reverseInterval;
+            if (soundEnabled) sounds.playWhoosh();
+          }
         }
-
+        state.coreSpeed = getKnifeStageRotationSpeed(
+          stageConfig,
+          state.stageElapsed,
+          state.coreDirection,
+        );
         state.coreAngle += state.coreSpeed * dt;
 
         if (state.isThrowing) {
@@ -619,6 +630,7 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
         knivesLeft: state.knivesRemaining,
         combo: state.combo,
         multiplier: state.multiplier,
+        stageLabel: state.stageLabel,
       });
 
       return state.isAlive;
@@ -637,6 +649,9 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
         <div className="flex items-center gap-2">
           <div className="px-2.5 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-sky-400 font-mono text-xs font-black backdrop-blur-md">
             STAGE {hudState.stage}
+          </div>
+          <div className="px-2 py-1 rounded-xl bg-[#18181B]/85 border border-sky-500/20 text-sky-200 font-mono text-[10px] font-bold backdrop-blur-md">
+            {hudState.stageLabel}
           </div>
 
           {hudState.multiplier > 1 && (

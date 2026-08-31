@@ -10,6 +10,13 @@ import {
   queuePacDirection,
   shouldCapturePacKey,
 } from '../lib/pacMazeControls';
+import {
+  getPacFrightenedDuration,
+  getPacGhostMode,
+  getPacGhostSpeed,
+  getPacGhostTarget,
+  type PacGhostMode,
+} from '../lib/pacGhostAi';
 
 // Maze Tile Grid Definition
 // 1 = Wall, 0 = Dot, 2 = Power Pellet, 3 = Empty/Spawn, 4 = Fruit Spawn, 9 = Gate
@@ -72,6 +79,8 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
     dotsLeft: 0,
     multiplier: 1,
     ghostsEatenStreak: 0,
+    level: 1,
+    ghostMode: 'SCATTER' as PacGhostMode,
   });
 
   const gameStateRef = useRef({
@@ -81,6 +90,9 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
     grid: MAZE_MAP.map((r) => [...r]),
     totalDots: 0,
     dotsEaten: 0,
+    level: 1,
+    levelElapsed: 0,
+    ghostMode: 'SCATTER' as PacGhostMode,
 
     // Player position (in tile coordinates float)
     px: 9,
@@ -201,6 +213,16 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
       const offsetY = (h - ROWS * tileSize) / 2;
 
       if (!isPausedRef.current && state.isAlive) {
+        state.levelElapsed += dt;
+        const nextGhostMode = getPacGhostMode(state.levelElapsed, state.level);
+        if (nextGhostMode !== state.ghostMode) {
+          state.ghostMode = nextGhostMode;
+          for (const ghost of state.ghosts) {
+            ghost.dirX *= -1;
+            ghost.dirY *= -1;
+          }
+        }
+
         // Mouth animation
         if (state.mouthOpening) {
           state.mouthAngle += dt * 4;
@@ -267,7 +289,7 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
             state.grid[pRow][pCol] = 3;
             state.dotsEaten++;
             state.score += 100;
-            state.frightenedTimer = 8.5; // 8.5 seconds frightened mode
+            state.frightenedTimer = getPacFrightenedDuration(state.level);
             state.ghostsEatenStreak = 0;
             onScoreUpdate(state.score);
             if (soundEnabled) sounds.playPowerUp();
@@ -320,18 +342,30 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
             if (soundEnabled) sounds.playSuccess();
             state.grid = MAZE_MAP.map((r) => [...r]);
             state.dotsEaten = 0;
+            state.level++;
+            state.levelElapsed = 0;
+            state.ghostMode = 'SCATTER';
+            state.frightenedTimer = 0;
+            state.ghostsEatenStreak = 0;
             state.px = 9;
             state.py = 16;
             state.dirX = 0;
             state.dirY = 0;
             state.nextDirX = 0;
             state.nextDirY = 0;
+            state.ghosts.forEach((ghost, index) => {
+              const starts = [[9, 10], [8, 10], [10, 10], [9, 11]] as const;
+              ghost.x = starts[index][0];
+              ghost.y = starts[index][1];
+              ghost.dirX = 0;
+              ghost.dirY = -1;
+            });
           }
         }
 
         // Ghost AI Movement
         const isFrightened = state.frightenedTimer > 0;
-        const ghostSpeed = (isFrightened ? 2.8 : 4.4) * dt;
+        const ghostSpeed = getPacGhostSpeed(state.level, isFrightened) * dt;
 
         for (const ghost of state.ghosts) {
           const gCol = Math.round(ghost.x);
@@ -345,28 +379,17 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
             ghost.x = gCol;
             ghost.y = gRow;
 
-            // Target tile determination (Chase player or Scatter or Run away)
-            let targetX = state.px;
-            let targetY = state.py;
-
+            // Each ghost keeps a distinct chase personality; global scatter windows
+            // periodically break pursuit and create route-planning opportunities.
+            let targetX: number;
+            let targetY: number;
             if (isFrightened) {
               targetX = Math.random() * COLS;
               targetY = Math.random() * ROWS;
-            } else if (ghost.id === 1) {
-              // Pinky targets 4 tiles ahead of player
-              targetX = state.px + state.dirX * 4;
-              targetY = state.py + state.dirY * 4;
-            } else if (ghost.id === 2) {
-              // Inky flank
-              targetX = state.px * 2 - state.ghosts[0].x;
-              targetY = state.py * 2 - state.ghosts[0].y;
-            } else if (ghost.id === 3) {
-              // Clyde (wanders if close, chases if far)
-              const d = Math.hypot(ghost.x - state.px, ghost.y - state.py);
-              if (d < 5) {
-                targetX = ghost.scatterX;
-                targetY = ghost.scatterY;
-              }
+            } else {
+              const target = getPacGhostTarget(ghost, state.ghosts, state, state.ghostMode);
+              targetX = target.x;
+              targetY = target.y;
             }
 
             // Available moves (cannot reverse 180 directly)
@@ -648,7 +671,9 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
           prev.powerTime === pTime &&
           prev.dotsLeft === dLeft &&
           prev.multiplier === mult &&
-          prev.ghostsEatenStreak === state.ghostsEatenStreak
+          prev.ghostsEatenStreak === state.ghostsEatenStreak &&
+          prev.level === state.level &&
+          prev.ghostMode === state.ghostMode
         ) {
           return prev;
         }
@@ -659,6 +684,8 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
           dotsLeft: dLeft,
           multiplier: mult,
           ghostsEatenStreak: state.ghostsEatenStreak,
+          level: state.level,
+          ghostMode: state.ghostMode,
         };
       });
 
@@ -678,6 +705,10 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
       {/* Top HUD Display */}
       <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 pointer-events-none gap-2 flex-wrap">
         <div className="flex items-center gap-2">
+          <div className="px-2.5 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-sky-300 font-mono text-[10px] font-black backdrop-blur-md">
+            LEVEL {hudState.level} · {hudState.ghostMode}
+          </div>
+
           {/* Lives */}
           <div className="px-2.5 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] flex items-center gap-1 text-amber-400 font-mono text-xs font-black backdrop-blur-md">
             <span>LIVES:</span>
