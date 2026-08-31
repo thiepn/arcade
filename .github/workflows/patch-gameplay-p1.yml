@@ -38,11 +38,9 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/games/PerfectStopGame.tsx src/games/ReactionGame.tsx src/lib/perfectStopGameplay.ts src/lib/reactionGameplay.ts src/data/games.ts scripts/audit-gameplay-p1.ts scripts/audit-release-32.ts package.json .github/workflows/ci.yml scripts/patch-gameplay-p1-meta.py
+          git add src/data/games.ts scripts/audit-release-32.ts package.json scripts/patch-gameplay-p1-meta.py
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m 'Upgrade P1 gameplay depth'
+          git commit -m 'Wire P1 gameplay certification'
           git push origin HEAD:gameplay/p1-depth-upgrade
-
-# retry current branch head
