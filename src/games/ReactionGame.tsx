@@ -84,7 +84,7 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
 
   const startRound = (index: number) => {
     clearRoundTimers();
-    const config = REACTION_ROUNDS[index];
+    const config = getSessionRound(index);
     attemptLockedRef.current = false;
     setMode('WAITING');
     setLightsCount(0);

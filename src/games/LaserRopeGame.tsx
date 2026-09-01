@@ -10,6 +10,7 @@ import {
   getLaserRopeRedlineReward,
   getLaserRopeRedlineSpeed,
 } from '../lib/laserRopeRedline';
+import { canApplyLaserRopeModeChange } from '../lib/laserRopeBalance';
 
 interface OrbItem {
   id: number;
@@ -242,37 +243,64 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
           state.speedTarget = Math.min(5.4, 2.2 + state.jumpStreak * 0.1);
         }
 
-        // Mode change (Low jump vs High slide vs Dual)
+        // Mode change (Low jump vs High slide vs Dual). P16 keeps the existing
+        // difficulty curve, but does not allow a newly announced mode to become
+        // relevant immediately before its next bottom crossing.
         state.modeChangeTimer -= dt;
         if (state.modeChangeTimer <= 0) {
-          state.modeChangeTimer = Math.random() * 4.5 + 4.0;
+          let nextMode: 'LOW' | 'HIGH' | 'DUAL' = 'LOW';
           if (state.jumpStreak > 6 && Math.random() < 0.4) {
-            state.laserMode = 'HIGH';
-            // HIGH is always a single sweep. Explicitly reset this after DUAL so
-            // the previous two-beam state cannot leak into the new mode.
-            state.beamsCount = 1;
-            state.popups.push({
-              id: state.nextId++,
-              x: centerX,
-              y: groundY - 150,
-              text: '⚠️ HIGH BEAM - SLIDE / DUCK!',
-              color: '#A855F7',
-              life: 1.2,
-            });
+            nextMode = 'HIGH';
           } else if (state.jumpStreak >= 12 && Math.random() < 0.35) {
-            state.laserMode = 'DUAL';
-            state.beamsCount = 2;
-            state.popups.push({
-              id: state.nextId++,
-              x: centerX,
-              y: groundY - 150,
-              text: '⚠️ DUAL BEAM - JUMP!',
-              color: '#F43F5E',
-              life: 1.0,
-            });
+            nextMode = 'DUAL';
+          }
+
+          const candidateBeamsCount = nextMode === 'DUAL' ? 2 : 1;
+          const transitionBaseSpeed = state.isFeverActive ? state.sweepSpeed * 0.75 : state.sweepSpeed;
+          const transitionSpeed = getLaserRopeRedlineSpeed(
+            transitionBaseSpeed,
+            state.redlineActive,
+          );
+
+          if (canApplyLaserRopeModeChange(
+            state.sweepAngle,
+            state.direction,
+            transitionSpeed,
+            candidateBeamsCount,
+          )) {
+            state.modeChangeTimer = Math.random() * 4.5 + 4.0;
+
+            if (nextMode === 'HIGH') {
+              state.laserMode = 'HIGH';
+              // Preserve the certified feedback contract: HIGH always collapses
+              // a previous DUAL pattern back to exactly one beam.
+              state.beamsCount = 1;
+              state.popups.push({
+                id: state.nextId++,
+                x: centerX,
+                y: groundY - 150,
+                text: '⚠️ HIGH BEAM - SLIDE / DUCK!',
+                color: '#A855F7',
+                life: 1.2,
+              });
+            } else if (nextMode === 'DUAL') {
+              state.laserMode = 'DUAL';
+              state.beamsCount = 2;
+              state.popups.push({
+                id: state.nextId++,
+                x: centerX,
+                y: groundY - 150,
+                text: '⚠️ DUAL BEAM - JUMP!',
+                color: '#F43F5E',
+                life: 1.0,
+              });
+            } else {
+              state.laserMode = 'LOW';
+              state.beamsCount = 1;
+            }
           } else {
-            state.laserMode = 'LOW';
-            state.beamsCount = 1;
+            // Retry soon without lowering sweep speed or granting invulnerability.
+            state.modeChangeTimer = 0.08;
           }
         }
 
