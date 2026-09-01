@@ -1,0 +1,49 @@
+name: P16 Patch
+
+on:
+  push:
+    branches: [gameplay/p16-balance-certification]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-certify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: gameplay/p16-balance-certification
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - name: Apply P16 source patch
+        run: python3 scripts/patch-p16.py
+      - run: bun run quality:gameplay-p16
+      - run: bun run quality:gameplay-p6
+      - run: bun run quality:gameplay-p12
+      - run: bun run quality:rope
+      - run: bun run quality:rope-feedback
+      - run: bun run quality:rope-phase-c
+      - run: bun run quality:frame-rate
+      - run: bun run quality:hud-render
+      - run: bun run quality:lifecycle
+      - run: bun run quality:mobile
+      - run: bunx tsc --noEmit
+      - run: bun run build
+      - name: Commit certified P16 source changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/games/ReactionGame.tsx src/games/LaserRopeGame.tsx package.json scripts/audit-release-32.ts
+          if git diff --cached --quiet; then
+            echo 'No P16 source changes to commit'
+          else
+            git commit -m 'Apply P16 balance corrections'
+            git push origin HEAD:gameplay/p16-balance-certification
+          fi
