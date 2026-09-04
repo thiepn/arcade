@@ -106,10 +106,14 @@ assert(RHYTHM_HIT_WINDOWS_MS.good === 190, 'Rhythm GOOD window changed');
 assert(RHYTHM_MISS_WINDOW_MS === 230, 'Rhythm MISS window changed');
 assert(RHYTHM_LATENCY_MIN_MS === -200 && RHYTHM_LATENCY_MAX_MS === 200, 'Rhythm calibration bounds changed');
 
-// Bounded shared runtime: no per-event DOM allocation and no pointer interception.
+// Bounded shared runtime: no per-event DOM allocation, pointer interception, or stale shell timers.
 assert(P17_MAX_FEEDBACK_NODES === 8, `P17 feedback pool changed from 8 to ${P17_MAX_FEEDBACK_NODES}`);
 assert(P17_FEEDBACK_EVENT === 'arcade:p17-feedback', 'P17 explicit feedback bridge name changed');
 assert(runtime.includes('Array.from({ length: P17_MAX_FEEDBACK_NODES }'), 'P17 runtime no longer creates a fixed feedback pool');
+assert(runtime.includes('timers: Set<number>;'), 'P17 shell state does not own animation timers');
+assert(runtime.includes('state.timers.add(timer);'), 'P17 runtime does not register shell animation timers');
+assert(runtime.includes('for (const timer of state.timers) window.clearTimeout(timer);'), 'P17 cleanup does not cancel shell animation timers');
+assert(runtime.includes('state.timers.clear();'), 'P17 cleanup does not clear timer ownership');
 assert(runtime.includes('state.layer.remove();'), 'P17 runtime does not remove its feedback layer during cleanup');
 assert(runtime.includes('state.observer.disconnect();'), 'P17 runtime does not disconnect per-shell MutationObserver');
 assert(runtime.includes('pruneDetachedShells();'), 'P17 runtime does not prune exited game shells');
@@ -202,5 +206,5 @@ if (errors.length) {
 }
 
 console.log('P17 GAME FEEL / FEEDBACK CERTIFICATION — PASS');
-console.log('32/32 games have explicit feel profiles and certification rows; bounded shared feedback, live semantic gameplay signals, 17 guarded canvas-shake paths, CSS reduced motion, mobile/runtime cleanup and grade/timing preservation are enforced.');
+console.log('32/32 games have explicit feel profiles and certification rows; bounded shared feedback, live semantic gameplay signals, teardown-owned timers, 17 guarded canvas-shake paths, CSS reduced motion, mobile/runtime cleanup and grade/timing preservation are enforced.');
 console.log('Subjective real-device feel remains a manual acceptance activity and is not represented as an automated fun score.');
