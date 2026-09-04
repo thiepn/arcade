@@ -11,6 +11,8 @@ const assert = (condition: boolean, message: string) => {
 const registry = read('src/data/games.ts');
 const app = read('src/App.tsx');
 const header = read('src/components/Header.tsx');
+const filterBar = read('src/components/FilterBar.tsx');
+const errorBoundary = read('src/components/ErrorBoundary.tsx');
 const shell = read('src/components/GameShell.tsx');
 const p18Runtime = read('src/lib/gameClarityRuntime.ts');
 const runtime = read('src/lib/arcadeCohesionRuntime.ts');
@@ -69,6 +71,14 @@ for (const landmark of ["GAME PAUSED", "SESSION COMPLETE", "NEW HIGH SCORE!", "g
 assert(p18Runtime.includes("normalise(node.textContent ?? '') === 'GAME PAUSED'"), 'P18 pause landmark contract changed');
 assert(p18Runtime.includes("text === 'SESSION COMPLETE' || text === 'NEW HIGH SCORE!'"), 'P18 result landmark contract changed');
 
+// Home semantics: one true library landmark, separate controls region, named product controls.
+assert((app.match(/id="library-section"/g) ?? []).length === 1, 'App must expose exactly one library-section landmark');
+assert(/<main\b[^>]*\bid="library-section"/.test(app), 'library-section must remain the semantic game-library main landmark');
+assert(!filterBar.includes('id="library-section"'), 'FilterBar duplicates the game-library landmark');
+assert(filterBar.includes('id="library-controls"'), 'FilterBar does not expose the canonical library-controls region');
+assert(filterBar.includes('aria-label="Search games"'), 'FilterBar search input lacks a product-level accessible name');
+assert(filterBar.includes('aria-label="Game categories"'), 'FilterBar category navigation lacks an accessible name');
+
 // Header/product semantics: the brand must be a real control, not a clickable generic element.
 assert(/<button\b[^>]*\bid="brand-logo-btn"/.test(header), 'P19 brand identity is not implemented as a native button');
 assert(!/<div\b[^>]*\bid="brand-logo-btn"/.test(header), 'clickable brand div remains after P19');
@@ -77,6 +87,13 @@ for (const id of ['search-toggle-btn','sound-toggle-btn','stats-open-btn','heade
 }
 assert(header.includes('aria-label="Open global leaderboards"'), 'P19 leaderboard utility lacks an explicit accessible name');
 assert(header.includes("aria-label={soundEnabled ? 'Mute sound' : 'Unmute sound'}"), 'P19 home sound utility does not expose state in its accessible name');
+
+// Recovery actions must distinguish retrying the failed surface from safely returning to the arcade.
+assert(errorBoundary.includes('private handleRetry'), 'P19 recovery surface lacks an independent retry path');
+assert(errorBoundary.includes('private handleBackToArcade'), 'P19 recovery surface lacks a safe Back to Arcade path');
+assert(errorBoundary.includes('RETRY'), 'P19 recovery surface lacks Retry copy');
+assert(errorBoundary.includes('BACK TO ARCADE'), 'P19 game recovery surface lacks Back to Arcade copy');
+assert(!errorBoundary.includes('stack trace'), 'P19 recovery surface exposes developer stack language');
 
 // CSS contract: shared geometry, focus, mobile and reduced-motion branches must exist.
 for (const marker of [
@@ -181,6 +198,8 @@ assert(browserAudit.includes('navigation stress'), 'P19 browser audit does not c
 assert(browserAudit.includes('settings persistence'), 'P19 browser audit does not certify shared settings persistence');
 assert(browserAudit.includes('orientation recovery'), 'P19 browser audit does not certify viewport/orientation recovery');
 assert(browserAudit.includes('exit leaked P19'), 'P19 browser audit does not certify P19 cleanup');
+assert(browserAudit.includes("locator('main#library-section')"), 'P19 browser audit does not bind to the canonical library main landmark');
+assert(browserAudit.includes("overlay.contains(document.activeElement)"), 'P19 browser audit does not wait for pause focus containment');
 
 // Existing App architecture/features remain present rather than being replaced with a P19 metagame.
 assert(app.includes('<RecentlyPlayedSection'), 'P19 unexpectedly removed the existing recent-games surface');
