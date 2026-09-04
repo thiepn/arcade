@@ -128,14 +128,17 @@ const decorateShell = () => {
   }
 
   // Keep the global sound setting semantically identical between the home header
-  // and every game shell. The visible Lucide icon is already the canonical state
-  // source in GameShell; P19 exposes that same state to assistive technology.
+  // and every game shell. The visible Lucide icon is the canonical state source.
+  // P18 may independently decorate the same button from its legacy title text, so
+  // P19 watches aria-label changes and restores the state-aware product label.
   const soundButton = shell.querySelector<HTMLButtonElement>('#game-sound-btn');
   if (soundButton) {
     const iconClass = soundButton.querySelector('svg')?.getAttribute('class') ?? '';
     const soundEnabled = iconClass.includes('lucide-volume-2') && !iconClass.includes('lucide-volume-x');
-    soundButton.setAttribute('aria-label', soundEnabled ? 'Mute sound' : 'Unmute sound');
-    soundButton.setAttribute('aria-pressed', String(soundEnabled));
+    const label = soundEnabled ? 'Mute sound' : 'Unmute sound';
+    const pressed = String(soundEnabled);
+    if (soundButton.getAttribute('aria-label') !== label) soundButton.setAttribute('aria-label', label);
+    if (soundButton.getAttribute('aria-pressed') !== pressed) soundButton.setAttribute('aria-pressed', pressed);
   }
 
   const stage = shell.querySelector('main');
@@ -196,7 +199,12 @@ export const installArcadeCohesionRuntime = () => {
   installed = true;
   decorate();
   observer = new MutationObserver(decorate);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['aria-label'],
+  });
 
   teardownGlobal = () => {
     observer?.disconnect();
