@@ -131,12 +131,26 @@ assert(main.includes('installGameFeelRuntime();'), 'main.tsx does not install P1
 const gameFiles = readdirSync(join(root, 'src', 'games')).filter((name) => name.endsWith('Game.tsx'));
 assert(gameFiles.length === 32, `P17 expected 32 game modules, found ${gameFiles.length}`);
 const unguardedCanvasMotion: string[] = [];
+const canvasShakeFiles: string[] = [];
 for (const file of gameFiles) {
   const source = read(`src/games/${file}`);
   assert(!source.includes('gameFeelRuntime'), `${file} couples gameplay simulation directly to P17 feedback runtime`);
-  const hasCanvasShake = /shake/i.test(source) && /ctx\.translate\s*\(/.test(source);
-  if (hasCanvasShake && !source.includes('isArcadeReducedMotion')) unguardedCanvasMotion.push(file);
+
+  // Distinguish actual camera-shake transforms from ordinary object transforms.
+  // Vanguard, for example, stores screenShake state but currently only uses
+  // ctx.translate for enemy rendering, so it must not receive a fake guard.
+  const translateUsesShake = /ctx\.translate\s*\([^;]{0,220}shake/i.test(source);
+  const shakeBranchTranslates = /if\s*\([^)]*shake[^)]*\)\s*\{[\s\S]{0,360}?ctx\.translate\s*\(/i.test(source);
+  const hasCanvasShake = translateUsesShake || shakeBranchTranslates;
+  if (hasCanvasShake) {
+    canvasShakeFiles.push(file);
+    if (!source.includes('isArcadeReducedMotion')) unguardedCanvasMotion.push(file);
+  }
 }
+assert(
+  canvasShakeFiles.length === 17,
+  `P17 expected 17 real canvas camera-shake games, found ${canvasShakeFiles.length}: ${canvasShakeFiles.join(', ')}`,
+);
 assert(
   unguardedCanvasMotion.length === 0,
   `canvas camera-shake games lack P17 reduced-motion guard: ${unguardedCanvasMotion.join(', ')}`,
@@ -175,5 +189,5 @@ if (errors.length) {
 }
 
 console.log('P17 GAME FEEL / FEEDBACK CERTIFICATION — PASS');
-console.log('32/32 games have explicit feel profiles and certification rows; bounded shared feedback, canvas/CSS reduced motion, mobile/runtime cleanup and grade/timing preservation are enforced.');
+console.log('32/32 games have explicit feel profiles and certification rows; bounded shared feedback, 17 guarded canvas-shake paths, CSS reduced motion, mobile/runtime cleanup and grade/timing preservation are enforced.');
 console.log('Subjective real-device feel remains a manual acceptance activity and is not represented as an automated fun score.');
