@@ -7,8 +7,11 @@ Use this checklist for every production release or material gameplay rollout.
 - Pull request is based on the current `main`.
 - Full CI is green, including `quality:release32`.
 - Targeted game/system regression audits are green.
+- For P17-or-later gameplay releases, `quality:gameplay-p17` and `quality:browser-p17` are green and the 32-game feel certification remains complete.
 - TypeScript, D1 local migrations, Worker smoke test, Worker dry run, root build, Pages build, MA3, and MA4 pass.
 - Runtime/gameplay changes have desktop and mobile interaction verification.
+- Reduced-motion behavior preserves warnings, success/failure information, and timing-critical cues.
+- On a physical touch device, spot-check input latency, audio hierarchy, haptic restraint, high-speed readability, restart/exit cleanup, and game switching before experiential sign-off.
 - `CHANGELOG.md` describes user-visible changes.
 - Package/release version metadata is internally consistent when publishing a numbered release.
 - No temporary migration, patch, debug, or one-shot workflow files remain.

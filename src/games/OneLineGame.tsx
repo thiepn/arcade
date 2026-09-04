@@ -14,6 +14,7 @@ import {
   getOneLineMasteryReward,
   isOneLineMasteryClear,
 } from '../lib/oneLineMastery';
+import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 interface Point {
   x: number;
@@ -402,7 +403,9 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
       ctx.save();
 
       if (state.shake > 0) {
-        ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+        if (!isArcadeReducedMotion()) {
+          ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+        }
         state.shake *= Math.pow(0.88, Math.max(0.001, Math.min(dt, 0.05) * 60));
         if (state.shake < 0.2) state.shake = 0;
       }

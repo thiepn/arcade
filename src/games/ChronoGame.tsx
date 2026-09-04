@@ -21,6 +21,7 @@ import {
   getChronoFocusCharges,
   isChronoFocusHit,
 } from '../lib/chronoFocusMastery';
+import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 interface WallPattern {
   radius: number;
@@ -392,7 +393,9 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
       ctx.save();
 
       if (state.shake > 0) {
-        ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+        if (!isArcadeReducedMotion()) {
+          ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+        }
         state.shake *= Math.pow(0.88, frameScale);
         if (state.shake < 0.2) state.shake = 0;
       }

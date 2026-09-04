@@ -58,6 +58,7 @@ jobs:
       - run: bun run quality:gameplay-p14
       - run: bun run quality:gameplay-p15
       - run: bun run quality:gameplay-p16
+      - run: bun run quality:gameplay-p17
       - run: bun run quality:lifecycle
       - run: bun run quality:mobile
       - run: bun run quality:rope
@@ -124,6 +125,7 @@ jobs:
             exit 1
           fi
           P3_CHROME_PATH="$chrome" bun run quality:browser-p3
+          P17_CHROME_PATH="$chrome" bun run quality:browser-p17
       - run: MA3_EXPECT_BASE=/ bun run quality:ma3
       - run: MA4_EXPECT_BASE=/ bun run quality:ma4
       - run: bun run build:pages

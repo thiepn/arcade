@@ -13,6 +13,7 @@ import {
   getStackPerfectWindow,
   shouldEarnStackFocus,
 } from '../lib/stackMastery';
+import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 interface Block {
   x: number;
@@ -411,7 +412,9 @@ export const StackGame: React.FC<GameComponentProps> = ({
 
       // Camera shake
       if (state.shake > 0) {
-        ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+        if (!isArcadeReducedMotion()) {
+          ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+        }
         state.shake *= getFrameInvariantDecay(0.88, effectFrameScale);
         if (state.shake < 0.2) state.shake = 0;
       }

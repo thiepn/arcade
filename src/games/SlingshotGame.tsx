@@ -17,6 +17,7 @@ import {
   isSlingshotMissionComplete,
   type SlingshotMissionEvent,
 } from '../lib/slingshotMastery';
+import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 interface PlanetNode {
   id: number;
@@ -813,10 +814,12 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
 
       ctx.save();
       if (st.screenShake > 0) {
-        ctx.translate(
+        if (!isArcadeReducedMotion()) {
+          ctx.translate(
           (Math.random() - 0.5) * st.screenShake,
           (Math.random() - 0.5) * st.screenShake
-        );
+          );
+        }
       }
 
       // Deep space backdrop

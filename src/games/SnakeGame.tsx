@@ -7,6 +7,7 @@ import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { getFrameInvariantDecay, getFrameScale } from '../lib/frameRateRuntime';
 import { getSnakeFirewallCells, getSnakeFirewallStage } from './snakeExperience';
 import { extendSnakeGhostTimerForThread, getSnakePhaseThreadReward } from '../lib/snakePhaseMastery';
+import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 interface Point {
   x: number;
@@ -485,7 +486,9 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
 
       // Screen Shake
       if (state.shake > 0) {
-        ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+        if (!isArcadeReducedMotion()) {
+          ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+        }
         state.shake *= getFrameInvariantDecay(0.88, frameScale);
         if (state.shake < 0.2) state.shake = 0;
       }
