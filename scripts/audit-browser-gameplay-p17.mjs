@@ -60,44 +60,59 @@ const runGame = async (page, profile, gameId) => {
     assert(initial.layerWidth > 100 && initial.layerHeight > 100, 'feedback layer collapsed');
     assert(initial.motion === initial.expectedMotion, `motion preference mismatch: ${initial.motion}`);
 
-    const stage = page.locator('.game-shell main');
-    const box = await stage.boundingBox();
+    const box = await page.locator('.game-shell main').boundingBox();
     assert(box, 'game stage missing');
-    const x = box.x + box.width * 0.5;
-    const y = box.y + box.height * 0.55;
+    const inputState = await page.evaluate(({ x, y, pointerType }) => {
+      const target = document.querySelector('.game-shell main');
+      if (!target) return { active: false };
+      target.dispatchEvent(new PointerEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+        pointerId: 17,
+        pointerType,
+        isPrimary: true,
+        clientX: x,
+        clientY: y,
+        buttons: 1,
+      }));
+      const active = Boolean(document.querySelector('.p17-feedback-burst.is-active[data-p17-kind="input"]'));
+      target.dispatchEvent(new PointerEvent('pointerup', {
+        bubbles: true,
+        cancelable: true,
+        pointerId: 17,
+        pointerType,
+        isPrimary: true,
+        clientX: x,
+        clientY: y,
+        buttons: 0,
+      }));
+      return { active };
+    }, {
+      x: box.x + box.width * 0.5,
+      y: box.y + box.height * 0.55,
+      pointerType: profile.isMobile ? 'touch' : 'mouse',
+    });
+    assert(inputState.active, 'pointer input did not receive immediate P17 acknowledgement');
 
-    if (profile.isMobile) {
-      await page.evaluate(({ x, y }) => {
-        const target = document.querySelector('.game-shell main');
-        if (!target) return;
-        target.dispatchEvent(new PointerEvent('pointerdown', {
-          bubbles: true, cancelable: true, pointerId: 17, pointerType: 'touch', isPrimary: true,
-          clientX: x, clientY: y, buttons: 1,
-        }));
-        target.dispatchEvent(new PointerEvent('pointerup', {
-          bubbles: true, cancelable: true, pointerId: 17, pointerType: 'touch', isPrimary: true,
-          clientX: x, clientY: y, buttons: 0,
-        }));
-      }, { x, y });
-    } else {
-      await page.mouse.click(x, y);
-    }
-
-    const inputActive = await page.locator('.p17-feedback-burst.is-active[data-p17-kind="input"]').count();
-    assert(inputActive >= 1, 'pointer input did not receive immediate P17 acknowledgement');
-
-    await page.evaluate(() => {
+    const masteryState = await page.evaluate(() => {
       window.dispatchEvent(new CustomEvent('arcade:p17-feedback', { detail: { kind: 'mastery' } }));
+      return {
+        burst: Boolean(document.querySelector('.p17-feedback-burst.is-active[data-p17-kind="mastery"]')),
+        stage: Boolean(document.querySelector('.game-shell main > div.p17-stage-mastery')),
+      };
     });
-    assert(await page.locator('.p17-feedback-burst.is-active[data-p17-kind="mastery"]').count() >= 1, 'mastery feedback did not activate');
-    assert(await page.locator('.game-shell main > div.p17-stage-mastery').count() >= 1, 'mastery hierarchy did not reach the stage');
+    assert(masteryState.burst, 'mastery feedback did not activate');
+    assert(masteryState.stage, 'mastery hierarchy did not reach the stage');
 
-    await page.waitForTimeout(190);
-    await page.evaluate(() => {
+    const failureState = await page.evaluate(() => {
       window.dispatchEvent(new CustomEvent('arcade:p17-feedback', { detail: { kind: 'failure' } }));
+      return {
+        burst: Boolean(document.querySelector('.p17-feedback-burst.is-active[data-p17-kind="failure"]')),
+        stage: Boolean(document.querySelector('.game-shell main > div.p17-stage-failure')),
+      };
     });
-    assert(await page.locator('.p17-feedback-burst.is-active[data-p17-kind="failure"]').count() >= 1, 'failure feedback did not activate');
-    assert(await page.locator('.game-shell main > div.p17-stage-failure').count() >= 1, 'failure hierarchy did not reach the stage');
+    assert(failureState.burst, 'failure feedback did not activate');
+    assert(failureState.stage, 'failure hierarchy did not reach the stage');
 
     const overflow = await page.evaluate(() => {
       const shell = document.querySelector('.game-shell');
@@ -116,6 +131,7 @@ const runGame = async (page, profile, gameId) => {
 
     await page.locator('#game-back-btn').click();
     await play.waitFor({ state: 'visible', timeout: 5000 });
+    await page.waitForFunction(() => document.querySelectorAll('.p17-feedback-layer').length === 0, null, { timeout: 2000 });
     const afterExit = await page.evaluate(() => ({
       shells: document.querySelectorAll('.game-shell').length,
       layers: document.querySelectorAll('.p17-feedback-layer').length,
