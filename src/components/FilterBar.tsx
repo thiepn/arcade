@@ -40,17 +40,18 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   }, [searchOpen]);
 
   return (
-    <div id="library-section" className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-4 flex flex-col gap-3">
+    <div id="library-controls" aria-label="Game library controls" className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-4 flex flex-col gap-3">
       {/* Search Input Bar (Shown if toggled or if query active) */}
       {(searchOpen || searchQuery) && (
         <div className="relative w-full max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#71717A]" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#71717A]" aria-hidden="true" />
           <input
             ref={searchInputRef}
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search games..."
+            aria-label="Search games"
             className="w-full pl-10 pr-9 py-2 rounded-full bg-[#18181B] border border-[#27272A] text-sm text-[#E4E4E7] placeholder-[#71717A] focus:outline-none focus:border-[#F43F5E] transition-colors"
           />
           {searchQuery && (
@@ -58,8 +59,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               type="button"
               onClick={() => onSearchChange('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[#71717A] hover:text-white"
+              aria-label="Clear game search"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           )}
         </div>
@@ -67,7 +69,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
       {/* Category Pills & Total Counter */}
       <div className="flex items-center justify-between gap-3 overflow-x-auto pb-1 scrollbar-none">
-        <nav className="flex items-center gap-2 min-w-max">
+        <nav aria-label="Game categories" className="flex items-center gap-2 min-w-max">
           {CATEGORIES.map((cat) => {
             const isSelected = selectedCategory === cat.id;
             return (
@@ -84,6 +86,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                     ? 'bg-[#F43F5E] text-white shadow-[0_0_12px_rgba(244,63,94,0.3)]'
                     : 'bg-[#18181B] border border-[#27272A] text-[#A1A1AA] hover:text-white hover:border-[#3F3F46]'
                 }`}
+                aria-pressed={isSelected}
               >
                 {cat.label}
               </button>
@@ -91,11 +94,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           })}
         </nav>
 
-        <span className="text-[11px] text-[#52525B] font-mono-arcade hidden sm:block shrink-0">
+        <span className="text-[11px] text-[#52525B] font-mono-arcade hidden sm:block shrink-0" aria-live="polite">
           {totalVisible} {totalVisible === 1 ? 'GAME' : 'GAMES'}
         </span>
       </div>
     </div>
   );
 };
-
