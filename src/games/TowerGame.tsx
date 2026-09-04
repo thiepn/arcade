@@ -962,7 +962,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
       if (state.screenShake > 0) {
         const shakeX = (Math.random() - 0.5) * state.screenShake * 2;
         const shakeY = (Math.random() - 0.5) * state.screenShake * 2;
-                if (!isArcadeReducedMotion()) {
+        if (!isArcadeReducedMotion()) {
           ctx.translate(shakeX, shakeY);
         }
       }

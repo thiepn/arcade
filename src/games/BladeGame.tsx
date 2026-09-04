@@ -601,7 +601,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
       // Screen shake decays by elapsed time, not render count.
       const frameScale = Math.max(0.001, Math.min(dt, 0.05) * 60);
       if (state.shake > 0) {
-                if (!isArcadeReducedMotion()) {
+        if (!isArcadeReducedMotion()) {
           ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
         }
         state.shake *= Math.pow(0.86, frameScale);

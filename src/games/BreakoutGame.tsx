@@ -366,7 +366,7 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
       if (state.shake > 0) {
         const sx = (Math.random() - 0.5) * state.shake;
         const sy = (Math.random() - 0.5) * state.shake;
-                if (!isArcadeReducedMotion()) {
+        if (!isArcadeReducedMotion()) {
           ctx.translate(sx, sy);
         }
       }

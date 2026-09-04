@@ -734,7 +734,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
 
       ctx.save();
       if (st.screenShake > 0) {
-                if (!isArcadeReducedMotion()) {
+        if (!isArcadeReducedMotion()) {
           ctx.translate(
           (Math.random() - 0.5) * st.screenShake,
           (Math.random() - 0.5) * st.screenShake

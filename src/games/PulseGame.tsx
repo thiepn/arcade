@@ -442,7 +442,7 @@ export const PulseGame: React.FC<GameComponentProps> = ({
       ctx.save();
 
       if (state.shake > 0) {
-                if (!isArcadeReducedMotion()) {
+        if (!isArcadeReducedMotion()) {
           ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
         }
         state.shake *= getFrameInvariantDecay(0.88, activeFrameScale);

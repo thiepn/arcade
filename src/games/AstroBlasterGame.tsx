@@ -468,7 +468,7 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
 
       ctx.save();
       if (state.shake > 0) {
-                if (!isArcadeReducedMotion()) {
+        if (!isArcadeReducedMotion()) {
           ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
         }
         const frameScale = Math.max(0, Math.min(deltaSec, 0.08) * 60);

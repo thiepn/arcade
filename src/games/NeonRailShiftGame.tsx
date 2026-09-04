@@ -443,7 +443,7 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
       const shakeY = state.screenShake > 0 ? (Math.random() - 0.5) * state.screenShake * 0.45 : 0;
 
       ctx.save();
-            if (!isArcadeReducedMotion()) {
+      if (!isArcadeReducedMotion()) {
         ctx.translate(shakeX, shakeY);
       }
 
