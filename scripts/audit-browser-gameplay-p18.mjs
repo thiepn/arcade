@@ -150,7 +150,8 @@ const runGame = async (page, profile, gameId) => {
     });
     assert(tabInside, 'Tab escaped the pause dialog');
 
-    await page.getByRole('button', { name: /RESUME/i }).click();
+    const pauseDialog = page.locator('[data-p18-dialog="pause"]');
+    await pauseDialog.getByRole('button', { name: /^RESUME \(ESC\)$/i }).click();
     await page.waitForFunction(() => !document.querySelector('[data-p18-dialog="pause"]'), null, { timeout: 2000 });
     await page.waitForFunction(() => document.activeElement?.id === 'game-pause-btn', null, { timeout: 1500 });
 
