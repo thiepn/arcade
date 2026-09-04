@@ -1,0 +1,222 @@
+/* P18 — clarity, teaching and accessibility. Presentation-only; no gameplay geometry. */
+
+.game-shell [data-p18-clarity-panel="true"] {
+  user-select: text;
+}
+
+.p18-pause-overlay,
+.p18-result-overlay {
+  overscroll-behavior: contain;
+}
+
+.p18-pause-dialog,
+.p18-result-dialog {
+  max-height: calc(100dvh - 1rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.p18-how-to-play-card {
+  margin-block: 0.65rem !important;
+}
+
+.p18-clarity-panel {
+  display: grid;
+  gap: 0.55rem;
+  color: #e4e4e7;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.p18-objective,
+.p18-mastery,
+.p18-watch {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.p18-objective p,
+.p18-mastery p,
+.p18-watch p,
+.p18-result-row p {
+  margin: 0;
+  color: #e4e4e7;
+}
+
+.p18-teaching-label,
+.p18-result-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.625rem;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  font-weight: 900;
+  color: #67e8f9;
+}
+
+.p18-controls-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.p18-teaching-group {
+  min-width: 0;
+  border: 1px solid rgb(63 63 70 / 0.9);
+  border-radius: 0.55rem;
+  background: rgb(24 24 27 / 0.72);
+  padding: 0.45rem 0.5rem;
+}
+
+.p18-teaching-list {
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.15rem;
+  color: #f4f4f5;
+}
+
+.p18-teaching-list li {
+  overflow-wrap: anywhere;
+}
+
+.p18-mastery {
+  border-left: 2px solid rgb(192 132 252 / 0.8);
+  padding-left: 0.5rem;
+}
+
+.p18-mastery .p18-teaching-label {
+  color: #d8b4fe;
+}
+
+.p18-watch {
+  border-left: 2px solid rgb(251 113 133 / 0.85);
+  padding-left: 0.5rem;
+}
+
+.p18-watch .p18-teaching-label {
+  color: #fda4af;
+}
+
+.p18-result-guidance {
+  width: 100%;
+  display: grid;
+  gap: 0.45rem;
+  margin: -0.4rem 0 1rem;
+  text-align: left;
+}
+
+.p18-result-row {
+  display: grid;
+  gap: 0.15rem;
+  border-radius: 0.65rem;
+  border: 1px solid #27272a;
+  background: #0b0b0e;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.p18-result-row:first-child .p18-result-label {
+  color: #fda4af;
+}
+
+.p18-first-run-hint {
+  position: absolute;
+  z-index: 35;
+  top: clamp(0.6rem, 3vh, 1.25rem);
+  left: 50%;
+  max-width: min(90%, 32rem);
+  transform: translateX(-50%);
+  pointer-events: none;
+  border: 1px solid rgb(103 232 249 / 0.6);
+  border-radius: 999px;
+  background: rgb(9 9 11 / 0.88);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.35), 0 0 18px rgb(34 211 238 / 0.12);
+  padding: 0.45rem 0.8rem;
+  color: #f4f4f5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: clamp(0.68rem, 2.8vw, 0.78rem);
+  line-height: 1.25;
+  font-weight: 900;
+  letter-spacing: 0.035em;
+  text-align: center;
+  text-wrap: balance;
+  animation: p18-hint-in 180ms ease-out both;
+}
+
+@keyframes p18-hint-in {
+  from { opacity: 0; transform: translate(-50%, -4px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.game-shell button:focus-visible,
+.game-shell [role="button"]:focus-visible {
+  outline: 3px solid #67e8f9;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px rgb(8 145 178 / 0.22);
+}
+
+@media (pointer: coarse) {
+  .game-shell #game-back-btn,
+  .game-shell #game-fullscreen-btn,
+  .game-shell #game-restart-btn,
+  .game-shell #game-pause-btn,
+  .game-shell #game-sound-btn,
+  .game-shell #game-haptics-btn {
+    min-width: 42px;
+    min-height: 42px;
+    touch-action: manipulation;
+  }
+
+  .game-shell .p18-pause-dialog button,
+  .game-shell .p18-result-dialog button {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+}
+
+@media (max-width: 420px) {
+  .p18-pause-dialog,
+  .p18-result-dialog {
+    max-height: calc(100dvh - 0.5rem);
+    padding: 0.9rem !important;
+  }
+
+  .p18-controls-grid {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .p18-clarity-panel,
+  .p18-result-row {
+    font-size: 0.7rem;
+  }
+
+  .p18-first-run-hint {
+    top: 0.45rem;
+    max-width: calc(100% - 1rem);
+  }
+}
+
+@media (max-height: 620px) {
+  .p18-pause-overlay,
+  .p18-result-overlay {
+    justify-content: flex-start !important;
+    overflow-y: auto;
+    padding: 0.25rem !important;
+  }
+
+  .p18-pause-dialog,
+  .p18-result-dialog {
+    margin: auto;
+  }
+}
+
+html[data-p17-motion="reduced"] .p18-first-run-hint,
+@media (prefers-reduced-motion: reduce) {
+  .p18-first-run-hint {
+    animation: none;
+  }
+}
