@@ -10,6 +10,10 @@ const add = (element: Element | null | undefined, ...classes: string[]) => {
   if (element instanceof HTMLElement) element.classList.add(...classes);
 };
 
+const setAttributeIfChanged = (element: Element, name: string, value: string) => {
+  if (element.getAttribute(name) !== value) element.setAttribute(name, value);
+};
+
 const decorateHome = () => {
   const root = document.getElementById('root');
   const app = root?.firstElementChild;
@@ -135,10 +139,8 @@ const decorateShell = () => {
   if (soundButton) {
     const iconClass = soundButton.querySelector('svg')?.getAttribute('class') ?? '';
     const soundEnabled = iconClass.includes('lucide-volume-2') && !iconClass.includes('lucide-volume-x');
-    const label = soundEnabled ? 'Mute sound' : 'Unmute sound';
-    const pressed = String(soundEnabled);
-    if (soundButton.getAttribute('aria-label') !== label) soundButton.setAttribute('aria-label', label);
-    if (soundButton.getAttribute('aria-pressed') !== pressed) soundButton.setAttribute('aria-pressed', pressed);
+    setAttributeIfChanged(soundButton, 'aria-label', soundEnabled ? 'Mute sound' : 'Unmute sound');
+    setAttributeIfChanged(soundButton, 'aria-pressed', String(soundEnabled));
   }
 
   const stage = shell.querySelector('main');
@@ -159,10 +161,10 @@ const decorateShell = () => {
       else if (label.includes('RESTART')) add(button, 'p19-action-secondary');
       else if (label.includes('EXIT TO ARCADE')) {
         button.textContent = 'BACK TO ARCADE';
-        button.setAttribute('aria-label', 'Back to Arcade');
+        setAttributeIfChanged(button, 'aria-label', 'Back to Arcade');
         add(button, 'p19-action-tertiary');
       } else if (label.includes('BACK TO ARCADE')) {
-        button.setAttribute('aria-label', 'Back to Arcade');
+        setAttributeIfChanged(button, 'aria-label', 'Back to Arcade');
         add(button, 'p19-action-tertiary');
       }
     }
