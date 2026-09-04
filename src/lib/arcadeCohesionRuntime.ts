@@ -127,6 +127,17 @@ const decorateShell = () => {
     add(shell.querySelector(`#${id}`), 'p19-icon-button');
   }
 
+  // Keep the global sound setting semantically identical between the home header
+  // and every game shell. The visible Lucide icon is already the canonical state
+  // source in GameShell; P19 exposes that same state to assistive technology.
+  const soundButton = shell.querySelector<HTMLButtonElement>('#game-sound-btn');
+  if (soundButton) {
+    const iconClass = soundButton.querySelector('svg')?.getAttribute('class') ?? '';
+    const soundEnabled = iconClass.includes('lucide-volume-2') && !iconClass.includes('lucide-volume-x');
+    soundButton.setAttribute('aria-label', soundEnabled ? 'Mute sound' : 'Unmute sound');
+    soundButton.setAttribute('aria-pressed', String(soundEnabled));
+  }
+
   const stage = shell.querySelector('main');
   add(stage, 'p19-shell-stage');
   add(stage?.firstElementChild, 'p19-stage-frame');
