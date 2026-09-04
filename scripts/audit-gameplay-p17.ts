@@ -21,9 +21,9 @@ const report = read('docs/P17_GAME_FEEL_CERTIFICATION.md');
 const p15 = read('docs/P15_ROSTER_AUDIT.md');
 const p16 = read('docs/P16_BALANCE_CERTIFICATION.md');
 const runtime = read('src/lib/gameFeelRuntime.ts');
-const profilesSource = read('src/lib/gameFeelProfiles.ts');
 const css = read('src/p17-game-feel.css');
 const main = read('src/main.tsx');
+const motionPreferences = read('src/lib/motionPreferences.ts');
 const haptics = read('src/lib/haptics.ts');
 const sound = read('src/lib/sound.ts');
 const browserAudit = read('scripts/audit-browser-gameplay-p17.mjs');
@@ -113,6 +113,7 @@ assert(runtime.includes('Array.from({ length: P17_MAX_FEEDBACK_NODES }'), 'P17 r
 assert(runtime.includes('state.layer.remove();'), 'P17 runtime does not remove its feedback layer during cleanup');
 assert(runtime.includes('state.observer.disconnect();'), 'P17 runtime does not disconnect per-shell MutationObserver');
 assert(runtime.includes('pruneDetachedShells();'), 'P17 runtime does not prune exited game shells');
+assert(runtime.includes('if (!emitBurst(state, kind)) continue;'), 'P17 semantic feedback does not share the bounded cooldown gate');
 assert(!runtime.includes('appendChild(document.createElement') && !runtime.includes('createElement(\'span\')\n    state.stage.appendChild'), 'P17 runtime appears to allocate feedback nodes per event');
 assert(css.includes('pointer-events: none'), 'P17 feedback layer can intercept pointer input');
 assert(css.includes('overflow: hidden'), 'P17 feedback layer is not clipped to game stage');
@@ -121,17 +122,25 @@ assert(css.includes('High-speed games use smaller'), 'P17 high-speed readability
 assert(css.includes('Reduced motion retains information'), 'P17 reduced-motion information replacement is missing');
 assert(css.includes('html[data-p17-motion="reduced"]'), 'P17 explicit reduced-motion branch is missing');
 assert(css.includes('@media (prefers-reduced-motion: reduce)'), 'P17 OS reduced-motion media query is missing');
+assert(motionPreferences.includes("dataset.p17Motion === 'reduced'"), 'canvas games cannot consume the global reduced-motion state');
 
-// Main installation must be global and independent from game simulation modules.
+// Main installation must be global. Gameplay remains uncoupled except for the narrow reduced-motion guard.
 assert(main.includes("import { installGameFeelRuntime } from './lib/gameFeelRuntime';"), 'main.tsx does not import P17 runtime');
 assert(main.includes("import './p17-game-feel.css';"), 'main.tsx does not import P17 styles');
 assert(main.includes('installGameFeelRuntime();'), 'main.tsx does not install P17 runtime');
 const gameFiles = readdirSync(join(root, 'src', 'games')).filter((name) => name.endsWith('Game.tsx'));
 assert(gameFiles.length === 32, `P17 expected 32 game modules, found ${gameFiles.length}`);
+const unguardedCanvasMotion: string[] = [];
 for (const file of gameFiles) {
   const source = read(`src/games/${file}`);
-  assert(!source.includes('gameFeelRuntime'), `${file} couples gameplay simulation directly to P17 runtime`);
+  assert(!source.includes('gameFeelRuntime'), `${file} couples gameplay simulation directly to P17 feedback runtime`);
+  const hasCanvasShake = /shake/i.test(source) && /ctx\.translate\s*\(/.test(source);
+  if (hasCanvasShake && !source.includes('isArcadeReducedMotion')) unguardedCanvasMotion.push(file);
 }
+assert(
+  unguardedCanvasMotion.length === 0,
+  `canvas camera-shake games lack P17 reduced-motion guard: ${unguardedCanvasMotion.join(', ')}`,
+);
 
 // Reuse the existing lightweight audio/haptic architecture; do not add heavy media loops.
 assert(haptics.includes('lastScoreVibrateTime') && haptics.includes('> 75'), 'ordinary haptic score throttling changed');
@@ -166,5 +175,5 @@ if (errors.length) {
 }
 
 console.log('P17 GAME FEEL / FEEDBACK CERTIFICATION — PASS');
-console.log('32/32 games have explicit feel profiles and certification rows; bounded shared feedback, reduced motion, mobile/runtime cleanup and grade/timing preservation are enforced.');
+console.log('32/32 games have explicit feel profiles and certification rows; bounded shared feedback, canvas/CSS reduced motion, mobile/runtime cleanup and grade/timing preservation are enforced.');
 console.log('Subjective real-device feel remains a manual acceptance activity and is not represented as an automated fun score.');
