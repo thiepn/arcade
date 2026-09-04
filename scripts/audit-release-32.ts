@@ -100,8 +100,10 @@ const requiredQualityGates = [
   'quality:gameplay-p15',
   'quality:gameplay-p16',
   'quality:gameplay-p17',
+  'quality:gameplay-p18',
   'quality:browser-p3',
   'quality:browser-p17',
+  'quality:browser-p18',
   'quality:lifecycle',
   'quality:mobile',
   'quality:rope',
@@ -154,8 +156,10 @@ const requiredAuditFiles = [
   'scripts/audit-gameplay-p15.ts',
   'scripts/audit-gameplay-p16.ts',
   'scripts/audit-gameplay-p17.ts',
+  'scripts/audit-gameplay-p18.ts',
   'scripts/audit-browser-gameplay-p3.mjs',
   'scripts/audit-browser-gameplay-p17.mjs',
+  'scripts/audit-browser-gameplay-p18.mjs',
   'scripts/audit-game-lifecycle.ts',
   'scripts/audit-mobile-runtime.ts',
   'scripts/audit-laser-rope-presentation.ts',
@@ -190,6 +194,11 @@ assert(existsSync(join(root, 'docs', 'P17_GAME_FEEL_CERTIFICATION.md')), 'P17 ce
 assert(existsSync(join(root, 'src', 'lib', 'gameFeelRuntime.ts')), 'P17 shared feel runtime is missing');
 assert(existsSync(join(root, 'src', 'lib', 'gameFeelProfiles.ts')), 'P17 game feel profile registry is missing');
 assert(existsSync(join(root, 'src', 'p17-game-feel.css')), 'P17 bounded feedback stylesheet is missing');
+assert(existsSync(join(root, 'docs', 'P18_CLARITY_ACCESSIBILITY_CERTIFICATION.md')), 'P18 certification document is missing');
+assert(existsSync(join(root, 'docs', 'P18_TERMINOLOGY_REGISTRY.md')), 'P18 terminology registry is missing');
+assert(existsSync(join(root, 'src', 'lib', 'gameClarityRuntime.ts')), 'P18 shared clarity runtime is missing');
+assert(existsSync(join(root, 'src', 'lib', 'gameClarityProfiles.ts')), 'P18 clarity profile registry is missing');
+assert(existsSync(join(root, 'src', 'p18-clarity-accessibility.css')), 'P18 clarity/accessibility stylesheet is missing');
 
 if (errors.length) {
   console.error('FINAL 32-GAME RELEASE / REGRESSION AUDIT — FAIL');
@@ -199,4 +208,4 @@ if (errors.length) {
 
 console.log('FINAL 32-GAME RELEASE / REGRESSION AUDIT — PASS');
 console.log('32 source modules / 32 lazy registry entries / 32 Worker rules are in exact parity.');
-console.log('All game contracts, permanent regression gates through P17, repository hardening, roster metadata, mobile/MA4 counts, and cleanup constraints are certified.');
+console.log('All game contracts, permanent regression gates through P18, repository hardening, roster metadata, mobile/MA4 counts, and cleanup constraints are certified.');
