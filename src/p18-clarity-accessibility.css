@@ -214,7 +214,10 @@
   }
 }
 
-html[data-p17-motion="reduced"] .p18-first-run-hint,
+html[data-p17-motion="reduced"] .p18-first-run-hint {
+  animation: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .p18-first-run-hint {
     animation: none;
