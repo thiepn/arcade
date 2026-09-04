@@ -66,8 +66,8 @@ const syncMotionPreference = () => {
 };
 
 const identifyGame = (shell: HTMLElement) => {
-  const heading = normalise(shell.querySelector('h1')?.textContent ?? '');
-  return P17_GAME_TITLE_TO_ID[heading] ?? 'unknown';
+  const title = shell.querySelector('h1 > span')?.textContent ?? shell.querySelector('h1')?.textContent ?? '';
+  return P17_GAME_TITLE_TO_ID[normalise(title)] ?? 'unknown';
 };
 
 const readHeaderMetric = (shell: HTMLElement, label: 'SCORE' | 'BEST') => {
