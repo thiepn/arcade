@@ -99,11 +99,11 @@ const emitBurst = (
   kind: P17FeedbackKind,
   clientX?: number,
   clientY?: number,
-) => {
+): boolean => {
   const now = performance.now();
   const previous = state.semanticCooldowns.get(kind) ?? -Infinity;
   const cooldown = kind === 'mastery' || kind === 'transition' ? 180 : 70;
-  if (kind !== 'input' && now - previous < cooldown) return;
+  if (kind !== 'input' && now - previous < cooldown) return false;
   state.semanticCooldowns.set(kind, now);
 
   const node = state.nodes[state.nodeCursor % state.nodes.length];
@@ -132,6 +132,7 @@ const emitBurst = (
   if (kind === 'warning') restartClass(state.stage, 'p17-stage-warning', lifetime);
   if (kind === 'strong') restartClass(state.stage, 'p17-stage-strong', lifetime);
   if (kind === 'transition') restartClass(state.stage, 'p17-stage-transition', lifetime);
+  return true;
 };
 
 const classifySemanticText = (raw: string): P17FeedbackKind | null => {
@@ -160,11 +161,13 @@ const scanSemanticMutation = (state: ShellState, mutation: MutationRecord) => {
     }
     const kind = classifySemanticText(text);
     if (!kind) continue;
+    // Apply one cooldown to the whole semantic event, including the text class,
+    // so rapidly mutating combo/HUD text cannot accumulate timers or style flushes.
+    if (!emitBurst(state, kind)) continue;
     const anchor = node instanceof HTMLElement ? node : node.parentElement;
     if (anchor && state.stage.contains(anchor)) {
       restartClass(anchor, `p17-semantic-${kind}`, kind === 'mastery' ? 420 : 260);
     }
-    emitBurst(state, kind);
   }
 };
 
@@ -265,7 +268,7 @@ const onPointerDown = (event: PointerEvent) => {
   if (!state) return;
   const element = event.target instanceof Element ? event.target : null;
   const control = element?.closest('button, [role="button"]') as HTMLElement | null;
-  if (control && !state.stage.contains(control)) restartClass(control, 'p17-control-ack', 140);
+  if (control) restartClass(control, 'p17-control-ack', 140);
   if (element && state.stage.contains(element)) emitBurst(state, 'input', event.clientX, event.clientY);
 };
 
