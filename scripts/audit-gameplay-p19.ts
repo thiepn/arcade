@@ -70,8 +70,8 @@ assert(p18Runtime.includes("normalise(node.textContent ?? '') === 'GAME PAUSED'"
 assert(p18Runtime.includes("text === 'SESSION COMPLETE' || text === 'NEW HIGH SCORE!'"), 'P18 result landmark contract changed');
 
 // Header/product semantics: the brand must be a real control, not a clickable generic element.
-assert(/<button[\s\S]{0,200}id="brand-logo-btn"/.test(header), 'P19 brand identity is not implemented as a native button');
-assert(!/<div[\s\S]{0,120}id="brand-logo-btn"/.test(header), 'clickable brand div remains after P19');
+assert(/<button\b[^>]*\bid="brand-logo-btn"/.test(header), 'P19 brand identity is not implemented as a native button');
+assert(!/<div\b[^>]*\bid="brand-logo-btn"/.test(header), 'clickable brand div remains after P19');
 for (const id of ['search-toggle-btn','sound-toggle-btn','stats-open-btn','header-leaderboards-pill-btn','header-rank-badge-btn']) {
   assert(header.includes(`id="${id}"`), `P19 header lost shared control ${id}`);
 }
