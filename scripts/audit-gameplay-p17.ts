@@ -156,9 +156,22 @@ assert(
   `canvas camera-shake games lack P17 reduced-motion guard: ${unguardedCanvasMotion.join(', ')}`,
 );
 
-// Reuse the existing lightweight audio/haptic architecture; do not add heavy media loops.
+// Reuse the existing lightweight audio/haptic architecture and turn its existing
+// semantic events into real P17 hierarchy signals. This makes canvas-only game
+// events drive the shared presentation even when no DOM text changes.
 assert(haptics.includes('lastScoreVibrateTime') && haptics.includes('> 75'), 'ordinary haptic score throttling changed');
 assert(haptics.includes("typeof navigator.vibrate === 'function'"), 'haptics no longer degrade safely when unsupported');
+assert(haptics.includes("new CustomEvent('arcade:p17-feedback'"), 'semantic haptic events no longer bridge into P17 feedback');
+for (const mapping of [
+  "public score(): void {\n    this.feedback('success');",
+  "public combo(): void {\n    this.feedback('strong');",
+  "public impact(): void {\n    this.feedback('failure');",
+  "public gameOver(): void {\n    this.feedback('failure');",
+  "public highScore(): void {\n    this.feedback('mastery');",
+  "public success(): void {\n    this.feedback('mastery');",
+]) {
+  assert(haptics.includes(mapping), `P17 live semantic haptic mapping missing: ${mapping.split('\n')[0]}`);
+}
 assert(sound.includes('AudioContext') && sound.includes('masterGain'), 'shared Web Audio engine is missing');
 assert(!sound.includes('new Audio(') && !sound.includes('HTMLAudioElement'), 'P17 audio architecture regressed to long-lived media elements');
 
@@ -189,5 +202,5 @@ if (errors.length) {
 }
 
 console.log('P17 GAME FEEL / FEEDBACK CERTIFICATION — PASS');
-console.log('32/32 games have explicit feel profiles and certification rows; bounded shared feedback, 17 guarded canvas-shake paths, CSS reduced motion, mobile/runtime cleanup and grade/timing preservation are enforced.');
+console.log('32/32 games have explicit feel profiles and certification rows; bounded shared feedback, live semantic gameplay signals, 17 guarded canvas-shake paths, CSS reduced motion, mobile/runtime cleanup and grade/timing preservation are enforced.');
 console.log('Subjective real-device feel remains a manual acceptance activity and is not represented as an automated fun score.');
