@@ -26,6 +26,7 @@ import {
   getNeonRailSurgeSpeedMultiplier,
   isNeonRailMasteryMilestone,
 } from '../lib/neonRailMastery';
+import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 type RailObjectKind = 'barrier' | 'core';
 
@@ -442,7 +443,9 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
       const shakeY = state.screenShake > 0 ? (Math.random() - 0.5) * state.screenShake * 0.45 : 0;
 
       ctx.save();
-      ctx.translate(shakeX, shakeY);
+            if (!isArcadeReducedMotion()) {
+        ctx.translate(shakeX, shakeY);
+      }
 
       const bg = ctx.createLinearGradient(0, 0, 0, height);
       bg.addColorStop(0, '#030712');

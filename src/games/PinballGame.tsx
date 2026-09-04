@@ -25,6 +25,7 @@ import {
   resolvePinballDrain,
   type PinballLayout,
 } from '../lib/pinballPhysics';
+import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 type GamePhase = 'serving' | 'playing' | 'game-over';
 
@@ -1018,10 +1019,12 @@ export const PinballGame: React.FC<GameComponentProps> = ({
 
       ctx.save();
       if (state.shake > 0) {
-        ctx.translate(
+                if (!isArcadeReducedMotion()) {
+          ctx.translate(
           (Math.random() - 0.5) * state.shake,
           (Math.random() - 0.5) * state.shake,
-        );
+          );
+        }
       }
 
       const background = ctx.createLinearGradient(0, 0, 0, height);

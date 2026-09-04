@@ -14,6 +14,7 @@ import {
   getTowerPrecisionBonus,
   isTowerPrecisionLanding,
 } from '../lib/towerApexMastery';
+import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 interface Platform {
   id: number;
@@ -961,7 +962,9 @@ export const TowerGame: React.FC<GameComponentProps> = ({
       if (state.screenShake > 0) {
         const shakeX = (Math.random() - 0.5) * state.screenShake * 2;
         const shakeY = (Math.random() - 0.5) * state.screenShake * 2;
-        ctx.translate(shakeX, shakeY);
+                if (!isArcadeReducedMotion()) {
+          ctx.translate(shakeX, shakeY);
+        }
       }
 
       // 1. Deep Space Cyber Spire Background

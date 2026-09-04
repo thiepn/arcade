@@ -12,6 +12,7 @@ import {
   isBreakoutContractComplete,
   type BreakoutContractEvent,
 } from '../lib/breakoutMastery';
+import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 interface Brick {
   x: number;
@@ -365,7 +366,9 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
       if (state.shake > 0) {
         const sx = (Math.random() - 0.5) * state.shake;
         const sy = (Math.random() - 0.5) * state.shake;
-        ctx.translate(sx, sy);
+                if (!isArcadeReducedMotion()) {
+          ctx.translate(sx, sy);
+        }
       }
 
       ctx.clearRect(-20, -20, curW + 40, curH + 40);

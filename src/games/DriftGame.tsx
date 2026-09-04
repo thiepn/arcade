@@ -13,6 +13,7 @@ import {
   getDriftStyleBonus,
   getDriftStyleEventLabel,
 } from '../lib/driftStyleRoutes';
+import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 interface Particle {
   x: number;
@@ -733,10 +734,12 @@ export const DriftGame: React.FC<GameComponentProps> = ({
 
       ctx.save();
       if (st.screenShake > 0) {
-        ctx.translate(
+                if (!isArcadeReducedMotion()) {
+          ctx.translate(
           (Math.random() - 0.5) * st.screenShake,
           (Math.random() - 0.5) * st.screenShake
-        );
+          );
+        }
       }
 
       // Deep Neon Cyberpunk Backdrop

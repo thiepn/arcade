@@ -7,6 +7,7 @@ import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/u
 import { rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
 import { createBladeLaunchTrajectory, getBladeGravity, getBladeSimulationStepBatch } from '../lib/bladeTrajectory';
 import { resolveBladePrecisionSlice } from '../lib/bladePrecisionMastery';
+import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 interface TargetItem {
   id: number;
@@ -600,7 +601,9 @@ export const BladeGame: React.FC<GameComponentProps> = ({
       // Screen shake decays by elapsed time, not render count.
       const frameScale = Math.max(0.001, Math.min(dt, 0.05) * 60);
       if (state.shake > 0) {
-        ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+                if (!isArcadeReducedMotion()) {
+          ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+        }
         state.shake *= Math.pow(0.86, frameScale);
         if (state.shake < 0.2) state.shake = 0;
       }

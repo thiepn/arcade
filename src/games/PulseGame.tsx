@@ -14,6 +14,7 @@ import {
   isPulseWagerHit,
   shouldEarnPulseWager,
 } from '../lib/pulseMastery';
+import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 interface Particle {
   x: number;
@@ -441,7 +442,9 @@ export const PulseGame: React.FC<GameComponentProps> = ({
       ctx.save();
 
       if (state.shake > 0) {
-        ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+                if (!isArcadeReducedMotion()) {
+          ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+        }
         state.shake *= getFrameInvariantDecay(0.88, activeFrameScale);
         if (state.shake < 0.2) state.shake = 0;
       }

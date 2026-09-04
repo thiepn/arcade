@@ -12,6 +12,7 @@ import {
   getChainResonanceOrder,
   isChainResonanceComplete,
 } from '../lib/chainResonanceMastery';
+import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 interface ParticleNode {
   id: number;
@@ -431,7 +432,9 @@ export const ChainGame: React.FC<GameComponentProps> = ({
       ctx.save();
 
       if (state.shake > 0) {
-        ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+                if (!isArcadeReducedMotion()) {
+          ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+        }
       }
 
       ctx.clearRect(-20, -20, curW + 40, curH + 40);

@@ -10,6 +10,7 @@ import {
   getDodgePhaseCutReward,
   isDodgePhaseCut,
 } from '../lib/dodgeMastery';
+import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 interface Hazard {
   id: number;
@@ -295,7 +296,9 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
 
       // Camera shake
       if (state.shake > 0) {
-        ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+                if (!isArcadeReducedMotion()) {
+          ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+        }
         state.shake *= getFrameInvariantDecay(0.88, effectFrameScale);
         if (state.shake < 0.2) state.shake = 0;
       }

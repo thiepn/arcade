@@ -16,6 +16,7 @@ import {
   Heart,
   Radio,
 } from 'lucide-react';
+import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 interface Ship {
   x: number;
@@ -467,7 +468,9 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
 
       ctx.save();
       if (state.shake > 0) {
-        ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+                if (!isArcadeReducedMotion()) {
+          ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+        }
         const frameScale = Math.max(0, Math.min(deltaSec, 0.08) * 60);
         state.shake *= Math.pow(0.88, frameScale);
         if (state.shake < 0.2) state.shake = 0;
