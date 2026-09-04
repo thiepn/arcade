@@ -3,12 +3,18 @@
 ## Unreleased
 
 ### Added
+- Added P18 Clarity, Teaching & Accessibility Excellence: one explicit clarity profile for every shipped game with a concise objective, essential/secondary controls, canonical mastery terminology, danger/benefit/failure guidance, next-attempt coaching, and non-color visual-redundancy evidence.
+- Added structured pause teaching (Objective / Essential / Secondary / Mastery / Watch For), concise result guidance, and selective one-time micro-hints for the 12 games whose core interactions benefit from immediate context without interrupting instant play.
+- Added accessible shell control names and shortcuts, modal pause/result semantics with focus containment/restoration, visible keyboard focus treatment, responsive touch-target floors, and a permanent mastery terminology registry.
+- Added `quality:gameplay-p18` plus a 96-session `quality:browser-p18` matrix covering all 32 games at desktop, 390px reduced-motion mobile, and 320px reduced-motion small-mobile layouts.
 - Added P17 Game Feel & Feedback Excellence: one explicit feel profile for every shipped game, a bounded shared feedback runtime with an eight-node pool, game-specific semantic success/mastery/failure hierarchy, and a permanent `quality:gameplay-p17` certification.
 - Added a dedicated P17 browser certification that exercises all 32 games in full-motion desktop and reduced-motion touch-mobile contexts, including input acknowledgement, mastery/failure hierarchy, restart stability, overflow prevention, and exit cleanup.
 
 ### Changed
+- Upgraded pause and result surfaces into compact learning/recovery surfaces while keeping all active gameplay free of persistent tutorial cards; high-speed games receive no new playfield-obscuring teaching UI.
+- Added text/shape/position redundancy for P18 teaching so the clarity layer remains understandable with reduced motion, muted audio, or haptics disabled, without claiming full screen-reader playability or WCAG conformance for realtime canvas mechanics.
 - Added reduced-motion-safe presentation feedback that preserves state information through contrast and outlines rather than motion-heavy effects, with smaller global feedback for high-speed games so hazards remain readable.
-- Preserved all P0–P16 gameplay, scoring, timing, balance, fairness and roster-grade contracts; P17 does not promote letter grades or add gameplay systems.
+- Preserved all P0–P17 gameplay, scoring, timing, balance, fairness, game-feel and roster-grade contracts; P18 changes teaching/accessibility presentation only and does not promote letter grades or add gameplay systems.
 
 ## 1.1.1 — 2026-08-29
 
