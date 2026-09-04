@@ -20,7 +20,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     console.error('Micro Arcade runtime error:', error, info.componentStack);
   }
 
-  private handleReset = () => {
+  private handleRetry = () => {
+    this.setState({ hasError: false });
+  };
+
+  private handleBackToArcade = () => {
     this.setState({ hasError: false });
     this.props.onReset?.();
   };
@@ -38,13 +42,24 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           <p className="mt-2 text-sm leading-relaxed text-zinc-400">
             This screen hit an unexpected error. Your local scores and preferences are still stored.
           </p>
-          <button
-            type="button"
-            onClick={this.handleReset}
-            className="mt-5 min-h-11 rounded-xl bg-white px-4 py-2 text-xs font-black text-black hover:bg-zinc-200"
-          >
-            TRY AGAIN
-          </button>
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <button
+              type="button"
+              onClick={this.handleRetry}
+              className="min-h-11 rounded-xl bg-white px-4 py-2 text-xs font-black text-black hover:bg-zinc-200"
+            >
+              RETRY
+            </button>
+            {this.props.onReset && (
+              <button
+                type="button"
+                onClick={this.handleBackToArcade}
+                className="min-h-11 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2 text-xs font-black text-zinc-200 hover:bg-zinc-800"
+              >
+                BACK TO ARCADE
+              </button>
+            )}
+          </div>
         </section>
       </main>
     );
