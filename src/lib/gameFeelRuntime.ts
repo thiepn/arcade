@@ -1,4 +1,4 @@
-import { P17_GAME_FEEL_PROFILES } from './gameFeelProfiles';
+import { P17_GAME_TITLE_TO_ID } from './gameFeelProfiles';
 
 export type P17FeedbackKind =
   | 'input'
@@ -67,8 +67,7 @@ const syncMotionPreference = () => {
 
 const identifyGame = (shell: HTMLElement) => {
   const heading = normalise(shell.querySelector('h1')?.textContent ?? '');
-  const profile = P17_GAME_FEEL_PROFILES.find((candidate) => heading.startsWith(candidate.title.toUpperCase()));
-  return profile?.id ?? 'unknown';
+  return P17_GAME_TITLE_TO_ID[heading] ?? 'unknown';
 };
 
 const readHeaderMetric = (shell: HTMLElement, label: 'SCORE' | 'BEST') => {
@@ -100,7 +99,6 @@ const restartClass = (
   const sequence = String((Number(element.dataset.p17Sequence ?? '0') || 0) + 1);
   element.dataset.p17Sequence = sequence;
   element.classList.remove(className);
-  // Force a style flush so repeated semantic events restart the bounded animation.
   void element.offsetWidth;
   element.classList.add(className);
   scheduleShellTimer(state, () => {
@@ -175,8 +173,6 @@ const scanSemanticMutation = (state: ShellState, mutation: MutationRecord) => {
     }
     const kind = classifySemanticText(text);
     if (!kind) continue;
-    // Apply one cooldown to the whole semantic event, including the text class,
-    // so rapidly mutating combo/HUD text cannot accumulate timers or style flushes.
     if (!emitBurst(state, kind)) continue;
     const anchor = node instanceof HTMLElement ? node : node.parentElement;
     if (anchor && state.stage.contains(anchor)) {
@@ -306,7 +302,6 @@ const onExplicitFeedback = (event: Event) => {
   emitBurst(state, custom.detail?.kind ?? 'success', custom.detail?.x, custom.detail?.y);
 };
 
-/** Explicit bridge for game-specific events that deserve semantic feedback. */
 export const emitP17GameFeel = (kind: P17FeedbackKind, detail: Omit<P17FeedbackDetail, 'kind'> = {}) => {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent(P17_FEEDBACK_EVENT, { detail: { ...detail, kind } }));
