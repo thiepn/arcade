@@ -51,6 +51,7 @@
     "quality:ma3": "bun scripts/audit-ma3.mjs",
     "quality:ma4": "bun scripts/audit-ma4.mjs",
     "quality:browser-p3": "bun scripts/audit-browser-gameplay-p3.mjs",
+    "quality:browser-p17": "bun scripts/audit-browser-gameplay-p17.mjs",
     "quality:gameplay-p4": "bun scripts/audit-gameplay-p4.ts",
     "quality:gameplay-p5": "bun scripts/audit-gameplay-p5.ts",
     "quality:gameplay-p6": "bun scripts/audit-gameplay-p6.ts",
@@ -63,7 +64,8 @@
     "quality:gameplay-p13": "bun scripts/audit-gameplay-p13.ts",
     "quality:gameplay-p14": "bun scripts/audit-gameplay-p14.ts",
     "quality:gameplay-p15": "bun scripts/audit-gameplay-p15.ts",
-    "quality:gameplay-p16": "bun scripts/audit-gameplay-p16.ts"
+    "quality:gameplay-p16": "bun scripts/audit-gameplay-p16.ts",
+    "quality:gameplay-p17": "bun scripts/audit-gameplay-p17.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
