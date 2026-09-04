@@ -1,0 +1,283 @@
+/* P19 — Arcade Cohesion. Product chrome only; never gameplay simulation. */
+
+:root {
+  --p19-radius-xs: 0.5rem;
+  --p19-radius-sm: 0.65rem;
+  --p19-radius-md: 0.8rem;
+  --p19-radius-lg: 1rem;
+  --p19-control-size: 2.5rem;
+  --p19-control-size-coarse: 2.75rem;
+  --p19-panel-bg: color-mix(in srgb, var(--arcade-bg-card) 94%, transparent);
+  --p19-panel-border: var(--arcade-border);
+  --p19-muted: var(--arcade-text-secondary);
+  --p19-focus: var(--arcade-accent-secondary);
+  --p19-overlay: rgb(10 10 11 / 0.88);
+  --p19-shadow: 0 18px 50px rgb(0 0 0 / 0.42);
+  --p19-transition: 140ms ease;
+}
+
+.p19-app {
+  background: var(--arcade-bg-base) !important;
+  color: var(--arcade-text-primary);
+}
+
+.p19-home-header,
+.p19-shell-toolbar {
+  border-color: var(--p19-panel-border) !important;
+  background-color: color-mix(in srgb, var(--arcade-bg-base) 95%, transparent) !important;
+}
+
+.p19-home-header button,
+.p19-footer-action,
+.p19-nav-button,
+.p19-icon-button,
+.p19-action-primary,
+.p19-action-secondary,
+.p19-action-tertiary {
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.p19-icon-button {
+  min-width: var(--p19-control-size);
+  min-height: var(--p19-control-size);
+  border-radius: var(--p19-radius-sm) !important;
+  border-color: var(--p19-panel-border) !important;
+  transition: border-color var(--p19-transition), background-color var(--p19-transition), color var(--p19-transition), transform var(--p19-transition) !important;
+}
+
+.p19-icon-button:hover {
+  border-color: color-mix(in srgb, var(--arcade-text-secondary) 55%, var(--p19-panel-border)) !important;
+}
+
+.p19-icon-button:active,
+.p19-nav-button:active,
+.p19-action-primary:active,
+.p19-action-secondary:active {
+  transform: scale(0.97);
+}
+
+.p19-nav-button {
+  min-height: var(--p19-control-size);
+  border-radius: var(--p19-radius-sm) !important;
+  border-color: var(--p19-panel-border) !important;
+}
+
+.p19-game-grid {
+  align-items: stretch;
+}
+
+.p19-game-card {
+  min-height: 13.75rem;
+  border-radius: var(--p19-radius-md) !important;
+  border-color: var(--p19-panel-border) !important;
+  background: color-mix(in srgb, var(--arcade-bg-surface) 94%, var(--arcade-bg-base)) !important;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.025);
+}
+
+.p19-game-card:hover,
+.p19-game-card:focus-within {
+  border-color: color-mix(in srgb, var(--arcade-accent-primary) 65%, var(--p19-panel-border)) !important;
+  box-shadow: 0 12px 34px rgb(0 0 0 / 0.36), 0 0 0 1px color-mix(in srgb, var(--arcade-accent-primary) 12%, transparent) !important;
+}
+
+.p19-card-launch:focus-visible,
+.p19-card-favorite:focus-visible,
+.p19-icon-button:focus-visible,
+.p19-nav-button:focus-visible,
+.p19-action-primary:focus-visible,
+.p19-action-secondary:focus-visible,
+.p19-action-tertiary:focus-visible,
+.p19-brand-button:focus-visible {
+  outline: 3px solid var(--p19-focus) !important;
+  outline-offset: 3px !important;
+}
+
+.p19-card-favorite {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.p19-loading-state {
+  background: var(--p19-overlay) !important;
+}
+
+.p19-loading-panel {
+  min-height: 3rem;
+  border-radius: var(--p19-radius-md) !important;
+  border-color: var(--p19-panel-border) !important;
+  background: var(--p19-panel-bg) !important;
+  box-shadow: var(--p19-shadow);
+}
+
+.p19-empty-state,
+.p19-recovery-panel {
+  border-radius: var(--p19-radius-lg) !important;
+  border-color: var(--p19-panel-border) !important;
+  background: var(--p19-panel-bg) !important;
+  box-shadow: 0 10px 34px rgb(0 0 0 / 0.22);
+}
+
+.p19-modal-overlay,
+.p19-pause-overlay,
+.p19-result-overlay {
+  background: var(--p19-overlay) !important;
+  backdrop-filter: blur(10px);
+  overscroll-behavior: contain;
+}
+
+.p19-modal-panel,
+.p19-pause-panel,
+.p19-result-panel {
+  border-radius: var(--p19-radius-lg) !important;
+  border-color: var(--p19-panel-border) !important;
+  background: var(--p19-panel-bg) !important;
+  box-shadow: var(--p19-shadow) !important;
+}
+
+.p19-modal-panel {
+  scrollbar-gutter: stable;
+}
+
+.p19-modal-header {
+  border-color: var(--p19-panel-border) !important;
+  background-color: color-mix(in srgb, var(--arcade-bg-base) 94%, transparent) !important;
+}
+
+.p19-action-primary,
+.p19-action-secondary,
+.p19-action-tertiary {
+  width: 100%;
+  min-height: 2.75rem;
+  border-radius: var(--p19-radius-md) !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.75rem;
+  font-weight: 900;
+  transition: background-color var(--p19-transition), border-color var(--p19-transition), color var(--p19-transition), transform var(--p19-transition) !important;
+}
+
+.p19-action-primary {
+  background: var(--arcade-text-primary) !important;
+  color: var(--arcade-bg-base) !important;
+}
+
+.p19-action-secondary {
+  border: 1px solid var(--p19-panel-border) !important;
+  background: color-mix(in srgb, var(--arcade-bg-surface) 92%, transparent) !important;
+  color: var(--arcade-text-primary) !important;
+}
+
+.p19-action-tertiary {
+  background: transparent !important;
+  color: var(--p19-muted) !important;
+}
+
+.p19-action-tertiary:hover {
+  color: var(--arcade-text-primary) !important;
+  background: color-mix(in srgb, var(--arcade-bg-surface) 55%, transparent) !important;
+}
+
+.p19-shell-stage {
+  min-width: 0;
+}
+
+.p19-stage-frame {
+  border-color: var(--p19-panel-border) !important;
+}
+
+.p19-shell-hint {
+  color: color-mix(in srgb, var(--arcade-text-secondary) 70%, transparent) !important;
+}
+
+.p19-footer-action {
+  min-height: 2.25rem;
+  border-radius: var(--p19-radius-sm);
+  padding-inline: 0.45rem;
+}
+
+.p19-footer-action:hover {
+  background: color-mix(in srgb, var(--arcade-bg-surface) 70%, transparent);
+}
+
+.p19-stack-hidden {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+@media (pointer: coarse) {
+  .p19-icon-button,
+  .p19-nav-button,
+  .p19-card-favorite,
+  .p19-footer-action {
+    min-width: var(--p19-control-size-coarse);
+    min-height: var(--p19-control-size-coarse);
+  }
+
+  .p19-action-primary,
+  .p19-action-secondary,
+  .p19-action-tertiary {
+    min-height: 2.75rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .p19-game-card {
+    min-height: 13rem;
+  }
+
+  .p19-modal-overlay,
+  .p19-pause-overlay,
+  .p19-result-overlay {
+    padding: 0.35rem !important;
+  }
+
+  .p19-modal-panel,
+  .p19-pause-panel,
+  .p19-result-panel {
+    max-height: calc(100dvh - 0.7rem) !important;
+  }
+}
+
+@media (max-height: 620px) {
+  .p19-modal-overlay,
+  .p19-pause-overlay,
+  .p19-result-overlay {
+    align-items: flex-start !important;
+    overflow-y: auto;
+  }
+
+  .p19-modal-panel,
+  .p19-pause-panel,
+  .p19-result-panel {
+    margin-block: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p19-game-card,
+  .p19-game-card *,
+  .p19-icon-button,
+  .p19-nav-button,
+  .p19-action-primary,
+  .p19-action-secondary,
+  .p19-action-tertiary {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .p19-game-card,
+  .p19-modal-panel,
+  .p19-pause-panel,
+  .p19-result-panel,
+  .p19-loading-panel {
+    border: 1px solid CanvasText !important;
+  }
+}
