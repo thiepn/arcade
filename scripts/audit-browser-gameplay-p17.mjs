@@ -63,7 +63,7 @@ const runGame = async (page, profile, gameId) => {
     const box = await page.locator('.game-shell main').boundingBox();
     assert(box, 'game stage missing');
     const inputState = await page.evaluate(({ x, y, pointerType }) => {
-      const target = document.querySelector('.game-shell main');
+      const target = document.querySelector('.game-shell main > div') || document.querySelector('.game-shell main');
       if (!target) return { active: false };
       target.dispatchEvent(new PointerEvent('pointerdown', {
         bubbles: true,
