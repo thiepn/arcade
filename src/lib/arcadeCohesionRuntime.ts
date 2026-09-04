@@ -139,8 +139,11 @@ const decorateShell = () => {
       const label = normalise(button.textContent ?? '');
       if (label.includes('RESUME')) add(button, 'p19-action-primary');
       else if (label.includes('RESTART')) add(button, 'p19-action-secondary');
-      else if (label.includes('EXIT TO ARCADE') || label.includes('BACK TO ARCADE')) {
+      else if (label.includes('EXIT TO ARCADE')) {
         button.textContent = 'BACK TO ARCADE';
+        button.setAttribute('aria-label', 'Back to Arcade');
+        add(button, 'p19-action-tertiary');
+      } else if (label.includes('BACK TO ARCADE')) {
         button.setAttribute('aria-label', 'Back to Arcade');
         add(button, 'p19-action-tertiary');
       }
