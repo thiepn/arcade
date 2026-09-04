@@ -58,7 +58,11 @@ const decorateRecoveryStates = () => {
     if (normalise(panel.textContent ?? '').includes('ARCADE RECOVERED')) {
       add(panel, 'p19-recovery-panel');
       panel.dataset.p19State = 'recovery';
-      for (const button of Array.from(panel.querySelectorAll('button'))) add(button, 'p19-action-primary');
+      for (const button of Array.from(panel.querySelectorAll<HTMLButtonElement>('button'))) {
+        const label = normalise(button.textContent ?? '');
+        if (label.includes('BACK TO ARCADE')) add(button, 'p19-action-secondary');
+        else add(button, 'p19-action-primary');
+      }
     }
   }
 };
