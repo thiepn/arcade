@@ -55,33 +55,59 @@ const findShakeStatements = (source: string, sourceFile: ts.SourceFile) => {
   return [...statements.values()];
 };
 
+const normalizeGuardIndentation = (source: string) => {
+  let fixes = 0;
+  const lines = source.split('\n');
+  const normalized = lines.map((line) => {
+    const match = /^( +)if \(!isArcadeReducedMotion\(\)\) \{$/.exec(line);
+    if (!match) return line;
+    const spaces = match[1].length;
+    if (spaces < 4 || spaces % 2 !== 0) return line;
+    const expected = spaces / 2;
+    // The temporary wrapper is inserted at a TypeScript node start, after the
+    // original leading indentation already present in the source. That makes
+    // only the first wrapper line exactly double-indented; halve it once.
+    fixes++;
+    return `${' '.repeat(expected)}if (!isArcadeReducedMotion()) {`;
+  });
+  return { source: normalized.join('\n'), fixes };
+};
+
 const patchFile = (path: string) => {
   let source = readFileSync(path, 'utf8');
   let sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const statements = findShakeStatements(source, sourceFile);
-  if (!statements.length) return { changed: false, count: 0 };
 
-  const edits = statements.map((statement) => {
-    const start = statement.getStart(sourceFile);
-    const end = statement.getEnd();
-    const indent = getIndent(source, start);
-    const original = source.slice(start, end);
-    const inner = original.split('\n').map((line) => `${indent}  ${line.trimStart()}`).join('\n');
-    return {
-      start,
-      end,
-      replacement: `${indent}if (!isArcadeReducedMotion()) {\n${inner}\n${indent}}`,
-    };
-  }).sort((a, b) => b.start - a.start);
+  if (statements.length) {
+    const edits = statements.map((statement) => {
+      const start = statement.getStart(sourceFile);
+      const end = statement.getEnd();
+      const indent = getIndent(source, start);
+      const original = source.slice(start, end);
+      const inner = original.split('\n').map((line) => `${indent}  ${line.trimStart()}`).join('\n');
+      return {
+        start,
+        end,
+        // start excludes existing indentation, so do not duplicate it on the
+        // first line; subsequent lines need explicit indentation.
+        replacement: `if (!isArcadeReducedMotion()) {\n${inner}\n${indent}}`,
+      };
+    }).sort((a, b) => b.start - a.start);
 
-  for (const edit of edits) source = source.slice(0, edit.start) + edit.replacement + source.slice(edit.end);
+    for (const edit of edits) source = source.slice(0, edit.start) + edit.replacement + source.slice(edit.end);
 
-  if (!source.includes(importLine)) {
-    sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-    const imports = sourceFile.statements.filter(ts.isImportDeclaration);
-    const insertion = imports.length ? imports[imports.length - 1].getEnd() : 0;
-    source = source.slice(0, insertion) + `\n${importLine}` + source.slice(insertion);
+    if (!source.includes(importLine)) {
+      sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+      const imports = sourceFile.statements.filter(ts.isImportDeclaration);
+      const insertion = imports.length ? imports[imports.length - 1].getEnd() : 0;
+      source = source.slice(0, insertion) + `\n${importLine}` + source.slice(insertion);
+    }
   }
+
+  const normalized = normalizeGuardIndentation(source);
+  source = normalized.source;
+  const changed = statements.length > 0 || normalized.fixes > 0;
+  if (!changed) return { changed: false, count: 0, formatting: 0 };
 
   writeFileSync(path, source);
 
@@ -90,19 +116,20 @@ const patchFile = (path: string) => {
   const remaining = findShakeStatements(verified, verifiedFile);
   if (remaining.length) throw new Error(`${path}: ${remaining.length} camera-shake translate calls remain unguarded`);
 
-  return { changed: true, count: statements.length };
+  return { changed: true, count: statements.length, formatting: normalized.fixes };
 };
 
 const files = readdirSync(gamesDir).filter((name) => name.endsWith('Game.tsx')).sort();
 let changedFiles = 0;
 let guardedCalls = 0;
+let formattingFixes = 0;
 for (const file of files) {
   const result = patchFile(join(gamesDir, file));
   if (!result.changed) continue;
   changedFiles++;
   guardedCalls += result.count;
-  console.log(`P17 reduced-motion guard: ${file} (${result.count} camera translate${result.count === 1 ? '' : 's'})`);
+  formattingFixes += result.formatting;
+  console.log(`P17 reduced-motion maintenance: ${file} (${result.count} new guards, ${result.formatting} formatting fixes)`);
 }
 
-if (!changedFiles) throw new Error('P17 reduced-motion patch found no unguarded canvas camera-shake translations');
-console.log(`P17 canvas reduced-motion patch complete: ${guardedCalls} camera-shake translations guarded across ${changedFiles} games.`);
+console.log(`P17 canvas reduced-motion maintenance complete: ${guardedCalls} new guards, ${formattingFixes} formatting fixes across ${changedFiles} changed games.`);
