@@ -41,6 +41,7 @@ interface ShellState {
   lastScore: number | null;
   lastBest: number | null;
   semanticCooldowns: Map<P17FeedbackKind, number>;
+  timers: Set<number>;
 }
 
 interface P17FeedbackDetail {
@@ -82,14 +83,27 @@ const readHeaderMetric = (shell: HTMLElement, label: 'SCORE' | 'BEST') => {
   return candidates[0] ?? null;
 };
 
-const restartClass = (element: HTMLElement, className: string, durationMs: number) => {
+const scheduleShellTimer = (state: ShellState, callback: () => void, durationMs: number) => {
+  const timer = window.setTimeout(() => {
+    state.timers.delete(timer);
+    callback();
+  }, durationMs);
+  state.timers.add(timer);
+};
+
+const restartClass = (
+  state: ShellState,
+  element: HTMLElement,
+  className: string,
+  durationMs: number,
+) => {
   const sequence = String((Number(element.dataset.p17Sequence ?? '0') || 0) + 1);
   element.dataset.p17Sequence = sequence;
   element.classList.remove(className);
   // Force a style flush so repeated semantic events restart the bounded animation.
   void element.offsetWidth;
   element.classList.add(className);
-  window.setTimeout(() => {
+  scheduleShellTimer(state, () => {
     if (element.dataset.p17Sequence === sequence) element.classList.remove(className);
   }, durationMs);
 };
@@ -123,15 +137,15 @@ const emitBurst = (
   node.classList.add('is-active');
 
   const lifetime = isReducedMotion() ? 120 : kind === 'mastery' || kind === 'transition' ? 440 : 260;
-  window.setTimeout(() => {
+  scheduleShellTimer(state, () => {
     if (node.dataset.p17Sequence === sequence) node.classList.remove('is-active');
   }, lifetime);
 
-  if (kind === 'mastery') restartClass(state.stage, 'p17-stage-mastery', lifetime);
-  if (kind === 'failure') restartClass(state.stage, 'p17-stage-failure', lifetime);
-  if (kind === 'warning') restartClass(state.stage, 'p17-stage-warning', lifetime);
-  if (kind === 'strong') restartClass(state.stage, 'p17-stage-strong', lifetime);
-  if (kind === 'transition') restartClass(state.stage, 'p17-stage-transition', lifetime);
+  if (kind === 'mastery') restartClass(state, state.stage, 'p17-stage-mastery', lifetime);
+  if (kind === 'failure') restartClass(state, state.stage, 'p17-stage-failure', lifetime);
+  if (kind === 'warning') restartClass(state, state.stage, 'p17-stage-warning', lifetime);
+  if (kind === 'strong') restartClass(state, state.stage, 'p17-stage-strong', lifetime);
+  if (kind === 'transition') restartClass(state, state.stage, 'p17-stage-transition', lifetime);
   return true;
 };
 
@@ -166,7 +180,7 @@ const scanSemanticMutation = (state: ShellState, mutation: MutationRecord) => {
     if (!emitBurst(state, kind)) continue;
     const anchor = node instanceof HTMLElement ? node : node.parentElement;
     if (anchor && state.stage.contains(anchor)) {
-      restartClass(anchor, `p17-semantic-${kind}`, kind === 'mastery' ? 420 : 260);
+      restartClass(state, anchor, `p17-semantic-${kind}`, kind === 'mastery' ? 420 : 260);
     }
   }
 };
@@ -180,7 +194,7 @@ const scanScore = (state: ShellState) => {
       const scoreLabel = Array.from(state.shell.querySelectorAll('header span'))
         .find((element) => normalise(element.textContent ?? '') === 'SCORE');
       const metric = scoreLabel?.parentElement as HTMLElement | null;
-      if (metric) restartClass(metric, 'p17-score-bump', 220);
+      if (metric) restartClass(state, metric, 'p17-score-bump', 220);
       const crossedMilestone = score >= 1000 && Math.floor(score / 1000) > Math.floor(state.lastScore / 1000);
       emitBurst(state, crossedMilestone ? 'strong' : 'success');
     }
@@ -192,7 +206,7 @@ const scanScore = (state: ShellState) => {
       const bestLabel = Array.from(state.shell.querySelectorAll('header span'))
         .find((element) => normalise(element.textContent ?? '') === 'BEST');
       const metric = bestLabel?.parentElement as HTMLElement | null;
-      if (metric) restartClass(metric, 'p17-best-bump', 360);
+      if (metric) restartClass(state, metric, 'p17-best-bump', 360);
     }
     state.lastBest = best;
   }
@@ -232,6 +246,7 @@ const decorateShell = (shell: HTMLElement) => {
   state.lastScore = readHeaderMetric(shell, 'SCORE');
   state.lastBest = readHeaderMetric(shell, 'BEST');
   state.semanticCooldowns = new Map();
+  state.timers = new Set();
   state.observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) scanSemanticMutation(state, mutation);
     scanScore(state);
@@ -245,6 +260,8 @@ const cleanupShell = (shell: HTMLElement) => {
   const state = shellStates.get(shell);
   if (!state) return;
   state.observer.disconnect();
+  for (const timer of state.timers) window.clearTimeout(timer);
+  state.timers.clear();
   state.layer.remove();
   shell.removeAttribute('data-p17-game');
   shell.removeAttribute('data-p17-feel');
@@ -268,7 +285,7 @@ const onPointerDown = (event: PointerEvent) => {
   if (!state) return;
   const element = event.target instanceof Element ? event.target : null;
   const control = element?.closest('button, [role="button"]') as HTMLElement | null;
-  if (control) restartClass(control, 'p17-control-ack', 140);
+  if (control) restartClass(state, control, 'p17-control-ack', 140);
   if (element && state.stage.contains(element)) emitBurst(state, 'input', event.clientX, event.clientY);
 };
 
