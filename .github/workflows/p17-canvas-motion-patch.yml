@@ -1,0 +1,38 @@
+name: P17 Canvas Motion Patch
+
+on:
+  push:
+    branches:
+      - gameplay/p17-game-feel-feedback
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[p17-motion-patched]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: gameplay/p17-game-feel-feedback
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bun scripts/p17-apply-canvas-reduced-motion.ts
+      - name: Commit guarded canvas feedback
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo 'No patch required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/games
+          git commit -m 'Guard canvas shake for reduced motion [p17-motion-patched]'
+          git push origin HEAD:gameplay/p17-game-feel-feedback
