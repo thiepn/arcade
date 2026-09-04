@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- Added P19 Arcade Cohesion: one product-level cohesion contract for the arcade home, 32 game cards, shared GameShell toolbar/stage, pause/results, app modals, loading, empty and recovery states without changing any game simulation.
+- Added permanent `quality:gameplay-p19` and `quality:browser-p19` certification, including 96 game/profile browser sessions plus home-card, navigation-stress, sound-setting persistence, modal, small-mobile and orientation-recovery checks.
+- Added `docs/P19_ARCADE_COHESION_CERTIFICATION.md` with the shared component inventory, product-vs-game identity contract, explicit no-replay/no-retention boundary, manual visual-cohesion protocol and 32-game certification matrix.
 - Added P18 Clarity, Teaching & Accessibility Excellence: one explicit clarity profile for every shipped game with a concise objective, essential/secondary controls, canonical mastery terminology, danger/benefit/failure guidance, next-attempt coaching, and non-color visual-redundancy evidence.
 - Added structured pause teaching (Objective / Essential / Secondary / Mastery / Watch For), concise result guidance, and selective one-time micro-hints for the 12 games whose core interactions benefit from immediate context without interrupting instant play.
 - Added accessible shell control names and shortcuts, modal pause/result semantics with focus containment/restoration, visible keyboard focus treatment, responsive touch-target floors, and a permanent mastery terminology registry.
@@ -11,10 +14,13 @@
 - Added a dedicated P17 browser certification that exercises all 32 games in full-motion desktop and reduced-motion touch-mobile contexts, including input acknowledgement, mastery/failure hierarchy, restart stability, overflow prevention, and exit cleanup.
 
 ### Changed
+- Normalized shared product geometry, focus rings, touch-target sizing, modal overlays/panels, action hierarchy, card weight and shell chrome while preserving per-game canvas art, palette, HUD, particles, sound and mastery identity.
+- Replaced the clickable generic home-brand element with a named native button, normalized pause exit terminology to **Back to Arcade**, and added defensive modal-stack protection so only the top app-level modal remains interactive if overlapping surfaces are ever rendered.
+- Preserved all existing favorites, recent-games, statistics, achievements, profile and leaderboard features without expanding them into replay, challenge, currency, unlock, run-history or new retention systems.
 - Upgraded pause and result surfaces into compact learning/recovery surfaces while keeping all active gameplay free of persistent tutorial cards; high-speed games receive no new playfield-obscuring teaching UI.
 - Added text/shape/position redundancy for P18 teaching so the clarity layer remains understandable with reduced motion, muted audio, or haptics disabled, without claiming full screen-reader playability or WCAG conformance for realtime canvas mechanics.
 - Added reduced-motion-safe presentation feedback that preserves state information through contrast and outlines rather than motion-heavy effects, with smaller global feedback for high-speed games so hazards remain readable.
-- Preserved all P0–P17 gameplay, scoring, timing, balance, fairness, game-feel and roster-grade contracts; P18 changes teaching/accessibility presentation only and does not promote letter grades or add gameplay systems.
+- Preserved all P0–P18 gameplay, scoring, timing, balance, fairness, game-feel, clarity and roster-grade contracts; P19 changes product cohesion only and does not promote letter grades or add gameplay systems.
 
 ## 1.1.1 — 2026-08-29
 

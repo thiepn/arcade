@@ -4,14 +4,17 @@ import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { installGameFeelRuntime } from './lib/gameFeelRuntime';
 import { installGameClarityRuntime } from './lib/gameClarityRuntime';
+import { installArcadeCohesionRuntime } from './lib/arcadeCohesionRuntime';
 import { installMobileRuntimeCompatibility } from './lib/mobileRuntime';
 import './index.css';
 import './p17-game-feel.css';
 import './p18-clarity-accessibility.css';
+import './p19-arcade-cohesion.css';
 
 installMobileRuntimeCompatibility();
 installGameFeelRuntime();
 installGameClarityRuntime();
+installArcadeCohesionRuntime();
 
 window.addEventListener('vite:preloadError', (event) => {
   event.preventDefault();
