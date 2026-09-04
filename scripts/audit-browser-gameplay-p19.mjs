@@ -46,7 +46,7 @@ const collectErrors = (page) => {
 
 const waitForHome = async (page) => {
   await page.waitForFunction(() => document.documentElement.dataset.p19Cohesion === 'ready', null, { timeout: 5000 });
-  await page.locator('#library-section').waitFor({ state: 'visible', timeout: 8000 });
+  await page.locator('main#library-section').waitFor({ state: 'visible', timeout: 8000 });
   await page.waitForFunction(() => document.querySelectorAll('[data-p19-game-card]').length === 32, null, { timeout: 5000 });
 };
 
@@ -70,12 +70,16 @@ const certifyHome = async (page, profile) => {
       brandLabel: brand?.getAttribute('aria-label') || '',
       grid: Boolean(grid),
       cards: cardData,
+      libraryLandmarks: document.querySelectorAll('#library-section').length,
+      libraryTag: document.getElementById('library-section')?.tagName || '',
+      filterControls: Boolean(document.getElementById('library-controls')),
       overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     };
   });
 
   assert(result.ready === 'ready', 'P19 runtime is not ready on home');
   assert(result.brandTag === 'BUTTON' && result.brandLabel.toLowerCase().includes('micro arcade'), 'home brand is not a named native button');
+  assert(result.libraryLandmarks === 1 && result.libraryTag === 'MAIN' && result.filterControls, `home library landmark is not unique/semantic: ${JSON.stringify(result)}`);
   assert(result.grid && result.cards.length === 32, `home card contract expected 32 canonical cards, found ${result.cards.length}`);
   assert(result.cards.every((card) => card.id && card.play === 1 && card.favorite === 1 && card.title.length > 0 && card.height >= 190), 'home card contract has incomplete/inconsistent card structure');
   assert(result.overflowX <= 2, `home has horizontal overflow: ${result.overflowX}px`);
@@ -153,6 +157,10 @@ const runGame = async (page, profile, gameId) => {
 
     await page.locator('#game-pause-btn').click();
     await page.waitForFunction(() => Boolean(document.querySelector('[data-p18-dialog="pause"][data-p19-dialog="pause"]')), null, { timeout: 3000 });
+    await page.waitForFunction(() => {
+      const overlay = document.querySelector('[data-p19-dialog="pause"]');
+      return Boolean(overlay && document.activeElement && overlay.contains(document.activeElement));
+    }, null, { timeout: 2000 });
     const pause = await page.evaluate(() => {
       const overlay = document.querySelector('[data-p19-dialog="pause"]');
       const panel = overlay?.querySelector('[data-p19-panel="pause"]');
@@ -223,13 +231,14 @@ const certifySettingsPersistence = async (page) => {
   assert(initialLabel !== toggledLabel, 'settings persistence precondition: home sound state did not toggle');
 
   await launch(page, 'orbit');
-  const orbitIcon = await page.locator('#game-sound-btn svg').getAttribute('class');
+  const orbitLabel = await page.locator('#game-sound-btn').getAttribute('aria-label');
+  assert(Boolean(orbitLabel && toggledLabel && orbitLabel.toLowerCase().startsWith(toggledLabel.split(' ')[0].toLowerCase())), `settings persistence did not reach Orbit: home=${toggledLabel} shell=${orbitLabel}`);
   await exitToHome(page);
   assert(await homeSound.getAttribute('aria-label') === toggledLabel, 'settings persistence lost after first game exit');
 
   await launch(page, 'stack');
-  const stackIcon = await page.locator('#game-sound-btn svg').getAttribute('class');
-  assert(orbitIcon === stackIcon, 'settings persistence differs across games');
+  const stackLabel = await page.locator('#game-sound-btn').getAttribute('aria-label');
+  assert(stackLabel === orbitLabel, `settings persistence differs across games: Orbit=${orbitLabel} Stack=${stackLabel}`);
   await exitToHome(page);
 
   await homeSound.click();
