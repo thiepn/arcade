@@ -81,7 +81,10 @@ const requiredAuditFiles = [
   'scripts/audit-frame-rate-global.ts','scripts/audit-hud-render-performance.ts','scripts/audit-game-lifecycle.ts','scripts/audit-mobile-runtime.ts',
   'scripts/audit-laser-rope-presentation.ts','scripts/audit-laser-rope-feedback.ts','scripts/audit-laser-rope-phase-c.ts',
   'scripts/audit-block-drop-hold.ts','scripts/audit-knife-target-aim.ts','scripts/audit-air-hockey-layout.ts','scripts/audit-neon-rail-shift.ts','scripts/audit-repository-hardening.ts',
-  ...['p0','p1','p2','p4','p5','p6','p7','p8','p9','p10','p11','p12','p13','p14','p15','p16','p17','p18','p19','p20','p21','p22','p23'].map((phase) => `scripts/audit-gameplay-${phase}.ts`),
+  'scripts/audit-gameplay-p0.ts','scripts/audit-gameplay-p1.ts','scripts/audit-gameplay-p2.ts',
+  'scripts/audit-gameplay-p4.ts','scripts/audit-gameplay-p5.ts','scripts/audit-gameplay-p6.ts','scripts/audit-gameplay-p7.ts','scripts/audit-gameplay-p8.ts','scripts/audit-gameplay-p9.ts',
+  'scripts/audit-gameplay-p10.ts','scripts/audit-gameplay-p11.ts','scripts/audit-gameplay-p12.ts','scripts/audit-gameplay-p13.ts','scripts/audit-gameplay-p14.ts','scripts/audit-gameplay-p15.ts',
+  'scripts/audit-gameplay-p16.ts','scripts/audit-gameplay-p17.ts','scripts/audit-gameplay-p18.ts','scripts/audit-gameplay-p19.ts','scripts/audit-gameplay-p20.ts','scripts/audit-gameplay-p21.ts','scripts/audit-gameplay-p22.ts','scripts/audit-gameplay-p23.ts',
   'scripts/audit-browser-gameplay-p3.mjs','scripts/audit-browser-gameplay-p17.mjs','scripts/audit-browser-gameplay-p18.mjs','scripts/audit-browser-gameplay-p19.mjs','scripts/audit-browser-gameplay-p20.mjs','scripts/audit-browser-gameplay-p21.mjs','scripts/audit-browser-gameplay-p22.mjs','scripts/audit-browser-gameplay-p23.mjs',
 ];
 for (const path of requiredAuditFiles) assert(existsSync(join(root, path)), `missing permanent regression audit ${path}`);
