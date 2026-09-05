@@ -86,9 +86,11 @@ export const createNeonRailSequence = (
 };
 
 let runtimeSequence: { sequence: NeonRailSequence; step: number } | null = null;
+let runtimeSequenceToken: Element | null = null;
 
 export const resetP22NeonRailSequenceRuntime = () => {
   runtimeSequence = null;
+  runtimeSequenceToken = null;
 };
 
 const createHistoricalPhrase = (startLane: NeonRailLane, randomValue: number): NeonRailPhrase => {
@@ -105,6 +107,12 @@ export const createNeonRailPhrase = (
   // Node/static audits retain the historical one-phrase API exactly. In the
   // browser, three normal six-row phrases are sequenced across three calls.
   if (typeof window === 'undefined') return createHistoricalPhrase(startLane, randomValue);
+
+  const token = document.querySelector('.game-shell main canvas');
+  if (token !== runtimeSequenceToken) {
+    runtimeSequence = null;
+    runtimeSequenceToken = token;
+  }
 
   if (!runtimeSequence) {
     const sequenceIndex = Math.floor(clampRandom(randomValue) * P22_NEON_RAIL_SEQUENCES.length);
