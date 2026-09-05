@@ -136,9 +136,17 @@ const exerciseCandidateInput = async (page, id) => {
     const after = await hud.getAttribute('data-p22-step');
     assert(before !== after && String(after).includes('COMBO 1+'), `Orb Cannon committed SWAP did not advance CHAMBER READ to its COMBO 1+ resolve step: ${after}`);
   } else if (id === 'matrix') {
-    await page.keyboard.press('KeyO');
-    await page.waitForTimeout(80);
-    await waitForShellText(page, ['OVERCLOCK ARMED'], 'Matrix O input did not arm existing Overclock decision');
+    const overclock = page.locator('.game-shell button').filter({ hasText: 'OVERCLOCK NEXT' });
+    assert(await overclock.count() === 1, 'Memory Matrix missing unique existing Overclock control');
+    assert(await overclock.isEnabled(), 'Memory Matrix Overclock control was unexpectedly disabled');
+    // Matrix owns this shortcut through KeyboardEvent.key, not KeyboardEvent.code.
+    await page.keyboard.press('o');
+    await page.waitForFunction(() => {
+      const control = Array.from(document.querySelectorAll('.game-shell button'))
+        .find((button) => button.textContent?.includes('OVERCLOCK'));
+      return control?.textContent?.includes('OVERCLOCK ARMED') ?? false;
+    }, null, { timeout: 1200 });
+    await waitForShellText(page, ['OVERCLOCK ARMED'], 'Matrix O key-value input did not arm existing Overclock decision');
   } else if (id === 'knifetarget') {
     await page.keyboard.press('Space');
     await page.waitForTimeout(100);
