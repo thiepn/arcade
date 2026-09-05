@@ -7,6 +7,12 @@ import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/u
 import { rescalePoint, rescaleTrail, rescaleVelocity } from '../lib/gameCoordinates';
 import { createBladeLaunchTrajectory, getBladeGravity, getBladeSimulationStepBatch } from '../lib/bladeTrajectory';
 import { resolveBladePrecisionSlice } from '../lib/bladePrecisionMastery';
+import {
+  getBladeWaveCount,
+  getBladeWavePhrase,
+  getBladeWavePhraseStep,
+  pickBladeSpawnType,
+} from '../lib/bladeWavePhrases';
 import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 interface TargetItem {
@@ -93,6 +99,8 @@ export const BladeGame: React.FC<GameComponentProps> = ({
     hasShield: false,
     precisionChain: 0,
   }, 50);
+  const [wavePhraseLabel, setWavePhraseLabel] = useState('CLEAN CUTS');
+  const [wavePhraseStep, setWavePhraseStep] = useState(1);
 
   const gameStateRef = useRef({
     score: 0,
@@ -121,6 +129,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
     spawnInterval: 65,
     waveCount: 0,
     difficultyTier: 1,
+    activePhraseId: '',
     nextId: 1,
     width: 420,
     height: 500,
@@ -142,14 +151,27 @@ export const BladeGame: React.FC<GameComponentProps> = ({
 
   const spawnWave = useCallback((w: number, h: number) => {
     const state = gameStateRef.current;
-    // Controlled wave count
-    const count = Math.min(4, 2 + Math.floor(Math.random() * (state.difficultyTier > 2 ? 3 : 2)));
+    const phrase = getBladeWavePhrase(Math.max(1, state.waveCount));
+    const phraseStep = getBladeWavePhraseStep(Math.max(1, state.waveCount));
+    const count = getBladeWaveCount(phrase);
 
-    let bombPlacedInWave = false;
+    setWavePhraseLabel(phrase.label);
+    setWavePhraseStep(phraseStep);
+    if (state.activePhraseId !== phrase.id) {
+      state.activePhraseId = phrase.id;
+      addPopup(`PHRASE — ${phrase.label}`, w / 2, Math.max(72, h * 0.18), '#FACC15', 1.2);
+      if (soundEnabled) sounds.playChime(860);
+    }
+
+    let bombsPlacedInWave = 0;
 
     for (let i = 0; i < count; i++) {
-      const rand = Math.random();
-      let type: TargetItem['type'] = 'strawberry';
+      const type = pickBladeSpawnType(phrase, {
+        hasShield: state.hasShield,
+        bombsPlaced: bombsPlacedInWave,
+      });
+      if (type === 'bomb') bombsPlacedInWave++;
+
       let name = 'Plasma Berry';
       let color = '#F43F5E';
       let glow = 'rgba(244, 63, 94, 0.4)';
@@ -158,55 +180,42 @@ export const BladeGame: React.FC<GameComponentProps> = ({
       let slicesNeeded = 1;
       let symbol = '🍓';
 
-      if (!bombPlacedInWave && rand < 0.18 && state.difficultyTier >= 2) {
-        // Red EMP Bomb
-        type = 'bomb';
+      if (type === 'bomb') {
         name = 'EMP Bomb';
         color = '#EF4444';
         glow = 'rgba(239, 68, 68, 0.6)';
         radius = 24;
         points = 0;
         symbol = '💣';
-        bombPlacedInWave = true;
-      } else if (rand < 0.04 && !state.hasShield) {
-        // Rare Shield
-        type = 'shield';
+      } else if (type === 'shield') {
         name = 'Energy Shield';
         color = '#A855F7';
         glow = 'rgba(168, 85, 247, 0.5)';
         radius = 23;
         points = 150;
         symbol = '🛡️';
-      } else if (rand < 0.22) {
-        // Cyber Kiwi
-        type = 'kiwi';
+      } else if (type === 'kiwi') {
         name = 'Cyber Kiwi';
         color = '#84CC16';
         glow = 'rgba(132, 204, 22, 0.4)';
         radius = 21;
         points = 120;
         symbol = '🥝';
-      } else if (rand < 0.42) {
-        // Quantum Watermelon
-        type = 'watermelon';
+      } else if (type === 'watermelon') {
         name = 'Cyber Melon';
         color = '#10B981';
         glow = 'rgba(16, 185, 129, 0.4)';
         radius = 29;
         points = 150;
         symbol = '🍉';
-      } else if (rand < 0.60) {
-        // Golden Mango
-        type = 'mango';
+      } else if (type === 'mango') {
         name = 'Golden Mango';
         color = '#F59E0B';
         glow = 'rgba(245, 158, 11, 0.4)';
         radius = 25;
         points = 180;
         symbol = '🥭';
-      } else if (rand < 0.78) {
-        // Solar Pineapple (2-Slice required)
-        type = 'pineapple';
+      } else if (type === 'pineapple') {
         name = 'Solar Pineapple';
         color = '#EAB308';
         glow = 'rgba(234, 179, 8, 0.4)';
@@ -214,28 +223,25 @@ export const BladeGame: React.FC<GameComponentProps> = ({
         points = 250;
         slicesNeeded = 2;
         symbol = '🍍';
-      } else if (rand < 0.90) {
-        // Neon Dragonfruit
-        type = 'dragonfruit';
+      } else if (type === 'dragonfruit') {
         name = 'Neon Dragon';
         color = '#EC4899';
         glow = 'rgba(236, 72, 153, 0.4)';
         radius = 26;
         points = 220;
         symbol = '🫐';
-      } else {
-        // Star Core Bonus
-        type = 'gold';
+      } else if (type === 'gold') {
         name = 'Star Core';
         color = '#FBBF24';
         glow = 'rgba(251, 191, 36, 0.6)';
         radius = 27;
         points = 300;
-        slicesNeeded = 1;
         symbol = '⭐';
       }
 
-      // Trajectories & Physics
+      // Trajectories & Physics remain on the P16-certified launch model. Authored
+      // phrases control composition only; bounded variation still lives inside
+      // each phrase and ordinary valid slices/Razor geometry are unchanged.
       const spawnSlot = (i + 1) / (count + 1);
       const startX = w * (0.15 + spawnSlot * 0.7 + (Math.random() - 0.5) * 0.12);
       const startY = h + 25;
@@ -267,7 +273,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
         symbol,
       });
     }
-  }, []);
+  }, [addPopup, soundEnabled]);
 
   // Razor-sharp segment collision check with responsive multi-slice combo engine
   const performSliceCheck = useCallback(
@@ -554,7 +560,12 @@ export const BladeGame: React.FC<GameComponentProps> = ({
     state.floatingTexts = [];
     state.bladeTrail = [];
     state.spawnTimer = 20;
+    state.waveCount = 0;
+    state.difficultyTier = 1;
+    state.activePhraseId = '';
     state.physicsAccumulator = 0;
+    setWavePhraseLabel('CLEAN CUTS');
+    setWavePhraseStep(1);
   }, []);
 
   useGameLoop({
@@ -633,7 +644,8 @@ export const BladeGame: React.FC<GameComponentProps> = ({
           state.waveCount++;
           spawnWave(w, h);
 
-          // Progressive Difficulty curve
+          // Progressive Difficulty curve remains score-bounded; P20 phrases
+          // structure composition without accelerating the certified cadence.
           if (state.score > 12000) {
             state.difficultyTier = 4;
             state.spawnInterval = 48;
@@ -942,6 +954,14 @@ export const BladeGame: React.FC<GameComponentProps> = ({
             />
           </div>
         )}
+      </div>
+
+      <div
+        data-p20-blade-phrase={wavePhraseLabel}
+        className="absolute top-12 left-1/2 -translate-x-1/2 z-10 max-w-[calc(100%-1rem)] px-3 py-1 rounded-full bg-black/70 border border-amber-400/30 font-mono-arcade text-[9px] sm:text-[10px] text-amber-100 whitespace-nowrap pointer-events-none"
+      >
+        <span className="font-black text-amber-300">PHRASE — {wavePhraseLabel}</span>
+        <span className="text-zinc-400"> • STEP {wavePhraseStep}/3</span>
       </div>
 
       <canvas ref={canvasRef} className="w-full h-full block cursor-crosshair" />
