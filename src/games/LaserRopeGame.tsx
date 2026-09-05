@@ -153,15 +153,15 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
   };
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code === 'Space' || event.code === 'ArrowUp' || event.code === 'KeyW') {
-        event.preventDefault();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+        e.preventDefault();
         triggerJump();
-      } else if (event.code === 'ArrowDown' || event.code === 'KeyS') {
-        event.preventDefault();
+      } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+        e.preventDefault();
         triggerSlide();
-      } else if (event.code === 'KeyF' || event.code === 'ShiftLeft' || event.code === 'ShiftRight') {
-        event.preventDefault();
+      } else if (e.code === 'KeyF' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        e.preventDefault();
         triggerRedline();
       }
     };
