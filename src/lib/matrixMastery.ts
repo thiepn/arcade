@@ -1,3 +1,6 @@
+import { requestP22GameplayEvent } from './p22GameplayEvents';
+import { getActiveMatrixProtocolSnapshot } from './matrixProtocols';
+
 export interface MatrixOverclockConfig {
   sequenceBonus: number;
   playbackScale: number;
@@ -28,5 +31,19 @@ export const getMatrixPlaybackSpeed = (baseSpeedMs: number, overclockActive: boo
 export const getMatrixStepPoints = (basePoints: number, overclockActive: boolean) =>
   Math.round(Math.max(0, basePoints) * (overclockActive ? MATRIX_OVERCLOCK.stepScoreMultiplier : 1));
 
-export const getMatrixClearPoints = (basePoints: number, overclockActive: boolean) =>
-  Math.round(Math.max(0, basePoints) * (overclockActive ? MATRIX_OVERCLOCK.clearScoreMultiplier : 1));
+export const getMatrixClearPoints = (basePoints: number, overclockActive: boolean) => {
+  const base = Math.round(Math.max(0, basePoints) * (overclockActive ? MATRIX_OVERCLOCK.clearScoreMultiplier : 1));
+  const snapshot = getActiveMatrixProtocolSnapshot();
+  const suiteBonus = requestP22GameplayEvent({
+    gameId: 'matrix',
+    kind: 'matrix-protocol-clear',
+    label: snapshot.suiteName,
+    secondaryLabel: snapshot.protocol,
+    value: snapshot.round,
+    index: snapshot.suiteStep,
+    aux: snapshot.suiteLength,
+    flag: overclockActive,
+    meta: { nextProtocol: snapshot.nextProtocol },
+  });
+  return base + suiteBonus;
+};
