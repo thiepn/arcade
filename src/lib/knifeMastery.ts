@@ -1,3 +1,6 @@
+import { requestP22GameplayEvent } from './p22GameplayEvents';
+import { getKnifeRazorRouteSide } from './knifeRazorRoutes';
+
 const TAU = Math.PI * 2;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 
@@ -50,15 +53,35 @@ export const findKnifeRazorTarget = (
   return start;
 };
 
-export const isKnifeRazorHit = (hitAngle: number, targetAngle: number, stage: number) =>
-  distance(hitAngle, targetAngle) <= getKnifeRazorTolerance(stage);
+export const isKnifeRazorHit = (hitAngle: number, targetAngle: number, stage: number) => {
+  const tolerance = getKnifeRazorTolerance(stage);
+  const hit = distance(hitAngle, targetAngle) <= tolerance;
+  if (hit) {
+    const routeSide = getKnifeRazorRouteSide(hitAngle, targetAngle, tolerance);
+    requestP22GameplayEvent({
+      gameId: 'knifetarget',
+      kind: 'razor-hit',
+      value: Math.max(1, Math.floor(stage)),
+      aux: tolerance,
+      meta: { routeSide: routeSide ?? 'PRECISION TRACE' },
+    });
+  }
+  return hit;
+};
 
 export const getKnifeRazorBonus = (precisionChain: number, stage: number) => {
   const chain = Math.max(1, Math.floor(precisionChain));
   const safeStage = Math.max(1, Math.floor(stage));
   const chainMultiplier = Math.min(3, 1 + (chain - 1) * 0.45);
   const stageMultiplier = Math.min(2.2, 1 + (safeStage - 1) * 0.06);
-  return Math.round(300 * chainMultiplier * stageMultiplier);
+  const baseReward = Math.round(300 * chainMultiplier * stageMultiplier);
+  const routeBonus = requestP22GameplayEvent({
+    gameId: 'knifetarget',
+    kind: 'razor-reward',
+    value: safeStage,
+    aux: chain,
+  });
+  return baseReward + routeBonus;
 };
 
 export const isKnifeRazorRush = (precisionChain: number) => Math.floor(precisionChain) >= 3;

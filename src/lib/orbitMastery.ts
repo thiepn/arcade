@@ -1,3 +1,5 @@
+import { noteOrbitConstellationRoute } from './orbitConstellationMastery';
+
 export interface OrbitRoute {
   name: 'TRIAD' | 'SWITCHBACK' | 'SLINGSHOT' | 'CROSSWIND';
   lanes: readonly [number, number, number, number];
@@ -13,12 +15,14 @@ export const ORBIT_ROUTES: readonly OrbitRoute[] = [
 const getRoute = (routeIndex: number) => {
   const index = Math.max(0, Math.floor(routeIndex));
   const route = ORBIT_ROUTES[Math.floor(index / 4) % ORBIT_ROUTES.length];
-  return { route, step: index % 4 };
+  return { route, step: index % 4, index };
 };
 
 export const getOrbitRouteLane = (routeIndex: number): number => {
-  const { route, step } = getRoute(routeIndex);
-  return route.lanes[step];
+  const { route, step, index } = getRoute(routeIndex);
+  const lane = route.lanes[step];
+  noteOrbitConstellationRoute(route.name, index, lane);
+  return lane;
 };
 
 export const getOrbitRouteName = (routeIndex: number): OrbitRoute['name'] =>

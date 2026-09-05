@@ -1,3 +1,8 @@
+import {
+  getOrbitConstellationClearBonus,
+  getOrbitConstellationFormationName,
+} from './orbitConstellationMastery';
+
 export interface OrbitThreatTarget {
   lane: 0 | 1 | 2;
   leadRadians: number;
@@ -50,8 +55,9 @@ export const ORBIT_THREAT_FORMATIONS: readonly OrbitThreatFormation[] = [
 ] as const;
 
 export const getOrbitThreatFormation = (index: number): OrbitThreatFormation => {
-  const normalized = Math.abs(Math.floor(index)) % ORBIT_THREAT_FORMATIONS.length;
-  return ORBIT_THREAT_FORMATIONS[normalized];
+  const formationName = getOrbitConstellationFormationName(index);
+  return ORBIT_THREAT_FORMATIONS.find((formation) => formation.name === formationName)
+    ?? ORBIT_THREAT_FORMATIONS[0];
 };
 
 export const getOrbitLaneName = (lane: number): 'INNER' | 'MID' | 'OUTER' => {
@@ -60,5 +66,7 @@ export const getOrbitLaneName = (lane: number): 'INNER' | 'MID' | 'OUTER' => {
   return 'MID';
 };
 
-export const getOrbitFormationBonus = (chain: number): number =>
-  250 * Math.min(5, Math.max(1, Math.floor(chain)));
+export const getOrbitFormationBonus = (chain: number): number => {
+  const base = 250 * Math.min(5, Math.max(1, Math.floor(chain)));
+  return base + getOrbitConstellationClearBonus(chain);
+};
