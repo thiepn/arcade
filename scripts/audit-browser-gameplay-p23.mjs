@@ -79,11 +79,12 @@ const waitForNativeReady = async (page, id) => {
   } else if (id === 'perfectstop') {
     await page.getByText('TAP OR SPACE TO LOCK', { exact: true }).waitFor({ state: 'visible', timeout: 5000 });
     await page.locator('[aria-label="Precision beacon"]').waitFor({ state: 'visible', timeout: 5000 });
+    await page.locator('.game-shell main [tabindex="0"]').first().waitFor({ state: 'visible', timeout: 5000 });
   } else if (id === 'reaction') {
     await page.getByText('WAIT FOR THE SIGNAL', { exact: true }).waitFor({ state: 'visible', timeout: 5000 });
   } else if (id === 'pulse') {
     await page.getByText(/SYNC WAGER/, { exact: false }).first().waitFor({ state: 'visible', timeout: 5000 });
-    await page.getByRole('button', { name: /PATH/i }).first().waitFor({ state: 'visible', timeout: 5000 });
+    await page.getByRole('button', { name: /D\s*\/\s*→\s*PATH/i }).waitFor({ state: 'visible', timeout: 5000 });
   } else if (id === 'laserrope') {
     await page.getByRole('button', { name: 'Jump / Double Jump' }).waitFor({ state: 'visible', timeout: 5000 });
     await page.getByRole('button', { name: 'Activate Redline' }).waitFor({ state: 'visible', timeout: 5000 });
@@ -114,16 +115,28 @@ const exercise = async (page, id) => {
       return node && node.textContent !== oldText;
     }, before, { timeout: 1800 });
   } else if (id === 'perfectstop') {
+    const gameRoot = page.locator('.game-shell main [tabindex="0"]').first();
     await page.waitForTimeout(250);
+    await gameRoot.focus();
     await page.keyboard.press('Space');
-    await page.getByText(/PERFECT|GREAT|GOOD|MISS/, { exact: false }).first().waitFor({ state: 'visible', timeout: 2500 });
+    await page.waitForFunction(() => {
+      const root = document.querySelector('.game-shell main [tabindex="0"]');
+      if (!root) return false;
+      const text = root.textContent ?? '';
+      return !text.includes('TAP OR SPACE TO LOCK')
+        && /\b(PERFECT|GREAT|GOOD|MISS)\b/.test(text)
+        && /TAP FOR|FINAL SCORE/.test(text);
+    }, null, { timeout: 2500 });
   } else if (id === 'reaction') {
     await page.keyboard.press('Space');
     await page.getByText('FALSE START', { exact: true }).waitFor({ state: 'visible', timeout: 2500 });
   } else if (id === 'pulse') {
-    const rightPath = page.getByRole('button', { name: /RIGHT PATH/i });
-    await rightPath.click();
-    await page.waitForFunction(() => (document.querySelector('[data-p23-transform="GROOVE PATH"]')?.textContent ?? '').includes('NEXT:'), null, { timeout: 1200 });
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction((oldText) => {
+      const node = document.querySelector('[data-p23-transform="GROOVE PATH"]');
+      const text = node?.textContent ?? '';
+      return text !== oldText && text.includes('NEXT:');
+    }, before, { timeout: 1200 });
     await page.keyboard.press('f');
     await page.waitForFunction(() => Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.includes('SYNC WAGER ARMED')), null, { timeout: 1200 });
     await page.keyboard.press('Space');
