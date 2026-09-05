@@ -6,15 +6,24 @@ export const ORB_BURST_EARN_COMBO = 4;
 export const ORB_BURST_EARN_DROP_COUNT = 4;
 
 export function canArmOrbBurst(charges: number, armed: boolean, hasFlyingBubble: boolean): boolean {
-  const allowed = charges > 0 && !armed && !hasFlyingBubble;
-  if (allowed) requestP22GameplayEvent({ gameId: 'bubblebuster', kind: 'orb-burst-arm' });
-  return allowed;
+  return charges > 0 && !armed && !hasFlyingBubble;
 }
 
 export function canSwapOrbChamber(hasSwappedThisTurn: boolean, hasFlyingBubble: boolean): boolean {
-  const allowed = !hasSwappedThisTurn && !hasFlyingBubble;
-  if (allowed) requestP22GameplayEvent({ gameId: 'bubblebuster', kind: 'orb-swap' });
-  return allowed;
+  return !hasSwappedThisTurn && !hasFlyingBubble;
+}
+
+/**
+ * P22 Salvo Plan events are emitted only after the corresponding game action
+ * has actually committed. Keeping the eligibility helpers above pure prevents
+ * rejected/previewed actions from advancing optional mastery state.
+ */
+export function registerOrbSalvoSwap(): number {
+  return requestP22GameplayEvent({ gameId: 'bubblebuster', kind: 'orb-swap' });
+}
+
+export function registerOrbSalvoBurstArm(): number {
+  return requestP22GameplayEvent({ gameId: 'bubblebuster', kind: 'orb-burst-arm' });
 }
 
 export function shouldEarnOrbBurst(combo: number, dropCount: number): boolean {
