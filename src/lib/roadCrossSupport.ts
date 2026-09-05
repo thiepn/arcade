@@ -20,8 +20,13 @@ export const getRoadCrossBoardMetrics = (viewportWidth: number): RoadCrossBoardM
   return { scale, renderedWidth, offsetX };
 };
 
-export const canAcceptRoadCrossMove = (jumpProgress: number): boolean => {
-  const accepted = jumpProgress >= 0.999;
-  if (accepted) requestP22GameplayEvent({ gameId: 'roadcross', kind: 'road-move-accepted' });
-  return accepted;
+export const canAcceptRoadCrossMove = (jumpProgress: number): boolean => jumpProgress >= 0.999;
+
+export const noteRoadCrossAcceptedMove = (dCol: number, dRow: number): number => {
+  const direction = dRow > 0 ? 'forward' : dRow < 0 ? 'backward' : dCol > 0 ? 'right' : 'left';
+  return requestP22GameplayEvent({
+    gameId: 'roadcross',
+    kind: 'road-move-accepted',
+    label: direction,
+  });
 };
