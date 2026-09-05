@@ -91,9 +91,9 @@ for (const marker of [
 ]) assert(p16.includes(marker), `P20 lost P16 contract marker: ${marker}`);
 
 // Existing P17/P18/P19 infrastructure is preserved rather than replaced.
-assert(p17.includes('32/32 games have explicit feel profiles'), 'P17 roster feel certification changed');
-assert(p18.includes('32/32 objectives, control maps, mastery teaching paths'), 'P18 roster clarity certification changed');
-assert(p19.includes('One arcade. Thirty-two distinct games.'), 'P19 product philosophy changed');
+assert(p17.includes('exactly **8 pooled feedback nodes** per active shell'), 'P17 bounded feedback contract changed');
+assert(p18.includes('Every shipped game has one explicit P18 clarity profile'), 'P18 roster clarity-profile contract changed');
+assert(p19.includes('The design rule is **one arcade, thirty-two distinct games**.'), 'P19 product philosophy changed');
 assert(p17Runtime.includes('POOL_SIZE = 8') || p17Runtime.includes('FEEDBACK_POOL_SIZE = 8') || p17Runtime.includes('8'), 'P17 bounded feedback runtime no longer exposes its eight-node contract');
 assert(p18Runtime.includes('setAccessibleControlNames'), 'P18 accessible control naming runtime changed');
 assert(p19Runtime.includes("shell.dataset.p19Shell = 'canonical'"), 'P19 canonical shell marker changed');
@@ -146,7 +146,7 @@ for (const marker of ['getBladeWavePhrase', 'getBladeWaveCount', 'pickBladeSpawn
 assert(blade.includes('createBladeLaunchTrajectory'), 'Laser Blade P20 replaced P16-certified trajectory model');
 assert(blade.includes('resolveBladePrecisionSlice'), 'Laser Blade P20 replaced Razor precision mastery');
 assert(bladeTrajectory.includes('BLADE_SIMULATION_HZ = 60'), 'Laser Blade 60 Hz trajectory contract changed');
-assert(bladePrecision.includes('precision'), 'Laser Blade precision mastery implementation is missing');
+assert(bladePrecision.includes('resolveBladePrecisionSlice') && bladePrecision.includes('BLADE_PRECISION_RATIO = 0.32'), 'Laser Blade precision mastery implementation is missing or changed');
 assert(!bladePhrases.includes('setTimeout') && !bladePhrases.includes('setInterval'), 'Laser Blade phrase model introduced timing side effects');
 
 // Documentation/score distribution and manual-boundary requirements.
