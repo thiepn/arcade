@@ -1,0 +1,29 @@
+.p23-pause-extension {
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  border-radius: 0.75rem;
+  background: rgba(8, 47, 73, 0.24);
+  color: #cffafe;
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.p23-pause-extension p {
+  margin: 0.3rem 0 0;
+}
+
+.p23-pause-label {
+  color: #67e8f9;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 360px), (max-height: 620px) {
+  .p23-pause-extension {
+    margin-top: 0.5rem;
+    padding: 0.55rem 0.65rem;
+    font-size: 0.64rem;
+  }
+}
