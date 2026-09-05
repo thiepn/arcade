@@ -66,5 +66,6 @@ export const getOneLineMasteryReward = (level: number, streak: number): number =
   const safeLevel = Math.max(1, Math.floor(level));
   const safeStreak = Math.max(1, Math.floor(streak));
   const streakMultiplier = 1 + Math.min(4, safeStreak - 1) * 0.2;
-  return Math.round((1200 + safeLevel * 250) * streakMultiplier);
+  const tierMultiplier = 1 + Math.min(0.3, (getOneLineMasteryTier(safeLevel) - 1) * 0.05);
+  return Math.round((1200 + safeLevel * 250) * streakMultiplier * tierMultiplier);
 };
