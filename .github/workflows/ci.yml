@@ -64,6 +64,7 @@ jobs:
       - run: bun run quality:gameplay-p20
       - run: bun run quality:gameplay-p21
       - run: bun run quality:gameplay-p22
+      - run: bun run quality:gameplay-p23
       - run: bun run quality:lifecycle
       - run: bun run quality:mobile
       - run: bun run quality:rope
@@ -103,7 +104,7 @@ jobs:
           bun worker/smoke-test.mjs
       - run: bun run worker:check
       - run: bun run build
-      - name: Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22
+      - name: Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23
         shell: bash
         run: |
           set -euo pipefail
@@ -136,6 +137,7 @@ jobs:
           P20_CHROME_PATH="$chrome" bun run quality:browser-p20
           P21_CHROME_PATH="$chrome" bun run quality:browser-p21
           P22_CHROME_PATH="$chrome" bun run quality:browser-p22
+          P23_CHROME_PATH="$chrome" bun run quality:browser-p23
       - run: MA3_EXPECT_BASE=/ bun run quality:ma3
       - run: MA4_EXPECT_BASE=/ bun run quality:ma4
       - run: bun run build:pages
