@@ -503,7 +503,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2 flex-wrap">
             <div className="px-2.5 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-pink-400 font-mono text-xs font-black backdrop-blur-md">STREAK: {hudState.jumpStreak}</div>
-            <div className="px-2 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-zinc-400 font-mono text-[10px] sm:text-xs font-black backdrop-blur-md">MODE: <span className={hudState.laserMode === 'HIGH' ? 'text-purple-300' : hudState.laserMode === 'DUAL' ? 'text-pink-400' : 'text-cyan-300'}>{hudState.laserMode}</span></div>
+            <div className="px-2 py-1 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-zinc-400 font-mono text-[10px] sm:text-xs font-black backdrop-blur-md">MODE:{' '}<span className={hudState.laserMode === 'HIGH' ? 'text-purple-300' : hudState.laserMode === 'DUAL' ? 'text-pink-400' : 'text-cyan-300'}>{hudState.laserMode}</span></div>
             {hudState.multiplier > 1 && <div className="px-2 py-1 rounded-xl bg-amber-500/20 border border-amber-500/50 text-amber-300 font-mono text-xs font-black">{hudState.multiplier}x</div>}
             {hudState.hasShield && <div className="px-2 py-1 rounded-xl bg-purple-500/20 border border-purple-500/50 text-purple-300 font-mono text-xs font-black">🛡️ SHIELD</div>}
           </div>
