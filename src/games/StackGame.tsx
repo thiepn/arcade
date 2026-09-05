@@ -353,14 +353,14 @@ export const StackGame: React.FC<GameComponentProps> = ({
       event.preventDefault();
       placeBlock();
     };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code === 'ShiftLeft' || event.code === 'ShiftRight' || event.code === 'KeyF') {
-        event.preventDefault();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyF') {
+        e.preventDefault();
         armFocus();
         return;
       }
-      if (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter') {
-        event.preventDefault();
+      if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') {
+        e.preventDefault();
         placeBlock();
       }
     };
