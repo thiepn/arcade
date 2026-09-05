@@ -52,26 +52,37 @@ const launch = async (page, id) => {
   }, id, { timeout: 5000 });
 };
 
+const waitForShellText = async (page, required, failureMessage) => {
+  try {
+    await page.waitForFunction((needles) => {
+      const text = document.querySelector('.game-shell')?.textContent?.toUpperCase() ?? '';
+      return needles.every((needle) => text.includes(needle));
+    }, required.map((value) => value.toUpperCase()), { timeout: 5000 });
+  } catch {
+    throw new Error(failureMessage);
+  }
+};
+
 const assertCandidateMarker = async (page, id) => {
+  // GameShell/P18/P19 can mount before a lazy game chunk has completed rendering.
+  // Wait for the actual game-native landmarks instead of sampling immediately.
   if (id === 'gravity') {
-    const text = await page.locator('.game-shell').innerText();
-    assert(text.includes('FLIGHT CONTRACT'), 'Gravity missing FLIGHT CONTRACT promotion landmark');
+    await waitForShellText(page, ['FLIGHT CONTRACT'], 'Gravity missing FLIGHT CONTRACT promotion landmark');
   } else if (id === 'chain') {
-    const text = await page.locator('.game-shell').innerText();
-    assert(text.includes('RESONANCE'), 'Chain missing RESONANCE promotion landmark');
-    assert(text.includes('PLASMA') && text.includes('TESLA') && text.includes('CRYO'), 'Chain three-tool identity is incomplete');
+    await waitForShellText(
+      page,
+      ['RESONANCE', 'PLASMA BLAST', 'TESLA ARC', 'CRYO VORTEX', 'CHARGES'],
+      'Chain missing Resonance or three-tool promotion landmarks',
+    );
   } else if (id === 'merge') {
-    const text = await page.locator('.game-shell').innerText();
-    assert(text.includes('CONTRACT') && text.includes('QUEUE'), 'Merge missing CONTRACT/QUEUE information hierarchy');
+    await waitForShellText(page, ['CONTRACT', 'QUEUE'], 'Merge missing CONTRACT/QUEUE information hierarchy');
   } else if (id === 'drift') {
-    const text = await page.locator('.game-shell').innerText();
-    assert(text.includes('STYLE ROUTE') && text.includes('NITRO'), 'Cyber Drift missing STYLE ROUTE/NITRO mastery landmarks');
+    await waitForShellText(page, ['STYLE ROUTE', 'NITRO BOOST', 'KM/H'], 'Cyber Drift missing Style Route/Nitro/speed promotion landmarks');
   } else if (id === 'dodge') {
-    const text = await page.locator('.game-shell').innerText();
-    assert(text.includes('WARP DASH'), 'Dodge missing WARP DASH state landmark');
+    await waitForShellText(page, ['WARP DASH'], 'Dodge missing WARP DASH state landmark');
   } else if (id === 'blade') {
     const phrase = page.locator('[data-p20-blade-phrase]');
-    await phrase.waitFor({ state: 'visible', timeout: 3000 });
+    await phrase.waitFor({ state: 'visible', timeout: 5000 });
     const label = await phrase.getAttribute('data-p20-blade-phrase');
     const text = await phrase.innerText();
     assert(label === 'CLEAN CUTS' && text.includes('PHRASE') && text.includes('STEP 1/3'), `Laser Blade authored phrase HUD invalid: ${label} / ${text}`);
@@ -152,6 +163,8 @@ const runCandidate = async (page, profile, id) => {
     }, null, { timeout: 2000 });
     const pauseText = await page.locator('[data-p19-dialog="pause"]').innerText();
     assert(pauseText.includes('OBJECTIVE') && pauseText.includes('BACK TO ARCADE'), `${id} pause lost P18/P19 teaching/navigation`);
+    if (id === 'chain') assert(pauseText.includes('RESONANCE'), 'Chain pause teaching lost Resonance mastery explanation');
+    if (id === 'drift') assert(pauseText.includes('STYLE ROUTE') && pauseText.includes('NITRO'), 'Cyber Drift pause teaching lost Style Route/Nitro explanation');
     await page.locator('[data-p19-dialog="pause"]').getByRole('button', { name: /^RESUME \(ESC\)$/i }).click();
 
     await page.locator('#game-restart-btn').click();
