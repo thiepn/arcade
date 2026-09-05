@@ -10,6 +10,28 @@ export const CHRONO_MAX_ACTIVE_WALLS = 4;
 
 const TAU = Math.PI * 2;
 
+export interface ChronoGapPhrase {
+  id: string;
+  label: string;
+  offsets: readonly (-1 | 0 | 1)[];
+}
+
+// P21 composes the already-certified one-sector transitions into short readable
+// phrases. Every offset stays inside the old ±1 reachability envelope, and the
+// planner still owns impact spacing and forced safe openings.
+export const CHRONO_GAP_PHRASES: readonly ChronoGapPhrase[] = [
+  { id: 'orientation', label: 'ORIENTATION', offsets: [0, 1, 0, -1] },
+  { id: 'weave', label: 'WEAVE', offsets: [1, 0, -1, 0] },
+  { id: 'reversal', label: 'REVERSAL', offsets: [1, -1, 1, -1] },
+  { id: 'compression', label: 'COMPRESSION', offsets: [1, 1, 0, -1, -1, 0] },
+] as const;
+
+export const getChronoGapPhrase = (currentFrame: number): ChronoGapPhrase => {
+  const sequenceIndex = Math.max(0, Math.floor(currentFrame / CHRONO_MIN_IMPACT_GAP_FRAMES));
+  const phraseIndex = Math.floor(sequenceIndex / 6) % CHRONO_GAP_PHRASES.length;
+  return CHRONO_GAP_PHRASES[phraseIndex];
+};
+
 export interface ChronoWallPlanInput {
   currentFrame: number;
   spawnRadius: number;
@@ -186,13 +208,18 @@ export const planChronoWall = ({
   if (forcedOpenSide !== null && forcedOpenSide !== undefined) {
     openSide = normalizeChronoSector(forcedOpenSide, sides);
   } else {
-    let offsets = maximumShift >= 1 ? [-1, 0, 1] : [0];
-    if (consecutiveSameGap >= 2 && maximumShift >= 1) offsets = [-1, 1];
-    const index = Math.min(
-      offsets.length - 1,
-      Math.floor(clamp(random(), 0, 0.999999) * offsets.length),
-    );
-    openSide = normalizeChronoSector(lastOpenSide + offsets[index], sides);
+    const phrase = getChronoGapPhrase(currentFrame);
+    const sequenceIndex = Math.max(0, Math.floor(currentFrame / CHRONO_MIN_IMPACT_GAP_FRAMES));
+    let offset = phrase.offsets[sequenceIndex % phrase.offsets.length];
+
+    // Bounded variation mirrors some directional beats, but never changes the
+    // certified ±1 transition vocabulary or lets one gap repeat three times.
+    if (offset !== 0 && random() < 0.18) offset = (offset * -1) as -1 | 1;
+    if (offset === 0 && consecutiveSameGap >= 2 && maximumShift >= 1) {
+      offset = random() < 0.5 ? -1 : 1;
+    }
+    if (Math.abs(offset) > maximumShift) offset = 0;
+    openSide = normalizeChronoSector(lastOpenSide + offset, sides);
   }
 
   const sameGap = openSide === normalizeChronoSector(lastOpenSide, sides);
