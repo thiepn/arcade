@@ -105,15 +105,15 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
     timerTimeoutRef.current = setTimeout(run, delayMs);
   }, []);
 
-  const startRound = (position: number) => {
+  const startRound = (index: number) => {
     clearRoundTimers();
-    const config = getSessionRound(position);
+    const config = getSessionRound(index);
     attemptLockedRef.current = false;
     setMode('WAITING');
     setLightsCount(0);
     setChoiceTarget(null);
     setResult(null);
-    setCircuitHud(getReactionCircuitLabel(position, circuitStateRef.current));
+    setCircuitHud(getReactionCircuitLabel(index, circuitStateRef.current));
 
     let currentLight = 0;
     lightsIntervalRef.current = setInterval(() => {
