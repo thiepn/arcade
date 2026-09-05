@@ -40,16 +40,18 @@ export const getTowerApexBounceVelocity = (
 export const getTowerApexReward = (basePoints: number, active: boolean): number =>
   Math.round(basePoints * (active ? TOWER_APEX_SCORE_MULTIPLIER : 1));
 
-export const getTowerPrecisionBonus = (precisionStreak: number): number =>
-  150 * Math.min(5, Math.max(1, precisionStreak));
-
-// P21 turns the existing precision streak into a compact, visible mastery route.
-// The route does not grant safety, movement, or extra Apex charges; it only rewards
-// sustaining five consecutive center landings without changing ordinary ascent.
+// P21 turns the existing precision streak into a compact mastery route. Five
+// consecutive center landings create a score-only completion beat; it grants no
+// safety, movement assistance, or extra charge beyond the existing 3-hit cadence.
 export const getTowerApexRouteBonus = (precisionStreak: number): number =>
   precisionStreak > 0 && precisionStreak % TOWER_APEX_ROUTE_LENGTH === 0
     ? TOWER_APEX_ROUTE_COMPLETE_BONUS
     : 0;
+
+export const getTowerPrecisionBonus = (precisionStreak: number): number => {
+  const base = 150 * Math.min(5, Math.max(1, precisionStreak));
+  return base + getTowerApexRouteBonus(precisionStreak);
+};
 
 export const getTowerApexRouteProgress = (precisionStreak: number): number => {
   const safe = Math.max(0, Math.floor(precisionStreak));
