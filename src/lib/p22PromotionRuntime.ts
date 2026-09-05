@@ -34,7 +34,6 @@ let pendingRoadDirection: P22RoadDirection | null = null;
 let roadPointerStart: { x: number; y: number } | null = null;
 
 const normalise = (value: string) => value.replace(/\s+/g, ' ').trim().toUpperCase();
-
 const shell = () => document.querySelector<HTMLElement>('.game-shell');
 
 const identifyGame = (element: HTMLElement): P22GameId | null => {
@@ -90,19 +89,20 @@ const ensureHud = (element: HTMLElement) => {
   return panel;
 };
 
+const setTextIfChanged = (element: HTMLElement | null, value: string) => {
+  if (element && element.textContent !== value) element.textContent = value;
+};
+
 const syncHud = (element: HTMLElement) => {
   if (!state) return;
   const panel = ensureHud(element);
   if (!panel) return;
-  panel.dataset.p22Structure = state.structure;
-  panel.dataset.p22Step = state.step;
-  panel.dataset.p22Bonus = String(state.bonus);
-  const structure = panel.querySelector<HTMLElement>('[data-p22-structure-value]');
-  const step = panel.querySelector<HTMLElement>('[data-p22-step-value]');
-  const bonus = panel.querySelector<HTMLElement>('[data-p22-bonus-value]');
-  if (structure) structure.textContent = state.structure;
-  if (step) step.textContent = state.step;
-  if (bonus) bonus.textContent = `RUN +${state.bonus.toLocaleString()}`;
+  if (panel.dataset.p22Structure !== state.structure) panel.dataset.p22Structure = state.structure;
+  if (panel.dataset.p22Step !== state.step) panel.dataset.p22Step = state.step;
+  if (panel.dataset.p22Bonus !== String(state.bonus)) panel.dataset.p22Bonus = String(state.bonus);
+  setTextIfChanged(panel.querySelector<HTMLElement>('[data-p22-structure-value]'), state.structure);
+  setTextIfChanged(panel.querySelector<HTMLElement>('[data-p22-step-value]'), state.step);
+  setTextIfChanged(panel.querySelector<HTMLElement>('[data-p22-bonus-value]'), `RUN +${state.bonus.toLocaleString()}`);
 };
 
 const extendPauseTeaching = (element: HTMLElement) => {
@@ -245,6 +245,14 @@ const onPointerUpCapture = (event: PointerEvent) => {
   else pendingRoadDirection = dy < 0 ? 'forward' : 'backward';
 };
 
+const onMutation = (mutations: MutationRecord[]) => {
+  const onlyP22 = mutations.every((mutation) => {
+    const target = mutation.target instanceof Element ? mutation.target : mutation.target.parentElement;
+    return Boolean(target?.closest('.p22-promotion-hud, .p22-pause-extension'));
+  });
+  if (!onlyP22) scan();
+};
+
 export const installP22PromotionRuntime = () => {
   if (installed || typeof window === 'undefined' || typeof document === 'undefined') return teardownGlobal ?? (() => {});
   installed = true;
@@ -253,7 +261,7 @@ export const installP22PromotionRuntime = () => {
   document.addEventListener('click', onClickCapture, true);
   document.addEventListener('pointerdown', onPointerDownCapture, true);
   document.addEventListener('pointerup', onPointerUpCapture, true);
-  observer = new MutationObserver(scan);
+  observer = new MutationObserver(onMutation);
   observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   scan();
   teardownGlobal = () => {
