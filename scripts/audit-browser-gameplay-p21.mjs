@@ -63,7 +63,7 @@ const waitForShellText = async (page, required, failureMessage) => {
   }
 };
 
-const puckMasterControl = (page) => page.locator('#air-hockey-container button').filter({ hasText: /^MASTER(?:\s|$)/i });
+const puckMasterControl = (page) => page.locator('#air-hockey-container button').filter({ hasText: 'MASTER' });
 
 const assertCandidateMarker = async (page, id) => {
   if (id === 'breakout') {
