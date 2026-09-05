@@ -422,37 +422,37 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
           </svg>
         )}
 
-        {words.map((word) => {
-          const isTargeted = activeWordId === word.id;
+        {words.map((w) => {
+          const isTargeted = activeWordId === w.id;
           return (
             <button
               type="button"
-              key={word.id}
+              key={w.id}
               onClick={(event) => {
                 event.stopPropagation();
                 const state = gameStateRef.current;
                 const previous = state.words.find((entry) => entry.id === state.activeWordId);
-                if (previous && previous.id !== word.id) previous.typedIndex = 0;
-                state.activeWordId = word.id;
-                setActiveWordId(word.id);
+                if (previous && previous.id !== w.id) previous.typedIndex = 0;
+                state.activeWordId = w.id;
+                setActiveWordId(w.id);
                 focusDeviceKeyboard();
               }}
-              aria-label={`Target ${word.word}`}
+              aria-label={`Target ${w.word}`}
               className={`absolute pointer-events-auto -translate-x-1/2 transition-all duration-75 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl font-mono-arcade text-xs sm:text-sm font-bold tracking-wider border shadow-xl flex items-center gap-1.5 cursor-default select-none ${isTargeted ? 'bg-[#18181B] border-white text-white shadow-[0_0_20px_rgba(56,189,248,0.6)] scale-105 z-20' : 'bg-[#18181B]/95 border-[#27272A]'}`}
               style={{
-                left: `${word.x}%`,
-                top: `${word.y}%`,
-                borderColor: isTargeted ? '#38BDF8' : word.color,
+                left: `${w.x}%`,
+                top: `${w.y}%`,
+                borderColor: isTargeted ? '#38BDF8' : w.color,
               }}
             >
-              {word.type === 'bomb' && <span className="text-xs">💣</span>}
-              {word.type === 'freeze' && <span className="text-xs">❄️</span>}
-              {word.type === 'hyper' && <span className="text-xs">⚡</span>}
+              {w.type === 'bomb' && <span className="text-xs">💣</span>}
+              {w.type === 'freeze' && <span className="text-xs">❄️</span>}
+              {w.type === 'hyper' && <span className="text-xs">⚡</span>}
               <span>
-                <span className="text-[#34D399] font-black underline">{word.word.substring(0, word.typedIndex)}</span>
-                <span className="text-white">{word.word.substring(word.typedIndex)}</span>
+                <span className="text-[#34D399] font-black underline">{w.word.substring(0, w.typedIndex)}</span>
+                <span className="text-white">{w.word.substring(w.typedIndex)}</span>
               </span>
-              <span className="text-[8px] text-[#71717A]">{getTypeRushTargetBonus(word.y, word.type, gameStateRef.current.waveIndex).toFixed(1)}x</span>
+              <span className="text-[8px] text-[#71717A]">{getTypeRushTargetBonus(w.y, w.type, gameStateRef.current.waveIndex).toFixed(1)}x</span>
             </button>
           );
         })}
