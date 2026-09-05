@@ -136,14 +136,16 @@ const exerciseCandidateInput = async (page, id) => {
     const after = await hud.getAttribute('data-p22-step');
     assert(before !== after && String(after).includes('COMBO 1+'), `Orb Cannon committed SWAP did not advance CHAMBER READ to its COMBO 1+ resolve step: ${after}`);
   } else if (id === 'matrix') {
-    const overclock = page.locator('.game-shell button').filter({ hasText: 'OVERCLOCK NEXT' });
-    assert(await overclock.count() === 1, 'Memory Matrix missing unique existing Overclock control');
+    // Wait for the actual lazy-loaded Matrix game control rather than allowing
+    // the P22 HUD's protocol/Overclock copy to serve as a readiness signal.
+    const overclock = page.locator('.game-shell button[title^="Next round:"]');
+    await overclock.waitFor({ state: 'visible', timeout: 5000 });
+    assert(await overclock.count() === 1, 'Memory Matrix did not expose exactly one existing Overclock control');
     assert(await overclock.isEnabled(), 'Memory Matrix Overclock control was unexpectedly disabled');
     // Matrix owns this shortcut through KeyboardEvent.key, not KeyboardEvent.code.
     await page.keyboard.press('o');
     await page.waitForFunction(() => {
-      const control = Array.from(document.querySelectorAll('.game-shell button'))
-        .find((button) => button.textContent?.includes('OVERCLOCK'));
+      const control = document.querySelector('.game-shell button[title^="Next round:"]');
       return control?.textContent?.includes('OVERCLOCK ARMED') ?? false;
     }, null, { timeout: 1200 });
     await waitForShellText(page, ['OVERCLOCK ARMED'], 'Matrix O key-value input did not arm existing Overclock decision');
