@@ -20,6 +20,11 @@ export const getRoadCrossDistrictLevel = (row: number): number => {
   return Math.floor((row - 4) / ROAD_CROSS_DISTRICT_LENGTH);
 };
 
+export const getRoadCrossDistrictStartRow = (districtLevel: number): number => {
+  const level = Math.max(0, Math.floor(districtLevel));
+  return level === 0 ? 0 : 4 + level * ROAD_CROSS_DISTRICT_LENGTH;
+};
+
 export const getRoadCrossDistrict = (row: number): RoadCrossDistrict => {
   const level = getRoadCrossDistrictLevel(row);
   const district = ROAD_CROSS_DISTRICTS[level % ROAD_CROSS_DISTRICTS.length];
@@ -27,7 +32,7 @@ export const getRoadCrossDistrict = (row: number): RoadCrossDistrict => {
     gameId: 'roadcross',
     kind: 'road-district-start',
     label: district.name,
-    value: Math.max(0, Math.floor(row)),
+    value: getRoadCrossDistrictStartRow(level),
     index: level,
   });
   return district;
