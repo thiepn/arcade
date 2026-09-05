@@ -63,12 +63,14 @@ const waitForShellText = async (page, required, failureMessage) => {
   }
 };
 
+const puckMasterControl = (page) => page.locator('#air-hockey-container button').filter({ hasText: /^MASTER(?:\s|$)/i });
+
 const assertCandidateMarker = async (page, id) => {
   if (id === 'breakout') {
     await page.locator('.game-shell canvas').waitFor({ state: 'visible', timeout: 5000 });
   } else if (id === 'airhockey') {
-    await waitForShellText(page, ['POWER', 'TIME:', 'PRO'], 'Neon Puck Smash missing Power/time/difficulty landmarks');
-    assert(await page.getByRole('button', { name: /MASTER/i }).count() === 1, 'Neon Puck Smash missing MASTER difficulty control');
+    await waitForShellText(page, ['POWER', 'TIME:', 'CASUAL', 'PRO', 'MASTER'], 'Neon Puck Smash missing Power/time/difficulty landmarks');
+    assert(await puckMasterControl(page).count() === 1, 'Neon Puck Smash missing MASTER difficulty control');
   } else if (id === 'tower') {
     await waitForShellText(page, ['LASER:', 'APEX'], 'Gravity Tower missing laser/Apex landmarks');
     assert(await page.getByRole('button', { name: /Activate Apex Drive/i }).count() === 1, 'Gravity Tower missing Apex control');
@@ -86,7 +88,7 @@ const exerciseCandidateInput = async (page, id) => {
     await page.keyboard.press('ArrowRight');
     await page.waitForTimeout(80);
   } else if (id === 'airhockey') {
-    await page.getByRole('button', { name: /MASTER/i }).click();
+    await puckMasterControl(page).click();
     await page.keyboard.press('ArrowLeft');
     await page.waitForTimeout(80);
     await waitForShellText(page, ['MASTER', 'POWER'], 'Puck difficulty/power state disappeared after input');
