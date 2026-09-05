@@ -50,6 +50,7 @@ export const advancePulseGroovePath = (
   current: PulseGroovePathState,
   combo: number,
   wagerSuccess: boolean,
+  successfulBeat: boolean,
 ): { state: PulseGroovePathState; completed: boolean; bonus: number } => {
   const path = getPulseGroovePath(current);
   const nextStep = current.step + 1;
@@ -60,7 +61,9 @@ export const advancePulseGroovePath = (
   const choice = current.queuedChoice;
   const offset = choice === 'RIGHT' ? 2 : 1;
   const nextPathIndex = (current.pathIndex + offset) % PULSE_GROOVE_PATHS.length;
-  const bonus = 350 + Math.min(12, Math.max(0, combo)) * 30 + (wagerSuccess ? 250 : 0);
+  const bonus = successfulBeat
+    ? 350 + Math.min(12, Math.max(0, combo)) * 30 + (wagerSuccess ? 250 : 0)
+    : 0;
   return {
     state: {
       pathIndex: nextPathIndex,
