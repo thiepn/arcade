@@ -245,12 +245,17 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
             candidateBeamsCount,
           )) {
             state.modeChangeTimer = eligible ? Math.random() * 1.5 + 2.6 : 0.75;
-            state.laserMode = nextMode;
-            state.beamsCount = candidateBeamsCount;
             if (nextMode === 'HIGH') {
+              state.laserMode = 'HIGH';
+              state.beamsCount = 1;
               state.popups.push({ id: state.nextId++, x: centerX, y: groundY - 150, text: '⚠️ HIGH BEAM - SLIDE / DUCK!', color: '#A855F7', life: 1.2 });
             } else if (nextMode === 'DUAL') {
+              state.laserMode = 'DUAL';
+              state.beamsCount = 2;
               state.popups.push({ id: state.nextId++, x: centerX, y: groundY - 150, text: '⚠️ DUAL BEAM - JUMP!', color: '#F43F5E', life: 1.0 });
+            } else {
+              state.laserMode = 'LOW';
+              state.beamsCount = 1;
             }
           } else {
             state.modeChangeTimer = 0.08;
@@ -312,10 +317,13 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
           const currentAngle = beamAngles[beamIndex];
           const previousBeamAngle = state.beamsCount === 1 ? prevAngle : beamIndex === 0 ? prevAngle : prevAngle + Math.PI;
           const relPrev = Math.atan2(Math.sin(previousBeamAngle - targetRad), Math.cos(previousBeamAngle - targetRad));
-          const relCurrent = Math.atan2(Math.sin(currentAngle - targetRad), Math.cos(currentAngle - targetRad));
-          const crossed = state.direction > 0
-            ? relPrev < 0 && relCurrent >= 0 && Math.abs(relCurrent - relPrev) < Math.PI
-            : relPrev > 0 && relCurrent <= 0 && Math.abs(relCurrent - relPrev) < Math.PI;
+          const relCurr = Math.atan2(Math.sin(currentAngle - targetRad), Math.cos(currentAngle - targetRad));
+          let crossed = false;
+          if (state.direction > 0) {
+            crossed = relPrev < 0 && relCurr >= 0 && Math.abs(relCurr - relPrev) < Math.PI;
+          } else {
+            crossed = relPrev > 0 && relCurr <= 0 && Math.abs(relCurr - relPrev) < Math.PI;
+          }
 
           if (crossed) {
             let evaded = false;
