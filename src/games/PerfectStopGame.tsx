@@ -11,6 +11,14 @@ import {
   type PerfectStopJudgement,
 } from '../lib/perfectStopGameplay';
 import { PERFECT_STOP_ENCORE_ROUNDS, isPerfectStopEncoreUnlocked } from '../lib/perfectStopEncore';
+import {
+  advancePerfectStopRoute,
+  createPerfectStopRouteState,
+  getPerfectStopBeaconChoice,
+  getPerfectStopPrecisionTarget,
+  getPerfectStopRouteLabel,
+  type PerfectStopRouteState,
+} from '../lib/perfectStopBeaconRoutes';
 
 const PERFECT_STOP_SESSION_ROUNDS = [...PERFECT_STOP_ROUNDS, ...PERFECT_STOP_ENCORE_ROUNDS];
 
@@ -27,16 +35,20 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
   const [streak, setStreak] = useState(0);
   const [masterHits, setMasterHits] = useState(0);
   const [encoreUnlocked, setEncoreUnlocked] = useState(false);
+  const [routeHud, setRouteHud] = useState(() => getPerfectStopRouteLabel(createPerfectStopRouteState()));
   const setSafeTimeout = useSafeTimeout();
 
   const markerPosRef = useRef(0);
   const targetPosRef = useRef(PERFECT_STOP_ROUNDS[0].targetStart);
+  const precisionTargetPosRef = useRef<number | null>(null);
   const markerElementRef = useRef<HTMLDivElement>(null);
   const targetElementRef = useRef<HTMLDivElement>(null);
+  const precisionTargetElementRef = useRef<HTMLDivElement>(null);
   const markerDirRef = useRef(1);
   const elapsedRef = useRef(0);
   const nextFlipRef = useRef(Number.POSITIVE_INFINITY);
   const animationFrameRef = useRef<number | null>(null);
+  const routeStateRef = useRef<PerfectStopRouteState>(createPerfectStopRouteState());
 
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
@@ -47,6 +59,25 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
     ? maxRounds
     : PERFECT_STOP_ROUNDS.length;
 
+  const publishRoute = (route: PerfectStopRouteState) => {
+    routeStateRef.current = route;
+    setRouteHud(getPerfectStopRouteLabel(route));
+  };
+
+  const updateTargets = (config: (typeof PERFECT_STOP_SESSION_ROUNDS)[number], index: number, elapsedMs: number) => {
+    const primary = getPerfectStopTargetPosition(config, elapsedMs);
+    targetPosRef.current = primary;
+    const precision = index < PERFECT_STOP_ROUNDS.length
+      ? getPerfectStopPrecisionTarget(primary, config, index)
+      : null;
+    precisionTargetPosRef.current = precision;
+    if (targetElementRef.current) targetElementRef.current.style.left = `${primary}%`;
+    if (precisionTargetElementRef.current) {
+      precisionTargetElementRef.current.style.display = precision === null ? 'none' : 'flex';
+      if (precision !== null) precisionTargetElementRef.current.style.left = `${precision}%`;
+    }
+  };
+
   const startRound = (index: number) => {
     const config = PERFECT_STOP_SESSION_ROUNDS[index];
     const startPosition = index % 2 === 0 ? 0 : 100;
@@ -55,15 +86,14 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
     setResult(null);
     setIsRunning(true);
     markerPosRef.current = startPosition;
-    targetPosRef.current = getPerfectStopTargetPosition(config, 0);
     markerDirRef.current = direction;
     elapsedRef.current = 0;
     nextFlipRef.current = config.flipIntervalMs > 0
       ? config.flipIntervalMs
       : Number.POSITIVE_INFINITY;
+    updateTargets(config, index, 0);
 
     if (markerElementRef.current) markerElementRef.current.style.left = `${startPosition}%`;
-    if (targetElementRef.current) targetElementRef.current.style.left = `${targetPosRef.current}%`;
     if (soundEnabled) sounds.playPop();
   };
 
@@ -71,24 +101,50 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
     if (!isRunning || isPausedRef.current) return;
     setIsRunning(false);
 
-    const judgement = judgePerfectStop(
+    const primaryJudgement = judgePerfectStop(markerPosRef.current, targetPosRef.current, roundConfig, streak);
+    const precisionTarget = precisionTargetPosRef.current;
+    const choice = getPerfectStopBeaconChoice(
       markerPosRef.current,
       targetPosRef.current,
-      roundConfig,
-      streak,
+      precisionTarget,
+      roundConfig.goodWindow,
     );
+    const precisionJudgement = precisionTarget !== null
+      ? judgePerfectStop(markerPosRef.current, precisionTarget, roundConfig, streak)
+      : null;
+    const baseJudgement = choice === 'PRECISION' && precisionJudgement
+      ? precisionJudgement
+      : primaryJudgement;
+
+    const routeResolution = advancePerfectStopRoute(
+      routeStateRef.current,
+      choice,
+      baseJudgement.rating,
+      roundIndex,
+    );
+    publishRoute(routeResolution.state);
+
+    const judgement: PerfectStopJudgement = routeResolution.bonus > 0
+      ? { ...baseJudgement, points: baseJudgement.points + routeResolution.bonus }
+      : baseJudgement;
     setResult(judgement);
     setStreak(judgement.nextStreak);
+
     const isMasterHit = judgement.rating === 'PERFECT' || judgement.rating === 'GREAT';
-    const nextMasterHits = masterHits + (roundIndex < PERFECT_STOP_ROUNDS.length && isMasterHit ? 1 : 0);
-    if (roundIndex < PERFECT_STOP_ROUNDS.length && isMasterHit) setMasterHits(nextMasterHits);
+    const coreRound = roundIndex < PERFECT_STOP_ROUNDS.length;
+    const masterCredit = coreRound && isMasterHit
+      ? 1 + routeResolution.masterCreditBonus
+      : 0;
+    const nextMasterHits = masterHits + masterCredit;
+    if (masterCredit > 0) setMasterHits(nextMasterHits);
 
     const newScore = score + judgement.points;
     setScore(newScore);
     onScoreUpdate(newScore);
 
     if (soundEnabled) {
-      if (judgement.rating === 'PERFECT') sounds.playLaser();
+      if (routeResolution.completed) sounds.playSuccess();
+      else if (judgement.rating === 'PERFECT') sounds.playLaser();
       else if (judgement.rating === 'GREAT') sounds.playCombo(Math.max(1, judgement.nextStreak));
       else if (judgement.rating === 'GOOD') sounds.playPop();
       else sounds.playHit();
@@ -130,9 +186,7 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
 
         if (config.flipIntervalMs > 0 && elapsed >= nextFlipRef.current) {
           markerDirRef.current *= -1;
-          while (elapsed >= nextFlipRef.current) {
-            nextFlipRef.current += config.flipIntervalMs;
-          }
+          while (elapsed >= nextFlipRef.current) nextFlipRef.current += config.flipIntervalMs;
         }
 
         const speed = getPerfectStopMarkerSpeed(config, elapsed);
@@ -146,14 +200,8 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
           markerDirRef.current = 1;
         }
 
-        targetPosRef.current = getPerfectStopTargetPosition(config, elapsed);
-
-        if (markerElementRef.current) {
-          markerElementRef.current.style.left = `${markerPosRef.current}%`;
-        }
-        if (targetElementRef.current) {
-          targetElementRef.current.style.left = `${targetPosRef.current}%`;
-        }
+        updateTargets(config, roundIndex, elapsed);
+        if (markerElementRef.current) markerElementRef.current.style.left = `${markerPosRef.current}%`;
       }
 
       animationFrameRef.current = requestAnimationFrame(loop);
@@ -166,6 +214,8 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
   }, [isRunning, roundIndex]);
 
   useEffect(() => {
+    routeStateRef.current = createPerfectStopRouteState();
+    setRouteHud(getPerfectStopRouteLabel(routeStateRef.current));
     startRound(0);
   }, []);
 
@@ -180,15 +230,15 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
   return (
     <div
       className="relative w-full h-full flex flex-col items-center justify-between p-4 sm:p-6 select-none cursor-pointer bg-[#0A0A0B] touch-none"
-      onPointerDown={(e) => {
-        if (e.button !== 0 && e.pointerType === 'mouse') return;
-        e.preventDefault();
+      onPointerDown={(event) => {
+        if (event.button !== 0 && event.pointerType === 'mouse') return;
+        event.preventDefault();
         if (isRunning) handleStop();
         else if (result && roundIndex < maxRounds - 1) handleNextRound();
       }}
-      onKeyDown={(e) => {
-        if (e.code === 'Space' || e.code === 'Enter') {
-          e.preventDefault();
+      onKeyDown={(event) => {
+        if (event.code === 'Space' || event.code === 'Enter') {
+          event.preventDefault();
           if (isRunning) handleStop();
           else if (result && roundIndex < maxRounds - 1) handleNextRound();
         }
@@ -205,6 +255,12 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
           </span>
           <span className="font-mono-arcade text-[9px] text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20 w-fit">
             MASTER {Math.min(masterHits, 4)} / 4
+          </span>
+          <span
+            data-p23-transform="BEACON ROUTE"
+            className="font-mono-arcade text-[9px] text-fuchsia-200 bg-fuchsia-500/10 px-2 py-0.5 rounded-lg border border-fuchsia-400/25 w-fit"
+          >
+            {routeHud}
           </span>
         </div>
 
@@ -228,9 +284,7 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
                 <span className="text-5xl sm:text-6xl font-mono-arcade font-black text-white tabular-nums">
                   {result.accuracy}%
                 </span>
-                <span className="font-mono-arcade text-xs text-[#A1A1AA] mb-2">
-                  Δ {result.distance.toFixed(1)}
-                </span>
+                <span className="font-mono-arcade text-xs text-[#A1A1AA] mb-2">Δ {result.distance.toFixed(1)}</span>
               </div>
               <div className={`px-4 py-1.5 rounded-full border font-mono-arcade font-black text-xs tracking-wider ${ratingClass}`}>
                 {result.rating} • +{result.points.toLocaleString()}
@@ -240,10 +294,10 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
             <>
               <div className="flex items-center gap-2 text-sm font-mono-arcade text-white">
                 <Target className="w-5 h-5 text-[#38BDF8]" />
-                <span>STOP INSIDE THE TARGET BEACON</span>
+                <span>STOP INSIDE A TARGET BEACON</span>
               </div>
               <p className="max-w-sm text-[11px] leading-relaxed font-mono-arcade text-[#71717A]">
-                {roundConfig.hint}
+                {roundConfig.hint} Precision beacon is optional and can accelerate Master Encore qualification.
               </p>
             </>
           )}
@@ -254,10 +308,7 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
             <div
               ref={targetElementRef}
               className="absolute top-0 bottom-0 -translate-x-1/2 border-x border-[#34D399]/50 bg-[#34D399]/10 flex items-center justify-center"
-              style={{
-                left: `${roundConfig.targetStart}%`,
-                width: `${roundConfig.goodWindow * 2}%`,
-              }}
+              style={{ left: `${roundConfig.targetStart}%`, width: `${roundConfig.goodWindow * 2}%` }}
             >
               <div
                 className="h-full bg-[#38BDF8]/15 border-x border-[#38BDF8]/60 flex items-center justify-center"
@@ -265,6 +316,15 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
               >
                 <div className="w-0.5 h-full bg-[#38BDF8] shadow-[0_0_10px_#38BDF8]" />
               </div>
+            </div>
+
+            <div
+              ref={precisionTargetElementRef}
+              aria-label="Precision beacon"
+              className="absolute top-1 bottom-1 -translate-x-1/2 border-x border-fuchsia-400/70 bg-fuchsia-500/10 flex items-center justify-center"
+              style={{ display: 'none', width: `${roundConfig.goodWindow * 2}%` }}
+            >
+              <div className="w-0.5 h-full bg-fuchsia-300 shadow-[0_0_9px_#E879F9]" />
             </div>
 
             <div
@@ -279,25 +339,13 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
           </div>
 
           <div className="mt-3 flex justify-between text-[10px] font-mono-arcade text-[#71717A] px-1">
-            <span>0</span>
-            <span>25</span>
-            <span className="text-[#A1A1AA]">50</span>
-            <span>75</span>
-            <span>100</span>
+            <span>0</span><span>25</span><span className="text-[#A1A1AA]">50</span><span>75</span><span>100</span>
           </div>
 
           {(roundConfig.targetAmplitude > 0 || roundConfig.flipIntervalMs > 0 || roundConfig.speedPulse > 0) && (
             <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-              {roundConfig.targetAmplitude > 0 && (
-                <span className="px-2 py-1 rounded-lg bg-violet-500/10 border border-violet-500/25 text-violet-300 text-[9px] font-mono-arcade">
-                  MOVING TARGET
-                </span>
-              )}
-              {roundConfig.speedPulse > 0 && (
-                <span className="px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[9px] font-mono-arcade">
-                  SPEED PULSE
-                </span>
-              )}
+              {roundConfig.targetAmplitude > 0 && <span className="px-2 py-1 rounded-lg bg-violet-500/10 border border-violet-500/25 text-violet-300 text-[9px] font-mono-arcade">MOVING TARGET</span>}
+              {roundConfig.speedPulse > 0 && <span className="px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[9px] font-mono-arcade">SPEED PULSE</span>}
               {roundConfig.flipIntervalMs > 0 && (
                 <span className="px-2 py-1 rounded-lg bg-rose-500/10 border border-rose-500/25 text-rose-300 text-[9px] font-mono-arcade flex items-center gap-1">
                   <Activity className="w-3 h-3" /> AUTO REVERSE
@@ -309,22 +357,14 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
 
         <div>
           {roundIndex === PERFECT_STOP_ROUNDS.length - 1 && encoreUnlocked && result && (
-            <div className="mb-2 px-5 py-2 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono-arcade font-black text-xs text-center">
-              MASTER ENCORE UNLOCKED
-            </div>
+            <div className="mb-2 px-5 py-2 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono-arcade font-black text-xs text-center">MASTER ENCORE UNLOCKED</div>
           )}
           {isRunning ? (
-            <div className="px-6 py-2.5 rounded-xl bg-[#38BDF8] text-[#09090B] font-mono-arcade font-bold text-xs shadow-lg shadow-[#38BDF8]/20 animate-pulse">
-              TAP OR SPACE TO LOCK
-            </div>
+            <div className="px-6 py-2.5 rounded-xl bg-[#38BDF8] text-[#09090B] font-mono-arcade font-bold text-xs shadow-lg shadow-[#38BDF8]/20 animate-pulse">TAP OR SPACE TO LOCK</div>
           ) : roundIndex < maxRounds - 1 && !(roundIndex === PERFECT_STOP_ROUNDS.length - 1 && !encoreUnlocked) ? (
-            <div className="px-6 py-2.5 rounded-xl bg-[#18181B] text-white font-mono-arcade font-bold text-xs border border-[#27272A]">
-              TAP FOR {PERFECT_STOP_SESSION_ROUNDS[roundIndex + 1].label}
-            </div>
+            <div className="px-6 py-2.5 rounded-xl bg-[#18181B] text-white font-mono-arcade font-bold text-xs border border-[#27272A]">TAP FOR {PERFECT_STOP_SESSION_ROUNDS[roundIndex + 1].label}</div>
           ) : (
-            <div className="px-6 py-2.5 rounded-xl bg-[#34D399] text-[#09090B] font-mono-arcade font-bold text-xs">
-              FINAL SCORE: {score.toLocaleString()}
-            </div>
+            <div className="px-6 py-2.5 rounded-xl bg-[#34D399] text-[#09090B] font-mono-arcade font-bold text-xs">FINAL SCORE: {score.toLocaleString()}</div>
           )}
         </div>
       </div>
