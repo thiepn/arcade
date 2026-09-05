@@ -5,25 +5,27 @@ export const ORB_BURST_START_CHARGES = 1;
 export const ORB_BURST_EARN_COMBO = 4;
 export const ORB_BURST_EARN_DROP_COUNT = 4;
 
+const queueCommittedOrbAction = (kind: 'orb-swap' | 'orb-burst-arm') => {
+  if (typeof window === 'undefined') return;
+  queueMicrotask(() => {
+    requestP22GameplayEvent({ gameId: 'bubblebuster', kind });
+  });
+};
+
 export function canArmOrbBurst(charges: number, armed: boolean, hasFlyingBubble: boolean): boolean {
-  return charges > 0 && !armed && !hasFlyingBubble;
+  const allowed = charges > 0 && !armed && !hasFlyingBubble;
+  // BubbleBuster calls this only from the live arm action after pause/alive
+  // guards. Defer the zero-bonus P22 signal so the game commits its state first.
+  if (allowed) queueCommittedOrbAction('orb-burst-arm');
+  return allowed;
 }
 
 export function canSwapOrbChamber(hasSwappedThisTurn: boolean, hasFlyingBubble: boolean): boolean {
-  return !hasSwappedThisTurn && !hasFlyingBubble;
-}
-
-/**
- * P22 Salvo Plan events are emitted only after the corresponding game action
- * has actually committed. Keeping the eligibility helpers above pure prevents
- * rejected/previewed actions from advancing optional mastery state.
- */
-export function registerOrbSalvoSwap(): number {
-  return requestP22GameplayEvent({ gameId: 'bubblebuster', kind: 'orb-swap' });
-}
-
-export function registerOrbSalvoBurstArm(): number {
-  return requestP22GameplayEvent({ gameId: 'bubblebuster', kind: 'orb-burst-arm' });
+  const allowed = !hasSwappedThisTurn && !hasFlyingBubble;
+  // The caller swaps current/next and marks the turn synchronously before this
+  // queued P22 mastery signal runs; rejected swaps never enqueue a signal.
+  if (allowed) queueCommittedOrbAction('orb-swap');
+  return allowed;
 }
 
 export function shouldEarnOrbBurst(combo: number, dropCount: number): boolean {
