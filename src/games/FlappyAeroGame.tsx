@@ -128,12 +128,12 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
   };
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code === 'KeyF' || event.code === 'ShiftLeft' || event.code === 'ShiftRight') {
-        event.preventDefault();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'KeyF' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        e.preventDefault();
         triggerFlowBoost();
-      } else if (event.code === 'Space' || event.code === 'ArrowUp' || event.code === 'KeyW') {
-        event.preventDefault();
+      } else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+        e.preventDefault();
         triggerFlap();
       }
     };
