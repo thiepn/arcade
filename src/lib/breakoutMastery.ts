@@ -13,6 +13,13 @@ export interface BreakoutContract {
   target: number;
 }
 
+export interface BreakoutRoundIdentity {
+  id: string;
+  label: string;
+  description: string;
+  targetDelta: number;
+}
+
 export const BREAKOUT_CONTRACTS: readonly BreakoutContract[] = [
   {
     kind: 'COMBO_DRIVE',
@@ -40,9 +47,35 @@ export const BREAKOUT_CONTRACTS: readonly BreakoutContract[] = [
   },
 ] as const;
 
+// P21 keeps the original four-contract rotation intact while giving the
+// eight-round session an authored two-act identity. Later-act objectives
+// tighten only existing contract targets; ordinary board clears stay legal.
+export const BREAKOUT_ROUND_IDENTITIES: readonly BreakoutRoundIdentity[] = [
+  { id: 'control-read', label: 'CONTROL READ', description: 'Establish clean paddle control.', targetDelta: 0 },
+  { id: 'power-window', label: 'POWER WINDOW', description: 'Convert safe catches into tempo.', targetDelta: 0 },
+  { id: 'armor-test', label: 'ARMOR TEST', description: 'Read durable rows before committing.', targetDelta: 0 },
+  { id: 'special-route', label: 'SPECIAL ROUTE', description: 'Choose a route through marked bricks.', targetDelta: 0 },
+  { id: 'pressure-return', label: 'PRESSURE RETURN', description: 'Re-establish combo control under denser pressure.', targetDelta: 0 },
+  { id: 'power-conversion', label: 'POWER CONVERSION', description: 'Chain more drop catches without losing the ball.', targetDelta: 1 },
+  { id: 'armor-master', label: 'ARMOR MASTER', description: 'Break a deeper armored sequence cleanly.', targetDelta: 1 },
+  { id: 'special-finale', label: 'SPECIAL FINALE', description: 'Close the arc by routing through more marked bricks.', targetDelta: 1 },
+] as const;
+
+export const getBreakoutRoundIdentity = (round: number): BreakoutRoundIdentity => {
+  const safeRound = Math.max(1, Math.floor(round));
+  return BREAKOUT_ROUND_IDENTITIES[(safeRound - 1) % BREAKOUT_ROUND_IDENTITIES.length];
+};
+
 export const getBreakoutContract = (round: number): BreakoutContract => {
   const safeRound = Math.max(1, Math.floor(round));
-  return BREAKOUT_CONTRACTS[(safeRound - 1) % BREAKOUT_CONTRACTS.length];
+  const base = BREAKOUT_CONTRACTS[(safeRound - 1) % BREAKOUT_CONTRACTS.length];
+  const identity = getBreakoutRoundIdentity(safeRound);
+  return {
+    ...base,
+    label: `${identity.label} • ${base.label}`,
+    hint: `${identity.description} ${base.hint}`,
+    target: Math.min(6, base.target + identity.targetDelta),
+  };
 };
 
 export const advanceBreakoutContractProgress = (
