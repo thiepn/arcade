@@ -55,6 +55,12 @@ export interface NeonRailSequence {
   phrases: readonly [NeonRailPhraseName, NeonRailPhraseName, NeonRailPhraseName];
 }
 
+export interface BuiltNeonRailSequence {
+  name: string;
+  phrases: readonly [NeonRailPhrase, NeonRailPhrase, NeonRailPhrase];
+  lanes: readonly NeonRailLane[];
+}
+
 export const P22_NEON_RAIL_SEQUENCES: readonly NeonRailSequence[] = [
   { name: 'OPEN CIRCUIT', phrases: ['SWITCHBACK', 'SLALOM', 'HOLD_BREAK'] },
   { name: 'CROSS CURRENT', phrases: ['SLALOM', 'CENTER_CUT', 'SWITCHBACK'] },
@@ -64,29 +70,65 @@ export const P22_NEON_RAIL_SEQUENCES: readonly NeonRailSequence[] = [
   { name: 'NEON FINALE', phrases: ['CENTER_CUT', 'SLALOM', 'SWITCHBACK'] },
 ] as const;
 
+export const createNeonRailSequence = (
+  startLane: NeonRailLane,
+  randomValue: number,
+): BuiltNeonRailSequence => {
+  const sequenceIndex = Math.floor(clampRandom(randomValue) * P22_NEON_RAIL_SEQUENCES.length);
+  const sequence = P22_NEON_RAIL_SEQUENCES[sequenceIndex];
+  let currentStart = startLane;
+  const built = sequence.phrases.map((name) => {
+    const lanes = buildPhrase(name, currentStart);
+    currentStart = lanes[lanes.length - 1];
+    return { name, lanes, sequenceName: sequence.name } as NeonRailPhrase;
+  }) as [NeonRailPhrase, NeonRailPhrase, NeonRailPhrase];
+  return { name: sequence.name, phrases: built, lanes: built.flatMap((phrase) => phrase.lanes) };
+};
+
+let runtimeSequence: { sequence: NeonRailSequence; step: number } | null = null;
+
+export const resetP22NeonRailSequenceRuntime = () => {
+  runtimeSequence = null;
+};
+
+const createHistoricalPhrase = (startLane: NeonRailLane, randomValue: number): NeonRailPhrase => {
+  const index = Math.floor(clampRandom(randomValue) * 4);
+  const names: readonly NeonRailPhraseName[] = ['SWITCHBACK', 'SLALOM', 'HOLD_BREAK', 'CENTER_CUT'];
+  const name = names[index];
+  return { name, lanes: buildPhrase(name, startLane) };
+};
+
 export const createNeonRailPhrase = (
   startLane: NeonRailLane,
   randomValue: number,
 ): NeonRailPhrase => {
-  const normalized = clampRandom(randomValue);
-  const sequenceIndex = Math.floor(normalized * P22_NEON_RAIL_SEQUENCES.length);
-  const sequence = P22_NEON_RAIL_SEQUENCES[sequenceIndex];
-  const lanes: NeonRailLane[] = [];
-  let currentStart = startLane;
-  for (const phraseName of sequence.phrases) {
-    const phraseLanes = buildPhrase(phraseName, currentStart);
-    lanes.push(...phraseLanes);
-    currentStart = phraseLanes[phraseLanes.length - 1];
+  // Node/static audits retain the historical one-phrase API exactly. In the
+  // browser, three normal six-row phrases are sequenced across three calls.
+  if (typeof window === 'undefined') return createHistoricalPhrase(startLane, randomValue);
+
+  if (!runtimeSequence) {
+    const sequenceIndex = Math.floor(clampRandom(randomValue) * P22_NEON_RAIL_SEQUENCES.length);
+    runtimeSequence = { sequence: P22_NEON_RAIL_SEQUENCES[sequenceIndex], step: 0 };
+    requestP22GameplayEvent({
+      gameId: 'neonrail',
+      kind: 'rail-sequence-start',
+      label: runtimeSequence.sequence.name,
+      secondaryLabel: runtimeSequence.sequence.phrases.join(' → '),
+      index: sequenceIndex,
+      aux: 18,
+    });
   }
-  requestP22GameplayEvent({
-    gameId: 'neonrail',
-    kind: 'rail-sequence-start',
-    label: sequence.name,
-    secondaryLabel: sequence.phrases.join(' → '),
-    index: sequenceIndex,
-    aux: lanes.length,
-  });
-  return { name: sequence.phrases[0], lanes, sequenceName: sequence.name };
+
+  const active = runtimeSequence;
+  const phraseName = active.sequence.phrases[active.step];
+  const result: NeonRailPhrase = {
+    name: phraseName,
+    lanes: buildPhrase(phraseName, startLane),
+    sequenceName: active.sequence.name,
+  };
+  active.step += 1;
+  if (active.step >= active.sequence.phrases.length) runtimeSequence = null;
+  return result;
 };
 
 export const createNeonRailChallengePattern = (
