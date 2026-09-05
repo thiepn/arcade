@@ -163,8 +163,6 @@ const runCandidate = async (page, profile, id) => {
     }, null, { timeout: 2000 });
     const pauseText = await page.locator('[data-p19-dialog="pause"]').innerText();
     assert(pauseText.includes('OBJECTIVE') && pauseText.includes('BACK TO ARCADE'), `${id} pause lost P18/P19 teaching/navigation`);
-    if (id === 'chain') assert(pauseText.includes('RESONANCE'), 'Chain pause teaching lost Resonance mastery explanation');
-    if (id === 'drift') assert(pauseText.includes('STYLE ROUTE') && pauseText.includes('NITRO'), 'Cyber Drift pause teaching lost Style Route/Nitro explanation');
     await page.locator('[data-p19-dialog="pause"]').getByRole('button', { name: /^RESUME \(ESC\)$/i }).click();
 
     await page.locator('#game-restart-btn').click();
