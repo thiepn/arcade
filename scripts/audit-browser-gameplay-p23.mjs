@@ -117,16 +117,9 @@ const exercise = async (page, id) => {
   } else if (id === 'perfectstop') {
     const gameRoot = page.locator('.game-shell main [tabindex="0"]').first();
     await page.waitForTimeout(250);
-    await gameRoot.focus();
-    await page.keyboard.press('Space');
-    await page.waitForFunction(() => {
-      const root = document.querySelector('.game-shell main [tabindex="0"]');
-      if (!root) return false;
-      const text = root.textContent ?? '';
-      return !text.includes('TAP OR SPACE TO LOCK')
-        && /\b(PERFECT|GREAT|GOOD|MISS)\b/.test(text)
-        && /TAP FOR|FINAL SCORE/.test(text);
-    }, null, { timeout: 2500 });
+    await gameRoot.click({ position: { x: 12, y: 12 } });
+    await gameRoot.getByText(/^(PERFECT|GREAT|GOOD|MISS)\s*•\s*\+/).waitFor({ state: 'visible', timeout: 2500 });
+    await gameRoot.getByText(/^TAP FOR\s+/).waitFor({ state: 'visible', timeout: 2500 });
   } else if (id === 'reaction') {
     await page.keyboard.press('Space');
     await page.getByText('FALSE START', { exact: true }).waitFor({ state: 'visible', timeout: 2500 });
