@@ -357,24 +357,24 @@ export const PulseGame: React.FC<GameComponentProps> = ({
       triggerHit();
     };
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code === 'ArrowLeft' || event.code === 'KeyA') {
-        event.preventDefault();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+        e.preventDefault();
         queuePathChoice('LEFT');
         return;
       }
-      if (event.code === 'ArrowRight' || event.code === 'KeyD') {
-        event.preventDefault();
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+        e.preventDefault();
         queuePathChoice('RIGHT');
         return;
       }
-      if (event.code === 'ShiftLeft' || event.code === 'ShiftRight' || event.code === 'KeyF') {
-        event.preventDefault();
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyF') {
+        e.preventDefault();
         armSyncWager();
         return;
       }
-      if (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter') {
-        event.preventDefault();
+      if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') {
+        e.preventDefault();
         triggerHit();
       }
     };
