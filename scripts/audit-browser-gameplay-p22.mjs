@@ -118,11 +118,23 @@ const exerciseCandidateInput = async (page, id) => {
     await page.keyboard.press('Space');
     await page.waitForTimeout(120);
   } else if (id === 'bubblebuster') {
-    const before = await page.locator('[data-p22-promotion="bubblebuster"]').getAttribute('data-p22-step');
+    const hud = page.locator('[data-p22-promotion="bubblebuster"]');
+    const swap = page.locator('#bubble-buster-container button').filter({ hasText: 'SWAP' });
+    const before = await hud.getAttribute('data-p22-step');
+    assert(String(before).includes('SWAP'), `Orb Cannon CHAMBER READ did not begin on SWAP: ${before}`);
+    assert(await swap.isEnabled(), 'Orb Cannon SWAP control was not initially available');
     await page.keyboard.press('KeyQ');
-    await page.waitForTimeout(80);
-    const after = await page.locator('[data-p22-promotion="bubblebuster"]').getAttribute('data-p22-step');
-    assert(before !== after && String(after).includes('MATCH'), 'Orb Cannon real SWAP input did not advance CHAMBER READ Salvo Plan');
+    await page.waitForFunction(() => {
+      const control = Array.from(document.querySelectorAll('#bubble-buster-container button'))
+        .find((button) => button.textContent?.includes('SWAP'));
+      return control instanceof HTMLButtonElement && control.disabled;
+    }, null, { timeout: 1200 });
+    await page.waitForFunction(() => {
+      const step = document.querySelector('[data-p22-promotion="bubblebuster"]')?.getAttribute('data-p22-step') ?? '';
+      return step.includes('COMBO 1+');
+    }, null, { timeout: 1200 });
+    const after = await hud.getAttribute('data-p22-step');
+    assert(before !== after && String(after).includes('COMBO 1+'), `Orb Cannon committed SWAP did not advance CHAMBER READ to its COMBO 1+ resolve step: ${after}`);
   } else if (id === 'matrix') {
     await page.keyboard.press('KeyO');
     await page.waitForTimeout(80);
