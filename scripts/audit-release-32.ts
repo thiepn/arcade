@@ -50,9 +50,7 @@ for (const { id, file } of registryEntries) {
   assert(gameFiles.includes(file), `${id} registers missing module ${file}`);
   assert(workerIds.includes(id), `${id} is missing from Worker GAME_RULES`);
 }
-for (const id of workerIds) {
-  assert(registryIds.includes(id), `Worker accepts unregistered game ${id}`);
-}
+for (const id of workerIds) assert(registryIds.includes(id), `Worker accepts unregistered game ${id}`);
 
 const expectedIds = [
   'orbit','stack','reaction','dodge','pulse','merge','typerush','oneline','breakout','perfectstop',
@@ -60,65 +58,19 @@ const expectedIds = [
   'rhythm','tower','pacmaze','flappyaero','roadcross','bubblebuster','astroblaster','laserrope',
   'blockdrop','knifetarget','airhockey','neonrail',
 ];
-for (const id of expectedIds) {
-  assert(registryIds.includes(id), `completed-roster game ${id} is missing from registry`);
-}
+for (const id of expectedIds) assert(registryIds.includes(id), `completed-roster game ${id} is missing from registry`);
 
 const requiredQualityGates = [
-  'quality:games',
-  'quality:desktop',
-  'quality:blade',
-  'quality:pinball',
-  'quality:chrono',
-  'quality:shortcuts',
-  'quality:pac',
-  'quality:roadcross',
-  'quality:typerush',
-  'quality:oneline',
-  'quality:gravity',
-  'quality:slingshot',
-  'quality:tower',
-  'quality:astro',
-  'quality:drift',
-  'quality:vanguard',
-  'quality:frame-rate',
-  'quality:hud-render',
-  'quality:gameplay-p0',
-  'quality:gameplay-p1',
-  'quality:gameplay-p2',
-  'quality:gameplay-p4',
-  'quality:gameplay-p5',
-  'quality:gameplay-p6',
-  'quality:gameplay-p7',
-  'quality:gameplay-p8',
-  'quality:gameplay-p9',
-  'quality:gameplay-p10',
-  'quality:gameplay-p11',
-  'quality:gameplay-p12',
-  'quality:gameplay-p13',
-  'quality:gameplay-p14',
-  'quality:gameplay-p15',
-  'quality:gameplay-p16',
-  'quality:gameplay-p17',
-  'quality:gameplay-p18',
-  'quality:gameplay-p19',
-  'quality:gameplay-p20',
-  'quality:browser-p3',
-  'quality:browser-p17',
-  'quality:browser-p18',
-  'quality:browser-p19',
-  'quality:browser-p20',
-  'quality:lifecycle',
-  'quality:mobile',
-  'quality:rope',
-  'quality:rope-feedback',
-  'quality:rope-phase-c',
-  'quality:blockdrop',
-  'quality:knife',
-  'quality:puck',
-  'quality:rail',
-  'quality:release32',
-  'quality:hardening',
+  'quality:games','quality:desktop','quality:blade','quality:pinball','quality:chrono','quality:shortcuts',
+  'quality:pac','quality:roadcross','quality:typerush','quality:oneline','quality:gravity','quality:slingshot',
+  'quality:tower','quality:astro','quality:drift','quality:vanguard','quality:frame-rate','quality:hud-render',
+  'quality:gameplay-p0','quality:gameplay-p1','quality:gameplay-p2','quality:gameplay-p4','quality:gameplay-p5',
+  'quality:gameplay-p6','quality:gameplay-p7','quality:gameplay-p8','quality:gameplay-p9','quality:gameplay-p10',
+  'quality:gameplay-p11','quality:gameplay-p12','quality:gameplay-p13','quality:gameplay-p14','quality:gameplay-p15',
+  'quality:gameplay-p16','quality:gameplay-p17','quality:gameplay-p18','quality:gameplay-p19','quality:gameplay-p20','quality:gameplay-p21',
+  'quality:browser-p3','quality:browser-p17','quality:browser-p18','quality:browser-p19','quality:browser-p20','quality:browser-p21',
+  'quality:lifecycle','quality:mobile','quality:rope','quality:rope-feedback','quality:rope-phase-c','quality:blockdrop',
+  'quality:knife','quality:puck','quality:rail','quality:release32','quality:hardening',
 ] as const;
 for (const gate of requiredQualityGates) {
   assert(Boolean(pkg.scripts?.[gate]), `package.json is missing ${gate}`);
@@ -126,62 +78,24 @@ for (const gate of requiredQualityGates) {
 }
 
 const requiredAuditFiles = [
-  'scripts/audit-desktop-coordinates.mjs',
-  'scripts/audit-blade-trajectories.ts',
-  'scripts/audit-pinball-physics.ts',
-  'scripts/audit-chrono-reachability.ts',
-  'scripts/audit-rhythm-shortcuts.ts',
-  'scripts/audit-pac-controls.ts',
-  'scripts/audit-road-cross.ts',
-  'scripts/audit-type-rush.ts',
-  'scripts/audit-one-line.ts',
-  'scripts/audit-gravity.ts',
-  'scripts/audit-slingshot.ts',
-  'scripts/audit-tower.ts',
-  'scripts/audit-astro.ts',
-  'scripts/audit-drift.ts',
-  'scripts/audit-vanguard.ts',
-  'scripts/audit-frame-rate-global.ts',
-  'scripts/audit-hud-render-performance.ts',
-  'scripts/audit-gameplay-p0.ts',
-  'scripts/audit-gameplay-p1.ts',
-  'scripts/audit-gameplay-p2.ts',
-  'scripts/audit-gameplay-p4.ts',
-  'scripts/audit-gameplay-p5.ts',
-  'scripts/audit-gameplay-p6.ts',
-  'scripts/audit-gameplay-p7.ts',
-  'scripts/audit-gameplay-p8.ts',
-  'scripts/audit-gameplay-p9.ts',
-  'scripts/audit-gameplay-p10.ts',
-  'scripts/audit-gameplay-p11.ts',
-  'scripts/audit-gameplay-p12.ts',
-  'scripts/audit-gameplay-p13.ts',
-  'scripts/audit-gameplay-p14.ts',
-  'scripts/audit-gameplay-p15.ts',
-  'scripts/audit-gameplay-p16.ts',
-  'scripts/audit-gameplay-p17.ts',
-  'scripts/audit-gameplay-p18.ts',
-  'scripts/audit-gameplay-p19.ts',
-  'scripts/audit-gameplay-p20.ts',
-  'scripts/audit-browser-gameplay-p3.mjs',
-  'scripts/audit-browser-gameplay-p17.mjs',
-  'scripts/audit-browser-gameplay-p18.mjs',
-  'scripts/audit-browser-gameplay-p19.mjs',
-  'scripts/audit-browser-gameplay-p20.mjs',
-  'scripts/audit-game-lifecycle.ts',
-  'scripts/audit-mobile-runtime.ts',
-  'scripts/audit-laser-rope-presentation.ts',
-  'scripts/audit-laser-rope-feedback.ts',
-  'scripts/audit-laser-rope-phase-c.ts',
-  'scripts/audit-block-drop-hold.ts',
-  'scripts/audit-knife-target-aim.ts',
-  'scripts/audit-air-hockey-layout.ts',
-  'scripts/audit-neon-rail-shift.ts',
-  'scripts/audit-repository-hardening.ts',
+  'scripts/audit-desktop-coordinates.mjs','scripts/audit-blade-trajectories.ts','scripts/audit-pinball-physics.ts',
+  'scripts/audit-chrono-reachability.ts','scripts/audit-rhythm-shortcuts.ts','scripts/audit-pac-controls.ts',
+  'scripts/audit-road-cross.ts','scripts/audit-type-rush.ts','scripts/audit-one-line.ts','scripts/audit-gravity.ts',
+  'scripts/audit-slingshot.ts','scripts/audit-tower.ts','scripts/audit-astro.ts','scripts/audit-drift.ts',
+  'scripts/audit-vanguard.ts','scripts/audit-frame-rate-global.ts','scripts/audit-hud-render-performance.ts',
+  'scripts/audit-gameplay-p0.ts','scripts/audit-gameplay-p1.ts','scripts/audit-gameplay-p2.ts','scripts/audit-gameplay-p4.ts',
+  'scripts/audit-gameplay-p5.ts','scripts/audit-gameplay-p6.ts','scripts/audit-gameplay-p7.ts','scripts/audit-gameplay-p8.ts',
+  'scripts/audit-gameplay-p9.ts','scripts/audit-gameplay-p10.ts','scripts/audit-gameplay-p11.ts','scripts/audit-gameplay-p12.ts',
+  'scripts/audit-gameplay-p13.ts','scripts/audit-gameplay-p14.ts','scripts/audit-gameplay-p15.ts','scripts/audit-gameplay-p16.ts',
+  'scripts/audit-gameplay-p17.ts','scripts/audit-gameplay-p18.ts','scripts/audit-gameplay-p19.ts','scripts/audit-gameplay-p20.ts',
+  'scripts/audit-gameplay-p21.ts','scripts/audit-browser-gameplay-p3.mjs','scripts/audit-browser-gameplay-p17.mjs',
+  'scripts/audit-browser-gameplay-p18.mjs','scripts/audit-browser-gameplay-p19.mjs','scripts/audit-browser-gameplay-p20.mjs',
+  'scripts/audit-browser-gameplay-p21.mjs','scripts/audit-game-lifecycle.ts','scripts/audit-mobile-runtime.ts',
+  'scripts/audit-laser-rope-presentation.ts','scripts/audit-laser-rope-feedback.ts','scripts/audit-laser-rope-phase-c.ts',
+  'scripts/audit-block-drop-hold.ts','scripts/audit-knife-target-aim.ts','scripts/audit-air-hockey-layout.ts',
+  'scripts/audit-neon-rail-shift.ts','scripts/audit-repository-hardening.ts',
 ];
-for (const path of requiredAuditFiles) {
-  assert(existsSync(join(root, path)), `missing permanent regression audit ${path}`);
-}
+for (const path of requiredAuditFiles) assert(existsSync(join(root, path)), `missing permanent regression audit ${path}`);
 
 const workflowFiles = readdirSync(join(root, '.github', 'workflows')).sort();
 assert(
@@ -198,21 +112,15 @@ assert(ma4.includes('gameEntries.length !== 32'), 'MA4 built-game certification 
 assert(mobile.includes('gameFiles.length === 32'), 'mobile runtime audit is not set to 32 games');
 assert(registry.includes("id: 'neonrail'"), 'Neon Rail Shift registration is missing');
 assert(worker.includes("'airhockey','neonrail'"), 'Neon Rail Shift Worker rule is missing');
-assert(existsSync(join(root, 'docs', 'P17_GAME_FEEL_CERTIFICATION.md')), 'P17 certification document is missing');
-assert(existsSync(join(root, 'src', 'lib', 'gameFeelRuntime.ts')), 'P17 shared feel runtime is missing');
-assert(existsSync(join(root, 'src', 'lib', 'gameFeelProfiles.ts')), 'P17 game feel profile registry is missing');
-assert(existsSync(join(root, 'src', 'p17-game-feel.css')), 'P17 bounded feedback stylesheet is missing');
-assert(existsSync(join(root, 'docs', 'P18_CLARITY_ACCESSIBILITY_CERTIFICATION.md')), 'P18 certification document is missing');
-assert(existsSync(join(root, 'docs', 'P18_TERMINOLOGY_REGISTRY.md')), 'P18 terminology registry is missing');
-assert(existsSync(join(root, 'src', 'lib', 'gameClarityRuntime.ts')), 'P18 shared clarity runtime is missing');
-assert(existsSync(join(root, 'src', 'lib', 'gameClarityProfiles.ts')), 'P18 clarity profile registry is missing');
-assert(existsSync(join(root, 'src', 'p18-clarity-accessibility.css')), 'P18 clarity/accessibility stylesheet is missing');
-assert(existsSync(join(root, 'docs', 'P19_ARCADE_COHESION_CERTIFICATION.md')), 'P19 certification document is missing');
-assert(existsSync(join(root, 'src', 'lib', 'arcadeCohesionRuntime.ts')), 'P19 shared cohesion runtime is missing');
-assert(existsSync(join(root, 'src', 'p19-arcade-cohesion.css')), 'P19 cohesion stylesheet is missing');
-assert(existsSync(join(root, 'docs', 'P20_NEAR_S_PROMOTION_CERTIFICATION.md')), 'P20 certification document is missing');
-assert(existsSync(join(root, 'scripts', 'p20-promotion-scorecards.ts')), 'P20 promotion scorecard ledger is missing');
-assert(existsSync(join(root, 'src', 'lib', 'bladeWavePhrases.ts')), 'P20 Laser Blade phrase model is missing');
+
+for (const path of [
+  'docs/P17_GAME_FEEL_CERTIFICATION.md','src/lib/gameFeelRuntime.ts','src/lib/gameFeelProfiles.ts','src/p17-game-feel.css',
+  'docs/P18_CLARITY_ACCESSIBILITY_CERTIFICATION.md','docs/P18_TERMINOLOGY_REGISTRY.md','src/lib/gameClarityRuntime.ts',
+  'src/lib/gameClarityProfiles.ts','src/p18-clarity-accessibility.css','docs/P19_ARCADE_COHESION_CERTIFICATION.md',
+  'src/lib/arcadeCohesionRuntime.ts','src/p19-arcade-cohesion.css','docs/P20_NEAR_S_PROMOTION_CERTIFICATION.md',
+  'scripts/p20-promotion-scorecards.ts','src/lib/bladeWavePhrases.ts','docs/P21_STRONG_A_PROMOTION_CERTIFICATION.md',
+  'scripts/p21-promotion-scorecards.ts',
+]) assert(existsSync(join(root, path)), `required permanent release artifact missing: ${path}`);
 
 if (errors.length) {
   console.error('FINAL 32-GAME RELEASE / REGRESSION AUDIT — FAIL');
@@ -222,4 +130,4 @@ if (errors.length) {
 
 console.log('FINAL 32-GAME RELEASE / REGRESSION AUDIT — PASS');
 console.log('32 source modules / 32 lazy registry entries / 32 Worker rules are in exact parity.');
-console.log('All game contracts, permanent regression gates through P20, repository hardening, roster metadata, mobile/MA4 counts, and cleanup constraints are certified.');
+console.log('All game contracts, permanent regression gates through P21, repository hardening, roster metadata, mobile/MA4 counts, and cleanup constraints are certified.');
