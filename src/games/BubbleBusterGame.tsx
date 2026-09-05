@@ -7,6 +7,7 @@ import {
   ORB_BURST_START_CHARGES,
   canArmOrbBurst,
   canSwapOrbChamber,
+  getOrbSalvoResolutionBonus,
   shouldEarnOrbBurst,
 } from '../lib/orbCannonMastery';
 
@@ -99,7 +100,7 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
 
   const armBurst = () => {
     const state = gameStateRef.current;
-    if (!canArmOrbBurst(state.burstCharges, state.burstArmed, Boolean(state.flyingBubble)) || isPausedRef.current || !state.isAlive) return;
+    if (isPausedRef.current || !state.isAlive || !canArmOrbBurst(state.burstCharges, state.burstArmed, Boolean(state.flyingBubble))) return;
     state.burstCharges--;
     state.burstArmed = true;
     if (soundEnabled) sounds.playPowerUp();
@@ -107,7 +108,7 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
 
   const swapChamber = () => {
     const state = gameStateRef.current;
-    if (!canSwapOrbChamber(state.hasSwappedThisTurn, Boolean(state.flyingBubble)) || isPausedRef.current || !state.isAlive) return;
+    if (isPausedRef.current || !state.isAlive || !canSwapOrbChamber(state.hasSwappedThisTurn, Boolean(state.flyingBubble))) return;
     const current = state.currentBubbleColor;
     state.currentBubbleColor = state.nextBubbleColor;
     state.nextBubbleColor = current;
@@ -446,6 +447,20 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
                   });
                 }
 
+                const salvoBonus = getOrbSalvoResolutionBonus(state.combo, dropCount);
+                if (salvoBonus > 0) {
+                  state.score += salvoBonus;
+                  onScoreUpdate(state.score);
+                  state.popups.push({
+                    id: state.nextId++,
+                    x: fb.x,
+                    y: fb.y - 34,
+                    text: `SALVO PLAN +${salvoBonus}`,
+                    color: '#67E8F9',
+                    life: 1.15,
+                  });
+                }
+
                 if (shouldEarnOrbBurst(state.combo, dropCount)) {
                   state.burstCharges = Math.min(ORB_BURST_MAX_CHARGES, state.burstCharges + 1);
                 }
@@ -681,9 +696,7 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
           <span className="text-[11px] font-mono text-zinc-400 font-bold">NEXT ORB:</span>
           <div
             className="w-4.5 h-4.5 rounded-full border-2 border-white/80 shadow-md"
-            style={{
-              backgroundColor: hudState.nextColor,
-            }}
+            style={{ backgroundColor: hudState.nextColor }}
           />
         </div>
       </div>
