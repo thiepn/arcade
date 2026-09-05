@@ -3,6 +3,8 @@ export const TOWER_APEX_MAX_CHARGES = 2;
 export const TOWER_APEX_DURATION_SEC = 4.5;
 export const TOWER_APEX_BOUNCE_MULTIPLIER = 1.18;
 export const TOWER_APEX_SCORE_MULTIPLIER = 2;
+export const TOWER_APEX_ROUTE_LENGTH = 5;
+export const TOWER_APEX_ROUTE_COMPLETE_BONUS = 900;
 
 export const isTowerPrecisionLanding = (
   playerX: number,
@@ -38,5 +40,21 @@ export const getTowerApexBounceVelocity = (
 export const getTowerApexReward = (basePoints: number, active: boolean): number =>
   Math.round(basePoints * (active ? TOWER_APEX_SCORE_MULTIPLIER : 1));
 
-export const getTowerPrecisionBonus = (precisionStreak: number): number =>
-  150 * Math.min(5, Math.max(1, precisionStreak));
+// P21 turns the existing precision streak into a compact mastery route. Five
+// consecutive center landings create a score-only completion beat; it grants no
+// safety, movement assistance, or extra charge beyond the existing 3-hit cadence.
+export const getTowerApexRouteBonus = (precisionStreak: number): number =>
+  precisionStreak > 0 && precisionStreak % TOWER_APEX_ROUTE_LENGTH === 0
+    ? TOWER_APEX_ROUTE_COMPLETE_BONUS
+    : 0;
+
+export const getTowerPrecisionBonus = (precisionStreak: number): number => {
+  const base = 150 * Math.min(5, Math.max(1, precisionStreak));
+  return base + getTowerApexRouteBonus(precisionStreak);
+};
+
+export const getTowerApexRouteProgress = (precisionStreak: number): number => {
+  const safe = Math.max(0, Math.floor(precisionStreak));
+  if (safe > 0 && safe % TOWER_APEX_ROUTE_LENGTH === 0) return TOWER_APEX_ROUTE_LENGTH;
+  return safe % TOWER_APEX_ROUTE_LENGTH;
+};

@@ -103,11 +103,13 @@ const requiredQualityGates = [
   'quality:gameplay-p18',
   'quality:gameplay-p19',
   'quality:gameplay-p20',
+  'quality:gameplay-p21',
   'quality:browser-p3',
   'quality:browser-p17',
   'quality:browser-p18',
   'quality:browser-p19',
   'quality:browser-p20',
+  'quality:browser-p21',
   'quality:lifecycle',
   'quality:mobile',
   'quality:rope',
@@ -163,11 +165,13 @@ const requiredAuditFiles = [
   'scripts/audit-gameplay-p18.ts',
   'scripts/audit-gameplay-p19.ts',
   'scripts/audit-gameplay-p20.ts',
+  'scripts/audit-gameplay-p21.ts',
   'scripts/audit-browser-gameplay-p3.mjs',
   'scripts/audit-browser-gameplay-p17.mjs',
   'scripts/audit-browser-gameplay-p18.mjs',
   'scripts/audit-browser-gameplay-p19.mjs',
   'scripts/audit-browser-gameplay-p20.mjs',
+  'scripts/audit-browser-gameplay-p21.mjs',
   'scripts/audit-game-lifecycle.ts',
   'scripts/audit-mobile-runtime.ts',
   'scripts/audit-laser-rope-presentation.ts',
@@ -213,6 +217,8 @@ assert(existsSync(join(root, 'src', 'p19-arcade-cohesion.css')), 'P19 cohesion s
 assert(existsSync(join(root, 'docs', 'P20_NEAR_S_PROMOTION_CERTIFICATION.md')), 'P20 certification document is missing');
 assert(existsSync(join(root, 'scripts', 'p20-promotion-scorecards.ts')), 'P20 promotion scorecard ledger is missing');
 assert(existsSync(join(root, 'src', 'lib', 'bladeWavePhrases.ts')), 'P20 Laser Blade phrase model is missing');
+assert(existsSync(join(root, 'docs', 'P21_STRONG_A_PROMOTION_CERTIFICATION.md')), 'P21 certification document is missing');
+assert(existsSync(join(root, 'scripts', 'p21-promotion-scorecards.ts')), 'P21 promotion scorecard ledger is missing');
 
 if (errors.length) {
   console.error('FINAL 32-GAME RELEASE / REGRESSION AUDIT — FAIL');
@@ -222,4 +228,4 @@ if (errors.length) {
 
 console.log('FINAL 32-GAME RELEASE / REGRESSION AUDIT — PASS');
 console.log('32 source modules / 32 lazy registry entries / 32 Worker rules are in exact parity.');
-console.log('All game contracts, permanent regression gates through P20, repository hardening, roster metadata, mobile/MA4 counts, and cleanup constraints are certified.');
+console.log('All game contracts, permanent regression gates through P21, repository hardening, roster metadata, mobile/MA4 counts, and cleanup constraints are certified.');
