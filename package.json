@@ -89,7 +89,7 @@
     "react-dom": "^19.0.1"
   },
   "devDependencies": {
-    "@playwright/test": "1.55.0",
+    "@playwright/test": "1.62.1",
     "@tailwindcss/vite": "^4.1.14",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^26.3.0",
