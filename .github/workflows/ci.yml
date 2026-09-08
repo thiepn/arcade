@@ -108,7 +108,7 @@ jobs:
       - run: bun run quality:rc-contracts
       - run: bun run worker:check
       - run: bun run build
-      - name: Browser gameplay certification — responsive header + P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23 / P24
+      - name: Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23 / P24
         shell: bash
         run: |
           set -euo pipefail
