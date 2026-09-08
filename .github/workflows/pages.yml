@@ -1,4 +1,4 @@
-name: Deploy Pages
+name: Deploy Production
 
 on:
   workflow_run:
@@ -12,12 +12,77 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: production
   cancel-in-progress: true
 
+env:
+  LEADERBOARD_API_URL: https://micro-arcade-leaderboards.thiepn.workers.dev
+  PRODUCTION_ORIGIN: https://thiepn.dev
+
 jobs:
+  deploy-worker:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - name: Deploy leaderboard Worker when Cloudflare credentials are configured
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -n "${CLOUDFLARE_API_TOKEN:-}" ] && [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            bun run worker:deploy
+          else
+            echo '::notice::Cloudflare deploy credentials are not configured in GitHub; verifying the already-deployed Worker instead.'
+          fi
+      - name: Verify production Worker health and CORS
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers="$(mktemp)"
+          normalized_headers="$(mktemp)"
+          cleanup() { rm -f "$headers" "$normalized_headers"; }
+          trap cleanup EXIT
+
+          ok=0
+          for attempt in $(seq 1 20); do
+            : > "$headers"
+            : > "$normalized_headers"
+            status="$(curl -sS -o /dev/null -D "$headers" -w '%{http_code}' -X OPTIONS "$LEADERBOARD_API_URL/v1/guest" \
+              -H "Origin: $PRODUCTION_ORIGIN" \
+              -H 'Access-Control-Request-Method: POST' \
+              -H 'Access-Control-Request-Headers: content-type' || true)"
+            tr -d '\r' < "$headers" > "$normalized_headers"
+            if [ "$status" = '204' ] && grep -Fqi "access-control-allow-origin: $PRODUCTION_ORIGIN" "$normalized_headers"; then
+              ok=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$ok" != '1' ]; then
+            echo 'Production Worker did not accept the thiepn.dev CORS preflight.' >&2
+            echo 'Configure CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in GitHub, or deploy the Worker manually before releasing Pages.' >&2
+            cat "$normalized_headers" >&2 || true
+            exit 1
+          fi
+
+          curl -fsS "$LEADERBOARD_API_URL/v1/health" | grep -q '"ok":true'
+          echo 'Production leaderboard Worker health and CORS verified.'
+
   build:
     if: github.event.workflow_run.conclusion == 'success'
+    needs: deploy-worker
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -51,7 +116,7 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
   certify-live:
     runs-on: ubuntu-latest
