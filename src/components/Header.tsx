@@ -58,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="p19-home-header sticky top-0 z-40 w-full border-b border-[#27272A] bg-[#0A0A0B]/95 backdrop-blur-xl shadow-lg shadow-black/40">
       <div className="max-w-7xl mx-auto px-2.5 sm:px-6 h-16 flex items-center justify-between gap-1.5 sm:gap-4">
         {/* Left: Brand Logo & Main Navigation */}
-        <div className="flex items-center gap-2 sm:gap-4 lg:gap-8 min-w-0">
+        <div className="p19-header-left flex items-center gap-2 sm:gap-4 lg:gap-8 min-w-0">
           <button
             type="button"
             id="brand-logo-btn"
@@ -83,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {/* Navigation Tabs */}
-          <nav aria-label="Arcade library" className="hidden md:flex items-center gap-1.5 p-1 rounded-xl bg-[#121215] border border-[#27272A] text-xs font-mono-arcade text-[#A1A1AA]">
+          <nav aria-label="Arcade library" className="p19-library-nav hidden md:flex items-center gap-1.5 p-1 rounded-xl bg-[#121215] border border-[#27272A] text-xs font-mono-arcade text-[#A1A1AA]">
             <button
               type="button"
               id="nav-all-games-btn"

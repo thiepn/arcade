@@ -23,8 +23,8 @@ installP22PromotionRuntime();
 installP23TransformationRuntime();
 
 window.addEventListener('vite:preloadError', (event) => {
+  // Let the error boundary offer recovery; never reload an active run in a loop.
   event.preventDefault();
-  window.location.reload();
 });
 
 createRoot(document.getElementById('root')!).render(

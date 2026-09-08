@@ -4,6 +4,7 @@
   "main": "worker/src/index.ts",
   "compatibility_date": "2026-08-28",
   "workers_dev": true,
+  "observability": { "enabled": true, "head_sampling_rate": 0.1 },
   "vars": {
     "ALLOWED_ORIGINS": "https://thiepn.github.io,http://localhost:3000,http://127.0.0.1:3000"
   },
@@ -11,7 +12,7 @@
     {
       "binding": "DB",
       "database_name": "micro-arcade-leaderboards",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "aa08aed3-62d9-411a-835f-3a2c2045f794",
       "migrations_dir": "worker/migrations"
     }
   ],

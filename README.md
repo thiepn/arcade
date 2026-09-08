@@ -37,7 +37,9 @@ MA3 makes Micro Arcade an installable progressive web app.
 
 - Web app manifest with 192px, 512px, maskable, and Apple touch icons.
 - Production service worker caches the built arcade shell and same-origin assets for offline reuse.
-- Navigation falls back to the cached arcade shell when the network is unavailable.
+- Navigations use the installed build's cached shell so HTML and lazy chunks stay on the same release.
+- Installation succeeds only after every lazy game asset is cached; incomplete updates preserve the installed release.
+- Cache names include the build hash and deployment scope. One previous build is retained for other open tabs.
 - External leaderboard/API requests are never intercepted by the service worker.
 - A browser install prompt is surfaced when the platform supports `beforeinstallprompt`.
 - Offline status is shown without blocking local gameplay.
@@ -87,11 +89,9 @@ The permanent CI gate applies all D1 migrations, smoke-tests the Worker API, ver
 
 ### Cloudflare deployment
 
-Create the D1 database, replace the placeholder database ID in `wrangler.jsonc`, configure `CREDENTIAL_PEPPER` as a Worker secret, apply the remote migrations, and deploy:
+The Micro Arcade database is provisioned and bound in `wrangler.jsonc`. The Worker runs at `https://micro-arcade-leaderboards.thiepn.workers.dev`. Its credential pepper is a Cloudflare secret. For another Cloudflare account, create a separate database and replace the binding UUID; never reuse or rotate the existing production pepper as part of a routine deployment.
 
 ```bash
-bunx wrangler d1 create micro-arcade-leaderboards
-bunx wrangler secret put CREDENTIAL_PEPPER
 bun run d1:migrate:remote
 bun run worker:deploy
 ```
@@ -119,4 +119,19 @@ Version 1.1.1 keeps the completed 32-game roster unchanged while hardening the r
 - keyboard-operable game cards, skip navigation, visible focus, modal focus trapping, zoom support, reduced motion, and safe-area handling form the accessibility baseline
 - CI enforces game parity, targeted gameplay regressions, Worker behavior, root and Pages builds, PWA integrity, lazy-loading structure, accessibility structure, and the per-chunk size ceiling
 
-The public frontend is release-ready. Live ranking surfaces still require the documented one-time Cloudflare D1/Worker provisioning and frontend API URL configuration. GitHub-side `main` branch protection remains tracked separately because it is a repository setting rather than source-controlled configuration.
+The September 2026 release-candidate audit adds validated persistence with temporary-storage fallback, bounded leaderboard requests and honest submission feedback, isolated modal/game input, atomic score replay handling, safe JSON API errors, complete versioned offline caches, and a responsive header. See [the audit and game inventory](docs/RELEASE_CANDIDATE_AUDIT.md) for evidence and testing limits.
+
+Pages builds use the deployed Worker by default. Set the repository Actions variable `VITE_LEADERBOARD_API_URL` to override it. Local development stays local-only unless `.env.local` configures an API origin. Public API URLs are build-time configuration; credentials and the pepper must never use a `VITE_` variable.
+
+New regression commands:
+
+```bash
+bun run quality:rc-storage
+bun run quality:rc-contracts
+# With a migrated local Worker running on port 8787:
+bun run quality:rc-worker
+# With a root build in dist and Chrome installed:
+bun run quality:rc-browser
+```
+
+Use `RC_CHROME_PATH` for an alternate Chromium executable and `RC_ARTIFACT_DIR` for optional screenshots. The browser regression starts its own isolated local HTTP server. `bun run lint` is TypeScript checking; this repository does not have a separate ESLint gate.

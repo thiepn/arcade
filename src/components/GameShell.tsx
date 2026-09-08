@@ -5,6 +5,7 @@ import { haptics } from '../lib/haptics';
 import { beginLeaderboardSession, submitLeaderboardScore, type LeaderboardPlaySession } from '../lib/leaderboards';
 import { useGamepadBridge } from '../hooks/useGamepadBridge';
 import { ErrorBoundary } from './ErrorBoundary';
+import { isProgressSaved } from '../lib/storage';
 import {
   ArrowLeft,
   RotateCcw,
@@ -33,6 +34,7 @@ interface GameShellProps {
   onPlayNextRandom: () => void;
   onSaveScore: (gameId: string, score: number) => { isNewHighScore: boolean };
   onViewLeaderboard?: (gameId: string) => void;
+  obscured?: boolean;
 }
 
 export const GameShell: React.FC<GameShellProps> = ({
@@ -46,6 +48,7 @@ export const GameShell: React.FC<GameShellProps> = ({
   onPlayNextRandom,
   onSaveScore,
   onViewLeaderboard,
+  obscured = false,
 }) => {
   const [currentScore, setCurrentScore] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -58,6 +61,12 @@ export const GameShell: React.FC<GameShellProps> = ({
   const gameOverHandledRef = useRef(false);
   const leaderboardSessionRef = useRef<LeaderboardPlaySession | null>(null);
   const leaderboardSessionPromiseRef = useRef<Promise<LeaderboardPlaySession | null> | null>(null);
+  const mountedRef = useRef(true);
+  const [submissionStatus, setSubmissionStatus] = useState<'local' | 'pending' | 'accepted' | 'failed'>('local');
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   // Sync haptics enabled state with global haptics engine
   useEffect(() => {
@@ -76,17 +85,20 @@ export const GameShell: React.FC<GameShellProps> = ({
     cursorRef: gamepadCursorRef,
     paused: isPaused,
     gameOver: Boolean(gameOverData),
+    disabled: obscured,
   });
 
   // Keep mobile displays awake during active gameplay when the browser permits it.
   useEffect(() => {
-    if (isPaused || gameOverData || !("wakeLock" in navigator)) return;
+    if (isPaused || obscured || gameOverData || !("wakeLock" in navigator)) return;
     let released = false;
-    let sentinel = null;
+    let sentinel: WakeLockSentinel | null = null;
     const acquire = async () => {
       if (released || document.hidden) return;
       try {
-        sentinel = await navigator.wakeLock.request('screen');
+        const acquired = await navigator.wakeLock.request('screen');
+        if (released) { await acquired.release(); return; }
+        sentinel = acquired;
       } catch {}
     };
     const onVisibility = () => {
@@ -99,7 +111,7 @@ export const GameShell: React.FC<GameShellProps> = ({
       document.removeEventListener('visibilitychange', onVisibility);
       if (sentinel) void sentinel.release().catch(() => {});
     };
-  }, [gameOverData, isPaused]);
+  }, [gameOverData, isPaused, obscured]);
 
   // Lock background page scrolling/pull-to-refresh while the full-screen game shell is active.
   useEffect(() => {
@@ -115,7 +127,7 @@ export const GameShell: React.FC<GameShellProps> = ({
     let cancelled = false;
     leaderboardSessionRef.current = null;
     const sessionKey = gameSessionKey;
-    const request = beginLeaderboardSession(game.id);
+    const request = beginLeaderboardSession(game.id).catch(() => null);
     leaderboardSessionPromiseRef.current = request;
     void request.then((session) => {
       if (!cancelled && activeSessionKeyRef.current === sessionKey) {
@@ -135,6 +147,7 @@ export const GameShell: React.FC<GameShellProps> = ({
     setCurrentScore(0);
     prevScoreRef.current = 0;
     setGameOverData(null);
+    setSubmissionStatus('local');
     setIsPaused(false);
     gameOverHandledRef.current = false;
     const nextSessionKey = activeSessionKeyRef.current + 1;
@@ -170,11 +183,15 @@ export const GameShell: React.FC<GameShellProps> = ({
       const { isNewHighScore } = onSaveScore(game.id, safeFinalScore);
       const newBest = Math.max(bestScore, safeFinalScore);
 
-      const submitRemoteScore = (session: LeaderboardPlaySession | null) => {
-        if (session) void submitLeaderboardScore(session, safeFinalScore);
+      const submitRemoteScore = async (session: LeaderboardPlaySession | null) => {
+        const current = () => mountedRef.current && sessionKey === activeSessionKeyRef.current;
+        if (!session) { if (current()) setSubmissionStatus('local'); return; }
+        if (current()) setSubmissionStatus('pending');
+        const accepted = await submitLeaderboardScore(session, safeFinalScore);
+        if (current()) setSubmissionStatus(accepted ? 'accepted' : 'failed');
       };
       if (leaderboardSessionRef.current) {
-        submitRemoteScore(leaderboardSessionRef.current);
+        void submitRemoteScore(leaderboardSessionRef.current);
       } else if (leaderboardSessionPromiseRef.current) {
         void leaderboardSessionPromiseRef.current.then(submitRemoteScore).catch(() => {});
       }
@@ -195,6 +212,7 @@ export const GameShell: React.FC<GameShellProps> = ({
               spread: 60,
               origin: { y: 0.6 },
               colors: [game.accentColor, '#facc15', '#ffffff'],
+              disableForReducedMotion: true,
             });
           })
           .catch(() => {});
@@ -262,7 +280,11 @@ export const GameShell: React.FC<GameShellProps> = ({
   // Global game shell keyboard shortcuts
   useEffect(() => {
     const handleGlobalKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
+      if (obscured || e.repeat || e.defaultPrevented || e.isComposing) return;
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      if (target?.matches('input, textarea, select, [contenteditable="true"]') && e.key !== 'Escape') return;
+      if ((e.code === 'Space' || e.code === 'Enter') && target?.closest('button, a[href]')) return;
+      if (e.ctrlKey || e.metaKey) return;
       if (gameOverData) {
         if (e.code === 'Space' || e.code === 'Enter') {
           e.preventDefault();
@@ -319,6 +341,9 @@ export const GameShell: React.FC<GameShellProps> = ({
     onToggleSound,
     togglePause,
     toggleFullscreen,
+    obscured,
+    game.id,
+    onViewLeaderboard,
   ]);
 
   const GameComponent = game.component;
@@ -326,6 +351,8 @@ export const GameShell: React.FC<GameShellProps> = ({
   return (
     <div
       ref={shellRef}
+      inert={obscured}
+      aria-hidden={obscured || undefined}
       className={`game-shell fixed inset-0 z-50 bg-[#0A0A0B] flex flex-col items-center justify-between text-[#E4E4E7] overflow-hidden select-none ${
         isFullscreen ? 'p-0' : ''
       }`}
@@ -530,7 +557,7 @@ export const GameShell: React.FC<GameShellProps> = ({
                 key={gameSessionKey}
                 onGameOver={sessionCallbacks.onGameOver}
                 onScoreUpdate={sessionCallbacks.onScoreUpdate}
-                isPaused={isPaused || gameOverData !== null}
+                isPaused={isPaused || obscured || gameOverData !== null}
                 soundEnabled={soundEnabled}
                 onRestartRequest={handleRestart}
               />
@@ -627,6 +654,10 @@ export const GameShell: React.FC<GameShellProps> = ({
                 </div>
 
                 {/* Action Buttons */}
+                <p role="status" aria-live="polite" className="mb-3 text-xs text-zinc-300" data-score-submission={submissionStatus}>
+                  {submissionStatus === 'accepted' ? 'Global score accepted.' : submissionStatus === 'pending' ? 'Submitting global score… You can replay now.' : submissionStatus === 'failed' ? 'Global score not submitted.' : 'This run is local only.'}
+                  {' '}{isProgressSaved() ? 'Personal best saved on this device.' : 'Storage unavailable; progress lasts until this page closes.'}
+                </p>
                 <div className="w-full flex flex-col gap-2.5">
                   <button
                     type="button"

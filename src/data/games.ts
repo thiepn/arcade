@@ -1,7 +1,7 @@
-import { GameDefinition } from '../types';
+import { GameDefinition, GameComponentProps } from '../types';
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 
-type MiniGameComponent = ComponentType<any>;
+type MiniGameComponent = ComponentType<GameComponentProps>;
 
 const lazyGame = (loader: () => Promise<{ default: MiniGameComponent }>): LazyExoticComponent<MiniGameComponent> => lazy(loader);
 

@@ -31,6 +31,8 @@ jobs:
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - run: bun install --frozen-lockfile
       - run: bun run build:pages
+        env:
+          VITE_LEADERBOARD_API_URL: ${{ vars.VITE_LEADERBOARD_API_URL || 'https://micro-arcade-leaderboards.thiepn.workers.dev' }}
       - run: MA3_EXPECT_BASE=/arcade/ bun run quality:ma3
       - run: MA4_EXPECT_BASE=/arcade/ bun run quality:ma4
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

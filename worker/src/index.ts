@@ -1,26 +1,3 @@
-type D1RunResult = { success: boolean; meta?: { changes?: number }; results?: unknown[] };
-interface D1Statement {
-  bind(...values: unknown[]): D1Statement;
-  first<T = Record<string, unknown>>(): Promise<T | null>;
-  all<T = Record<string, unknown>>(): Promise<{ results: T[] }>;
-  run(): Promise<D1RunResult>;
-}
-interface D1Database {
-  prepare(query: string): D1Statement;
-  batch(statements: D1Statement[]): Promise<D1RunResult[]>;
-}
-interface RateLimitBinding {
-  limit(input: { key: string }): Promise<{ success: boolean }>;
-}
-interface Env {
-  DB: D1Database;
-  CREDENTIAL_PEPPER: string;
-  ALLOWED_ORIGINS: string;
-  GUEST_RATE_LIMITER: RateLimitBinding;
-  SESSION_RATE_LIMITER: RateLimitBinding;
-  SCORE_RATE_LIMITER: RateLimitBinding;
-}
-
 type GameRule = { maxScore: number; minDurationMs: number; maxDurationMs: number };
 
 const GAME_RULES: Record<string, GameRule> = Object.fromEntries(
@@ -48,6 +25,7 @@ Object.assign(GAME_RULES, {
 const encoder = new TextEncoder();
 const SESSION_TTL_MS = 30 * 60 * 1000;
 const MAX_LEADERBOARD_LIMIT = 50;
+const MAX_BODY_BYTES = 4096;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function json(data: unknown, status = 200, headers: HeadersInit = {}): Response {
@@ -59,7 +37,7 @@ function json(data: unknown, status = 200, headers: HeadersInit = {}): Response 
 
 function corsHeaders(request: Request, env: Env): Record<string, string> {
   const origin = request.headers.get('origin');
-  const allowed = env.ALLOWED_ORIGINS.split(',').map((value) => value.trim()).filter(Boolean);
+  const allowed = (env.ALLOWED_ORIGINS || '').split(',').map((value) => value.trim()).filter(Boolean);
   const headers: Record<string, string> = {
     'access-control-allow-headers': 'authorization, content-type',
     'access-control-allow-methods': 'GET,POST,PATCH,OPTIONS',
@@ -127,10 +105,38 @@ function utcWeekBounds(now = Date.now()): { start: number; end: number } {
   return { start, end: start + WEEK_MS };
 }
 
+class ApiError extends Error {
+  constructor(public status: number, public code: string, message: string) { super(message); }
+}
+
 async function readJson<T>(request: Request): Promise<T> {
   const contentType = request.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) throw new Error('Expected application/json');
-  return request.json() as Promise<T>;
+  if (contentType.split(';')[0].trim().toLowerCase() !== 'application/json') throw new ApiError(415, 'invalid_content_type', 'Expected application/json');
+  if (Number(request.headers.get('content-length')) > MAX_BODY_BYTES) throw new ApiError(413, 'payload_too_large', 'Request too large');
+  const reader = request.body?.getReader();
+  if (!reader) throw new ApiError(400, 'invalid_json', 'Expected a JSON object');
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > MAX_BODY_BYTES) {
+        await reader.cancel();
+        throw new ApiError(413, 'payload_too_large', 'Request too large');
+      }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  try {
+    const data: unknown = JSON.parse(new TextDecoder().decode(bytes));
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Not an object');
+    return data as T;
+  } catch { throw new ApiError(400, 'invalid_json', 'Expected a JSON object'); }
 }
 
 interface PlayerRow {
@@ -146,7 +152,7 @@ async function authenticate(request: Request, env: Env, optional = false): Promi
     if (optional) return null;
     throw new Response('Unauthorized', { status: 401 });
   }
-  const match = /^Bearer\s+([0-9a-f-]{36})\.([A-Za-z0-9_-]{20,})$/i.exec(header);
+  const match = /^Bearer\s+([0-9a-f-]{36})\.([A-Za-z0-9_-]{20,128})$/i.exec(header);
   if (!match) throw new Response('Unauthorized', { status: 401 });
   const [, playerId, secret] = match;
   const hash = await credentialHash(env, secret);
@@ -154,18 +160,21 @@ async function authenticate(request: Request, env: Env, optional = false): Promi
     'SELECT id, display_name, country_code, created_at FROM players WHERE id = ? AND credential_hash = ?'
   ).bind(playerId, hash).first<PlayerRow>();
   if (!player) throw new Response('Unauthorized', { status: 401 });
-  void env.DB.prepare('UPDATE players SET last_seen_at = ? WHERE id = ?').bind(Date.now(), player.id).run();
+  if (request.method !== 'GET') {
+    await env.DB.prepare('UPDATE players SET last_seen_at = ? WHERE id = ?').bind(Date.now(), player.id).run();
+  }
   return player;
 }
 
-async function rateLimit(binding: RateLimitBinding, key: string): Promise<void> {
+async function rateLimit(binding: RateLimit, key: string): Promise<void> {
   const result = await binding.limit({ key });
   if (!result.success) throw new Response('Too Many Requests', { status: 429 });
 }
 
 async function createGuest(request: Request, env: Env): Promise<Response> {
   const ip = request.headers.get('cf-connecting-ip') || 'unknown';
-  await rateLimit(env.GUEST_RATE_LIMITER, `${ip}:${request.headers.get('user-agent') || ''}`);
+  await rateLimit(env.GUEST_RATE_LIMITER, ip);
+  await readJson<Record<string, unknown>>(request);
   const now = Date.now();
   const id = crypto.randomUUID();
   const secret = randomSecret();
@@ -203,8 +212,9 @@ async function getMe(request: Request, env: Env): Promise<Response> {
 
 async function updateMe(request: Request, env: Env): Promise<Response> {
   const player = await authenticate(request, env);
+  await rateLimit(env.SESSION_RATE_LIMITER, player!.id);
   const body = await readJson<{ name?: string }>(request);
-  const name = (body.name || '').trim();
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
   if (!/^[A-Za-z0-9 _.-]{3,20}$/.test(name)) {
     return response(request, env, { error: 'Name must be 3-20 characters using letters, numbers, spaces, _ . or -.' }, 400);
   }
@@ -219,8 +229,8 @@ async function createSession(request: Request, env: Env): Promise<Response> {
   const player = await authenticate(request, env);
   await rateLimit(env.SESSION_RATE_LIMITER, player!.id);
   const body = await readJson<{ gameId?: string }>(request);
-  const gameId = body.gameId || '';
-  if (!GAME_RULES[gameId]) return response(request, env, { error: 'Unknown game' }, 400);
+  const gameId = typeof body.gameId === 'string' ? body.gameId : '';
+  if (!Object.hasOwn(GAME_RULES, gameId)) return response(request, env, { error: 'Unknown game', code: 'unknown_game' }, 400);
   const now = Date.now();
   const id = crypto.randomUUID();
   await env.DB.prepare(
@@ -242,10 +252,8 @@ async function submitScore(request: Request, env: Env): Promise<Response> {
   const player = await authenticate(request, env);
   await rateLimit(env.SCORE_RATE_LIMITER, player!.id);
   const body = await readJson<{ sessionId?: string; score?: number; durationMs?: number }>(request);
-  const sessionId = body.sessionId || '';
-  const score = Number(body.score);
-  const durationMs = Number(body.durationMs);
-  if (!sessionId || !Number.isSafeInteger(score) || score < 0 || !Number.isFinite(durationMs) || durationMs < 0) {
+  const { sessionId, score, durationMs } = body;
+  if (typeof sessionId !== 'string' || !/^[0-9a-f-]{36}$/i.test(sessionId) || typeof score !== 'number' || !Number.isSafeInteger(score) || score < 0 || typeof durationMs !== 'number' || !Number.isFinite(durationMs) || durationMs < 0) {
     return response(request, env, { error: 'Invalid score submission' }, 400);
   }
   const session = await env.DB.prepare(
@@ -280,7 +288,15 @@ async function submitScore(request: Request, env: Env): Promise<Response> {
     ).bind(session.game_id, player!.id, score, now),
     env.DB.prepare('UPDATE play_sessions SET used_at = ? WHERE id = ? AND used_at IS NULL').bind(now, session.id),
   ];
-  await env.DB.batch(statements);
+  try {
+    await env.DB.batch(statements);
+  } catch (error) {
+    // A concurrent request can consume the token after the initial read. The unique
+    // session_id constraint rolls the whole D1 batch back; report the replay safely.
+    const consumed = await env.DB.prepare('SELECT used_at FROM play_sessions WHERE id = ?').bind(session.id).first<{ used_at: number | null }>();
+    if (consumed?.used_at != null) return response(request, env, { error: 'Play session already used', code: 'session_used' }, 409);
+    throw error;
+  }
   const best = await env.DB.prepare('SELECT score, achieved_at FROM best_scores WHERE game_id = ? AND player_id = ?')
     .bind(session.game_id, player!.id).first<{ score: number; achieved_at: number }>();
   return response(request, env, { accepted: true, gameId: session.game_id, bestScore: best?.score ?? score });
@@ -295,14 +311,14 @@ interface GameLeaderboardRow {
 }
 
 async function gameLeaderboard(request: Request, env: Env, gameId: string, url: URL): Promise<Response> {
-  if (!GAME_RULES[gameId]) return response(request, env, { error: 'Unknown game' }, 404);
+  if (!Object.hasOwn(GAME_RULES, gameId)) return response(request, env, { error: 'Unknown game', code: 'unknown_game' }, 404);
   const player = await authenticate(request, env, true);
   const limit = parseLimit(url);
   const rows = await env.DB.prepare(
     `SELECT bs.player_id AS id, p.display_name AS name, p.country_code, bs.score, bs.achieved_at
      FROM best_scores bs JOIN players p ON p.id = bs.player_id
      WHERE bs.game_id = ?
-     ORDER BY bs.score DESC, bs.achieved_at ASC
+     ORDER BY bs.score DESC, bs.achieved_at ASC, bs.player_id ASC
      LIMIT ?`
   ).bind(gameId, limit).all<GameLeaderboardRow>();
   const count = await env.DB.prepare('SELECT COUNT(*) AS count FROM best_scores WHERE game_id = ?')
@@ -317,8 +333,8 @@ async function gameLeaderboard(request: Request, env: Env, gameId: string, url: 
     if (own) {
       const rankRow = await env.DB.prepare(
         `SELECT 1 + COUNT(*) AS rank FROM best_scores
-         WHERE game_id = ? AND (score > ? OR (score = ? AND achieved_at < ?))`
-      ).bind(gameId, own.score, own.score, own.achieved_at).first<{ rank: number }>();
+         WHERE game_id = ? AND (score > ? OR (score = ? AND (achieved_at < ? OR (achieved_at = ? AND player_id < ?))))`
+      ).bind(gameId, own.score, own.score, own.achieved_at, own.achieved_at, own.id).first<{ rank: number }>();
       userEntry = { ...own, rank: rankRow?.rank ?? 1 };
     }
   }
@@ -348,7 +364,7 @@ const OVERALL_CTE = `WITH totals AS (
   SELECT *, games_played * 1000 + MIN(CAST(total_score / 10000 AS INTEGER), 999) AS rating_score
   FROM totals
 ), ranked AS (
-  SELECT *, ROW_NUMBER() OVER (ORDER BY rating_score DESC, total_score DESC, last_achieved_at ASC) AS rank
+  SELECT *, ROW_NUMBER() OVER (ORDER BY rating_score DESC, total_score DESC, last_achieved_at ASC, id ASC) AS rank
   FROM rated
 )`;
 
@@ -372,7 +388,7 @@ const WEEKLY_OVERALL_CTE = `WITH ranked_weekly_submissions AS (
   SELECT *, games_played * 1000 + MIN(CAST(total_score / 10000 AS INTEGER), 999) AS rating_score
   FROM totals
 ), ranked AS (
-  SELECT *, ROW_NUMBER() OVER (ORDER BY rating_score DESC, total_score DESC, last_achieved_at ASC) AS rank
+  SELECT *, ROW_NUMBER() OVER (ORDER BY rating_score DESC, total_score DESC, last_achieved_at ASC, id ASC) AS rank
   FROM rated
 )`;
 
@@ -428,28 +444,36 @@ async function weeklyOverallLeaderboard(request: Request, env: Env, url: URL): P
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const origin = request.headers.get('origin');
+    if (origin && !(env.ALLOWED_ORIGINS || '').split(',').map(value => value.trim()).includes(origin)) {
+      return response(request, env, { error: 'Origin not allowed', code: 'origin_not_allowed' }, 403);
+    }
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(request, env) });
     const url = new URL(request.url);
     try {
       if (url.pathname === '/v1/health' && request.method === 'GET') {
         return response(request, env, { ok: true, service: 'micro-arcade-leaderboards' });
       }
-      if (url.pathname === '/v1/guest' && request.method === 'POST') return createGuest(request, env);
-      if (url.pathname === '/v1/me' && request.method === 'GET') return getMe(request, env);
-      if (url.pathname === '/v1/me' && request.method === 'PATCH') return updateMe(request, env);
-      if (url.pathname === '/v1/sessions' && request.method === 'POST') return createSession(request, env);
-      if (url.pathname === '/v1/scores' && request.method === 'POST') return submitScore(request, env);
-      if (url.pathname === '/v1/leaderboards/overall' && request.method === 'GET') return overallLeaderboard(request, env, url);
-      if (url.pathname === '/v1/leaderboards/weekly' && request.method === 'GET') return weeklyOverallLeaderboard(request, env, url);
+      if (url.pathname === '/v1/guest' && request.method === 'POST') return await createGuest(request, env);
+      if (url.pathname === '/v1/me' && request.method === 'GET') return await getMe(request, env);
+      if (url.pathname === '/v1/me' && request.method === 'PATCH') return await updateMe(request, env);
+      if (url.pathname === '/v1/sessions' && request.method === 'POST') return await createSession(request, env);
+      if (url.pathname === '/v1/scores' && request.method === 'POST') return await submitScore(request, env);
+      if (url.pathname === '/v1/leaderboards/overall' && request.method === 'GET') return await overallLeaderboard(request, env, url);
+      if (url.pathname === '/v1/leaderboards/weekly' && request.method === 'GET') return await weeklyOverallLeaderboard(request, env, url);
       const gameMatch = /^\/v1\/leaderboards\/([a-z0-9-]+)$/.exec(url.pathname);
-      if (gameMatch && request.method === 'GET') return gameLeaderboard(request, env, gameMatch[1], url);
+      if (gameMatch && request.method === 'GET') return await gameLeaderboard(request, env, gameMatch[1], url);
       return response(request, env, { error: 'Not found' }, 404);
     } catch (error) {
+      if (error instanceof ApiError) return response(request, env, { error: error.message, code: error.code }, error.status);
       if (error instanceof Response) {
-        return new Response(error.body, { status: error.status, headers: { ...corsHeaders(request, env), ...secureHeaders() } });
+        const code = error.status === 401 ? 'unauthorized' : error.status === 429 ? 'rate_limited' : 'request_failed';
+        return json({ error: error.status === 401 ? 'Unauthorized' : error.status === 429 ? 'Too many requests' : 'Request failed', code }, error.status, {
+          ...corsHeaders(request, env), ...secureHeaders(), ...(error.status === 429 ? { 'retry-after': '60' } : {}),
+        });
       }
-      console.error(error);
-      return response(request, env, { error: 'Internal server error' }, 500);
+      console.error(JSON.stringify({ event: 'leaderboard_request_failed', method: request.method, path: url.pathname, errorType: error instanceof Error ? error.name : 'unknown' }));
+      return response(request, env, { error: 'Internal server error', code: 'internal_error' }, 500);
     }
   },
 };

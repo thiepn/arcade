@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Release-candidate reliability pass — 2026-09-08
+- Preserve local records when storage is corrupt or temporarily unavailable, validate cached rankings, and report storage/submission state accurately.
+- Bound API requests, harden JSON parsing and asynchronous error handling, reject concurrent session replays deterministically, and stabilize tied ranks.
+- Isolate modal keyboard actions from game listeners and release canceled gamepad drags and late wake locks.
+- Version complete offline caches by build and scope; reject partial downloads and preserve active tabs during updates.
+- Fix overlapping phone/tablet header controls and keep Favorites/Recent navigation available on small screens.
+- Deploy the dedicated Worker/D1 service, configure its Pages build endpoint, and add reproducible failure-path and real service-worker regression tests.
+
 ### Added
 - Added P19 Arcade Cohesion: one product-level cohesion contract for the arcade home, 32 game cards, shared GameShell toolbar/stage, pause/results, app modals, loading, empty and recovery states without changing any game simulation.
 - Added permanent `quality:gameplay-p19` and `quality:browser-p19` certification, including 96 game/profile browser sessions plus home-card, navigation-stress, sound-setting persistence, modal, small-mobile and orientation-recovery checks.

@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { useSafeTimeout } from '../hooks/useGameLoop';
 import { useModalFocus } from '../hooks/useModalFocus';
 import { UserStats, AppTheme } from '../types';
 import { GAMES_REGISTRY, GameEntry } from '../data/games';
@@ -53,7 +52,6 @@ import {
   getGlobalLeaderboardForGame,
   getOverallArcadeLeaderboard,
   getDivisionColor,
-  simulateLiveCompetition,
   refreshGameLeaderboard,
   refreshOverallLeaderboard,
   isLiveLeaderboardConfigured,
@@ -105,7 +103,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   useModalFocus(dialogRef);
 
   const [activeTab, setActiveTab] = useState<'stats' | 'achievements' | 'leaderboards'>(initialTab);
-  const [leaderboardScope, setLeaderboardScope] = useState<'perGame' | 'overall'>('overall');
+  const [leaderboardScope, setLeaderboardScope] = useState<'perGame' | 'overall'>(initialGameId ? 'perGame' : 'overall');
   const [selectedGameId, setSelectedGameId] = useState<string>(
     initialGameId || GAMES_REGISTRY[0].id
   );
@@ -119,7 +117,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   const [divisionFilter, setDivisionFilter] = useState<'all' | LeaderboardDivision>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
-  const setSafeTimeout = useSafeTimeout();
+  const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleLeaderboardUpdate = () => setRefreshTick((tick) => tick + 1);
@@ -128,16 +126,16 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   }, []);
 
   useEffect(() => {
-    if (activeTab !== 'leaderboards' || !isLiveLeaderboardConfigured()) return;
-    if (leaderboardScope === 'perGame') {
-      void refreshGameLeaderboard(selectedGameId).catch((error) => {
-        console.warn('Unable to refresh game leaderboard:', error);
-      });
-    } else {
-      void refreshOverallLeaderboard().catch((error) => {
-        console.warn('Unable to refresh overall leaderboard:', error);
-      });
-    }
+    if (activeTab !== 'leaderboards') return;
+    if (!isLiveLeaderboardConfigured()) { setLeaderboardError('Global leaderboards are not connected. Personal bests stay on this device.'); return; }
+    let cancelled = false;
+    setIsRefreshing(true);
+    setLeaderboardError(null);
+    const request = leaderboardScope === 'perGame' ? refreshGameLeaderboard(selectedGameId) : refreshOverallLeaderboard();
+    void request.catch(() => {
+      if (!cancelled) setLeaderboardError('Global leaderboard unavailable. Showing previously saved rankings, if available.');
+    }).finally(() => { if (!cancelled) setIsRefreshing(false); });
+    return () => { cancelled = true; };
   }, [activeTab, leaderboardScope, selectedGameId]);
 
   // Achievement filters & search
@@ -156,7 +154,8 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   const [seenBadgeIds, setSeenBadgeIds] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem(SEEN_BADGES_KEY);
-      return saved ? new Set(JSON.parse(saved)) : new Set();
+      const parsed: unknown = saved ? JSON.parse(saved) : [];
+      return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []);
     } catch {
       return new Set();
     }
@@ -315,16 +314,17 @@ export const StatsModal: React.FC<StatsModalProps> = ({
     return overallLeaderboardData.topEntries.filter((e) => e.division === divisionFilter);
   }, [overallLeaderboardData.topEntries, divisionFilter]);
 
-  const handleRefreshRivals = () => {
+  const handleRefreshRivals = async () => {
+    if (isRefreshing || !isLiveLeaderboardConfigured()) return;
     sounds.playPop();
     setIsRefreshing(true);
-    simulateLiveCompetition(selectedGame.id);
-    setSafeTimeout(() => {
-      setRefreshTick((t) => t + 1);
-      setIsRefreshing(false);
-      sounds.playScore();
-      haptics.light();
-    }, 450);
+    setLeaderboardError(null);
+    try {
+      if (leaderboardScope === 'perGame') await refreshGameLeaderboard(selectedGame.id);
+      else await refreshOverallLeaderboard();
+    } catch {
+      setLeaderboardError('Global leaderboard unavailable. Showing previously saved rankings, if available.');
+    } finally { setIsRefreshing(false); }
   };
 
   const handleResetAll = () => {
@@ -548,6 +548,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
           {/* ========================================================================= */}
           {activeTab === 'leaderboards' && (
             <div className="flex flex-col gap-4">
+              {(leaderboardError || isRefreshing) && <p role="status" className="text-xs text-zinc-300">{leaderboardError || 'Loading global rankings…'}</p>}
               
               {/* TOP SCOPE TOGGLE & RIVAL SYNC BAR */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-1.5 rounded-xl bg-[#0A0A0C] border border-[#27272A]">
@@ -593,13 +594,14 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                     type="button"
                     id="sync-live-rivals-btn"
                     onClick={handleRefreshRivals}
-                    title="Simulate live score activity from global rival contenders"
+                    title="Refresh global rankings"
+                    disabled={isRefreshing || !isLiveLeaderboardConfigured()}
                     className={`px-3 py-1.5 rounded-lg bg-[#141418] hover:bg-[#202026] border border-[#27272A] text-xs font-mono-arcade font-bold text-[#A1A1AA] hover:text-white transition-all cursor-pointer flex items-center gap-1.5 ${
                       isRefreshing ? 'text-amber-400 border-amber-500/50' : ''
                     }`}
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-amber-400' : ''}`} />
-                    <span>Sync Live Rivals</span>
+                    <span>Refresh Rankings</span>
                   </button>
                 </div>
               </div>
