@@ -50,7 +50,13 @@ jobs:
           curl -fsS "$LEADERBOARD_API_URL/v1/leaderboards/overall?limit=1" -H "Origin: $PRODUCTION_ORIGIN" > "$body"
           grep -q '"entries"' "$body"
           grep -q '"totalCompetitors"' "$body"
-          echo 'Production Supabase leaderboard backend verified.'
+
+          curl -fsS "$LEADERBOARD_API_URL/v1/leaderboards/weekly?limit=1" -H "Origin: $PRODUCTION_ORIGIN" > "$body"
+          grep -q '"entries"' "$body"
+          grep -q '"totalCompetitors"' "$body"
+          grep -q '"weekStart"' "$body"
+          grep -q '"weekEnd"' "$body"
+          echo 'Production Supabase leaderboard backend verified, including global and weekly reads.'
 
   build:
     if: github.event.workflow_run.conclusion == 'success'
