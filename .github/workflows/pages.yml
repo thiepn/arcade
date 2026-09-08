@@ -109,11 +109,12 @@ jobs:
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
-      - name: Live Pages responsive + 32-game smoke
+      - name: Live Pages responsive + leaderboard + 32-game smoke
         shell: bash
         env:
           P3_BASE_URL: ${{ needs.deploy.outputs.page_url }}
           HEADER_BASE_URL: ${{ needs.deploy.outputs.page_url }}
+          HEADER_EXPECT_LIVE_LEADERBOARD: '1'
           P3_QUICK: '1'
         run: |
           set -euo pipefail
