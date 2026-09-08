@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 const base = process.env.LEADERBOARD_SMOKE_URL || 'http://127.0.0.1:8787';
-const origin = process.env.LEADERBOARD_SMOKE_ORIGIN || 'http://localhost:3000';
+const origin = process.env.LEADERBOARD_SMOKE_ORIGIN || 'https://thiepn.dev';
 let credential;
 async function request(path, method = 'GET', body, headers = {}) {
   return fetch(`${base}${path}`, { method, headers: { origin, ...(credential ? { authorization: `Bearer ${credential}` } : {}), ...(body !== undefined ? { 'content-type': 'application/json' } : {}), ...headers }, ...(body !== undefined ? { body: typeof body === 'string' ? body : JSON.stringify(body) } : {}), signal: AbortSignal.timeout(10000) });
@@ -13,6 +13,18 @@ async function status(response, expected) {
   if (expected >= 400) assert.equal(typeof json.error, 'string');
   return json;
 }
+const preflight = await fetch(`${base}/v1/guest`, {
+  method: 'OPTIONS',
+  headers: {
+    origin,
+    'access-control-request-method': 'POST',
+    'access-control-request-headers': 'content-type',
+  },
+  signal: AbortSignal.timeout(10000),
+});
+assert.equal(preflight.status, 204, 'Production guest preflight must be accepted');
+assert.equal(preflight.headers.get('access-control-allow-origin'), origin, 'Production origin must receive Access-Control-Allow-Origin');
+assert.match(preflight.headers.get('access-control-allow-methods') || '', /POST/);
 await status(await request('/v1/me'), 401);
 await status(await request('/v1/guest', 'POST', {}, { origin: 'https://untrusted.invalid' }), 403);
 await status(await request('/v1/guest', 'POST', '{broken'), 400);
@@ -40,4 +52,4 @@ assert.equal(profile.activity.rankedGames, 1);
 const board = await status(await request('/v1/leaderboards/stack'), 200);
 assert.equal(board.userEntry.score, 100);
 await status(await request('/v1/leaderboards/constructor'), 404);
-console.log('RC Worker regression passed: JSON errors, CORS, payload bounds, strict types, game allowlist, display names, concurrent replay, ranking integrity.');
+console.log('RC Worker regression passed: production CORS preflight, JSON errors, payload bounds, strict types, game allowlist, display names, concurrent replay, ranking integrity.');
