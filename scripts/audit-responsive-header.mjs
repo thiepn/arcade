@@ -2,6 +2,7 @@ import { chromium } from '@playwright/test';
 
 const BASE_URL = process.env.HEADER_BASE_URL || 'http://127.0.0.1:4173';
 const CHROME_PATH = process.env.HEADER_CHROME_PATH || undefined;
+const EXPECT_LIVE_LEADERBOARD = process.env.HEADER_EXPECT_LIVE_LEADERBOARD === '1';
 
 const profiles = [
   { name: 'mobile-320', width: 320, height: 568, isMobile: true, hasTouch: true },
@@ -151,6 +152,36 @@ try {
       await sound.click();
       const afterSound = await sound.getAttribute('aria-pressed');
       assert(beforeSound !== afterSound, `${profile.name}: sound icon did not toggle`);
+
+      if (EXPECT_LIVE_LEADERBOARD && profile.name === 'mobile-390') {
+        await page.locator('#header-leaderboards-pill-btn').click();
+        const leaderboardDialog = page.getByRole('dialog', { name: 'Overall leaderboards' });
+        await leaderboardDialog.waitFor({ state: 'visible', timeout: 8000 });
+        await page.waitForFunction(() => {
+          const dialog = document.querySelector('[role="dialog"][aria-label="Overall leaderboards"]');
+          const text = dialog?.textContent || '';
+          return !text.includes('Loading rankings…');
+        }, null, { timeout: 10000 });
+        const leaderboardText = await leaderboardDialog.innerText();
+        assert(!leaderboardText.includes('Global leaderboard unavailable. Your local progress is kept.'), 'live leaderboard modal surfaced the generic unavailable fallback');
+        assert(!leaderboardText.includes('not configured in this build'), 'live leaderboard modal thinks the production API is unconfigured');
+        assert(leaderboardText.includes('GLOBAL OVERALL'), 'live leaderboard modal did not render the global board');
+        await leaderboardDialog.getByRole('button', { name: 'Close leaderboards' }).click();
+
+        await page.locator('#header-rank-badge-btn').click();
+        const profileDialog = page.getByRole('dialog', { name: 'Player profile' });
+        await profileDialog.waitFor({ state: 'visible', timeout: 8000 });
+        await page.waitForFunction(() => {
+          const dialog = document.querySelector('[role="dialog"][aria-label="Player profile"]');
+          const text = dialog?.textContent || '';
+          return text.includes('Player-') || text.includes('Global leaderboard unavailable. Your local progress is kept.');
+        }, null, { timeout: 10000 });
+        const profileText = await profileDialog.innerText();
+        assert(!profileText.includes('Global leaderboard unavailable. Your local progress is kept.'), 'live player profile surfaced the generic unavailable fallback');
+        assert(!profileText.includes('Local Player'), 'live player profile did not establish the persistent guest identity');
+        assert(profileText.includes('Player-'), 'live player profile did not receive a Supabase guest profile');
+        await profileDialog.getByRole('button', { name: 'Close profile' }).click();
+      }
 
       console.log(`PASS ${profile.name}`);
     } catch (error) {
