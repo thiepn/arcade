@@ -92,21 +92,26 @@ try {
   await context.setOffline(false);
   const second = await context.newPage();
   await second.goto(base);
+  await second.waitForFunction(() => navigator.serviceWorker.controller);
   await page.locator('#play-btn-stack').click();
-  const documentMarker = await page.evaluate(() => performance.timeOrigin);
+  const activeRunMarker = await page.evaluate(() => performance.timeOrigin);
+  const homeMarker = await second.evaluate(() => performance.timeOrigin);
   generation = 2;
-  await second.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
-  await second.getByRole('button', { name: 'UPDATE NOW', exact: true }).waitFor({ timeout: 20000 });
+
+  // New complete builds activate without requiring an UPDATE NOW click. The home
+  // tab reloads itself after controllerchange, while another tab with an active
+  // game must remain untouched until that run is left.
   const updateNavigation = second.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 });
-  await second.getByRole('button', { name: 'UPDATE NOW', exact: true }).click();
+  await second.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
   await updateNavigation;
   await second.waitForFunction(() => document.querySelectorAll('[id^="play-btn-"]').length === 32);
   await second.waitForFunction(async () => !(await navigator.serviceWorker.getRegistration()).waiting);
   await page.waitForFunction(async () => (await caches.keys()).some(key => key.endsWith('rc-test-2')));
-  assert.equal(await page.evaluate(() => performance.timeOrigin), documentMarker, 'Another tab update reloaded an active run');
+  assert.notEqual(await second.evaluate(() => performance.timeOrigin), homeMarker, 'Home surface did not reload into the activated build');
+  assert.equal(await page.evaluate(() => performance.timeOrigin), activeRunMarker, 'Automatic update reloaded another tab with an active run');
   assert(await page.locator('.game-shell').isVisible());
   assert.equal((await page.evaluate(() => caches.keys())).filter(key => key.startsWith('micro-arcade-shell-')).length, 2);
-  console.log('PASS explicit update retains prior cache and does not reload another active tab');
+  console.log('PASS automatic update retains prior cache, refreshes home, and does not reload another active tab');
 
   generation = 3;
   await second.evaluate(async () => {
