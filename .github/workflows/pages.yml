@@ -50,7 +50,13 @@ jobs:
           curl -fsS "$LEADERBOARD_API_URL/v1/leaderboards/overall?limit=1" -H "Origin: $PRODUCTION_ORIGIN" > "$body"
           grep -q '"entries"' "$body"
           grep -q '"totalCompetitors"' "$body"
-          echo 'Production Supabase leaderboard backend verified.'
+
+          curl -fsS "$LEADERBOARD_API_URL/v1/leaderboards/weekly?limit=1" -H "Origin: $PRODUCTION_ORIGIN" > "$body"
+          grep -q '"entries"' "$body"
+          grep -q '"totalCompetitors"' "$body"
+          grep -q '"weekStart"' "$body"
+          grep -q '"weekEnd"' "$body"
+          echo 'Production Supabase leaderboard backend verified, including global and weekly reads.'
 
   build:
     if: github.event.workflow_run.conclusion == 'success'
@@ -103,11 +109,12 @@ jobs:
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
-      - name: Live Pages responsive + 32-game smoke
+      - name: Live Pages responsive + leaderboard + 32-game smoke
         shell: bash
         env:
           P3_BASE_URL: ${{ needs.deploy.outputs.page_url }}
           HEADER_BASE_URL: ${{ needs.deploy.outputs.page_url }}
+          HEADER_EXPECT_LIVE_LEADERBOARD: '1'
           P3_QUICK: '1'
         run: |
           set -euo pipefail

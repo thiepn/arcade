@@ -48,14 +48,17 @@ assert(index.includes('apple-touch-icon'), 'index must provide an Apple touch ic
 assert(index.includes('theme-color'), 'index must provide a theme color');
 assert(!index.includes('fonts.googleapis.com'), 'PWA shell must not depend on remote Google Fonts');
 
-assert(serviceWorker.includes("event.data?.type === 'SKIP_WAITING'"), 'service worker updates must be explicitly activated');
-assert(!/install[\s\S]{0,300}self\.skipWaiting\(\)/.test(serviceWorker), 'service worker must not force skipWaiting during install');
+assert(serviceWorker.includes('await self.skipWaiting()'), 'completed service-worker builds must activate automatically');
+assert(serviceWorker.includes("event.data?.type === 'SKIP_WAITING'"), 'service worker must retain explicit activation compatibility');
 assert(serviceWorker.includes("request.mode === 'navigate'"), 'service worker needs an offline navigation fallback');
+assert(serviceWorker.includes("fetch(request, { cache: 'no-store' })"), 'online navigations must prefer a fresh shell over stale cached HTML');
 assert(serviceWorker.includes('Never intercept the leaderboard/API origin'), 'service worker must leave external API requests alone');
 
 assert(pwaStatus.includes('beforeinstallprompt'), 'PWA UI must support browser install prompts');
-assert(pwaStatus.includes('controllerchange'), 'PWA UI must safely activate waiting updates');
-assert(pwaStatus.includes('activeGame'), 'PWA update UI must defer while a game is active');
+assert(pwaStatus.includes('controllerchange'), 'PWA UI must react to activated updates');
+assert(pwaStatus.includes('reloadReady && !activeGame'), 'PWA update reload must defer while a game is active');
+assert(pwaStatus.includes("updateViaCache: 'none'"), 'service-worker update checks must bypass the HTTP cache');
+assert(pwaStatus.includes('activateUpdate(waitingWorker)'), 'legacy waiting workers must auto-activate on the home surface');
 assert(pwaStatus.includes("window.addEventListener('offline'"), 'PWA UI must expose offline status');
 
 assert(gamepad.includes('navigator.getGamepads'), 'gamepad bridge must poll the Gamepad API');

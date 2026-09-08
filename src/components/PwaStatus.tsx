@@ -25,12 +25,26 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
   const [progressSaved, setProgressSaved] = useState(isProgressSaved);
   const [reloadReady, setReloadReady] = useState(false);
   const updateRequested = useRef(false);
+  const controlledAtMount = useRef(Boolean(navigator.serviceWorker?.controller));
   const updateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const activateUpdate = (worker = waitingWorker) => {
+    if (!worker || updating) return;
+    setUpdating(true);
+    updateRequested.current = true;
+    worker.postMessage({ type: 'SKIP_WAITING' });
+    updateTimer.current = setTimeout(() => setUpdating(false), 8000);
+  };
 
   useEffect(() => {
     const onStorage = () => setProgressSaved(isProgressSaved());
     const onController = () => {
-      if (!updateRequested.current) return;
+      const replacingExistingController = controlledAtMount.current;
+      controlledAtMount.current = true;
+      // The first-ever service worker claiming a fresh tab does not require a
+      // reload. A replacement worker does, as does a legacy waiting worker that
+      // this client explicitly activated.
+      if (!replacingExistingController && !updateRequested.current) return;
       if (updateTimer.current) clearTimeout(updateTimer.current);
       setReloadReady(true);
     };
@@ -98,7 +112,10 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
     };
 
     void navigator.serviceWorker
-      .register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL })
+      .register(`${import.meta.env.BASE_URL}sw.js`, {
+        scope: import.meta.env.BASE_URL,
+        updateViaCache: 'none',
+      })
       .then((nextRegistration) => {
         if (cancelled) return;
         registration = nextRegistration;
@@ -120,6 +137,14 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
     };
   }, [canRegister]);
 
+  useEffect(() => {
+    if (!waitingWorker || activeGame || updating) return;
+    // Older workers may still enter the waiting state; activate them automatically
+    // as soon as the user is on the home surface.
+    const timer = setTimeout(() => activateUpdate(waitingWorker), 150);
+    return () => clearTimeout(timer);
+  }, [waitingWorker, activeGame, updating]);
+
   const install = async () => {
     if (!installPrompt) return;
     try {
@@ -130,14 +155,6 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
       // Browser install prompt events are single-use, including dismissals.
       setInstallPrompt(null);
     }
-  };
-
-  const activateUpdate = () => {
-    if (!waitingWorker || updating) return;
-    setUpdating(true);
-    updateRequested.current = true;
-    waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-    updateTimer.current = setTimeout(() => setUpdating(false), 8000);
   };
 
   if (!progressSaved) return <div role="status" className="pwa-status-safe fixed left-3 right-3 z-[90] rounded-xl border border-amber-500/40 bg-[#111114] px-3 py-2 text-xs text-amber-200">Storage unavailable. Progress is kept for this visit; keep this page open to retain it.</div>;
@@ -162,9 +179,9 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
               <RefreshCw className={`h-4 w-4 ${updating ? 'animate-spin' : ''}`} />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-black text-white">Arcade update ready</div>
+              <div className="text-xs font-black text-white">Updating Micro Arcade</div>
               <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">
-                Activate it when you are ready. Active game sessions are never force-reloaded.
+                The new build will activate automatically. Active game sessions are never force-reloaded.
               </p>
             </div>
             <button
@@ -176,15 +193,6 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
-          <button
-            type="button"
-            onClick={activateUpdate}
-            disabled={updating}
-            className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-black text-black transition hover:bg-zinc-200 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${updating ? 'animate-spin' : ''}`} />
-            {updating ? 'UPDATING…' : 'UPDATE NOW'}
-          </button>
         </div>
       </div>
     );
