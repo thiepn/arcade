@@ -1,4 +1,4 @@
-/* Micro Arcade MA4 service worker — complete offline arcade + explicit updates. */
+/* Micro Arcade MA4 service worker — complete offline arcade + safe automatic updates. */
 const CACHE_PREFIX = `micro-arcade-shell-${new URL(self.registration.scope).pathname}-`;
 const CACHE_NAME = `${CACHE_PREFIX}__ARCADE_BUILD_ID__`;
 
@@ -68,11 +68,17 @@ async function precacheArcade() {
 }
 
 self.addEventListener('install', (event) => {
-  // Do not call skipWaiting here. Updates activate only after explicit player consent.
-  event.waitUntil(precacheArcade().catch(async error => {
-    await caches.delete(CACHE_NAME);
-    throw error;
-  }));
+  event.waitUntil((async () => {
+    try {
+      await precacheArcade();
+      // A completed cache is safe to activate immediately. Existing pages are not
+      // forcibly navigated, so an active game is never destroyed by this worker.
+      await self.skipWaiting();
+    } catch (error) {
+      await caches.delete(CACHE_NAME);
+      throw error;
+    }
+  })());
 });
 
 self.addEventListener('activate', (event) => {
@@ -93,14 +99,16 @@ self.addEventListener('message', (event) => {
 
 async function navigationResponse(request) {
   const cache = await caches.open(CACHE_NAME);
-  const shell = await cache.match(scopeUrl('./'));
-  if (shell) return shell;
   try {
-    const network = await fetch(request);
-    return network;
-  } catch {
-    return (await cache.match(scopeUrl('./'))) || Response.error();
-  }
+    // Prefer the network for navigations so an online refresh can never be pinned
+    // indefinitely to an obsolete shell/backend configuration.
+    const network = await fetch(request, { cache: 'no-store' });
+    if (network.ok) {
+      await cache.put(scopeUrl('./'), network.clone());
+      return network;
+    }
+  } catch {}
+  return (await cache.match(scopeUrl('./'))) || Response.error();
 }
 
 async function assetResponse(request) {
