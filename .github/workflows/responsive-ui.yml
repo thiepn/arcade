@@ -7,9 +7,9 @@ concurrency:
   group: responsive-ui-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  snapshot:
+  geometry:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -19,14 +19,16 @@ jobs:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
       - run: bun run build
-      - name: Capture locked local audit environment
+      - name: Inspect responsive game layouts
         run: |
-          mkdir -p .audit-tools
-          cp "$(command -v bun)" .audit-tools/bun
-          tar -czf /tmp/arcade-toolchain.tar.gz node_modules dist .audit-tools
+          bunx vite preview --host 127.0.0.1 --port 4173 >/tmp/ui-preview.log 2>&1 &
+          preview=$!
+          trap 'kill "$preview" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4173 >/dev/null && break || sleep 1; done
+          bun scripts/audit-ui-geometry.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
-          name: responsive-ui-toolchain
-          path: /tmp/arcade-toolchain.tar.gz
-          compression-level: 0
-          retention-days: 1
+          name: responsive-ui-evidence
+          path: ui-report
+          retention-days: 7
