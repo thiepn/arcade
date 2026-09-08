@@ -35,7 +35,7 @@ try {
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.waitForFunction(() => navigator.serviceWorker.controller);
   const ids = await page.locator('[id^="play-btn-"]').evaluateAll(nodes => nodes.map(node => node.id.slice(9)));
-  const artifacts = process.env.RC_ARTIFACT_DIR;
+  const artifacts = process.env.RC_ARTIFACT_DIR ? path.resolve(process.env.RC_ARTIFACT_DIR) : undefined;
   if (artifacts) await fs.mkdir(artifacts, { recursive: true });
   for (const width of [320, 360, 390, 768, 1024, 1440, 1920]) {
     await page.setViewportSize({ width, height: 900 });
@@ -97,7 +97,10 @@ try {
   generation = 2;
   await second.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
   await second.getByRole('button', { name: 'UPDATE NOW', exact: true }).waitFor({ timeout: 20000 });
+  const updateNavigation = second.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 });
   await second.getByRole('button', { name: 'UPDATE NOW', exact: true }).click();
+  await updateNavigation;
+  await second.waitForFunction(() => document.querySelectorAll('[id^="play-btn-"]').length === 32);
   await second.waitForFunction(async () => !(await navigator.serviceWorker.getRegistration()).waiting);
   await page.waitForFunction(async () => (await caches.keys()).some(key => key.endsWith('rc-test-2')));
   assert.equal(await page.evaluate(() => performance.timeOrigin), documentMarker, 'Another tab update reloaded an active run');
