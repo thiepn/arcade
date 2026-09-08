@@ -676,7 +676,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                             type="text"
                             value={gameSearchQuery}
                             onChange={(e) => setGameSearchQuery(e.target.value)}
-                            placeholder="Filter 24 arcade games..."
+                            placeholder={`Filter ${GAMES_REGISTRY.length} arcade games...`}
                             className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-[#0A0A0D] border border-[#27272A] text-xs font-mono-arcade text-white placeholder-[#71717A] focus:outline-none focus:border-cyan-500"
                             autoFocus
                           />
@@ -1428,7 +1428,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {/* Theme 1: Default Dark (Neon Obsidian) */}
-                  <div
+                  <button type="button" id="theme-choice-default" aria-label="Neon Obsidian theme" aria-pressed={!stats.theme || stats.theme === 'default'}
                     onClick={() => {
                       if (stats.theme !== 'default') {
                         sounds.playScore();
@@ -1436,7 +1436,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         onUpdateTheme?.('default');
                       }
                     }}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
+                    className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
                       stats.theme === 'default' || !stats.theme
                         ? 'bg-[#141418] border-[#F43F5E] shadow-lg ring-1 ring-[#F43F5E]/40'
                         : 'bg-[#0A0A0C] border-[#27272A] hover:border-[#3F3F46] opacity-80 hover:opacity-100'
@@ -1475,10 +1475,10 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         {(stats.theme === 'default' || !stats.theme) ? 'Active' : 'Apply'}
                       </span>
                     </div>
-                  </div>
+                  </button>
 
                   {/* Theme 2: Retro Monochrome */}
-                  <div
+                  <button type="button" id="theme-choice-retro-monochrome" aria-label="Retro Monochrome theme" aria-pressed={stats.theme === 'retro-monochrome'}
                     onClick={() => {
                       if (stats.theme !== 'retro-monochrome') {
                         sounds.playScore();
@@ -1486,7 +1486,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         onUpdateTheme?.('retro-monochrome');
                       }
                     }}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
+                    className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
                       stats.theme === 'retro-monochrome'
                         ? 'bg-[#181818] border-white shadow-lg ring-1 ring-white/50'
                         : 'bg-[#0A0A0C] border-[#27272A] hover:border-[#3F3F46] opacity-80 hover:opacity-100'
@@ -1525,10 +1525,10 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         {stats.theme === 'retro-monochrome' ? 'Active' : 'Apply'}
                       </span>
                     </div>
-                  </div>
+                  </button>
 
                   {/* Theme 3: Cyberpunk Synthwave */}
-                  <div
+                  <button type="button" id="theme-choice-cyberpunk" aria-label="Cyberpunk theme" aria-pressed={stats.theme === 'cyberpunk'}
                     onClick={() => {
                       if (stats.theme !== 'cyberpunk') {
                         sounds.playScore();
@@ -1536,7 +1536,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         onUpdateTheme?.('cyberpunk');
                       }
                     }}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
+                    className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
                       stats.theme === 'cyberpunk'
                         ? 'bg-[#180F2A] border-[#FACC15] shadow-lg ring-1 ring-[#FACC15]/40'
                         : 'bg-[#0A0A0C] border-[#27272A] hover:border-[#3F3F46] opacity-80 hover:opacity-100'
@@ -1575,10 +1575,10 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         {stats.theme === 'cyberpunk' ? 'Active' : 'Apply'}
                       </span>
                     </div>
-                  </div>
+                  </button>
 
                   {/* Theme 4: 8-Bit Emerald */}
-                  <div
+                  <button type="button" id="theme-choice-matrix-emerald" aria-label="8-Bit Emerald theme" aria-pressed={stats.theme === 'matrix-emerald'}
                     onClick={() => {
                       if (stats.theme !== 'matrix-emerald') {
                         sounds.playScore();
@@ -1586,7 +1586,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         onUpdateTheme?.('matrix-emerald');
                       }
                     }}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
+                    className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
                       stats.theme === 'matrix-emerald'
                         ? 'bg-[#0A1810] border-[#22C55E] shadow-lg ring-1 ring-[#22C55E]/40'
                         : 'bg-[#0A0A0C] border-[#27272A] hover:border-[#3F3F46] opacity-80 hover:opacity-100'
@@ -1625,10 +1625,10 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         {stats.theme === 'matrix-emerald' ? 'Active' : 'Apply'}
                       </span>
                     </div>
-                  </div>
+                  </button>
 
                   {/* Theme 5: Solar Flare */}
-                  <div
+                  <button type="button" id="theme-choice-sunset-amber" aria-label="Solar Flare theme" aria-pressed={stats.theme === 'sunset-amber'}
                     onClick={() => {
                       if (stats.theme !== 'sunset-amber') {
                         sounds.playScore();
@@ -1636,7 +1636,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         onUpdateTheme?.('sunset-amber');
                       }
                     }}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
+                    className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
                       stats.theme === 'sunset-amber'
                         ? 'bg-[#1C120C] border-[#F59E0B] shadow-lg ring-1 ring-[#F59E0B]/40'
                         : 'bg-[#0A0A0C] border-[#27272A] hover:border-[#3F3F46] opacity-80 hover:opacity-100'
@@ -1675,7 +1675,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         {stats.theme === 'sunset-amber' ? 'Active' : 'Apply'}
                       </span>
                     </div>
-                  </div>
+                  </button>
                 </div>
               </div>
 

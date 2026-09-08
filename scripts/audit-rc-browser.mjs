@@ -53,6 +53,17 @@ try {
     if (artifacts) await page.screenshot({ path: path.join(artifacts, `arcade-home-${width}.png`) });
   }
   await page.setViewportSize({ width: 1280, height: 800 });
+  await page.locator('#stats-open-btn').click();
+  for (const theme of ['retro-monochrome', 'cyberpunk', 'matrix-emerald', 'sunset-amber', 'default']) {
+    const control = page.locator(`#theme-choice-${theme}`);
+    await control.focus();
+    await page.keyboard.press('Space');
+    assert.equal(await control.getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('micro_arcade_stats_v1')).theme), theme);
+    if (artifacts) await page.screenshot({ path: path.join(artifacts, `arcade-theme-${theme}.png`) });
+  }
+  await page.locator('#close-stats-modal-btn').click();
+  console.log('PASS five theme buttons support keyboard selection and persist the chosen theme');
   await context.setOffline(true);
   await page.reload();
   for (const id of ids) {
