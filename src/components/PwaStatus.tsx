@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Download, RefreshCw, WifiOff, X } from 'lucide-react';
+import { isProgressSaved, STORAGE_STATUS_EVENT } from '../lib/storage';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -21,6 +22,30 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
   const [installed, setInstalled] = useState(() => isStandalone());
   const [updating, setUpdating] = useState(false);
   const [dismissedInstall, setDismissedInstall] = useState(false);
+  const [progressSaved, setProgressSaved] = useState(isProgressSaved);
+  const [reloadReady, setReloadReady] = useState(false);
+  const updateRequested = useRef(false);
+  const updateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const onStorage = () => setProgressSaved(isProgressSaved());
+    const onController = () => {
+      if (!updateRequested.current) return;
+      if (updateTimer.current) clearTimeout(updateTimer.current);
+      setReloadReady(true);
+    };
+    window.addEventListener(STORAGE_STATUS_EVENT, onStorage);
+    navigator.serviceWorker?.addEventListener('controllerchange', onController);
+    return () => {
+      window.removeEventListener(STORAGE_STATUS_EVENT, onStorage);
+      navigator.serviceWorker?.removeEventListener('controllerchange', onController);
+      if (updateTimer.current) clearTimeout(updateTimer.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (reloadReady && !activeGame) window.location.reload();
+  }, [reloadReady, activeGame]);
 
   const canRegister = useMemo(
     () => import.meta.env.PROD && 'serviceWorker' in navigator,
@@ -57,6 +82,7 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
     if (!canRegister) return;
     let cancelled = false;
     let registration: ServiceWorkerRegistration | null = null;
+    const cleanups: Array<() => void> = [];
 
     const inspectWorker = (worker: ServiceWorker | null) => {
       if (!worker) return;
@@ -67,6 +93,7 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
         }
       };
       worker.addEventListener('statechange', onState);
+      cleanups.push(() => worker.removeEventListener('statechange', onState));
       onState();
     };
 
@@ -77,7 +104,9 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
         registration = nextRegistration;
         if (registration.waiting && navigator.serviceWorker.controller) setWaitingWorker(registration.waiting);
         inspectWorker(registration.installing);
-        registration.addEventListener('updatefound', () => inspectWorker(registration?.installing ?? null));
+        const onUpdate = () => inspectWorker(nextRegistration.installing);
+        registration.addEventListener('updatefound', onUpdate);
+        cleanups.push(() => nextRegistration.removeEventListener('updatefound', onUpdate));
         void registration.update().catch(() => {});
       })
       .catch((error) => {
@@ -86,16 +115,19 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
 
     return () => {
       cancelled = true;
+      cleanups.forEach(cleanup => cleanup());
       registration = null;
     };
   }, [canRegister]);
 
   const install = async () => {
     if (!installPrompt) return;
-    await installPrompt.prompt();
-    const choice = await installPrompt.userChoice;
-    if (choice.outcome === 'accepted') {
-      setInstalled(true);
+    try {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      if (choice.outcome === 'accepted') setInstalled(true);
+    } finally {
+      // Browser install prompt events are single-use, including dismissals.
       setInstallPrompt(null);
     }
   };
@@ -103,16 +135,12 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
   const activateUpdate = () => {
     if (!waitingWorker || updating) return;
     setUpdating(true);
-    let reloaded = false;
-    const reload = () => {
-      if (reloaded) return;
-      reloaded = true;
-      window.location.reload();
-    };
-    navigator.serviceWorker.addEventListener('controllerchange', reload, { once: true });
+    updateRequested.current = true;
     waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-    window.setTimeout(reload, 4000);
+    updateTimer.current = setTimeout(() => setUpdating(false), 8000);
   };
+
+  if (!progressSaved) return <div role="status" className="pwa-status-safe fixed left-3 right-3 z-[90] rounded-xl border border-amber-500/40 bg-[#111114] px-3 py-2 text-xs text-amber-200">Storage unavailable. Progress is kept for this visit; keep this page open to retain it.</div>;
 
   if (!online) {
     return (
@@ -168,7 +196,7 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
         <div className="flex items-center gap-2 rounded-xl border border-[#3F3F46] bg-[#111114]/95 p-2 shadow-xl backdrop-blur">
           <button
             type="button"
-            onClick={() => void install()}
+            onClick={() => void install().catch(() => {})}
             className="flex min-h-10 items-center gap-2 rounded-lg bg-[#F43F5E] px-3 py-2 text-[10px] font-mono-arcade font-black text-white hover:bg-rose-500"
           >
             <Download className="h-3.5 w-3.5" /> INSTALL ARCADE

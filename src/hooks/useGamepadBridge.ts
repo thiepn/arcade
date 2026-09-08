@@ -13,6 +13,7 @@ interface GamepadBridgeOptions {
   cursorRef: RefObject<HTMLDivElement | null>;
   paused: boolean;
   gameOver: boolean;
+  disabled?: boolean;
 }
 
 interface GamepadBridgeState {
@@ -83,7 +84,7 @@ function directionMapping(gameId: string): Record<'left' | 'right' | 'up' | 'dow
   return { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown' };
 }
 
-function dispatchPointer(target: Element, type: 'pointerdown' | 'pointermove' | 'pointerup', x: number, y: number, pressed: boolean): void {
+function dispatchPointer(target: Element, type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel', x: number, y: number, pressed: boolean): void {
   const pointerInit: PointerEventInit = {
     bubbles: true,
     cancelable: true,
@@ -99,7 +100,7 @@ function dispatchPointer(target: Element, type: 'pointerdown' | 'pointermove' | 
     target.dispatchEvent(new PointerEvent(type, pointerInit));
   } catch {}
 
-  const mouseType = type === 'pointerdown' ? 'mousedown' : type === 'pointerup' ? 'mouseup' : 'mousemove';
+  const mouseType = type === 'pointerdown' ? 'mousedown' : type === 'pointerup' || type === 'pointercancel' ? 'mouseup' : 'mousemove';
   target.dispatchEvent(new MouseEvent(mouseType, {
     bubbles: true,
     cancelable: true,
@@ -126,18 +127,20 @@ export function useGamepadBridge({
   cursorRef,
   paused,
   gameOver,
+  disabled = false,
 }: GamepadBridgeOptions): GamepadBridgeState {
   const pointerMode = useMemo(() => POINTER_GAMES.has(gameId), [gameId]);
   const [connected, setConnected] = useState(false);
   const [controllerName, setControllerName] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!('getGamepads' in navigator)) return;
+    if (disabled || !('getGamepads' in navigator)) return;
 
     let frame = 0;
     let lastTime = performance.now();
     let activeIndex: number | null = null;
     let pointerPressed = false;
+    let pointerTarget: Element | null = null;
     let cursorX = 0;
     let cursorY = 0;
     let cursorInitialized = false;
@@ -163,7 +166,9 @@ export function useGamepadBridge({
 
     const releaseAll = () => {
       for (const code of [...heldKeys]) releaseKey(code);
+      if (pointerPressed && pointerTarget) dispatchPointer(pointerTarget, 'pointercancel', cursorX, cursorY, false);
       pointerPressed = false;
+      pointerTarget = null;
       previousButtons.clear();
     };
 
@@ -241,7 +246,7 @@ export function useGamepadBridge({
         }
 
         if (dx !== 0 || dy !== 0) {
-          const element = document.elementFromPoint(cursorX, cursorY) ?? target;
+          const element = pointerTarget ?? document.elementFromPoint(cursorX, cursorY) ?? target;
           dispatchPointer(element, 'pointermove', cursorX, cursorY, pointerPressed);
         }
       } else {
@@ -264,10 +269,12 @@ export function useGamepadBridge({
             const element = document.elementFromPoint(cursorX, cursorY) ?? target;
             if (pressed) {
               pointerPressed = true;
+              pointerTarget = element;
               dispatchPointer(element, 'pointerdown', cursorX, cursorY, true);
             } else {
-              dispatchPointer(element, 'pointerup', cursorX, cursorY, false);
+              dispatchPointer(pointerTarget ?? element, 'pointerup', cursorX, cursorY, false);
               pointerPressed = false;
+              pointerTarget = null;
             }
           }
         } else {
@@ -297,7 +304,7 @@ export function useGamepadBridge({
       releaseAll();
       if (cursorRef.current) cursorRef.current.style.display = 'none';
     };
-  }, [cursorRef, gameId, gameOver, paused, pointerMode, targetRef]);
+  }, [cursorRef, disabled, gameId, gameOver, paused, pointerMode, targetRef]);
 
   return { connected, controllerName, pointerMode };
 }

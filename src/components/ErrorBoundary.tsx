@@ -50,6 +50,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             >
               RETRY
             </button>
+            <button type="button" onClick={() => window.location.reload()} className="min-h-11 rounded-xl border border-zinc-700 px-4 py-2 text-xs font-black text-zinc-200 hover:bg-zinc-800">
+              RELOAD ARCADE
+            </button>
             {this.props.onReset && (
               <button
                 type="button"

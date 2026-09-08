@@ -1,4 +1,5 @@
 import { UserStats } from '../types';
+import { LeaderboardError, requestLeaderboardJson } from './leaderboardRequest';
 
 export type LeaderboardDivision = 'diamond' | 'platinum' | 'gold' | 'silver' | 'bronze';
 export type LeaderboardScope = 'game' | 'global';
@@ -102,6 +103,10 @@ const CACHE_KEY = 'micro_arcade_live_leaderboards_v1';
 const LEGACY_FAKE_KEY = 'micro_arcade_global_leaderboards_v2';
 export const LEADERBOARD_UPDATED_EVENT = 'micro-arcade-leaderboards-updated';
 let guestCreationPromise: Promise<string | null> | null = null;
+let memoryCredential: string | null = null;
+const rejectedCredentials = new Set<string>();
+let memoryCache: LeaderboardCache = { games: {}, updatedAt: 0 };
+let cacheWritePending = false;
 
 function apiBase(): string {
   return (import.meta.env.VITE_LEADERBOARD_API_URL || '').trim().replace(/\/$/, '');
@@ -156,24 +161,48 @@ export function getDivisionColor(division: LeaderboardDivision): string {
 function loadCache(): LeaderboardCache {
   if (typeof window === 'undefined') return { games: {}, updatedAt: 0 };
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    return raw ? JSON.parse(raw) : { games: {}, updatedAt: 0 };
+    const raw = cacheWritePending ? null : localStorage.getItem(CACHE_KEY);
+    const data = raw ? JSON.parse(raw) : memoryCache;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return { games: {}, updatedAt: 0 };
+    const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
+    const positive = (value: unknown) => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+    const validEntry = (entry: unknown) => record(entry) && typeof entry.id === 'string' && typeof entry.name === 'string' &&
+      positive(entry.rank) && typeof entry.country === 'string' && typeof entry.countryCode === 'string' && typeof entry.timestamp === 'string' &&
+      typeof entry.division === 'string' && ['diamond', 'platinum', 'gold', 'silver', 'bronze'].includes(entry.division) &&
+      (positive(entry.score) || (positive(entry.ratingScore) && positive(entry.totalScore) && positive(entry.badgesUnlocked) && positive(entry.level) && typeof entry.badgeTitle === 'string'));
+    const validBoard = (board: unknown) => record(board) && Array.isArray(board.topEntries) && board.topEntries.every(validEntry) &&
+      (board.userRank === null || positive(board.userRank)) && (board.userEntry === null || validEntry(board.userEntry)) &&
+      positive(board.totalCompetitors ?? board.totalWorldCompetitors);
+    const games = Object.fromEntries(Object.entries(data.games ?? {}).filter(([id, board]) => /^[a-z0-9-]+$/.test(id) && validBoard(board)));
+    return {
+      games: games as Record<string, GameLeaderboardData>,
+      overall: validBoard(data.overall) && data.overall.userEntry ? data.overall : undefined,
+      weeklyOverall: validBoard(data.weeklyOverall) && data.weeklyOverall.userEntry && data.weeklyOverall.weekEnd > Date.now() ? data.weeklyOverall : undefined,
+      profile: data.profile && typeof data.profile.name === 'string' && typeof data.profile.id === 'string' && typeof data.profile.countryCode === 'string' && positive(data.profile.createdAt) && positive(data.profile.submissions) && positive(data.profile.rankedGames) ? data.profile : undefined,
+      updatedAt: Number.isFinite(data.updatedAt) ? data.updatedAt : 0,
+    };
   } catch {
-    return { games: {}, updatedAt: 0 };
+    return memoryCache;
   }
 }
 
 function saveCache(cache: LeaderboardCache): void {
   if (typeof window === 'undefined') return;
+  memoryCache = cache;
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-    window.dispatchEvent(new CustomEvent(LEADERBOARD_UPDATED_EVENT));
-  } catch {}
+    cacheWritePending = false;
+  } catch { cacheWritePending = true; }
+  window.dispatchEvent(new CustomEvent(LEADERBOARD_UPDATED_EVENT));
 }
 
 function getCredential(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(GUEST_KEY);
+  if (memoryCredential) return memoryCredential;
+  try {
+    const saved = localStorage.getItem(GUEST_KEY);
+    return saved && !rejectedCredentials.has(saved) ? saved : null;
+  } catch { return null; }
 }
 
 async function ensureGuestCredential(): Promise<string | null> {
@@ -183,14 +212,14 @@ async function ensureGuestCredential(): Promise<string | null> {
   if (!base || typeof window === 'undefined') return null;
   if (!guestCreationPromise) {
     guestCreationPromise = (async () => {
-      const response = await fetch(`${base}/v1/guest`, {
+      const data = await requestLeaderboardJson<{ credential: string }>(`${base}/v1/guest`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: '{}',
       });
-      if (!response.ok) throw new Error(`Guest creation failed (${response.status})`);
-      const data = await response.json() as { credential: string };
-      localStorage.setItem(GUEST_KEY, data.credential);
+      if (typeof data.credential !== 'string' || !/^[0-9a-f-]{36}\.[A-Za-z0-9_-]{20,}$/i.test(data.credential)) throw new LeaderboardError('unavailable', 'Invalid guest response');
+      memoryCredential = data.credential;
+      try { localStorage.setItem(GUEST_KEY, data.credential); } catch {}
       return data.credential;
     })();
   }
@@ -208,16 +237,18 @@ async function apiRequest<T>(path: string, init: RequestInit = {}, retryAuth = t
   const headers = new Headers(init.headers);
   if (!headers.has('content-type') && init.body) headers.set('content-type', 'application/json');
   if (credential) headers.set('authorization', `Bearer ${credential}`);
-  const response = await fetch(`${base}${path}`, { ...init, headers });
-  if (response.status === 401 && retryAuth && typeof window !== 'undefined') {
-    localStorage.removeItem(GUEST_KEY);
-    return apiRequest<T>(path, init, false);
+  try {
+    return await requestLeaderboardJson<T>(`${base}${path}`, { ...init, headers });
+  } catch (error) {
+    if (error instanceof LeaderboardError && error.status === 401 && retryAuth && typeof window !== 'undefined') {
+      if (credential) rejectedCredentials.add(credential);
+      memoryCredential = null;
+      try { localStorage.removeItem(GUEST_KEY); } catch {}
+      saveCache({ games: {}, updatedAt: 0 });
+      return apiRequest<T>(path, init, false);
+    }
+    throw error;
   }
-  if (!response.ok) {
-    const message = await response.text().catch(() => '');
-    throw new Error(`Leaderboard API ${response.status}${message ? `: ${message}` : ''}`);
-  }
-  return response.json() as Promise<T>;
 }
 
 function normalizeGameRow(row: ServerGameRow): LeaderboardEntry {
@@ -271,7 +302,7 @@ function emptyOverall(stats?: UserStats, weekly = false): OverallLeaderboardData
     userEntry: {
       id: 'local-user',
       rank: 0,
-      name: weekly ? 'YOU (not ranked this week)' : 'YOU (pending sync)',
+      name: weekly ? 'YOU (not ranked this week)' : 'YOU (local only)',
       ratingScore: gamesPlayed * 1000,
       totalScore,
       badgesUnlocked: 0,
@@ -377,7 +408,7 @@ export function getGlobalLeaderboardForGame(gameId: string, userHighScore: numbe
   const cached = loadCache().games[gameId];
   if (cached) return cached;
   const pendingUser: LeaderboardEntry | null = userHighScore > 0 ? {
-    id: 'local-user', rank: 0, name: 'YOU (pending sync)', score: userHighScore,
+    id: 'local-user', rank: 0, name: 'YOU (local only)', score: userHighScore,
     country: '🌐', countryCode: 'XX', badge: 'PLAYER', timestamp: 'Local score', isUser: true,
     division: 'bronze', trend: 'same', level: 1,
   } : null;
@@ -403,14 +434,18 @@ export async function simulateLiveCompetition(gameId: string): Promise<void> {
 
 export function resetAllLeaderboards(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(CACHE_KEY);
-  localStorage.removeItem(LEGACY_FAKE_KEY);
+  memoryCache = { games: {}, updatedAt: 0 };
+  try {
+    localStorage.removeItem(CACHE_KEY);
+    localStorage.removeItem(LEGACY_FAKE_KEY);
+    cacheWritePending = false;
+  } catch { cacheWritePending = true; }
   window.dispatchEvent(new CustomEvent(LEADERBOARD_UPDATED_EVENT));
 }
 
 export async function beginLeaderboardSession(gameId: string): Promise<LeaderboardPlaySession | null> {
-  if (!isLiveLeaderboardConfigured()) return null;
-  const clientStartedAt = Date.now();
+  if (!isLiveLeaderboardConfigured() || navigator.onLine === false) return null;
+  const clientStartedAt = performance.now();
   const data = await apiRequest<{ session: { id: string; gameId: string; expiresAt: number } }>('/v1/sessions', {
     method: 'POST',
     body: JSON.stringify({ gameId }),
@@ -421,23 +456,23 @@ export async function beginLeaderboardSession(gameId: string): Promise<Leaderboa
 export async function submitLeaderboardScore(session: LeaderboardPlaySession, score: number): Promise<boolean> {
   if (!isLiveLeaderboardConfigured() || !Number.isFinite(score)) return false;
   try {
-    await apiRequest('/v1/scores', {
+    const result = await apiRequest<{ accepted: boolean }>('/v1/scores', {
       method: 'POST',
       body: JSON.stringify({
         sessionId: session.id,
         score: Math.max(0, Math.round(score)),
-        durationMs: Math.max(0, Date.now() - session.clientStartedAt),
+        durationMs: Math.max(0, performance.now() - session.clientStartedAt),
       }),
     });
-    await Promise.allSettled([
+    if (result.accepted !== true) return false;
+    void Promise.allSettled([
       refreshGameLeaderboard(session.gameId),
       refreshOverallLeaderboard(),
       refreshWeeklyOverallLeaderboard(),
       getGuestProfile(),
     ]);
     return true;
-  } catch (error) {
-    console.warn('Live leaderboard score submission failed:', error);
+  } catch {
     return false;
   }
 }

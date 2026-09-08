@@ -28,7 +28,7 @@ export function useModalFocus(dialogRef: RefObject<HTMLElement | null>): void {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Tab') return;
       const focusable = Array.from(dialog.querySelectorAll(FOCUSABLE)) as HTMLElement[];
-      const visible = focusable.filter((element) => !element.hidden && element.getAttribute('aria-hidden') !== 'true');
+      const visible = focusable.filter((element) => !element.hidden && !element.closest('[inert], [aria-hidden="true"]') && element.getClientRects().length > 0);
       if (!visible.length) {
         event.preventDefault();
         dialog.focus();
@@ -36,7 +36,10 @@ export function useModalFocus(dialogRef: RefObject<HTMLElement | null>): void {
       }
       const first = visible[0];
       const last = visible[visible.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
+      if (!dialog.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();
       } else if (!event.shiftKey && document.activeElement === last) {

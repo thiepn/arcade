@@ -38,6 +38,32 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Keep all library filters reachable without squeezing the brand into tools. */
+.p19-brand-button { min-width: 44px; min-height: 44px; }
+@media (max-width: 1279px) {
+  .p19-home-header > div {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 64px;
+    padding-block: 8px;
+    row-gap: 8px;
+  }
+  .p19-header-left { display: contents; }
+  .p19-library-nav {
+    display: flex;
+    order: 1;
+    flex-basis: 100%;
+    justify-content: center;
+  }
+}
+@media (max-width: 479px) {
+  .p19-brand-button > div:last-child { display: none; }
+}
+@media (max-width: 359px) {
+  #header-leaderboards-pill-btn { min-width: 44px; justify-content: center; }
+  #header-leaderboards-pill-btn span { display: none; }
+}
+
 .p19-icon-button {
   min-width: var(--p19-control-size);
   min-height: var(--p19-control-size);

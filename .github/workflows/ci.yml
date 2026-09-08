@@ -103,6 +103,9 @@ jobs:
           done
           curl -fsS http://127.0.0.1:8787/v1/health >/dev/null
           bun worker/smoke-test.mjs
+          bun run quality:rc-worker
+      - run: bun run quality:rc-storage
+      - run: bun run quality:rc-contracts
       - run: bun run worker:check
       - run: bun run build
       - name: Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23 / P24
@@ -131,6 +134,7 @@ jobs:
             echo 'Chrome executable not found on runner'
             exit 1
           fi
+          RC_CHROME_PATH="$chrome" bun run quality:rc-browser
           P3_CHROME_PATH="$chrome" bun run quality:browser-p3
           P17_CHROME_PATH="$chrome" bun run quality:browser-p17
           P18_CHROME_PATH="$chrome" bun run quality:browser-p18

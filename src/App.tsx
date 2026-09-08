@@ -105,16 +105,13 @@ export default function App() {
   // Global key bindings: '/' to search, 'Esc' to close search/modals
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (activeGameId) return; // Ignore homepage keys if in game shell
+      if (activeGameId || statsModalOpen || overallLeaderboardOpen || profileOpen) return;
 
       if (e.key === '/' && !(e.target instanceof HTMLInputElement)) {
         e.preventDefault();
         setSearchOpen(true);
       } else if (e.key === 'Escape') {
         if (searchOpen) setSearchOpen(false);
-        if (statsModalOpen) setStatsModalOpen(false);
-        if (overallLeaderboardOpen) setOverallLeaderboardOpen(false);
-        if (profileOpen) setProfileOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -218,7 +215,7 @@ export default function App() {
 
       // Search query filter
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.trim().toLowerCase();
         const matchesTitle = game.title.toLowerCase().includes(q);
         const matchesDesc = game.description.toLowerCase().includes(q);
         const matchesTagline = game.tagline.toLowerCase().includes(q);
@@ -242,8 +239,15 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col justify-between selection:bg-cyan-500/30 selection:text-cyan-200">
-      <a href="#library-section" className="skip-link">Skip to game library</a>
+    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col justify-between selection:bg-cyan-500/30 selection:text-cyan-200"
+      onKeyDown={(event) => {
+        const target = event.target instanceof HTMLElement ? event.target : null;
+        const editing = target?.matches('input, textarea, select, [contenteditable="true"]');
+        const activatingControl = (event.code === 'Space' || event.code === 'Enter') && target?.closest('button, a[href]');
+        // Game listeners on window must not cancel native button activation or text entry.
+        if ((editing && event.key !== 'Escape') || activatingControl) event.stopPropagation();
+      }}>
+      <a href="#library-section" className="skip-link" inert={Boolean(activeGame) || statsModalOpen || overallLeaderboardOpen || profileOpen || stressTesterOpen}>Skip to game library</a>
       {/* If a game is active, render full-screen unified Game Shell */}
       {activeGame && (
         <ErrorBoundary key={`game-shell-${activeGame.id}`} onReset={() => setActiveGameId(null)}>
@@ -251,6 +255,7 @@ export default function App() {
             <GameShell
               key={activeGame.id}
               game={activeGame}
+              obscured={statsModalOpen || overallLeaderboardOpen || profileOpen}
               bestScore={stats.highScores[activeGame.id] || 0}
               soundEnabled={stats.soundEnabled}
               hapticsEnabled={stats.hapticsEnabled ?? true}
@@ -266,7 +271,7 @@ export default function App() {
       )}
 
       {/* Main Arcade Homepage */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col" inert={Boolean(activeGame) || statsModalOpen || overallLeaderboardOpen || profileOpen || stressTesterOpen}>
         {/* Header */}
         <Header
           activeTab={activeTab}
@@ -365,7 +370,7 @@ export default function App() {
       </div>
 
       {/* Footer / Quick Stats Bar */}
-      <footer className="w-full border-t border-[#27272A] bg-[#0A0A0B] py-4 mt-8">
+      <footer inert={Boolean(activeGame) || statsModalOpen || overallLeaderboardOpen || profileOpen || stressTesterOpen} className="w-full border-t border-[#27272A] bg-[#0A0A0B] py-4 mt-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] font-mono-arcade text-[#52525B]">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-[#F43F5E] animate-pulse" />

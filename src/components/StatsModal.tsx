@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { useSafeTimeout } from '../hooks/useGameLoop';
 import { useModalFocus } from '../hooks/useModalFocus';
 import { UserStats, AppTheme } from '../types';
 import { GAMES_REGISTRY, GameEntry } from '../data/games';
@@ -53,7 +52,6 @@ import {
   getGlobalLeaderboardForGame,
   getOverallArcadeLeaderboard,
   getDivisionColor,
-  simulateLiveCompetition,
   refreshGameLeaderboard,
   refreshOverallLeaderboard,
   isLiveLeaderboardConfigured,
@@ -105,7 +103,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   useModalFocus(dialogRef);
 
   const [activeTab, setActiveTab] = useState<'stats' | 'achievements' | 'leaderboards'>(initialTab);
-  const [leaderboardScope, setLeaderboardScope] = useState<'perGame' | 'overall'>('overall');
+  const [leaderboardScope, setLeaderboardScope] = useState<'perGame' | 'overall'>(initialGameId ? 'perGame' : 'overall');
   const [selectedGameId, setSelectedGameId] = useState<string>(
     initialGameId || GAMES_REGISTRY[0].id
   );
@@ -119,7 +117,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   const [divisionFilter, setDivisionFilter] = useState<'all' | LeaderboardDivision>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
-  const setSafeTimeout = useSafeTimeout();
+  const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleLeaderboardUpdate = () => setRefreshTick((tick) => tick + 1);
@@ -128,16 +126,16 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   }, []);
 
   useEffect(() => {
-    if (activeTab !== 'leaderboards' || !isLiveLeaderboardConfigured()) return;
-    if (leaderboardScope === 'perGame') {
-      void refreshGameLeaderboard(selectedGameId).catch((error) => {
-        console.warn('Unable to refresh game leaderboard:', error);
-      });
-    } else {
-      void refreshOverallLeaderboard().catch((error) => {
-        console.warn('Unable to refresh overall leaderboard:', error);
-      });
-    }
+    if (activeTab !== 'leaderboards') return;
+    if (!isLiveLeaderboardConfigured()) { setLeaderboardError('Global leaderboards are not connected. Personal bests stay on this device.'); return; }
+    let cancelled = false;
+    setIsRefreshing(true);
+    setLeaderboardError(null);
+    const request = leaderboardScope === 'perGame' ? refreshGameLeaderboard(selectedGameId) : refreshOverallLeaderboard();
+    void request.catch(() => {
+      if (!cancelled) setLeaderboardError('Global leaderboard unavailable. Showing previously saved rankings, if available.');
+    }).finally(() => { if (!cancelled) setIsRefreshing(false); });
+    return () => { cancelled = true; };
   }, [activeTab, leaderboardScope, selectedGameId]);
 
   // Achievement filters & search
@@ -156,7 +154,8 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   const [seenBadgeIds, setSeenBadgeIds] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem(SEEN_BADGES_KEY);
-      return saved ? new Set(JSON.parse(saved)) : new Set();
+      const parsed: unknown = saved ? JSON.parse(saved) : [];
+      return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []);
     } catch {
       return new Set();
     }
@@ -315,16 +314,17 @@ export const StatsModal: React.FC<StatsModalProps> = ({
     return overallLeaderboardData.topEntries.filter((e) => e.division === divisionFilter);
   }, [overallLeaderboardData.topEntries, divisionFilter]);
 
-  const handleRefreshRivals = () => {
+  const handleRefreshRivals = async () => {
+    if (isRefreshing || !isLiveLeaderboardConfigured()) return;
     sounds.playPop();
     setIsRefreshing(true);
-    simulateLiveCompetition(selectedGame.id);
-    setSafeTimeout(() => {
-      setRefreshTick((t) => t + 1);
-      setIsRefreshing(false);
-      sounds.playScore();
-      haptics.light();
-    }, 450);
+    setLeaderboardError(null);
+    try {
+      if (leaderboardScope === 'perGame') await refreshGameLeaderboard(selectedGame.id);
+      else await refreshOverallLeaderboard();
+    } catch {
+      setLeaderboardError('Global leaderboard unavailable. Showing previously saved rankings, if available.');
+    } finally { setIsRefreshing(false); }
   };
 
   const handleResetAll = () => {
@@ -548,6 +548,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
           {/* ========================================================================= */}
           {activeTab === 'leaderboards' && (
             <div className="flex flex-col gap-4">
+              {(leaderboardError || isRefreshing) && <p role="status" className="text-xs text-zinc-300">{leaderboardError || 'Loading global rankings…'}</p>}
               
               {/* TOP SCOPE TOGGLE & RIVAL SYNC BAR */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-1.5 rounded-xl bg-[#0A0A0C] border border-[#27272A]">
@@ -593,13 +594,14 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                     type="button"
                     id="sync-live-rivals-btn"
                     onClick={handleRefreshRivals}
-                    title="Simulate live score activity from global rival contenders"
+                    title="Refresh global rankings"
+                    disabled={isRefreshing || !isLiveLeaderboardConfigured()}
                     className={`px-3 py-1.5 rounded-lg bg-[#141418] hover:bg-[#202026] border border-[#27272A] text-xs font-mono-arcade font-bold text-[#A1A1AA] hover:text-white transition-all cursor-pointer flex items-center gap-1.5 ${
                       isRefreshing ? 'text-amber-400 border-amber-500/50' : ''
                     }`}
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-amber-400' : ''}`} />
-                    <span>Sync Live Rivals</span>
+                    <span>Refresh Rankings</span>
                   </button>
                 </div>
               </div>
@@ -674,7 +676,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                             type="text"
                             value={gameSearchQuery}
                             onChange={(e) => setGameSearchQuery(e.target.value)}
-                            placeholder="Filter 24 arcade games..."
+                            placeholder={`Filter ${GAMES_REGISTRY.length} arcade games...`}
                             className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-[#0A0A0D] border border-[#27272A] text-xs font-mono-arcade text-white placeholder-[#71717A] focus:outline-none focus:border-cyan-500"
                             autoFocus
                           />
@@ -1426,7 +1428,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {/* Theme 1: Default Dark (Neon Obsidian) */}
-                  <div
+                  <button type="button" id="theme-choice-default" aria-label="Neon Obsidian theme" aria-pressed={!stats.theme || stats.theme === 'default'}
                     onClick={() => {
                       if (stats.theme !== 'default') {
                         sounds.playScore();
@@ -1434,7 +1436,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         onUpdateTheme?.('default');
                       }
                     }}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
+                    className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
                       stats.theme === 'default' || !stats.theme
                         ? 'bg-[#141418] border-[#F43F5E] shadow-lg ring-1 ring-[#F43F5E]/40'
                         : 'bg-[#0A0A0C] border-[#27272A] hover:border-[#3F3F46] opacity-80 hover:opacity-100'
@@ -1473,10 +1475,10 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         {(stats.theme === 'default' || !stats.theme) ? 'Active' : 'Apply'}
                       </span>
                     </div>
-                  </div>
+                  </button>
 
                   {/* Theme 2: Retro Monochrome */}
-                  <div
+                  <button type="button" id="theme-choice-retro-monochrome" aria-label="Retro Monochrome theme" aria-pressed={stats.theme === 'retro-monochrome'}
                     onClick={() => {
                       if (stats.theme !== 'retro-monochrome') {
                         sounds.playScore();
@@ -1484,7 +1486,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         onUpdateTheme?.('retro-monochrome');
                       }
                     }}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
+                    className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
                       stats.theme === 'retro-monochrome'
                         ? 'bg-[#181818] border-white shadow-lg ring-1 ring-white/50'
                         : 'bg-[#0A0A0C] border-[#27272A] hover:border-[#3F3F46] opacity-80 hover:opacity-100'
@@ -1523,10 +1525,10 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         {stats.theme === 'retro-monochrome' ? 'Active' : 'Apply'}
                       </span>
                     </div>
-                  </div>
+                  </button>
 
                   {/* Theme 3: Cyberpunk Synthwave */}
-                  <div
+                  <button type="button" id="theme-choice-cyberpunk" aria-label="Cyberpunk theme" aria-pressed={stats.theme === 'cyberpunk'}
                     onClick={() => {
                       if (stats.theme !== 'cyberpunk') {
                         sounds.playScore();
@@ -1534,7 +1536,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         onUpdateTheme?.('cyberpunk');
                       }
                     }}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
+                    className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
                       stats.theme === 'cyberpunk'
                         ? 'bg-[#180F2A] border-[#FACC15] shadow-lg ring-1 ring-[#FACC15]/40'
                         : 'bg-[#0A0A0C] border-[#27272A] hover:border-[#3F3F46] opacity-80 hover:opacity-100'
@@ -1573,10 +1575,10 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         {stats.theme === 'cyberpunk' ? 'Active' : 'Apply'}
                       </span>
                     </div>
-                  </div>
+                  </button>
 
                   {/* Theme 4: 8-Bit Emerald */}
-                  <div
+                  <button type="button" id="theme-choice-matrix-emerald" aria-label="8-Bit Emerald theme" aria-pressed={stats.theme === 'matrix-emerald'}
                     onClick={() => {
                       if (stats.theme !== 'matrix-emerald') {
                         sounds.playScore();
@@ -1584,7 +1586,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         onUpdateTheme?.('matrix-emerald');
                       }
                     }}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
+                    className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
                       stats.theme === 'matrix-emerald'
                         ? 'bg-[#0A1810] border-[#22C55E] shadow-lg ring-1 ring-[#22C55E]/40'
                         : 'bg-[#0A0A0C] border-[#27272A] hover:border-[#3F3F46] opacity-80 hover:opacity-100'
@@ -1623,10 +1625,10 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         {stats.theme === 'matrix-emerald' ? 'Active' : 'Apply'}
                       </span>
                     </div>
-                  </div>
+                  </button>
 
                   {/* Theme 5: Solar Flare */}
-                  <div
+                  <button type="button" id="theme-choice-sunset-amber" aria-label="Solar Flare theme" aria-pressed={stats.theme === 'sunset-amber'}
                     onClick={() => {
                       if (stats.theme !== 'sunset-amber') {
                         sounds.playScore();
@@ -1634,7 +1636,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         onUpdateTheme?.('sunset-amber');
                       }
                     }}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
+                    className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
                       stats.theme === 'sunset-amber'
                         ? 'bg-[#1C120C] border-[#F59E0B] shadow-lg ring-1 ring-[#F59E0B]/40'
                         : 'bg-[#0A0A0C] border-[#27272A] hover:border-[#3F3F46] opacity-80 hover:opacity-100'
@@ -1673,7 +1675,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         {stats.theme === 'sunset-amber' ? 'Active' : 'Apply'}
                       </span>
                     </div>
-                  </div>
+                  </button>
                 </div>
               </div>
 
