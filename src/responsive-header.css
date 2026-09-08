@@ -1,0 +1,35 @@
+/* Responsive product-header hardening.
+ * Keep coarse-pointer targets at 44px while preventing the compact action row
+ * from overflowing common 320-479px mobile viewports.
+ */
+
+@media (max-width: 479px) {
+  #header-leaderboards-pill-btn {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    max-width: 2.75rem;
+    padding-inline: 0 !important;
+    justify-content: center;
+    gap: 0 !important;
+  }
+
+  #header-leaderboards-pill-btn span {
+    display: none !important;
+  }
+
+  #header-rank-badge-btn {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    max-width: 2.75rem;
+    padding-inline: 0 !important;
+    justify-content: center;
+    gap: 0 !important;
+  }
+
+  /* The desktop rank details are already hidden below md; hide the compact
+   * R.x label too so the level orb is the sole narrow-screen affordance.
+   */
+  #header-rank-badge-btn > div:last-child {
+    display: none !important;
+  }
+}
