@@ -103,10 +103,11 @@ jobs:
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
-      - name: Live Pages smoke — all 32 games
+      - name: Live Pages responsive + 32-game smoke
         shell: bash
         env:
           P3_BASE_URL: ${{ needs.deploy.outputs.page_url }}
+          HEADER_BASE_URL: ${{ needs.deploy.outputs.page_url }}
           P3_QUICK: '1'
         run: |
           set -euo pipefail
@@ -115,4 +116,5 @@ jobs:
             echo 'Chrome executable not found on runner'
             exit 1
           fi
+          HEADER_CHROME_PATH="$chrome" bun scripts/audit-responsive-header.mjs
           P3_CHROME_PATH="$chrome" bun run quality:browser-p3

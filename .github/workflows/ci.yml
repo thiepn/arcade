@@ -134,6 +134,7 @@ jobs:
             echo 'Chrome executable not found on runner'
             exit 1
           fi
+          HEADER_CHROME_PATH="$chrome" bun scripts/audit-responsive-header.mjs
           RC_CHROME_PATH="$chrome" bun run quality:rc-browser
           P3_CHROME_PATH="$chrome" bun run quality:browser-p3
           P17_CHROME_PATH="$chrome" bun run quality:browser-p17
