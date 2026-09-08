@@ -23,5 +23,5 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "exclude": ["node_modules", "dist", ".wrangler-dist", "worker"]
+  "exclude": ["node_modules", "dist", ".wrangler-dist", "worker", "supabase"]
 }
