@@ -14,9 +14,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - run: git archive --format=tar.gz -o /tmp/arcade-source.tar.gz HEAD
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: Capture locked local audit environment
+        run: |
+          mkdir -p .audit-tools
+          cp "$(command -v bun)" .audit-tools/bun
+          tar -czf /tmp/arcade-toolchain.tar.gz node_modules dist .audit-tools
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: responsive-ui-source
-          path: /tmp/arcade-source.tar.gz
-          retention-days: 3
+          name: responsive-ui-toolchain
+          path: /tmp/arcade-toolchain.tar.gz
+          compression-level: 0
+          retention-days: 1
