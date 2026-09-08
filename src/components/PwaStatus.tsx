@@ -25,6 +25,7 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
   const [progressSaved, setProgressSaved] = useState(isProgressSaved);
   const [reloadReady, setReloadReady] = useState(false);
   const updateRequested = useRef(false);
+  const controlledAtMount = useRef(Boolean(navigator.serviceWorker?.controller));
   const updateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activateUpdate = (worker = waitingWorker) => {
@@ -38,9 +39,13 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
   useEffect(() => {
     const onStorage = () => setProgressSaved(isProgressSaved());
     const onController = () => {
+      const replacingExistingController = controlledAtMount.current;
+      controlledAtMount.current = true;
+      // The first-ever service worker claiming a fresh tab does not require a
+      // reload. A replacement worker does, as does a legacy waiting worker that
+      // this client explicitly activated.
+      if (!replacingExistingController && !updateRequested.current) return;
       if (updateTimer.current) clearTimeout(updateTimer.current);
-      // A newly activated worker must eventually reload the shell. If a game is
-      // active the reload is deferred until the player returns to the arcade.
       setReloadReady(true);
     };
     window.addEventListener(STORAGE_STATUS_EVENT, onStorage);
