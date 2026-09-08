@@ -50,17 +50,20 @@ jobs:
         run: |
           set -euo pipefail
           headers="$(mktemp)"
-          cleanup() { rm -f "$headers"; }
+          normalized_headers="$(mktemp)"
+          cleanup() { rm -f "$headers" "$normalized_headers"; }
           trap cleanup EXIT
 
           ok=0
           for attempt in $(seq 1 20); do
             : > "$headers"
+            : > "$normalized_headers"
             status="$(curl -sS -o /dev/null -D "$headers" -w '%{http_code}' -X OPTIONS "$LEADERBOARD_API_URL/v1/guest" \
               -H "Origin: $PRODUCTION_ORIGIN" \
               -H 'Access-Control-Request-Method: POST' \
               -H 'Access-Control-Request-Headers: content-type' || true)"
-            if [ "$status" = '204' ] && grep -Eiq "^access-control-allow-origin:[[:space:]]*$PRODUCTION_ORIGIN\r?$" "$headers"; then
+            tr -d '\r' < "$headers" > "$normalized_headers"
+            if [ "$status" = '204' ] && grep -Fqi "access-control-allow-origin: $PRODUCTION_ORIGIN" "$normalized_headers"; then
               ok=1
               break
             fi
@@ -70,7 +73,7 @@ jobs:
           if [ "$ok" != '1' ]; then
             echo 'Production Worker did not accept the thiepn.dev CORS preflight.' >&2
             echo 'Configure CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in GitHub, or deploy the Worker manually before releasing Pages.' >&2
-            cat "$headers" >&2 || true
+            cat "$normalized_headers" >&2 || true
             exit 1
           fi
 
