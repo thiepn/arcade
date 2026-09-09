@@ -68,8 +68,10 @@ try{
  state.offlineUpload=false;await p.evaluate(()=>window.scoreFixture.flush(true));
  await expect.poll(()=>p.evaluate(async()=> (await window.scoreFixture.outbox()).some(r=>r.status==='accepted')),{timeout:15000}).toBe(true);
  check(state.runs.size===before+1,'lost response retry creates no second record');const sent=state.uploads.filter(r=>r.sessionId===saved.id);check(sent.every(r=>JSON.stringify(r)===JSON.stringify(sent[0])),'raw score, mode and completion duration immutable across reload/retry');
+ // Upload recovery can finish before the lazy game engine mounts after reload.
+ await p.waitForSelector('[data-test-engine]');await p.waitForFunction(()=>typeof window.scoreFixture?.mode==='function');
  // A stale callback from the old mode cannot end the new run.
- await p.evaluate(()=>{window.oldFinish=window.scoreFixture.finish;window.scoreFixture.mode('standard')});await p.evaluate(()=>window.scoreFixture.select('rhythm'));await p.waitForSelector('[data-fixture-game="rhythm"]');await p.waitForTimeout(200);
+ await p.evaluate(()=>window.scoreFixture.select('rhythm'));await p.waitForSelector('[data-fixture-game="rhythm"] [data-test-engine]');await p.waitForTimeout(200);
  await p.evaluate(()=>{window.oldFinish=window.scoreFixture.finish;window.scoreFixture.mode('hypernova')});await p.waitForTimeout(200);await p.evaluate(()=>window.oldFinish(12345,'cyber_odyssey'));check(await p.locator('[data-result-raw-score]').count()===0,'old-mode callback ignored');
  await ctx.close();console.log(`Leaderboard browser PASS: ${assertions} UI/failure assertions, 4 responsive widths, pagination, mode context, IndexedDB reload and lost-response recovery.`);
 }finally{await browser?.close();server.kill('SIGTERM');}
