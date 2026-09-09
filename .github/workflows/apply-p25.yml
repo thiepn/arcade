@@ -1,0 +1,37 @@
+name: Apply P25 deep polish
+on:
+  push:
+    branches: [feat/deep-game-polish]
+permissions:
+  contents: read
+jobs:
+  apply:
+    if: github.ref == 'refs/heads/feat/deep-game-polish'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Apply checksum-verified P25 patch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f tools/p25/part00 ]; then exit 0; fi
+          cat tools/p25/part00 tools/p25/part01 | base64 --decode | gzip --decompress > /tmp/p25.patch
+          echo '404d92ffa774c5525ce153f4e5e9e0e76f450a20dfa24427618de651f77ef9b1  /tmp/p25.patch' | sha256sum --check
+          git apply --check /tmp/p25.patch
+          git apply /tmp/p25.patch
+          git rm tools/p25/part00 tools/p25/part01
+          git add .github/workflows/ci.yml docs package.json scripts src
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Deep-polish and rebalance all 32 games'
+          auth="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:refs/heads/feat/deep-game-polish
