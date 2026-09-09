@@ -1,3 +1,4 @@
+import { localRating } from './localCompetition';
 import { arcadeRating, arcadeTotal } from '../../shared/scoring';
 import { UserStats, GameCategory } from '../types';
 import { GAMES_REGISTRY } from '../data/games';
@@ -993,7 +994,7 @@ export function getPlayerRankProfile(stats: UserStats): PlayerRankProfile {
   const completionPercent = Math.round((unlockedCount / totalBadges) * 100);
 
   // Rating is performance-only and identical to the overall leaderboard.
-  const ratingScore = arcadeRating(stats.highScores);
+  const ratingScore = localRating(stats);
 
   // Find active tier by highest met threshold
   const currentTier =

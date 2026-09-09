@@ -29,6 +29,8 @@ export interface ScoreDetails {
 }
 
 export interface UserStats {
+  recordSchemaVersion?: 3;
+  modeBests?: Record<string, ScoreDetails & { apMicros: number; achievedAt: number }>;
   scoreVersion?: number;
   legacyHighScores?: Record<string, number>;
   bestScoreDetails?: Record<string, ScoreDetails>;
@@ -47,6 +49,7 @@ export interface UserStats {
 }
 
 export interface GameComponentProps {
+  initialModeId?: string;
   onGameOver: (finalScore: number, modeId?: string) => void;
   onScoreUpdate: (currentScore: number, modeId?: string) => void;
   onModeChange?: (modeId: string) => void;

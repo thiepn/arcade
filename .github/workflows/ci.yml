@@ -25,6 +25,15 @@ jobs:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
       - run: bun run quality:scoring
+      - run: bun run quality:leaderboard
+      - name: Leaderboard mobile UI and durable upload recovery
+        run: SCORING_CHROME_PATH="$(command -v google-chrome)" bun run quality:leaderboard-browser
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: leaderboard-browser-evidence
+          path: balance-report/leaderboard
+          retention-days: 7
       - run: bun run quality:scoring-migrations
       - run: bun run quality:games
       - run: bun run quality:desktop
@@ -218,3 +227,30 @@ jobs:
           name: responsive-ui-${{ matrix.browser }}
           path: ui-report-${{ matrix.browser }}
           retention-days: 7
+
+  leaderboard-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: local-test-only
+          POSTGRES_DB: leaderboard_test
+        ports: [55432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - name: Real PostgreSQL migration, API, concurrency, ranking and permission tests
+        run: bun run quality:leaderboard-db
+        env:
+          LB_TEST_DATABASE_URL: postgres://postgres:local-test-only@127.0.0.1:55432/leaderboard_test
+          LB_TEST_RESET: '1'

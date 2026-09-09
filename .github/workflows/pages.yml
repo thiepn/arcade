@@ -35,7 +35,7 @@ jobs:
           cleanup() { rm -f "$headers" "$normalized_headers" "$body"; }
           trap cleanup EXIT
 
-          status="$(curl -sS -o /dev/null -D "$headers" -w '%{http_code}' -X OPTIONS "$LEADERBOARD_API_URL/v1/guest" \
+          status="$(curl -sS -o /dev/null -D "$headers" -w '%{http_code}' -X OPTIONS "$LEADERBOARD_API_URL/v3/guest" \
             -H "Origin: $PRODUCTION_ORIGIN" \
             -H 'Access-Control-Request-Method: POST' \
             -H 'Access-Control-Request-Headers: content-type')"
@@ -43,15 +43,17 @@ jobs:
           test "$status" = '204'
           grep -Fqi "access-control-allow-origin: $PRODUCTION_ORIGIN" "$normalized_headers"
 
-          curl -fsS "$LEADERBOARD_API_URL/v1/health" -H "Origin: $PRODUCTION_ORIGIN" > "$body"
+          curl -fsS "$LEADERBOARD_API_URL/v3/health" -H "Origin: $PRODUCTION_ORIGIN" > "$body"
           grep -q '"ok":true' "$body"
           grep -q '"backend":"supabase"' "$body"
+          grep -q '"protocolVersion":3' "$body"
+          grep -q 'b467b52542b31e2a942c7af0dfe11eb4598cbf56c50096278a8be1b1a1a79057' "$body"
 
-          curl -fsS "$LEADERBOARD_API_URL/v1/leaderboards/overall?limit=1" -H "Origin: $PRODUCTION_ORIGIN" > "$body"
+          curl -fsS "$LEADERBOARD_API_URL/v3/leaderboards/overall?limit=1" -H "Origin: $PRODUCTION_ORIGIN" > "$body"
           grep -q '"entries"' "$body"
           grep -q '"totalCompetitors"' "$body"
 
-          curl -fsS "$LEADERBOARD_API_URL/v1/leaderboards/weekly?limit=1" -H "Origin: $PRODUCTION_ORIGIN" > "$body"
+          curl -fsS "$LEADERBOARD_API_URL/v3/leaderboards/weekly?limit=1" -H "Origin: $PRODUCTION_ORIGIN" > "$body"
           grep -q '"entries"' "$body"
           grep -q '"totalCompetitors"' "$body"
           grep -q '"weekStart"' "$body"

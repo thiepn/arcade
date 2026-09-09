@@ -68,6 +68,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
   onGameOver,
   onScoreUpdate,
   onModeChange,
+  initialModeId,
   isPaused,
   soundEnabled,
 }) => {
@@ -79,7 +80,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
   soundEnabledRef.current = soundEnabled;
   const setSafeTimeout = useSafeTimeout();
 
-  const [selectedSongIndex, setSelectedSongIndex] = useState(0);
+  const [selectedSongIndex, setSelectedSongIndex] = useState(()=>Math.max(0,RHYTHM_SONGS.findIndex(song=>song.id===initialModeId)));
   const currentSong = RHYTHM_SONGS[selectedSongIndex];
   const [latencyOffsetMs, setLatencyOffsetMs] = useState(() => {
     if (typeof window === 'undefined') return 0;
