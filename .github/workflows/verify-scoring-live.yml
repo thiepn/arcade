@@ -1,0 +1,84 @@
+name: Verify live scoring v2
+on:
+  push:
+    branches: [verify/scoring-v2-live]
+    paths: ['.github/workflows/verify-scoring-live.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - name: Verify public API and published browser bundle
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: |
+          cat > live-scoring.mjs <<'JS'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs/promises';
+          import { chromium } from '@playwright/test';
+          import { SCORING_PROFILES, toArcadePoints } from './shared/scoring.ts';
+          const api='https://hycegznamzjhwinegaai.supabase.co/functions/v1/micro-arcade-leaderboards';
+          const site='https://thiepn.dev/arcade/';
+          const headers={Origin:'https://thiepn.dev'};
+          const read=async url=>{const r=await fetch(url,{headers,signal:AbortSignal.timeout(20000)});assert.equal(r.status,200);return r.json();};
+          assert.equal((await read(api+'/v1/health')).scoreVersion,2);
+          const preflight=await fetch(api+'/v1/sessions',{method:'OPTIONS',headers:{...headers,'Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'content-type,authorization'}});
+          assert.equal(preflight.status,204);assert.equal(preflight.headers.get('access-control-allow-origin'),headers.Origin);
+          for(const type of ['overall','weekly']){const b=await read(api+'/v1/leaderboards/'+type);assert.equal(b.scoreVersion,2);assert.equal(b.ratingGameCap,10000);for(const e of b.entries)assert(e.rating_score<=e.games_played*10000);}
+          let records=0;
+          for(const game of Object.keys(SCORING_PROFILES)){
+            const b=await read(api+'/v1/leaderboards/'+game);assert.equal(b.scoreVersion,2);
+            for(const e of b.entries){assert.equal(e.score,toArcadePoints(game,e.raw_score,e.mode_id,e.source_version));records++;}
+          }
+          console.log('LIVE API PASS: version 2, CORS, 32 game endpoints, global/weekly caps and '+records+' converted records. GET/OPTIONS only.');
+          let published=false;
+          for(let attempt=0;attempt<80;attempt++){
+            const m=await read(site+'asset-manifest.json?verify='+Date.now());
+            const entry=Object.entries(m).find(([k])=>k.endsWith('/OverallLeaderboardModal.tsx'))?.[1];
+            if(entry){const text=await (await fetch(site+entry.file,{signal:AbortSignal.timeout(20000)})).text();if(text.includes('Best Arcade Points per game')){published=true;break;}}
+            await new Promise(r=>setTimeout(r,10000));
+          }
+          assert(published,'Published bundle did not advance to scoring v2 in the verification window');
+          await fs.mkdir('live-scoring-report',{recursive:true});
+          const browser=await chromium.launch({executablePath:process.env.CHROME_PATH,headless:true,args:['--no-sandbox']});
+          const checks=[];
+          try {
+            for(const [width,height] of [[320,568],[390,844],[1280,800]]){
+              const context=await browser.newContext({viewport:{width,height},serviceWorkers:'block',reducedMotion:'reduce'});
+              // Suppress all mutations: smoke checks must not register fake players or scores.
+              await context.route('**/functions/v1/micro-arcade-leaderboards/**',route=>['GET','OPTIONS'].includes(route.request().method())?route.continue():route.fulfill({status:503,contentType:'application/json',body:'{"error":"Read-only verification: mutation intentionally suppressed"}'}));
+              const p=await context.newPage();await p.goto(site,{waitUntil:'domcontentloaded'});
+              await p.locator('#play-btn-stack').waitFor();
+              for(const game of ['stack','rhythm']){
+                await p.locator('#play-btn-'+game).click();
+                const label=p.getByTitle('Calibrated Arcade Points, scoring v2',{exact:true}).first();await label.waitFor();assert.equal(await label.textContent(),'AP');
+                assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2));
+                await p.screenshot({path:`live-scoring-report/${width}-${game}.png`});
+                await p.locator('#game-back-btn').click();await p.locator('.game-shell').waitFor({state:'detached'});
+              }
+              await p.locator('#header-leaderboards-pill-btn').click();
+              await p.getByRole('dialog',{name:'Overall leaderboards'}).waitFor();
+              assert((await p.getByRole('dialog',{name:'Overall leaderboards'}).innerText()).includes('up to 10,000 per game'));
+              await p.screenshot({path:`live-scoring-report/${width}-leaderboards.png`});
+              checks.push({width,height,APLabels:true,overallExplanation:true,horizontalOverflow:false});await context.close();
+            }
+          } finally {await browser.close();}
+          await fs.writeFile('live-scoring-report/result.json',JSON.stringify({scoreVersion:2,apiGames:32,convertedRecords:records,mutationsSent:0,checks},null,2));
+          console.log('LIVE BROWSER PASS: published AP labels, overall-cap explanation and viewport fit at all three sizes; mutations suppressed.');
+          JS
+          bun live-scoring.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: live-scoring-v2-evidence
+          path: live-scoring-report
+          retention-days: 7
