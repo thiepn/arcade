@@ -1,0 +1,22 @@
+name: Leaderboard Release Export
+on:
+  push:
+    branches: [audit/leaderboard-rebuild-source]
+    paths: [.github/workflows/leaderboard-release-export.yml]
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: e3a59c158a49fd96b2aa383befefdcf61a62242c
+          persist-credentials: false
+      - run: git archive HEAD | gzip > /tmp/leaderboard-release-source.tar.gz
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: leaderboard-release-source
+          path: /tmp/leaderboard-release-source.tar.gz
+          retention-days: 1
