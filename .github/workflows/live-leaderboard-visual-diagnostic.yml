@@ -1,0 +1,53 @@
+name: Live Leaderboard Visual Diagnostic
+on:
+  push:
+    branches: [audit/live-leaderboard-restored]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - name: Capture live leaderboard
+        shell: bash
+        run: |
+          mkdir -p live-diagnostic
+          cat > /tmp/live-lb.mjs <<'JS'
+          import { chromium } from '@playwright/test';
+          import fs from 'node:fs';
+          const browser = await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox']});
+          const context = await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block',colorScheme:'dark'});
+          const page = await context.newPage();
+          const events=[];
+          page.on('pageerror',e=>events.push('PAGEERROR '+e.message));
+          page.on('console',m=>{if(m.type()==='error')events.push('CONSOLE '+m.text())});
+          const response = await page.goto('https://thiepn.dev/arcade/?visualdiag='+Date.now(),{waitUntil:'networkidle',timeout:30000});
+          events.push('STATUS '+response?.status());
+          events.push('URL '+page.url());
+          await page.locator('#header-leaderboards-pill-btn').click();
+          const dialog=page.getByRole('dialog',{name:'Overall leaderboards'});
+          await dialog.waitFor({state:'visible',timeout:10000});
+          await page.waitForTimeout(3000);
+          const text=await dialog.innerText();
+          fs.writeFileSync('live-diagnostic/dialog.txt',text+'\n\n'+events.join('\n'));
+          fs.writeFileSync('live-diagnostic/html.txt',(await dialog.evaluate(el=>el.outerHTML)).slice(0,200000));
+          await page.screenshot({path:'live-diagnostic/leaderboard.png',fullPage:true});
+          console.log(text);
+          console.log(events.join('\n'));
+          await browser.close();
+          JS
+          bun /tmp/live-lb.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: live-leaderboard-visual-diagnostic
+          path: live-diagnostic
+          retention-days: 1
