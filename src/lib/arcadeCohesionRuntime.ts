@@ -75,16 +75,22 @@ const decorateAppModals = () => {
   const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'));
   for (const dialog of dialogs) {
     if (dialog.closest('.game-shell')) continue;
-    add(dialog, 'p19-modal-overlay');
+    // Stats uses the dialog element as its panel; the other modals put the
+    // dialog role on the overlay. Do not decorate the Stats header as a panel.
+    const panel = dialog.id === 'stats-modal-container' ? dialog : dialog.firstElementChild;
+    const overlay = panel === dialog ? dialog.parentElement : dialog;
+    add(overlay, 'p19-modal-overlay');
     dialog.dataset.p19Modal = 'canonical';
-    const panel = dialog.firstElementChild;
     add(panel, 'p19-modal-panel');
     if (panel instanceof HTMLElement) panel.dataset.p19Panel = 'canonical';
 
     const header = panel?.firstElementChild;
     if (header instanceof HTMLElement && header.querySelector('h1, h2')) add(header, 'p19-modal-header');
 
-    for (const button of Array.from(dialog.querySelectorAll<HTMLElement>('button[aria-label*="Close" i]'))) add(button, 'p19-icon-button');
+    for (const button of Array.from(dialog.querySelectorAll<HTMLElement>('button[aria-label*="Close" i], #close-stats-modal-btn'))) {
+      add(button, 'p19-icon-button');
+      if (!button.getAttribute('aria-label')) setAttributeIfChanged(button, 'aria-label', 'Close stats and settings');
+    }
   }
 
   // If a regression ever renders multiple app-level modal dialogs simultaneously,

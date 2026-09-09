@@ -823,13 +823,14 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       className="relative w-full h-full min-h-0 flex flex-col items-center justify-center bg-[#09090D] select-none overflow-hidden touch-none"
     >
       {/* Top Cyber HUD Bar & Track Selector */}
-      <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 gap-1.5 flex-wrap">
+      <div className="rhythm-toolbar absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 gap-1.5 flex-wrap">
         {/* Track Selector & Multiplier */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Song Switcher Dropdown */}
           <div className="flex items-center gap-1 bg-[#18181B]/95 border border-[#27272A] p-1 rounded-xl shadow-lg backdrop-blur-md">
             <Disc className="w-3.5 h-3.5 text-rose-400 animate-spin ml-1 shrink-0" />
             <select
+              aria-label="Rhythm song"
               value={selectedSongIndex}
               onChange={(e) => handleSelectSong(Number(e.target.value))}
               className="bg-transparent text-white text-xs font-mono font-bold focus:outline-none cursor-pointer pr-1"
@@ -916,11 +917,12 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
         </div>
       </div>
 
-      {/* Main Rhythm Canvas */}
+      {/* Size the note field independently from its controls. */}
+      <div className="rhythm-arena relative w-full min-h-0 flex-1 overflow-hidden">
       <canvas ref={canvasRef} className="w-full h-full block cursor-pointer" />
 
       {/* Mobile/Touch Lane Input Buttons */}
-      <div className="absolute bottom-2 left-2 right-2 grid grid-cols-4 gap-1.5 z-20 md:hidden">
+      <div className="rhythm-lanes absolute bottom-2 left-2 right-2 grid grid-cols-4 gap-1.5 z-20 md:hidden">
         {LANE_LABELS.map((label, idx) => {
           const isPressed = activeLanes[idx];
           const color = LANE_COLORS[idx];
@@ -973,6 +975,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       <div className="absolute bottom-2 hidden md:flex items-center gap-3 px-3 py-1 rounded-full bg-[#121215]/80 border border-[#27272A] text-[10px] text-[#71717A] font-mono z-10 pointer-events-none">
         <span>Keys: <b className="text-white">D</b> • <b className="text-white">F</b> • <b className="text-white">J</b> • <b className="text-white">K</b></span>
         <span>or <b className="text-white">← ↓ ↑ →</b> / <b className="text-white">1 2 3 4</b></span>
+      </div>
       </div>
     </div>
   );

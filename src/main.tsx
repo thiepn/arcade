@@ -15,6 +15,7 @@ import './p19-arcade-cohesion.css';
 import './p22-mid-a-promotion.css';
 import './p23-b-rank-transformation.css';
 import './responsive-header.css';
+import './responsive-ui.css';
 
 installMobileRuntimeCompatibility();
 installGameFeelRuntime();

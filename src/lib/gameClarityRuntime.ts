@@ -280,7 +280,8 @@ const ensureFirstRunHint = (state: ShellState) => {
   hint.setAttribute('role', 'status');
   hint.setAttribute('aria-live', 'polite');
   hint.textContent = state.profile.firstRunHint;
-  state.stage.appendChild(hint);
+  // Do not cover game HUDs or resize the playfield when the hint disappears.
+  (state.shell.querySelector('.arcade-game-status') ?? state.stage).appendChild(hint);
   state.hint = hint;
 };
 

@@ -34,7 +34,7 @@
 .p19-action-primary,
 .p19-action-secondary,
 .p19-action-tertiary {
-  font: inherit;
+  /* Preserve each control's explicit typography; do not inherit the 16px page font. */
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -65,6 +65,10 @@
 }
 
 .p19-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   min-width: var(--p19-control-size);
   min-height: var(--p19-control-size);
   border-radius: var(--p19-radius-sm) !important;

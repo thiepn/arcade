@@ -65,7 +65,7 @@ const reset = (gameId: P22GameId, token: Element | null) => {
 const ensureHud = (element: HTMLElement) => {
   if (!state) return null;
   if (hud?.isConnected) return hud;
-  const stage = element.querySelector<HTMLElement>('main > div') ?? element.querySelector<HTMLElement>('main');
+  const stage = element.querySelector<HTMLElement>('.arcade-game-status') ?? element.querySelector<HTMLElement>('main > div') ?? element.querySelector<HTMLElement>('main');
   if (!stage) return null;
   const panel = document.createElement('aside');
   panel.className = 'p22-promotion-hud';

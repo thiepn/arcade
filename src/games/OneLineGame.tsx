@@ -752,11 +752,13 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
   const masteryGoal = getOneLineMasteryGoal(level);
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-between select-none game-canvas-container touch-none bg-[#090D16] overflow-hidden">
-      <canvas ref={canvasRef} className="w-full h-full block cursor-crosshair touch-none" />
+    <div className="oneline-layout relative w-full h-full flex flex-col items-center justify-between select-none game-canvas-container touch-none bg-[#090D16] overflow-hidden">
+      <div className="oneline-arena relative w-full min-h-0 flex-1 overflow-hidden">
+        <canvas ref={canvasRef} className="w-full h-full block cursor-crosshair touch-none" />
+      </div>
 
       {/* Top HUD */}
-      <div className="absolute top-3 left-4 right-4 flex items-center justify-between pointer-events-none z-10">
+      <div className="oneline-toolbar absolute top-3 left-4 right-4 flex items-center justify-between pointer-events-none z-10">
         <div className="flex items-center gap-3 bg-[#18181B]/90 border border-[#27272A] px-3.5 py-1.5 rounded-xl font-mono-arcade text-xs backdrop-blur-md">
           <span className="text-white font-bold">STAGE {level}</span>
           <div className="flex items-center gap-1.5 text-amber-400">
@@ -787,7 +789,7 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
         </div>
       </div>
 
-      <div className="absolute top-14 left-4 pointer-events-none z-10">
+      <div className="oneline-mastery absolute top-14 left-4 pointer-events-none z-10">
         <div className="rounded-lg border border-emerald-400/25 bg-zinc-950/80 px-2.5 py-1.5 font-mono-arcade text-[9px] text-emerald-200 backdrop-blur-md">
           <span className="font-black">MASTER ROUTE • {masteryGoal.label}</span>
           <span className="ml-2 text-zinc-400">{masteryGoal.minStars}★ + {masteryGoal.minInkRemainingPercent}% INK</span>

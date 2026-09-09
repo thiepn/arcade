@@ -322,9 +322,9 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
   }, [handleNodeClick, handleReplayPattern, toggleOverclock]);
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-between p-4 select-none bg-[#090D16] overflow-hidden">
+    <div className="matrix-layout relative w-full h-full flex flex-col items-center justify-between p-4 select-none bg-[#090D16] overflow-hidden">
       {/* Top HUD */}
-      <div className="w-full flex items-center justify-between z-10">
+      <div className="matrix-toolbar w-full flex items-center justify-between z-10">
         <div className="flex items-center gap-3 bg-[#18181B]/90 border border-[#27272A] px-3.5 py-1.5 rounded-xl font-mono-arcade text-xs backdrop-blur-md">
           <span className="text-white font-bold">ROUND {roundLevel}</span>
           <span className="text-[#71717A]">|</span>
@@ -380,7 +380,7 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
       </div>
 
       {/* Center 3x3 Holographic Terminal Grid */}
-      <div className="flex flex-col items-center justify-center gap-4 my-auto w-full max-w-sm">
+      <div className="matrix-playfield flex flex-col items-center justify-center gap-4 my-auto w-full max-w-sm">
         {/* Terminal Status Headline */}
         <div className="w-full flex items-center justify-between px-2 text-xs font-mono-arcade">
           <span
@@ -404,7 +404,7 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
         </div>
 
         {/* 3x3 Grid */}
-        <div className="grid grid-cols-3 gap-3 w-full aspect-square p-3 rounded-2xl bg-[#121620] border border-[#27272A] shadow-2xl">
+        <div className="matrix-board grid grid-cols-3 gap-3 w-full aspect-square p-3 rounded-2xl bg-[#121620] border border-[#27272A] shadow-2xl">
           {NODES.map((node) => {
             const isActive = activeNode === node.id;
             return (
@@ -439,7 +439,7 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
       </div>
 
       {/* Bottom Hint */}
-      <div className="flex items-center gap-2 bg-[#18181B]/90 border border-[#27272A] px-4 py-1.5 rounded-full font-mono-arcade text-xs text-[#A1A1AA] pointer-events-none z-10 backdrop-blur-md">
+      <div className="matrix-help flex items-center gap-2 bg-[#18181B]/90 border border-[#27272A] px-4 py-1.5 rounded-full font-mono-arcade text-xs text-[#A1A1AA] pointer-events-none z-10 backdrop-blur-md">
         <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
         <span>TAP PADS OR USE KEYS [QWE / ASD / ZXC] • [O] ARM OVERCLOCK</span>
       </div>

@@ -217,9 +217,9 @@ export const MergeGame: React.FC<GameComponentProps> = ({
   const contract = getMergeContract(contractLevel);
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center p-3 select-none touch-none">
+    <div className="merge-layout relative w-full h-full flex flex-col items-center justify-center p-3 select-none touch-none">
       {/* Escalating contract gives every run a short-term planning goal. */}
-      <div className="mb-2 w-full max-w-xs flex items-center justify-between px-3 py-2 rounded-xl bg-[#18181B] border border-[#27272A] font-mono-arcade text-[10px] sm:text-xs">
+      <div className="merge-contract mb-2 w-full max-w-xs flex items-center justify-between px-3 py-2 rounded-xl bg-[#18181B] border border-[#27272A] font-mono-arcade text-[10px] sm:text-xs">
         <div>
           <div className="text-[#71717A]">CONTRACT {contractLevel}</div>
           <div className="text-[#FACC15] font-bold">{contract.label}</div>
@@ -228,7 +228,7 @@ export const MergeGame: React.FC<GameComponentProps> = ({
       </div>
 
       {/* Top HUD: three-tile preview & powerups */}
-      <div className="mb-3 flex items-center justify-between w-full max-w-xs px-1">
+      <div className="merge-tools mb-3 flex items-center justify-between w-full max-w-xs px-1">
         <div className="flex items-center gap-2 bg-[#18181B] px-3 py-1.5 rounded-xl border border-[#27272A]">
           <span className="text-[11px] font-mono-arcade text-[#71717A] font-bold">QUEUE:</span>
           <div className="flex items-center gap-1">
@@ -250,6 +250,7 @@ export const MergeGame: React.FC<GameComponentProps> = ({
             onClick={handleSwapNext}
             disabled={swapsLeft <= 0}
             title="Swap Next Tile"
+            aria-label="Swap next tile"
             className="p-1 rounded-lg bg-[#27272A] hover:bg-[#3F3F46] text-[#A1A1AA] hover:text-white transition-colors disabled:opacity-40 cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -260,6 +261,8 @@ export const MergeGame: React.FC<GameComponentProps> = ({
         <button
           type="button"
           onClick={handleHammerClick}
+          aria-label={`Hammer: ${hammerCharges} charges`}
+          aria-pressed={hammerActive}
           disabled={hammerCharges <= 0}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-mono-arcade text-xs font-bold transition-all cursor-pointer ${
             hammerActive
@@ -272,14 +275,19 @@ export const MergeGame: React.FC<GameComponentProps> = ({
         </button>
       </div>
 
-      {/* Grid Container */}
-      <div className="relative bg-[#0A0A0B] p-2.5 rounded-2xl border border-[#27272A] shadow-2xl flex gap-1.5 sm:gap-2">
+      {/* The viewport owns the remaining height, independently of HUD wrapping. */}
+      <div className="merge-board-viewport">
+      <div className="merge-board relative bg-[#0A0A0B] p-2.5 rounded-2xl border border-[#27272A] shadow-2xl flex gap-1.5 sm:gap-2">
         {board.map((col, cIdx) => (
           <div
             key={cIdx}
             onClick={() => dropTile(cIdx)}
             onMouseEnter={() => setSelectedCol(cIdx)}
-            className={`flex flex-col gap-1.5 sm:gap-2 p-1 rounded-xl transition-colors cursor-pointer ${
+            role="button"
+            tabIndex={0}
+            aria-label={`Drop tile in column ${cIdx + 1}`}
+            onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); dropTile(cIdx); } }}
+            className={`merge-column flex flex-col gap-1.5 sm:gap-2 p-1 rounded-xl transition-colors cursor-pointer ${
               selectedCol === cIdx ? 'bg-[#18181B]/80' : 'hover:bg-[#18181B]/40'
             }`}
           >
@@ -289,7 +297,7 @@ export const MergeGame: React.FC<GameComponentProps> = ({
               return (
                 <div
                   key={rIdx}
-                  className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center font-bold text-sm sm:text-lg transition-all duration-200 ${
+                  className={`merge-cell w-12 h-12 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center font-bold text-sm sm:text-lg transition-all duration-200 ${
                     tile && style
                       ? `${style.bg} ${style.border} ${style.text} border shadow-lg scale-100`
                       : 'bg-[#18181B]/40 border border-[#27272A]/40'
@@ -308,6 +316,7 @@ export const MergeGame: React.FC<GameComponentProps> = ({
             })}
           </div>
         ))}
+      </div>
       </div>
     </div>
   );

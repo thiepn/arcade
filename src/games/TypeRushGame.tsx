@@ -342,7 +342,7 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
   return (
     <div
       onClick={focusDeviceKeyboard}
-      className="relative w-full h-full flex flex-col items-center justify-between select-none bg-[#0A0A0B] overflow-hidden cursor-text"
+      className="typerush-layout relative w-full h-full flex flex-col items-center justify-between select-none bg-[#0A0A0B] overflow-hidden cursor-text"
     >
       <input
         ref={inputRef}
@@ -365,7 +365,7 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
         aria-label="Type Rush Keyboard Input"
       />
 
-      <div className="absolute top-3 left-3 right-3 flex items-start justify-between pointer-events-none z-20 gap-2">
+      <div className="typerush-toolbar absolute top-3 left-3 right-3 flex items-start justify-between pointer-events-none z-20 gap-2">
         <div className="flex items-center gap-1.5 bg-[#18181B]/95 px-3 py-1.5 rounded-xl border border-[#27272A] shadow-md backdrop-blur">
           {[1, 2, 3].map((heart) => (
             <Heart
@@ -400,7 +400,7 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
         </div>
       </div>
 
-      <div className="absolute inset-0 top-12 bottom-18 overflow-hidden pointer-events-auto">
+      <div className="typerush-arena absolute inset-0 top-12 bottom-18 overflow-hidden pointer-events-auto">
         <div className="absolute bottom-[10%] left-0 right-0 border-b-2 border-dashed border-[#F43F5E]/40 flex items-center justify-center pointer-events-none">
           <span className="bg-[#0A0A0B] px-3 text-[9px] font-mono-arcade text-[#F43F5E]/70 uppercase tracking-widest">
             DEFENSE PERIMETER
@@ -438,9 +438,10 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
                 focusDeviceKeyboard();
               }}
               aria-label={`Target ${w.word}`}
-              className={`absolute pointer-events-auto -translate-x-1/2 transition-all duration-75 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl font-mono-arcade text-xs sm:text-sm font-bold tracking-wider border shadow-xl flex items-center gap-1.5 cursor-default select-none ${isTargeted ? 'bg-[#18181B] border-white text-white shadow-[0_0_20px_rgba(56,189,248,0.6)] scale-105 z-20' : 'bg-[#18181B]/95 border-[#27272A]'}`}
+              className={`typerush-word absolute pointer-events-auto -translate-x-1/2 transition-all duration-75 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl font-mono-arcade text-xs sm:text-sm font-bold tracking-wider border shadow-xl flex items-center gap-1.5 cursor-default select-none ${isTargeted ? 'bg-[#18181B] border-white text-white shadow-[0_0_20px_rgba(56,189,248,0.6)] scale-105 z-20' : 'bg-[#18181B]/95 border-[#27272A]'}`}
               style={{
-                left: `${w.x}%`,
+                // Keep the longest target card inside the arena at either edge.
+                left: `clamp(92px, ${w.x}%, calc(100% - 92px))`,
                 top: `${w.y}%`,
                 borderColor: isTargeted ? '#38BDF8' : w.color,
               }}
@@ -458,7 +459,7 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
         })}
       </div>
 
-      <div className="absolute bottom-2 left-3 right-3 flex flex-col items-center gap-1.5 z-20">
+      <div className="typerush-input absolute bottom-2 left-3 right-3 flex flex-col items-center gap-1.5 z-20">
         <div className="relative flex flex-col items-center">
           <div
             className="w-2.5 h-6 bg-[#38BDF8] rounded-full shadow-[0_0_15px_#38BDF8] transition-transform origin-bottom duration-75"
