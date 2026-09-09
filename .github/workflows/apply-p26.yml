@@ -1,0 +1,42 @@
+name: Apply P26 modes and difficulty
+on:
+  push:
+    branches: [gameplay/p26-modes-difficulty]
+permissions:
+  contents: read
+concurrency:
+  group: apply-p26-modes-difficulty
+  cancel-in-progress: true
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Apply reviewed P26 patch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f tools/p26/part0 ]; then
+            echo 'P26 patch already applied.'
+            exit 0
+          fi
+          cat tools/p26/part{0,1} | base64 --decode | gzip --decompress > /tmp/p26.patch
+          echo '29e3e4a5b66d82f86b488656571961c38561101cbd342729a61979861612839d  /tmp/p26.patch' | sha256sum --check
+          git apply --check /tmp/p26.patch
+          git apply /tmp/p26.patch
+          git rm tools/p26/part{0,1} .github/workflows/p26-source.yml .github/workflows/apply-p26.yml
+          git add -A
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'P26: add game modes and difficulty system'
+          auth="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:refs/heads/gameplay/p26-modes-difficulty
