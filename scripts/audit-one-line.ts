@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import {
   ONE_LINE_FIXED_STEP_SEC,
   ONE_LINE_PHYSICS_HZ,
+  fitOneLineTarget,
   getOneLineInkBudget,
   getOneLinePhysicsStepBatch,
   remapOneLinePoint,
@@ -48,6 +49,17 @@ for (const fps of [30, 60, 120, 144, 240]) {
   const steps = simulateSteps(fps);
   assert(Math.abs(steps - expectedSteps) <= 1, `${fps} FPS executes ${steps} physics steps instead of about ${expectedSteps}`);
 }
+
+for (const [width, height] of [[120, 64], [200, 80], [320, 120], [560, 180], [1024, 500]]) {
+  for (const xRatio of [0.78, 0.88]) for (const yRatio of [0.74, 0.86]) {
+    const target = fitOneLineTarget({ x: width * xRatio, y: height * yRatio, radius: 25 }, width, height);
+    assert(target.radius === 25, 'goal containment must not change the hit radius');
+    assert(target.x - 28 >= 0 && target.x + 28 <= width && target.y - 28 >= 0 && target.y + 28 <= height,
+      `goal ring clipped at ${width}x${height}`);
+  }
+}
+assert(source.includes('state.target = fitOneLineTarget(') && source.includes('fitOneLineTarget(remapOneLinePoint('), 'goal containment must run on generation and resize');
+assert(source.includes("visibility: physicsRunning ? 'hidden' : 'visible'"), 'hint removal must not resize the arena mid-run');
 
 if (errors.length) {
   console.error('ONE LINE FAIRNESS / RESIZE AUDIT — FAIL');

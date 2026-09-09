@@ -1113,7 +1113,7 @@ export const GravityGame: React.FC<GameComponentProps> = ({
       <canvas ref={canvasRef} className="w-full h-full block cursor-crosshair touch-none" />
 
       {/* Top HUD */}
-      <div className="absolute top-3 left-4 flex items-center gap-3 bg-[#18181B]/90 border border-[#27272A] px-3.5 py-1.5 rounded-xl font-mono-arcade text-xs z-10 pointer-events-none backdrop-blur-md">
+      <div className="gravity-toolbar absolute top-3 left-4 flex items-center gap-3 bg-[#18181B]/90 border border-[#27272A] px-3.5 py-1.5 rounded-xl font-mono-arcade text-xs z-10 pointer-events-none backdrop-blur-md">
         <span className="text-white font-bold">SECTOR {currentLevel}/5</span>
         <div className="flex items-center gap-1 text-amber-400">
           <Award className="w-3.5 h-3.5" />
@@ -1127,7 +1127,7 @@ export const GravityGame: React.FC<GameComponentProps> = ({
         </span>
       </div>
 
-      <div className="absolute top-14 left-1/2 -translate-x-1/2 max-w-[calc(100%-1rem)] px-3 py-1.5 rounded-xl bg-indigo-950/85 border border-indigo-400/30 text-[9px] sm:text-[10px] text-indigo-100 font-mono-arcade text-center pointer-events-none z-10 backdrop-blur-md">
+      <div className="gravity-contract absolute top-14 left-1/2 -translate-x-1/2 max-w-[calc(100%-1rem)] px-3 py-1.5 rounded-xl bg-indigo-950/85 border border-indigo-400/30 text-[9px] sm:text-[10px] text-indigo-100 font-mono-arcade text-center pointer-events-none z-10 backdrop-blur-md">
         <span className="font-black text-indigo-300">FLIGHT CONTRACT — {activeFlightContract.label}</span>
         <span> • {activeFlightContract.detail}</span>
         <span className="text-amber-300"> • STREAK {contractStreak}</span>
@@ -1135,7 +1135,7 @@ export const GravityGame: React.FC<GameComponentProps> = ({
       </div>
 
       {/* Top Right Quick Controls */}
-      <div className="absolute top-3 right-4 flex items-center gap-2 z-10">
+      <div className="gravity-actions absolute top-3 right-4 flex items-center gap-2 z-10">
         {/* Flip Gravity Polarity Button */}
         <button
           type="button"

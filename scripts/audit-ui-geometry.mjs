@@ -26,7 +26,9 @@ export function measureUI() {
   const canvases=[...document.querySelectorAll('.game-shell canvas')].map(e=>({rect:box(e),parent:box(e.parentElement),width:e.width,height:e.height}));
   const status=document.querySelector('.arcade-game-status');
   const stripChildren=status?[...status.querySelectorAll('.p18-first-run-hint,.p22-promotion-hud')].map(e=>({rect:box(e),parent:box(status)})):[];
-  return {width:innerWidth,height:innerHeight,overflow:document.documentElement.scrollWidth-innerWidth,toolbar:box(toolbar),controls,frame:frame&&box(frame),root:root&&box(root),clipped,boards,canvases,stripChildren,renderErrors:window.__uiRenderErrors||[]};
+  const hudRects = ['.snake-toolbar > div', '.gravity-toolbar, .gravity-actions', '.oneline-arena, .oneline-help']
+    .map(selector => [...document.querySelectorAll(selector)].filter(visible).map(box));
+  return {hudRects,width:innerWidth,height:innerHeight,overflow:document.documentElement.scrollWidth-innerWidth,toolbar:box(toolbar),controls,frame:frame&&box(frame),root:root&&box(root),clipped,boards,canvases,stripChildren,renderErrors:window.__uiRenderErrors||[]};
 }
 function contained(r,f) { return r.x>=f.x-2 && r.y>=f.y-2 && r.right<=f.right+2 && r.bottom<=f.bottom+2; }
 function overlap(a,b) { return Math.min(a.right,b.right)-Math.max(a.x,b.x)>1 && Math.min(a.bottom,b.bottom)-Math.max(a.y,b.y)>1; }
@@ -56,6 +58,9 @@ export function assertGeometry(m,label,touch) {
     }
     for(const b of m.boards) assert(contained(b.rect,b.root),`${label}: fixed-size board clipped`);
     for(const b of m.stripChildren) { assert(contained(b.rect,b.parent),`${label}: status strip clipped`);assert(!overlap(b.rect,m.root),`${label}: teaching/mastery HUD covers gameplay`); }
+  }
+  for (const group of m.hudRects) for (let i=0;i<group.length;i++) for (let j=i+1;j<group.length;j++) {
+    assert(!overlap(group[i],group[j]),`${label}: overlapping HUD regions`);
   }
   assert.deepEqual(m.renderErrors,[],`${label}: canvas runtime error`);
 }

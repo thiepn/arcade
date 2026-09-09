@@ -4,6 +4,7 @@ import { sounds } from '../lib/sound';
 import { RotateCcw, Award, Compass, Shuffle, Sparkles } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import {
+  fitOneLineTarget,
   getOneLineInkBudget,
   getOneLinePhysicsStepBatch,
   remapOneLinePoint,
@@ -120,7 +121,7 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
     state.startPos = { x: w * startXRatio, y: h * startYRatio };
     state.ball = { x: state.startPos.x, y: state.startPos.y, vx: 0, vy: 0, radius: 9 };
     state.lastPos = { x: state.startPos.x, y: state.startPos.y };
-    state.target = { x: w * targetXRatio, y: h * targetYRatio, radius: 25 };
+    state.target = fitOneLineTarget({ x: w * targetXRatio, y: h * targetYRatio, radius: 25 }, w, h);
 
     if (archetype === 0) {
       // Staggered Pillars Slalom
@@ -361,10 +362,7 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
       const sx = w / oldW;
       const sy = h / oldH;
       state.startPos = remapOneLinePoint(state.startPos, oldW, oldH, w, h);
-      state.target = {
-        ...remapOneLinePoint(state.target, oldW, oldH, w, h),
-        radius: state.target.radius,
-      };
+      state.target = fitOneLineTarget(remapOneLinePoint(state.target, oldW, oldH, w, h), w, h);
       state.ball.x *= sx;
       state.ball.y *= sy;
       state.ball.vx *= sx;
@@ -803,13 +801,11 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
         </div>
       )}
 
-      {/* Bottom Hint */}
-      {!physicsRunning && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#18181B]/90 border border-[#27272A] px-4 py-1.5 rounded-full font-mono-arcade text-xs text-[#A1A1AA] pointer-events-none backdrop-blur-md">
+      {/* Reserve this row during a run; hiding a hint must not resize the physics arena. */}
+      <div aria-hidden={physicsRunning} style={{ visibility: physicsRunning ? 'hidden' : 'visible' }} className="oneline-help absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#18181B]/90 border border-[#27272A] px-4 py-1.5 rounded-full font-mono-arcade text-xs text-[#A1A1AA] pointer-events-none backdrop-blur-md">
           <Compass className="w-3.5 h-3.5 text-[#38BDF8] animate-spin" />
           <span>DRAW ONE RAMP • RELEASE TO RUN PHYSICS • STARS STAY OPTIONAL • MASTER ROUTE REWARDS STAR + INK EFFICIENCY</span>
-        </div>
-      )}
+      </div>
     </div>
   );
 };
