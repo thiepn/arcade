@@ -44,15 +44,20 @@ const Row: React.FC<{ entry: GlobalOverallEntry }> = ({ entry }) => {
   const accent = getDivisionColor(entry.division);
   return (
     <div
-      className={`grid grid-cols-[42px_minmax(0,1fr)_88px_96px] sm:grid-cols-[52px_minmax(0,1fr)_110px_120px] items-center gap-2 px-3 sm:px-4 py-3 border-b border-[#27272A]/80 last:border-b-0 ${entry.isUser ? 'bg-cyan-500/10' : 'bg-transparent'}`}
+      className={`grid grid-cols-[34px_minmax(0,1fr)_58px_68px] sm:grid-cols-[52px_minmax(0,1fr)_110px_120px] items-center gap-1 sm:gap-2 px-2 sm:px-4 py-3 border-b border-[#27272A]/80 last:border-b-0 ${entry.isUser ? 'bg-cyan-500/10' : 'bg-transparent'}`}
     >
       <div className="font-mono-arcade font-black text-sm text-center" style={{ color: accent }}>
         {entry.rank === 1 ? <Crown className="w-4 h-4 mx-auto" /> : `#${entry.rank}`}
       </div>
-      <div className="min-w-0 flex items-center gap-2">
-        <span className="text-lg leading-none">{entry.country}</span>
+      <div className="min-w-0 flex items-center gap-1.5 sm:gap-2">
+        <span className="text-base sm:text-lg leading-none shrink-0">{entry.country}</span>
         <div className="min-w-0">
-          <div className={`truncate text-sm font-bold ${entry.isUser ? 'text-cyan-200' : 'text-zinc-100'}`}>{entry.name}</div>
+          <div
+            className={`text-sm font-bold leading-tight break-words sm:truncate ${entry.isUser ? 'text-cyan-200' : 'text-zinc-100'}`}
+            title={entry.name}
+          >
+            {entry.name}
+          </div>
           <div className="truncate text-[10px] text-zinc-500 font-mono-arcade">{entry.badgeTitle}</div>
         </div>
       </div>
@@ -179,7 +184,7 @@ export const OverallLeaderboardModal: React.FC<OverallLeaderboardModalProps> = (
         {error && <div className="mx-4 sm:mx-5 mb-4 text-[11px] text-rose-300">{error}</div>}
 
         <div className="mx-4 sm:mx-5 mb-5 rounded-xl border border-[#27272A] overflow-auto min-h-[220px]">
-          <div className="grid grid-cols-[42px_minmax(0,1fr)_88px_96px] sm:grid-cols-[52px_minmax(0,1fr)_110px_120px] gap-2 px-3 sm:px-4 py-2 bg-[#121215] border-b border-[#27272A] text-[9px] uppercase tracking-wider text-zinc-600 font-mono-arcade">
+          <div className="grid grid-cols-[34px_minmax(0,1fr)_58px_68px] sm:grid-cols-[52px_minmax(0,1fr)_110px_120px] gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-[#121215] border-b border-[#27272A] text-[9px] uppercase tracking-wider text-zinc-600 font-mono-arcade">
             <span className="text-center">Rank</span><span>Player</span><span className="text-right">Rating</span><span className="text-right">Combined</span>
           </div>
           {entries.length > 0 ? entries.map((entry) => <Row key={entry.id} entry={entry} />) : (
