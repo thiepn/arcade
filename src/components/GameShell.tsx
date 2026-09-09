@@ -434,7 +434,7 @@ export const GameShell: React.FC<GameShellProps> = ({
         {/* Center: Live Score Display */}
         <div className="arcade-game-score flex items-center gap-1.5 sm:gap-3 bg-[#18181B] px-2 sm:px-3.5 py-1 rounded-xl border border-[#27272A] font-mono-arcade shrink-0">
           <div className="flex flex-col items-center">
-            <span className="text-[7px] sm:text-[9px] text-[#71717A] font-bold uppercase" title="Calibrated Arcade Points, scoring v2">ARCADE PTS</span>
+            <span className="text-[7px] sm:text-[9px] text-[#71717A] font-bold uppercase" title="Calibrated Arcade Points, scoring v2">AP</span>
             <span data-arcade-points={currentScore} className="text-xs sm:text-base font-bold text-white leading-tight">
               {currentScore.toLocaleString()}
             </span>
