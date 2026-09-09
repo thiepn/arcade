@@ -46,7 +46,7 @@ BEGIN
     WHEN raw <= c THEN 3000+3000*(raw-b)/(c-b)
     ELSE 6000+2000*ln(raw/c)/ln(2::double precision) END;
   RETURN floor(points*reward+1e-7)::bigint;
-END $fn$;
+END; $fn$;
 REVOKE ALL ON FUNCTION public.micro_arcade_points(text,bigint,integer,text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.micro_arcade_points(text,bigint,integer,text) TO service_role;
 
@@ -75,9 +75,9 @@ BEGIN
   IF sess.used_at IS NOT NULL THEN RETURN jsonb_build_object('ok',false,'code','session_used'); END IF;
   IF p_source_version IS DISTINCT FROM sess.score_version OR p_mode_id IS DISTINCT FROM sess.mode_id THEN RETURN jsonb_build_object('ok',false,'code','score_context_mismatch'); END IF;
   IF p_now IS NULL OR p_duration_ms IS NULL OR p_duration_ms<0 OR p_now>sess.expires_at OR p_now<sess.issued_at OR p_now-sess.issued_at>21600000 OR abs((p_now-sess.issued_at)-p_duration_ms)>90000 THEN RETURN jsonb_build_object('ok',false,'code','session_timing'); END IF;
-  IF p_now-sess.issued_at < CASE WHEN sess.game_id='reaction' THEN 750 ELSE 250 END THEN RETURN jsonb_build_object('ok',false,'code','session_timing'); END IF;
+  IF p_now-sess.issued_at < (CASE WHEN sess.game_id='reaction' THEN 750 ELSE 250 END) THEN RETURN jsonb_build_object('ok',false,'code','session_timing'); END IF;
   SELECT profile INTO cfg FROM public.micro_arcade_scoring_profiles WHERE game_id=sess.game_id;
-  IF p_score IS NULL OR p_score<0 OR p_score>CASE WHEN cfg->>'kind'='finite' THEN 100000 WHEN sess.game_id='airhockey' THEN 1000000 ELSE 1000000000000 END THEN RETURN jsonb_build_object('ok',false,'code','invalid_score'); END IF;
+  IF p_score IS NULL OR p_score<0 OR p_score>(CASE WHEN cfg->>'kind'='finite' THEN 100000 WHEN sess.game_id='airhockey' THEN 1000000 ELSE 1000000000000 END) THEN RETURN jsonb_build_object('ok',false,'code','invalid_score'); END IF;
   points := public.micro_arcade_points(sess.game_id,p_score,p_source_version,p_mode_id);
   IF points IS NULL THEN RETURN jsonb_build_object('ok',false,'code','invalid_score'); END IF;
   UPDATE public.micro_arcade_play_sessions SET used_at=p_now WHERE id=p_session_id;
@@ -93,7 +93,7 @@ BEGIN
     score=greatest(excluded.score,micro_arcade_best_scores.score), submissions=micro_arcade_best_scores.submissions+1
   RETURNING score INTO v_best;
   RETURN jsonb_build_object('ok',true,'gameId',sess.game_id,'score',points,'bestScore',v_best,'scoreVersion',2);
-END $fn$;
+END; $fn$;
 -- Cached v1 clients remain safe: native scores use legacy calibration, never mix raw and AP.
 CREATE OR REPLACE FUNCTION public.micro_arcade_consume_score(p_player_id uuid,p_session_id uuid,p_score bigint,p_duration_ms bigint,p_now bigint)
 RETURNS jsonb LANGUAGE sql SET search_path TO public AS $fn$
@@ -150,7 +150,7 @@ lines=['|'.join(str(r[k]) for k in ['game','mode','version','raw','points']) for
 checksum=hashlib.md5('\n'.join(lines).encode()).hexdigest()
 query=(root/'scripts/scoring-postgres-parity.sql').read_text().rstrip().rstrip(';')
 query=query[query.index('WITH contexts'):]
-gate=f"DO $gate$ DECLARE actual text; n bigint; BEGIN SELECT vectors,checksum INTO n,actual FROM ({query}) checked; IF n<>832 OR actual<>'{checksum}' THEN RAISE EXCEPTION 'Scoring JS/PostgreSQL parity mismatch: % vectors, checksum %',n,actual; END IF; END $gate$;\n"
+gate=f"DO $gate$ DECLARE actual text; n bigint; BEGIN SELECT vectors,checksum INTO n,actual FROM ({query}) checked; IF n<>832 OR actual<>'{checksum}' THEN RAISE EXCEPTION 'Scoring JS/PostgreSQL parity mismatch: % vectors, checksum %',n,actual; END IF; END; $gate$;\n"
 sql=sql.replace('COMMIT;',gate+'COMMIT;')
 (root/'supabase/migrations/20260909_scoring_v2.sql').write_text(sql)
 # D1 has the same data upgrade and immutable backup. SQLite math functions are supported by D1.
