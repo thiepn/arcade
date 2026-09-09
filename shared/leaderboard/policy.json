@@ -1,0 +1,732 @@
+{
+  "protocolVersion": 3,
+  "scoreVersion": 2,
+  "ratingVersion": 3,
+  "precision": 1000000,
+  "gameContributionCap": 10000,
+  "sessionMs": 21600000,
+  "deliveryGraceMs": 604800000,
+  "policies": {
+    "orbit:standard": {
+      "gameId": "orbit",
+      "modeId": "standard",
+      "title": "Orbit",
+      "modeLabel": "Standard",
+      "anchors": [
+        1500,
+        6500,
+        18000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 1500,
+      "perSecond": 1500,
+      "perSecondSquared": 5.0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "stack:standard": {
+      "gameId": "stack",
+      "modeId": "standard",
+      "title": "Stack",
+      "modeLabel": "Standard",
+      "anchors": [
+        12,
+        45,
+        120
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 10,
+      "perSecond": 15,
+      "perSecondSquared": 0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "reaction:standard": {
+      "gameId": "reaction",
+      "modeId": "standard",
+      "title": "Reaction",
+      "modeLabel": "Standard",
+      "anchors": [
+        4500,
+        14000,
+        24000
+      ],
+      "reward": 1,
+      "contributionTarget": 6500,
+      "hardMax": 31706,
+      "openingAllowance": 4500,
+      "perSecond": 4500,
+      "perSecondSquared": 0,
+      "minActiveMs": 750,
+      "maxActiveMs": 21600000,
+      "kind": "finite"
+    },
+    "dodge:standard": {
+      "gameId": "dodge",
+      "modeId": "standard",
+      "title": "Dodge",
+      "modeLabel": "Standard",
+      "anchors": [
+        3500,
+        14000,
+        40000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 3500,
+      "perSecond": 4000,
+      "perSecondSquared": 13.333333333333334,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "pulse:standard": {
+      "gameId": "pulse",
+      "modeId": "standard",
+      "title": "Pulse",
+      "modeLabel": "Standard",
+      "anchors": [
+        8000,
+        32000,
+        85000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 5000,
+      "perSecond": 4500,
+      "perSecondSquared": 15.0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "merge:standard": {
+      "gameId": "merge",
+      "modeId": "standard",
+      "title": "Merge",
+      "modeLabel": "Standard",
+      "anchors": [
+        1500,
+        10000,
+        50000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 1500,
+      "perSecond": 12000,
+      "perSecondSquared": 40.0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "puzzle"
+    },
+    "typerush:standard": {
+      "gameId": "typerush",
+      "modeId": "standard",
+      "title": "Type Rush",
+      "modeLabel": "Standard",
+      "anchors": [
+        10000,
+        100000,
+        350000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 5000,
+      "perSecond": 16000,
+      "perSecondSquared": 53.333333333333336,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "oneline:standard": {
+      "gameId": "oneline",
+      "modeId": "standard",
+      "title": "One Line",
+      "modeLabel": "Standard",
+      "anchors": [
+        3000,
+        14000,
+        40000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 3000,
+      "perSecond": 14000,
+      "perSecondSquared": 46.666666666666664,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless-puzzle"
+    },
+    "breakout:standard": {
+      "gameId": "breakout",
+      "modeId": "standard",
+      "title": "Breakout Mini",
+      "modeLabel": "Standard",
+      "anchors": [
+        5000,
+        25000,
+        90000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 5000,
+      "perSecond": 10000,
+      "perSecondSquared": 33.333333333333336,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "perfectstop:standard": {
+      "gameId": "perfectstop",
+      "modeId": "standard",
+      "title": "Perfect Stop",
+      "modeLabel": "Standard",
+      "anchors": [
+        4000,
+        13000,
+        25000
+      ],
+      "reward": 1,
+      "contributionTarget": 6500,
+      "hardMax": 32590,
+      "openingAllowance": 4000,
+      "perSecond": 6500,
+      "perSecondSquared": 0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "finite"
+    },
+    "chain:standard": {
+      "gameId": "chain",
+      "modeId": "standard",
+      "title": "Chain",
+      "modeLabel": "Standard",
+      "anchors": [
+        7000,
+        30000,
+        100000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 5000,
+      "perSecond": 20000,
+      "perSecondSquared": 66.66666666666667,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "gravity:standard": {
+      "gameId": "gravity",
+      "modeId": "standard",
+      "title": "Gravity",
+      "modeLabel": "Standard",
+      "anchors": [
+        2500,
+        8500,
+        16000
+      ],
+      "reward": 1,
+      "contributionTarget": 8000,
+      "hardMax": 33000,
+      "openingAllowance": 2500,
+      "perSecond": 6000,
+      "perSecondSquared": 0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "finite"
+    },
+    "blade:standard": {
+      "gameId": "blade",
+      "modeId": "standard",
+      "title": "Laser Blade",
+      "modeLabel": "Standard",
+      "anchors": [
+        5000,
+        22000,
+        75000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 5000,
+      "perSecond": 12000,
+      "perSecondSquared": 40.0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "pinball:standard": {
+      "gameId": "pinball",
+      "modeId": "standard",
+      "title": "Neon Pinball",
+      "modeLabel": "Standard",
+      "anchors": [
+        8000,
+        40000,
+        140000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 5000,
+      "perSecond": 24000,
+      "perSecondSquared": 80.0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "chrono:standard": {
+      "gameId": "chrono",
+      "modeId": "standard",
+      "title": "Chrono Wave",
+      "modeLabel": "Standard",
+      "anchors": [
+        2500,
+        9500,
+        28000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 2500,
+      "perSecond": 5000,
+      "perSecondSquared": 16.666666666666668,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "matrix:standard": {
+      "gameId": "matrix",
+      "modeId": "standard",
+      "title": "Memory Matrix",
+      "modeLabel": "Standard",
+      "anchors": [
+        2500,
+        11000,
+        35000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 2500,
+      "perSecond": 15000,
+      "perSecondSquared": 50.0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "drift:standard": {
+      "gameId": "drift",
+      "modeId": "standard",
+      "title": "Cyber Drift",
+      "modeLabel": "Standard",
+      "anchors": [
+        5000,
+        22000,
+        70000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 5000,
+      "perSecond": 1600,
+      "perSecondSquared": 0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "vanguard:standard": {
+      "gameId": "vanguard",
+      "modeId": "standard",
+      "title": "Galaxy Vanguard",
+      "modeLabel": "Standard",
+      "anchors": [
+        8000,
+        45000,
+        180000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 5000,
+      "perSecond": 24000,
+      "perSecondSquared": 80.0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "slingshot:standard": {
+      "gameId": "slingshot",
+      "modeId": "standard",
+      "title": "Orbital Slingshot",
+      "modeLabel": "Standard",
+      "anchors": [
+        6000,
+        28000,
+        100000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 5000,
+      "perSecond": 12000,
+      "perSecondSquared": 40.0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "snake:standard": {
+      "gameId": "snake",
+      "modeId": "standard",
+      "title": "Cyber Serpent",
+      "modeLabel": "Standard",
+      "anchors": [
+        3000,
+        16000,
+        50000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 3000,
+      "perSecond": 10000,
+      "perSecondSquared": 33.333333333333336,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "rhythm:cyber_odyssey": {
+      "gameId": "rhythm",
+      "modeId": "cyber_odyssey",
+      "title": "Neon Rhythm Tapper",
+      "modeLabel": "Cyber Odyssey \u00b7 Medium",
+      "anchors": [
+        35000,
+        145000,
+        290000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 5000,
+      "perSecond": 12000,
+      "perSecondSquared": 0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "looping"
+    },
+    "rhythm:neon_midnight": {
+      "gameId": "rhythm",
+      "modeId": "neon_midnight",
+      "title": "Neon Rhythm Tapper",
+      "modeLabel": "Neon Midnight \u00b7 Easy",
+      "anchors": [
+        30000,
+        125000,
+        250000
+      ],
+      "reward": 0.85,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 5000,
+      "perSecond": 12000,
+      "perSecondSquared": 0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "looping"
+    },
+    "rhythm:hypernova": {
+      "gameId": "rhythm",
+      "modeId": "hypernova",
+      "title": "Neon Rhythm Tapper",
+      "modeLabel": "Hypernova \u00b7 Hard",
+      "anchors": [
+        36000,
+        150000,
+        300000
+      ],
+      "reward": 1.3,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 5000,
+      "perSecond": 12000,
+      "perSecondSquared": 0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "looping"
+    },
+    "tower:standard": {
+      "gameId": "tower",
+      "modeId": "standard",
+      "title": "Gravity Tower Jumper",
+      "modeLabel": "Standard",
+      "anchors": [
+        8000,
+        32000,
+        100000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 5000,
+      "perSecond": 10000,
+      "perSecondSquared": 33.333333333333336,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "pacmaze:standard": {
+      "gameId": "pacmaze",
+      "modeId": "standard",
+      "title": "Cyber Pac-Runner",
+      "modeLabel": "Standard",
+      "anchors": [
+        1500,
+        6500,
+        22000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 1500,
+      "perSecond": 8000,
+      "perSecondSquared": 26.666666666666668,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "flappyaero:standard": {
+      "gameId": "flappyaero",
+      "modeId": "standard",
+      "title": "Aero Pulse",
+      "modeLabel": "Standard",
+      "anchors": [
+        1500,
+        9000,
+        32000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 1500,
+      "perSecond": 3500,
+      "perSecondSquared": 11.666666666666666,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "roadcross:standard": {
+      "gameId": "roadcross",
+      "modeId": "standard",
+      "title": "Cyber Crosser",
+      "modeLabel": "Standard",
+      "anchors": [
+        800,
+        5000,
+        18000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 800,
+      "perSecond": 3000,
+      "perSecondSquared": 10.0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "bubblebuster:standard": {
+      "gameId": "bubblebuster",
+      "modeId": "standard",
+      "title": "Orb Cannon",
+      "modeLabel": "Standard",
+      "anchors": [
+        7000,
+        35000,
+        120000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 5000,
+      "perSecond": 24000,
+      "perSecondSquared": 80.0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "astroblaster:standard": {
+      "gameId": "astroblaster",
+      "modeId": "standard",
+      "title": "Astro Blaster 360",
+      "modeLabel": "Standard",
+      "anchors": [
+        4000,
+        18000,
+        65000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 4000,
+      "perSecond": 12000,
+      "perSecondSquared": 40.0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "laserrope:standard": {
+      "gameId": "laserrope",
+      "modeId": "standard",
+      "title": "Laser Rope Reflex",
+      "modeLabel": "Standard",
+      "anchors": [
+        5000,
+        24000,
+        80000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 5000,
+      "perSecond": 7000,
+      "perSecondSquared": 23.333333333333332,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "blockdrop:standard": {
+      "gameId": "blockdrop",
+      "modeId": "standard",
+      "title": "Cyber Block Drop",
+      "modeLabel": "Standard",
+      "anchors": [
+        1500,
+        12000,
+        55000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 1500,
+      "perSecond": 16000,
+      "perSecondSquared": 53.333333333333336,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "knifetarget:standard": {
+      "gameId": "knifetarget",
+      "modeId": "standard",
+      "title": "Knife Target",
+      "modeLabel": "Standard",
+      "anchors": [
+        4500,
+        22000,
+        65000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 4500,
+      "perSecond": 10000,
+      "perSecondSquared": 33.333333333333336,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    },
+    "airhockey:EASY": {
+      "gameId": "airhockey",
+      "modeId": "EASY",
+      "title": "Neon Puck Smash",
+      "modeLabel": "Casual",
+      "anchors": [
+        1500,
+        7000,
+        20000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 203300,
+      "openingAllowance": 1000,
+      "perSecond": 3343.75,
+      "perSecondSquared": 0,
+      "minActiveMs": 59000,
+      "maxActiveMs": 65000,
+      "kind": "timed"
+    },
+    "airhockey:MEDIUM": {
+      "gameId": "airhockey",
+      "modeId": "MEDIUM",
+      "title": "Neon Puck Smash",
+      "modeLabel": "Pro",
+      "anchors": [
+        1500,
+        7000,
+        20000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 355756,
+      "openingAllowance": 1750,
+      "perSecond": 5851.25,
+      "perSecondSquared": 0,
+      "minActiveMs": 59000,
+      "maxActiveMs": 65000,
+      "kind": "timed"
+    },
+    "airhockey:HARD": {
+      "gameId": "airhockey",
+      "modeId": "HARD",
+      "title": "Neon Puck Smash",
+      "modeLabel": "Master",
+      "anchors": [
+        1500,
+        7000,
+        20000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 508288,
+      "openingAllowance": 2500,
+      "perSecond": 8360.0,
+      "perSecondSquared": 0,
+      "minActiveMs": 59000,
+      "maxActiveMs": 65000,
+      "kind": "timed"
+    },
+    "neonrail:standard": {
+      "gameId": "neonrail",
+      "modeId": "standard",
+      "title": "Neon Rail Shift",
+      "modeLabel": "Standard",
+      "anchors": [
+        10000,
+        40000,
+        110000
+      ],
+      "reward": 1,
+      "contributionTarget": 10000,
+      "hardMax": 9007199254740991,
+      "openingAllowance": 5000,
+      "perSecond": 6000,
+      "perSecondSquared": 20.0,
+      "minActiveMs": 250,
+      "maxActiveMs": 21600000,
+      "kind": "endless"
+    }
+  },
+  "policyId": "b467b52542b31e2a942c7af0dfe11eb4598cbf56c50096278a8be1b1a1a79057"
+}

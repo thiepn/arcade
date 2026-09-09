@@ -1,3 +1,6 @@
+import { IDENTITY_EVENT } from '../lib/leaderboardIdentity';
+import { PUBLISHED_EVENT } from '../lib/leaderboardOutbox';
+import { PlayerRecovery,PublishedHistory,UploadManager } from './LeaderboardPanel';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, Check, Edit3, Globe2, Medal, Save, Trophy, UserRound, X } from 'lucide-react';
 import { UserStats } from '../types';
@@ -67,29 +70,38 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ stats, o
     return first ? GAMES_REGISTRY.find((game) => game.id === first)?.title ?? first : 'None selected';
   }, [stats.favorites]);
 
+  const loadGeneration = useRef(0);
   const load = useCallback(async () => {
     if (!live) return;
+    const generation = ++loadGeneration.current;
     setLoading(true);
     setError(null);
     try {
-      const [nextProfile, global, weekly] = await Promise.all([
-        getGuestProfile(),
-        refreshOverallLeaderboard(),
-        refreshWeeklyOverallLeaderboard(),
-      ]);
+      // Establish identity first: otherwise a first-time visitor can fetch an
+      // anonymous board in parallel and overwrite the newly created profile.
+      const nextProfile = await getGuestProfile();
+      if (generation !== loadGeneration.current) return;
       setProfile(nextProfile);
       setName(nextProfile.name);
-      setGlobalBoard(global);
-      setWeeklyBoard(weekly);
+      const [global, weekly] = await Promise.allSettled([
+        refreshOverallLeaderboard(), refreshWeeklyOverallLeaderboard(),
+      ]);
+      if (generation !== loadGeneration.current) return;
+      if (global.status === 'fulfilled') setGlobalBoard(global.value);
+      if (weekly.status === 'fulfilled') setWeeklyBoard(weekly.value);
+      if (global.status === 'rejected' || weekly.status === 'rejected') {
+        setError('Some rankings could not refresh. Previously loaded results may be stale.');
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load player profile');
+      if (generation === loadGeneration.current) setError(err instanceof Error ? err.message : 'Could not load player profile');
     } finally {
-      setLoading(false);
+      if (generation === loadGeneration.current) setLoading(false);
     }
   }, [live]);
 
   useEffect(() => {
-    void load();
+    const reload=()=>void load();reload();window.addEventListener(IDENTITY_EVENT,reload);window.addEventListener(PUBLISHED_EVENT,reload);
+    return()=>{loadGeneration.current++;window.removeEventListener(IDENTITY_EVENT,reload);window.removeEventListener(PUBLISHED_EVENT,reload);};
   }, [load]);
 
   useEffect(() => {
@@ -163,7 +175,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ stats, o
 
         {!live && (
           <div className="mx-4 sm:mx-5 mt-4 px-3 py-2 rounded-lg border border-amber-500/20 bg-amber-500/5 text-[11px] text-amber-200/80">
-            Cloudflare is not configured in this build, so global identity and ranks are unavailable. Local arcade statistics are shown below.
+            Online is not configured in this build, so global identity and ranks are unavailable. Local arcade statistics are shown below.
           </div>
         )}
         {error && <div className="mx-4 sm:mx-5 mt-4 text-[11px] text-rose-300">{error}</div>}
@@ -219,6 +231,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ stats, o
             This profile is anonymous. The browser stores your guest credential; the server stores its hash, display name, country code, ranks, and accepted score history. No sign-in is required.
           </p>
         </div>
+        <div className="p-4 sm:p-5"><PlayerRecovery/><UploadManager/><PublishedHistory/></div>
       </div>
     </div>
   );

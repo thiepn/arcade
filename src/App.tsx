@@ -1,3 +1,5 @@
+import { startLeaderboardSync } from './lib/leaderboardOutbox';
+import { currentBestAP,currentBestRaw } from './lib/localCompetition';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -50,6 +52,8 @@ const DeferredSurface: React.FC<{ label: string; fullscreen?: boolean }> = ({ la
 );
 
 export default function App() {
+  useEffect(startLeaderboardSync, []);
+  useEffect(()=>{const refresh=(e:StorageEvent)=>{if(e.key==='micro_arcade_stats_v3')setStats(getStoredStats());};window.addEventListener('storage',refresh);return()=>window.removeEventListener('storage',refresh);},[]);
   const [stats, setStats] = useState<UserStats>(() => getStoredStats());
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'favorites' | 'recent'>('all');
@@ -256,8 +260,8 @@ export default function App() {
               key={activeGame.id}
               game={activeGame}
               obscured={statsModalOpen || overallLeaderboardOpen || profileOpen}
-              bestScore={stats.highScores[activeGame.id] || 0}
-              bestRawScore={stats.rawHighScores?.[activeGame.id] || 0}
+              bestScore={currentBestAP(stats,activeGame.id)}
+              bestRawScore={currentBestRaw(stats,activeGame.id)}
               soundEnabled={stats.soundEnabled}
               hapticsEnabled={stats.hapticsEnabled ?? true}
               onToggleSound={handleToggleSound}
@@ -303,7 +307,7 @@ export default function App() {
         {activeTab === 'all' && !searchQuery && (
           <RecentlyPlayedSection
             recentGames={recentGameDefs}
-            highScores={stats.highScores}
+            highScores={Object.fromEntries(GAMES_REGISTRY.map(g=>[g.id,currentBestAP(stats,g.id)]))}
             onSelectGame={handleLaunchGame}
           />
         )}
@@ -328,7 +332,7 @@ export default function App() {
                   <GameCard
                     key={game.id}
                     game={game}
-                    highScore={stats.highScores[game.id] || 0}
+                    highScore={currentBestAP(stats,game.id)}
                     playCount={stats.playCounts[game.id] || 0}
                     isFavorite={stats.favorites.includes(game.id)}
                     onSelect={handleLaunchGame}

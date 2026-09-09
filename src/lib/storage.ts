@@ -1,10 +1,15 @@
+import { currentGameBests } from './localCompetition';
+import { AP_SCALE, apMicros, getPolicy } from '../../shared/leaderboard/domain';
 import { SCORE_VERSION, toArcadePoints, isScoreMode } from '../../shared/scoring';
 import { UserStats, AppTheme, ScoreDetails } from '../types';
 
-const STORAGE_KEY = 'micro_arcade_stats_v2';
+const STORAGE_KEY = 'micro_arcade_stats_v3';
+const PREVIOUS_STORAGE_KEY = 'micro_arcade_stats_v2';
 const LEGACY_STORAGE_KEY = 'micro_arcade_stats_v1';
 
 const defaultStats: UserStats = {
+  recordSchemaVersion: 3,
+  modeBests: {},
   scoreVersion: SCORE_VERSION,
   legacyHighScores: {},
   bestScoreDetails: {},
@@ -20,7 +25,7 @@ const defaultStats: UserStats = {
   theme: 'default',
 };
 
-const freshStats = (): UserStats => ({ ...defaultStats, legacyHighScores: {}, bestScoreDetails: {}, rawHighScores: {}, highScores: {}, playCounts: {}, totalPlayTimeSeconds: {}, favorites: [], recentlyPlayed: [] });
+const freshStats = (): UserStats => ({ ...defaultStats, modeBests: {}, legacyHighScores: {}, bestScoreDetails: {}, rawHighScores: {}, highScores: {}, playCounts: {}, totalPlayTimeSeconds: {}, favorites: [], recentlyPlayed: [] });
 let memoryStats = freshStats();
 let pendingWrite = false;
 export const STORAGE_STATUS_EVENT = 'micro-arcade-storage-status';
@@ -48,10 +53,23 @@ function normalizeStats(value: unknown): UserStats {
     typeof v.modeId === 'string' && isScoreMode(id,v.modeId) && v.scoreVersion === SCORE_VERSION));
   const storedRawHighScores = numberMap(parsed.rawHighScores);
   const detailRawHighScores = Object.fromEntries(Object.entries(bestScoreDetails).map(([id,v]) => [id,(v as ScoreDetails).rawScore]));
-  const rawHighScores = migrating
-    ? { ...storedRawHighScores, ...nativeScores }
-    : { ...detailRawHighScores, ...storedRawHighScores };
+  // Max-merge raw evidence, including v1 records already migrated by an older v2 client.
+  const rawHighScores: Record<string,number> = {};
+  for (const map of [numberMap(parsed.legacyHighScores), detailRawHighScores, storedRawHighScores, migrating ? nativeScores : {}]) {
+    for (const [id,value] of Object.entries(map)) rawHighScores[id]=Math.max(rawHighScores[id]||0,value);
+  }
+  const modeBests: NonNullable<UserStats['modeBests']> = {};
+  const addBest = (id:string, value:unknown) => {
+    if(!isRecord(value)||!Number.isSafeInteger(value.rawScore)||(value.rawScore as number)<0||value.scoreVersion!==2||typeof value.modeId!=='string'||!getPolicy(id,value.modeId))return;
+    const rawScore=value.rawScore as number, modeId=value.modeId, key=id+':'+modeId;
+    const next={rawScore,modeId,scoreVersion:2,apMicros:apMicros(id,rawScore,modeId),achievedAt:typeof value.achievedAt==='number'&&Number.isSafeInteger(value.achievedAt)?value.achievedAt:0};
+    if(!modeBests[key]||next.rawScore>modeBests[key].rawScore)modeBests[key]=next;
+  };
+  for(const [id,value] of Object.entries(bestScoreDetails))addBest(id,value);
+  for(const [key,value] of Object.entries(isRecord(parsed.modeBests)?parsed.modeBests:{}))addBest(key.split(':')[0],value);
   return {
+    recordSchemaVersion: 3,
+    modeBests,
     scoreVersion: SCORE_VERSION,
     legacyHighScores: migrating ? { ...numberMap(parsed.legacyHighScores), ...nativeScores } : numberMap(parsed.legacyHighScores),
     bestScoreDetails: bestScoreDetails as Record<string,ScoreDetails>,
@@ -74,7 +92,7 @@ export function getStoredStats(): UserStats {
   if (pendingWrite) return normalizeStats(memoryStats);
   try {
     const current = localStorage.getItem(STORAGE_KEY);
-    const raw = current ?? localStorage.getItem(LEGACY_STORAGE_KEY);
+    const raw = current ?? localStorage.getItem(PREVIOUS_STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
     memoryStats = raw ? normalizeStats(JSON.parse(raw)) : freshStats();
     // A separate key keeps cached v1 clients from overwriting the new point units.
     if (current === null && raw !== null) {
@@ -87,9 +105,21 @@ export function getStoredStats(): UserStats {
   }
 }
 
-export function saveStats(stats: UserStats): void {
+export function saveStats(stats: UserStats, replaceRecords=false): void {
   if (typeof window === 'undefined') return;
   memoryStats = normalizeStats(stats);
+  if(!replaceRecords){
+    try{
+      const saved=localStorage.getItem(STORAGE_KEY);
+      if(saved){const previous=normalizeStats(JSON.parse(saved));
+        for(const [id,n] of Object.entries(previous.highScores))if(n>(memoryStats.highScores[id]??0)){if(previous.bestScoreDetails?.[id])memoryStats.bestScoreDetails![id]=previous.bestScoreDetails[id];else delete memoryStats.bestScoreDetails![id];}
+        for(const [key,best] of Object.entries(previous.modeBests??{}))if(!memoryStats.modeBests![key]||best.rawScore>memoryStats.modeBests![key].rawScore)memoryStats.modeBests![key]=best;
+        for(const key of ['highScores','rawHighScores','legacyHighScores'] as const){
+          const target=memoryStats[key]??{};for(const [id,n] of Object.entries(previous[key]??{}))target[id]=Math.max(target[id]??0,n);memoryStats[key]=target;
+        }
+      }
+    }catch{}
+  }
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(memoryStats));
     pendingWrite = false;
@@ -113,7 +143,7 @@ export function recordGamePlay(gameId: string): UserStats {
     recentlyPlayed,
   };
   saveStats(updated);
-  return updated;
+  return getStoredStats();
 }
 
 export function recordScore(gameId: string, score: number, details?: ScoreDetails): { isNewHighScore: boolean; stats: UserStats } {
@@ -121,8 +151,13 @@ export function recordScore(gameId: string, score: number, details?: ScoreDetail
   if (!validId(gameId) || !Number.isFinite(score) || score < 0 || score > Number.MAX_SAFE_INTEGER) {
     return { isNewHighScore: false, stats: current };
   }
+  // Only the native result determines AP. Callers cannot choose an inconsistent AP value.
+  if(details){
+    if(details.scoreVersion!==2||!getPolicy(gameId,details.modeId)||!Number.isSafeInteger(details.rawScore)||details.rawScore<0)return {isNewHighScore:false,stats:current};
+    score=Math.floor(apMicros(gameId,details.rawScore,details.modeId)/AP_SCALE);
+  }
   const prevBest = current.highScores[gameId] || 0;
-  const isNewHighScore = score > prevBest;
+  const isNewHighScore = details ? apMicros(gameId,details.rawScore,details.modeId) > (currentGameBests(current)[gameId]?.apMicros??0) : score > prevBest;
   
   const highScores = {
     ...current.highScores,
@@ -130,7 +165,7 @@ export function recordScore(gameId: string, score: number, details?: ScoreDetail
   };
 
   const bestScoreDetails = { ...current.bestScoreDetails };
-  if (isNewHighScore) {
+  if (score > prevBest) {
     if (details) bestScoreDetails[gameId] = details;
     else delete bestScoreDetails[gameId];
   }
@@ -138,9 +173,13 @@ export function recordScore(gameId: string, score: number, details?: ScoreDetail
   if (details && Number.isSafeInteger(details.rawScore) && details.rawScore >= 0) {
     rawHighScores[gameId] = Math.max(rawHighScores[gameId] || 0, details.rawScore);
   }
-  const updated: UserStats = { ...current, highScores, rawHighScores, bestScoreDetails };
+  const modeBests={...current.modeBests};
+  if(details){const key=gameId+':'+details.modeId;const old=modeBests[key];
+    if(!old||details.rawScore>old.rawScore)modeBests[key]={...details,apMicros:apMicros(gameId,details.rawScore,details.modeId),achievedAt:Date.now()};
+  }
+  const updated: UserStats = { ...current, highScores, rawHighScores, bestScoreDetails,modeBests };
   saveStats(updated);
-  return { isNewHighScore, stats: updated };
+  return { isNewHighScore, stats: getStoredStats() };
 }
 
 export function toggleFavoriteGame(gameId: string): UserStats {
@@ -155,7 +194,7 @@ export function toggleFavoriteGame(gameId: string): UserStats {
     favorites,
   };
   saveStats(updated);
-  return updated;
+  return getStoredStats();
 }
 
 export function updateSoundPreference(soundEnabled: boolean, volume?: number): UserStats {
@@ -166,7 +205,7 @@ export function updateSoundPreference(soundEnabled: boolean, volume?: number): U
     volume: volume !== undefined ? volume : current.volume,
   };
   saveStats(updated);
-  return updated;
+  return getStoredStats();
 }
 
 export function updateHapticsPreference(hapticsEnabled: boolean): UserStats {
@@ -176,7 +215,7 @@ export function updateHapticsPreference(hapticsEnabled: boolean): UserStats {
     hapticsEnabled,
   };
   saveStats(updated);
-  return updated;
+  return getStoredStats();
 }
 
 export function updateThemePreference(theme: AppTheme): UserStats {
@@ -186,12 +225,12 @@ export function updateThemePreference(theme: AppTheme): UserStats {
     theme,
   };
   saveStats(updated);
-  return updated;
+  return getStoredStats();
 }
 
 export function clearAllStats(): UserStats {
-  try { if (typeof window !== 'undefined') localStorage.removeItem(LEGACY_STORAGE_KEY); } catch {}
+  try { if (typeof window !== 'undefined') { localStorage.removeItem(LEGACY_STORAGE_KEY); localStorage.removeItem(PREVIOUS_STORAGE_KEY); } } catch {}
   const fresh = freshStats();
-  saveStats(fresh);
+  saveStats(fresh,true);
   return fresh;
 }

@@ -1,3 +1,4 @@
+import {POLICY_ID,apMicros,contributionMicros} from '../shared/leaderboard/domain.ts';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { chromium } from '@playwright/test';
@@ -13,15 +14,15 @@ try {
  console.log('Scoring fixture server ready:',log.trim());
  browser=await chromium.launch({executablePath:process.env.SCORING_CHROME_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
  for(const viewport of [{width:320,height:480},{width:390,height:844},{width:1280,height:800}]){
-  const ctx=await browser.newContext({viewport});const page=await ctx.newPage();const errors=[];const submissions=[];const sessions=[];
+  const ctx=await browser.newContext({viewport});const page=await ctx.newPage();const errors=[];const submissions=[];const sessions=[];const reserved=new Map();const player='11111111-1111-4111-8111-111111111111';const envelope={protocolVersion:3,scoreVersion:2,policyId:POLICY_ID};
   page.on('pageerror',err=>errors.push(err.message));
   await page.route('**/test-api/**',async route=>{
    const url=new URL(route.request().url());const body=route.request().postDataJSON();let data;
-   if(url.pathname.endsWith('/guest'))data={credential:'11111111-1111-4111-8111-111111111111.'+'a'.repeat(32)};
-   else if(url.pathname.endsWith('/sessions')){sessions.push(body);data={scoreVersion:2,session:{id:crypto.randomUUID(),gameId:body.gameId,modeId:body.modeId,scoreVersion:body.scoreVersion,expiresAt:Date.now()+21600000}};}
-   else if(url.pathname.endsWith('/scores')){submissions.push(body);data={accepted:true,scoreVersion:2};}
-   else if(url.pathname.endsWith('/me'))data={player:{id:'fixture',name:'Fixture',countryCode:'XX',createdAt:0},activity:{submissions:0,rankedGames:0}};
-   else data={scoreVersion:2,entries:[],userEntry:null,totalCompetitors:0,weekStart:Date.now(),weekEnd:Date.now()+604800000};
+   if(url.pathname.endsWith('/guest'))data={...envelope,credential:player+'.'+'a'.repeat(43)};
+   else if(url.pathname.endsWith('/sessions')){sessions.push(body);const issuedAt=Date.now();const session={id:crypto.randomUUID(),playerId:player,gameId:body.gameId,modeId:body.modeId,policyId:POLICY_ID,issuedAt,expiresAt:issuedAt+21600000,uploadExpiresAt:issuedAt+21600000+604800000};reserved.set(session.id,session);data={...envelope,session};}
+   else if(url.pathname.endsWith('/scores')){submissions.push(body);const session=reserved.get(body.sessionId);const units=apMicros(session.gameId,body.rawScore,body.modeId);data={...envelope,status:'ranked',accepted:true,sessionId:body.sessionId,gameId:session.gameId,modeId:body.modeId,rawScore:body.rawScore,apMicros:units,arcadePoints:Math.floor(units/1000000),contributionMicros:contributionMicros(session.gameId,units,body.modeId),completedAt:Date.now(),code:'ok'};}
+   else if(url.pathname.endsWith('/me'))data={...envelope,player:{id:player,name:'Fixture',countryCode:'XX',createdAt:0},activity:{submissions:0,rankedGames:0}};
+   else data={...envelope,entries:[],userEntry:null,totalCompetitors:0,asOf:Date.now(),offset:0,nextOffset:null,contributions:[],weekStart:Date.now(),weekEnd:Date.now()+604800000};
    await route.fulfill({contentType:'application/json',body:JSON.stringify(data),status:url.pathname.endsWith('/sessions')?201:200});
   });
   await page.goto(base+'/tests/scoring.html');await page.waitForFunction(()=>window.scoreFixture?.emit&&window.scoreFixture?.select);
@@ -42,7 +43,7 @@ try {
     await page.evaluate(({raw,mode})=>{window.scoreFixture.finish(raw,mode);window.scoreFixture.finish(raw,mode);},{raw,mode});
     await page.waitForSelector('[data-score-submission="accepted"]');
     assert.equal(submissions.length,before+1,'exactly one remote record for duplicate game-over callback');
-    assert.equal(submissions.at(-1).score,raw,'network sends native counter, not already-converted AP');
+    assert.equal(submissions.at(-1).rawScore,raw,'network sends native counter, not already-converted AP');
     assert.equal(submissions.at(-1).modeId,mode);assert.equal(submissions.at(-1).scoreVersion,2);
     const saved=await page.evaluate(()=>window.scoreFixture.saved.at(-1));
     assert.equal(saved.points,toArcadePoints(id,raw,mode));assert.equal(saved.details.rawScore,raw);assert.equal(saved.details.modeId,mode);
