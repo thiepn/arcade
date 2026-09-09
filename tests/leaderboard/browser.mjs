@@ -9,7 +9,7 @@ const env={protocolVersion:3,scoreVersion:2,policyId:POLICY_ID};
 const server=spawn('node',['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port',String(port),'--strictPort'],{env:{...process.env,VITE_BASE_PATH:'/',VITE_LEADERBOARD_API_URL:base+'/test-api'},stdio:'pipe'});
 let logs='';server.stdout.on('data',d=>logs+=d);server.stderr.on('data',d=>logs+=d);let browser;let assertions=0;
 const check=(v,m)=>{assertions++;assert.ok(v,m)};
-const state={sessions:new Map(),runs:new Map(),uploads:[],offlineUpload:false,dropResponse:false,requests:[]};
+const state={sessions:new Map(),runs:new Map(),uploads:[],offlineUpload:false,dropResponse:false,requests:[],failures:[]};
 const ids=Array.from({length:45},(_,i)=>i===44?player:`22222222-2222-4222-8222-${String(i).padStart(12,'0')}`);
 async function api(route){
  const req=route.request(),url=new URL(req.url()),path=url.pathname.replace('/test-api','');state.requests.push(path);let body;try{body=req.postDataJSON();}catch{}
@@ -58,10 +58,10 @@ try{
   await p.locator('#close-stats-modal-btn').click();check(errors.length===0,errors.join('\n'));await ctx.close();
  }
  // Commit reached the server, response lost, then a reload. Exact original payload must retry.
- const ctx=await browser.newContext();await ctx.addInitScript(({credential})=>localStorage.setItem('micro_arcade_guest_credential_v1',credential),{credential});const p=await ctx.newPage();await p.route('**/test-api/**',api);
+ const ctx=await browser.newContext();await ctx.addInitScript(({credential})=>localStorage.setItem('micro_arcade_guest_credential_v1',credential),{credential});const p=await ctx.newPage();p.on('requestfailed',r=>state.failures.push({url:r.url(),error:r.failure()?.errorText}));p.on('pageerror',e=>state.failures.push({error:e.message}));await p.route('**/test-api/**',api);
  await p.goto(base+'/tests/scoring.html');await p.waitForFunction(()=>window.scoreFixture?.finish&&window.scoreFixture?.outbox);await p.waitForTimeout(700);
  state.dropResponse=true;const before=state.runs.size;await p.evaluate(()=>{window.scoreFixture.emit(45,'standard');window.scoreFixture.finish(45,'standard')});
- await p.waitForFunction(async()=> (await window.scoreFixture.outbox()).some(r=>r.status==='pending'&&r.attempts>0));const saved=await p.evaluate(async()=> (await window.scoreFixture.outbox()).find(r=>r.status==='pending'));check(state.runs.size===before+1,'server committed before disconnect');
+ await p.waitForFunction(async()=> (await window.scoreFixture.outbox()).some(r=>r.status==='pending'&&r.attempts>0));const saved=await p.evaluate(async()=> (await window.scoreFixture.outbox()).find(r=>r.status==='pending'));check(state.runs.size===before+1,'server committed before disconnect: '+JSON.stringify({before,runs:state.runs.size,saved,requests:state.requests.slice(-12),uploads:state.uploads,failures:state.failures}));
  state.offlineUpload=true;await p.reload();await p.waitForFunction(()=>window.scoreFixture?.flush);check((await p.evaluate(async()=> (await window.scoreFixture.outbox()).find(r=>r.status==='pending'))).id===saved.id,'IndexedDB survives reload');
  state.offlineUpload=false;await p.evaluate(()=>window.scoreFixture.flush(true));await p.waitForFunction(async()=> (await window.scoreFixture.outbox()).some(r=>r.status==='accepted'));
  check(state.runs.size===before+1,'lost response retry creates no second record');const sent=state.uploads.filter(r=>r.sessionId===saved.id);check(sent.every(r=>JSON.stringify(r)===JSON.stringify(sent[0])),'raw score, mode and completion duration immutable across reload/retry');
