@@ -48,10 +48,11 @@ jobs:
       - run: bun run quality:leaderboard
       - run: bunx tsc --noEmit
       - run: bun run build:pages
-      - name: Commit release candidate without transfer tooling
+      - name: Commit source changes only; workflow changes use the GitHub connector
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git restore --source=HEAD -- .github/workflows
           git add -A
           git commit -m 'Rebuild leaderboard v3: precise AP, immutable runs, reliable uploads and ranked modes'
           git push origin HEAD:release/leaderboard-v3-transfer
