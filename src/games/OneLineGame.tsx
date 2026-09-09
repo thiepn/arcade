@@ -88,6 +88,7 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
     physicsAccumulator: 0,
     viewportWidth: 0,
     viewportHeight: 0,
+    lastArchetype: -1,
   });
 
   // Procedural dynamic level generation that produces endless, varied puzzles
@@ -110,8 +111,10 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
     const obs: Obstacle[] = [];
     const stars: StarItem[] = [];
 
-    // Choose from 10 procedural level archetypes
-    const archetype = (lvl + Math.floor(Math.random() * 10)) % 10;
+    // Choose from 10 procedural archetypes without immediate repeats.
+    let archetype = (lvl + Math.floor(Math.random() * 10)) % 10;
+    if (archetype === state.lastArchetype) archetype = (archetype + 1 + (lvl % 3)) % 10;
+    state.lastArchetype = archetype;
 
     const startXRatio = 0.12 + Math.random() * 0.1;
     const startYRatio = 0.14 + Math.random() * 0.1;

@@ -130,6 +130,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
     styleRouteIndex: 0,
     styleRouteProgress: 0,
     styleChain: 0,
+    lastSpawnKind: 'gate' as 'gate' | 'nitro' | 'rival' | 'hazard',
   });
 
 
@@ -518,7 +519,16 @@ export const DriftGame: React.FC<GameComponentProps> = ({
         st.spawnTimer++;
         if (st.spawnTimer > 48) {
           st.spawnTimer = 0;
-          const rand = Math.random();
+          let rand = Math.random();
+          const proposedKind: 'gate' | 'nitro' | 'rival' | 'hazard' =
+            rand < 0.35 ? 'gate' : rand < 0.6 ? 'nitro' : rand < 0.82 ? 'rival' : 'hazard';
+          if (
+            proposedKind === st.lastSpawnKind &&
+            (proposedKind === 'hazard' || proposedKind === 'rival')
+          ) {
+            rand = Math.random() < 0.5 ? 0.18 : 0.48;
+          }
+          st.lastSpawnKind = rand < 0.35 ? 'gate' : rand < 0.6 ? 'nitro' : rand < 0.82 ? 'rival' : 'hazard';
 
           if (rand < 0.35) {
             // Apex Drift Gate

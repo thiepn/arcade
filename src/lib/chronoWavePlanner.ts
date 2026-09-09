@@ -125,9 +125,9 @@ export const getChronoStageForScore = (score: number): number => {
 };
 
 export const getChronoSpawnInterval = (stage: number): number => {
-  if (stage >= 4) return 66;
-  if (stage === 3) return 72;
-  if (stage === 2) return 80;
+  if (stage >= 4) return 70;
+  if (stage === 3) return 75;
+  if (stage === 2) return 81;
   return 88;
 };
 
@@ -140,7 +140,7 @@ export const getChronoDesiredWallSpeed = (
   stage: number,
   speedMultiplier: number,
 ): number =>
-  (1.35 + (Math.max(1, stage) - 1) * 0.24) * clamp(speedMultiplier, 0.9, 2.35);
+  (1.35 + (Math.max(1, stage) - 1) * 0.22) * clamp(speedMultiplier, 0.9, 2.15);
 
 export const getChronoRequiredImpactGapFrames = (
   rotationSpeed: number,

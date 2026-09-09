@@ -13,6 +13,7 @@ import {
   isChainResonanceComplete,
 } from '../lib/chainResonanceMastery';
 import { isArcadeReducedMotion } from '../lib/motionPreferences';
+import { getChainBaseSpeed, getChainTargetPercent } from '../lib/gamePolishBalance';
 
 interface ParticleNode {
   id: number;
@@ -121,7 +122,7 @@ export const ChainGame: React.FC<GameComponentProps> = ({
     // Balanced orb count that doesn't overcrowd the canvas
     const total = Math.min(36, 16 + waveNum * 2);
     // Required clear percentage climbs with wave: 50% on Wave 1 up to 85% on Wave 8+
-    const reqPercent = Math.min(0.85, 0.5 + (waveNum - 1) * 0.05);
+    const reqPercent = getChainTargetPercent(waveNum);
     const target = Math.max(8, Math.round(total * reqPercent));
 
     gameStateRef.current.targetMin = target;
@@ -135,7 +136,7 @@ export const ChainGame: React.FC<GameComponentProps> = ({
     const verticalScale = clamp(h / 600, 0.85, 1.35);
 
     for (let i = 0; i < total; i++) {
-      const baseSpeed = 1.3 + Math.min(1.8, waveNum * 0.15) + Math.random() * 1.0;
+      const baseSpeed = getChainBaseSpeed(waveNum, Math.random());
       const angle = Math.random() * Math.PI * 2;
       const color = colors[Math.floor(Math.random() * colors.length)];
 

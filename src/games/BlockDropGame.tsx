@@ -5,6 +5,7 @@ import { RotateCw, ArrowDown, ArrowLeft, ArrowRight, ChevronsDown, Zap, Trophy }
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { getBlockDropLayout, resolveBlockDropHold } from '../lib/blockDropSupport';
 import { drawBlockDropBagPiece, resolveBlockDropLineMastery } from '../lib/blockDropMastery';
+import { getBlockDropInterval } from '../lib/gamePolishBalance';
 
 const COLS = 10;
 const ROWS = 20;
@@ -329,7 +330,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
       if (soundEnabled) sounds.playLineClear();
 
       state.level = Math.floor(state.lines / 10) + 1;
-      state.dropInterval = Math.max(0.12, 0.8 - (state.level - 1) * 0.08);
+      state.dropInterval = getBlockDropInterval(state.level);
 
       const label = clearedLines === 4 ? `TETRIS! +${pts}` : `+${pts} LINES!`;
       state.popups.push({

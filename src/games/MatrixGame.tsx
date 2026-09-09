@@ -192,6 +192,9 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
         state.score += clearPoints;
         onScoreUpdate(state.score);
         if (soundEnabled) sounds.playSuccess();
+        if (state.round % 3 === 0 && !state.overclockActive) {
+          setReplaysLeft((current) => Math.min(2, current + 1));
+        }
 
         scheduleWhenActive(() => {
           state.round++;

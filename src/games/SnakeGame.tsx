@@ -8,6 +8,7 @@ import { getFrameInvariantDecay, getFrameScale } from '../lib/frameRateRuntime';
 import { getSnakeFirewallCells, getSnakeFirewallStage } from './snakeExperience';
 import { extendSnakeGhostTimerForThread, getSnakePhaseThreadReward } from '../lib/snakePhaseMastery';
 import { isArcadeReducedMotion } from '../lib/motionPreferences';
+import { getSnakeTickIntervalMs } from '../lib/gamePolishBalance';
 
 interface Point {
   x: number;
@@ -455,7 +456,7 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
 
       // Gradual speedup
       if (state.tickInterval > 65) {
-        state.tickInterval = Math.max(65, 95 - Math.floor(state.score / 600) * 3);
+        state.tickInterval = getSnakeTickIntervalMs(state.snake.length);
       }
     } else {
       // Pop tail if no food eaten

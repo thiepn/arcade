@@ -20,6 +20,7 @@ import {
   isPulseWagerHit,
   shouldEarnPulseWager,
 } from '../src/lib/pulseMastery';
+import { getStackTravelSpeed } from '../src/lib/gamePolishBalance';
 import {
   AIR_HOCKEY_POWER_DEFENSE_GAIN,
   AIR_HOCKEY_POWER_DURATION_SEC,
@@ -53,7 +54,7 @@ assert(getStackFocusReward(30, 4) > getStackFocusReward(2, 1), 'Stack Focus rewa
 // Pulse — Sync Wager is a bonus window layered over unchanged base judgement.
 assert(PULSE_WAGER_MAX_CHARGES === 2, 'Pulse Sync Wager charge cap changed');
 assert(PULSE_WAGER_START_CHARGES === 1, 'Pulse should open with one teachable Sync Wager');
-assert(PULSE_WAGER_EARN_COMBO === 4, 'Pulse Sync Wager earn cadence changed');
+assert(PULSE_WAGER_EARN_COMBO === 4, 'Pulse Sync Wager earning cadence changed');
 assert(PULSE_WAGER_WINDOW_PX === 10, 'Pulse Sync Wager bonus window changed');
 assert(canArmPulseWager(1, false, true), 'Pulse cannot arm an available Sync Wager');
 assert(!canArmPulseWager(0, false, true) && !canArmPulseWager(1, true, true), 'Pulse Wager can arm in an invalid state');
@@ -84,7 +85,9 @@ for (const token of ['getStackPerfectWindow', 'focusCharges', 'focusArmed', 'foc
 }
 assert(stack.includes('FOCUS MISSED — STACK CONTINUES'), 'Stack Focus miss no longer preserves ordinary overlapping placement');
 assert(stack.includes('Math.max(0, state.blocks.length - 1) * 10'), 'Stack altitude display still conflates mastery bonus score with physical tower height');
-assert(stack.includes('Math.max(0, state.blocks.length - 1) * 0.08'), 'Stack movement speed is no longer tied to physical tower growth');
+assert(stack.includes('getStackTravelSpeed(') && stack.includes('state.blocks.length'), 'Stack movement speed is no longer tied to physical tower growth');
+assert(getStackTravelSpeed(10, 1) > getStackTravelSpeed(1, 1), 'Stack movement speed does not increase with physical tower growth');
+assert(getStackTravelSpeed(10, 1.7) > getStackTravelSpeed(10, 0.85), 'Stack movement speed no longer preserves viewport scaling');
 assert(!stack.includes('state.score * 0.08'), 'Stack Focus bonus score still accelerates the base movement-speed curve');
 
 for (const token of ['isPulseWagerHit', 'syncWagerCharges', 'syncWagerArmed', 'syncWagerStreak', 'SYNC WAGER ARMED', "e.code === 'KeyF'"]) {

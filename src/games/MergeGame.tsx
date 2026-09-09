@@ -6,6 +6,7 @@ import { haptics } from '../lib/haptics';
 import { Hammer, RefreshCw, Sparkles } from 'lucide-react';
 import { findNextMergeDecision } from '../lib/mergeRules';
 import { getMergeContract, isMergeContractComplete } from '../lib/mergeMastery';
+import { drawMergeTileFromBag } from '../lib/gamePolishBalance';
 
 const COLS = 4;
 const ROWS = 6;
@@ -56,12 +57,10 @@ export const MergeGame: React.FC<GameComponentProps> = ({
   const [contractLevel, setContractLevel] = useState(1);
   const [isGameOver, setIsGameOver] = useState(false);
   const nextTileId = useRef(1);
+  const tileBagRef = useRef<number[]>([]);
   const setSafeTimeout = useSafeTimeout();
 
-  const getNewTileValue = () => {
-    const choices = [2, 2, 4, 4, 8, 16];
-    return choices[Math.floor(Math.random() * choices.length)];
-  };
+  const getNewTileValue = () => drawMergeTileFromBag(tileBagRef.current);
 
   useEffect(() => {
     setTileQueue([getNewTileValue(), getNewTileValue(), getNewTileValue()]);

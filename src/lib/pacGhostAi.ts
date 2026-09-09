@@ -98,10 +98,13 @@ export const getPacGhostTarget = (
 export const getPacGhostSpeed = (level: number, frightened: boolean): number => {
   const safeLevel = Math.max(1, Math.floor(level));
   const protocol = getPacLevelProtocol(safeLevel);
+  const completed = safeLevel - 1;
+  const early = Math.min(7, completed);
+  const late = Math.max(0, completed - 7);
   if (frightened) {
-    return Math.min(3.3, 2.75 + (safeLevel - 1) * 0.045 + protocol.speedBonus * 0.45);
+    return Math.min(3.25, 2.75 + early * 0.04 + late * 0.018 + protocol.speedBonus * 0.45);
   }
-  return Math.min(5.6, 4.35 + (safeLevel - 1) * 0.14 + protocol.speedBonus);
+  return Math.min(5.45, 4.35 + early * 0.12 + late * 0.055 + protocol.speedBonus);
 };
 
 export const getPacFrightenedDuration = (level: number): number => {

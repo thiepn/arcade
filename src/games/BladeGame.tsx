@@ -14,6 +14,7 @@ import {
   pickBladeSpawnType,
 } from '../lib/bladeWavePhrases';
 import { isArcadeReducedMotion } from '../lib/motionPreferences';
+import { getBladeSpawnIntervalFrames } from '../lib/gamePolishBalance';
 
 interface TargetItem {
   id: number;
@@ -646,16 +647,9 @@ export const BladeGame: React.FC<GameComponentProps> = ({
 
           // Progressive Difficulty curve remains score-bounded; P20 phrases
           // structure composition without accelerating the certified cadence.
-          if (state.score > 12000) {
-            state.difficultyTier = 4;
-            state.spawnInterval = 48;
-          } else if (state.score > 6000) {
-            state.difficultyTier = 3;
-            state.spawnInterval = 54;
-          } else if (state.score > 2000) {
-            state.difficultyTier = 2;
-            state.spawnInterval = 60;
-          }
+          state.difficultyTier =
+            state.score > 12000 ? 4 : state.score > 6000 ? 3 : state.score > 2000 ? 2 : 1;
+          state.spawnInterval = getBladeSpawnIntervalFrames(state.score);
         }
 
         // Update Flying Targets

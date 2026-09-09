@@ -15,23 +15,24 @@ export interface NeonRailPattern {
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
+const smoothstep01 = (value: number) => {
+  const t = clamp(value, 0, 1);
+  return t * t * (3 - 2 * t);
+};
 
 export const clampNeonRailLane = (lane: number): NeonRailLane =>
   clamp(Math.round(lane), 0, 2) as NeonRailLane;
 
-export const getNeonRailSpeed = (elapsedSeconds: number): number =>
-  clamp(
-    NEON_RAIL_MIN_SPEED + Math.max(0, elapsedSeconds) * 0.0045,
-    NEON_RAIL_MIN_SPEED,
-    NEON_RAIL_MAX_SPEED,
-  );
+export const getNeonRailSpeed = (elapsedSeconds: number): number => {
+  const pressure = smoothstep01(Math.max(0, elapsedSeconds) / 90);
+  return NEON_RAIL_MIN_SPEED + (NEON_RAIL_MAX_SPEED - NEON_RAIL_MIN_SPEED) * pressure;
+};
 
-export const getNeonRailSpawnInterval = (elapsedSeconds: number): number =>
-  clamp(
-    NEON_RAIL_MAX_SPAWN_INTERVAL - Math.max(0, elapsedSeconds) * 0.004,
-    NEON_RAIL_MIN_SPAWN_INTERVAL,
-    NEON_RAIL_MAX_SPAWN_INTERVAL,
-  );
+export const getNeonRailSpawnInterval = (elapsedSeconds: number): number => {
+  const pressure = smoothstep01(Math.max(0, elapsedSeconds) / 90);
+  return NEON_RAIL_MAX_SPAWN_INTERVAL -
+    (NEON_RAIL_MAX_SPAWN_INTERVAL - NEON_RAIL_MIN_SPAWN_INTERVAL) * pressure;
+};
 
 export const chooseAdjacentNeonRailLane = (
   previousSafeLane: NeonRailLane,

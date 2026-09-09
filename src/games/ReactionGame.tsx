@@ -11,6 +11,7 @@ import {
   type ReactionChoice,
 } from '../lib/reactionGameplay';
 import { REACTION_OVERTIME_ROUNDS, isReactionOvertimeUnlocked } from '../lib/reactionOvertime';
+import { chooseBalancedReactionChoice, type BalancedChoice } from '../lib/gamePolishBalance';
 import {
   chooseReactionCircuit,
   createReactionCircuitState,
@@ -62,6 +63,8 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
   const lightsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const circuitStateRef = useRef<ReactionCircuitState>(createReactionCircuitState());
   const circuitPairCleanRef = useRef([true, true, true]);
+  const lastChoiceRef = useRef<BalancedChoice | null>(null);
+  const choiceStreakRef = useRef(0);
   const setSafeTimeout = useSafeTimeout();
 
   const getSessionRound = (position: number) => {
@@ -132,8 +135,12 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
         scheduleWhenActive(() => {
           const revealReady = () => {
             const nextChoice = requiresChoice(config.kind)
-              ? (Math.random() < 0.5 ? 'LEFT' : 'RIGHT') as ReactionChoice
+              ? chooseBalancedReactionChoice(lastChoiceRef.current, choiceStreakRef.current, Math.random())
               : null;
+            if (nextChoice) {
+              choiceStreakRef.current = nextChoice === lastChoiceRef.current ? choiceStreakRef.current + 1 : 1;
+              lastChoiceRef.current = nextChoice;
+            }
             setChoiceTarget(nextChoice);
             setMode('READY');
             startTimeRef.current = performance.now();

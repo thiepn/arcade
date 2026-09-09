@@ -6,6 +6,7 @@ import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/u
 import { getFrameInvariantBlend } from '../lib/frameRateRuntime';
 import { canAcceptRoadCrossMove, getRoadCrossBoardMetrics } from '../lib/roadCrossSupport';
 import { getRoadCrossCheckpointBonus, getRoadCrossDistrict, getRoadCrossDistrictLevel, getRoadCrossLaneType } from '../lib/roadCrossMastery';
+import { getRoadCrossLaneSpeed } from '../lib/gamePolishBalance';
 
 type LaneType = 'grass' | 'road' | 'train' | 'river';
 
@@ -225,7 +226,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
       const type: LaneType = getRoadCrossLaneType(nextRow);
 
       const dir: 1 | -1 = Math.random() < 0.5 ? 1 : -1;
-      const speed = (Math.random() * 60 + 65) * dir;
+      const speed = getRoadCrossLaneSpeed(state.maxRowReached, Math.random()) * dir;
       const vehicles: Vehicle[] = [];
       const logs: RiverLog[] = [];
       const coins: { col: number; collected: boolean }[] = [];

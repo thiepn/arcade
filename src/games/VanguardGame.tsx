@@ -5,6 +5,7 @@ import { haptics } from '../lib/haptics';
 import { Shield, Bomb, Radio } from 'lucide-react';
 import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { VANGUARD_FIXED_STEP_SEC, getVanguardPhysicsStepBatch } from '../lib/vanguardRuntime';
+import { getVanguardBossHp, getVanguardEnemySpeed } from '../lib/gamePolishBalance';
 
 interface Bullet {
   x: number;
@@ -190,7 +191,7 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
     // Check boss trigger every 1500 points
     if (state.score - state.bossDefeatedPoints >= 1500 && !state.bossActive) {
       state.bossActive = true;
-      const bossMaxHp = 40 + state.wave * 20;
+      const bossMaxHp = getVanguardBossHp(state.wave);
       state.enemies.push({
         id: Math.random(),
         type: 'boss',
@@ -226,7 +227,7 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
           x: Math.max(30, Math.min(w - 30, spawnX + offsetX)),
           y: -30 - offsetY,
           vx: (Math.random() - 0.5) * 1.2,
-          vy: 3.4 + state.wave * 0.15,
+          vy: getVanguardEnemySpeed('swarmer', state.wave),
           hp: 1.5,
           maxHp: 1.5,
           radius: 11,
@@ -243,7 +244,7 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
         x: spawnX,
         y: -20,
         vx: (Math.random() - 0.5) * 1.5,
-        vy: 2.2 + state.wave * 0.2,
+        vy: getVanguardEnemySpeed('drone', state.wave),
         hp: 2.5,
         maxHp: 2.5,
         radius: 14,
@@ -259,7 +260,7 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
         x: spawnX,
         y: -25,
         vx: (state.playerX - spawnX) * 0.008,
-        vy: 4.2,
+        vy: getVanguardEnemySpeed('interceptor', state.wave),
         hp: 3.5,
         maxHp: 3.5,
         radius: 15,
@@ -275,7 +276,7 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
         x: spawnX,
         y: -30,
         vx: (Math.random() - 0.5) * 1.2,
-        vy: 1.2,
+        vy: getVanguardEnemySpeed('sniper', state.wave),
         hp: 4.5,
         maxHp: 4.5,
         radius: 18,
@@ -292,7 +293,7 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
         x: spawnX,
         y: -35,
         vx: (Math.random() - 0.5) * 0.9,
-        vy: 1.3,
+        vy: getVanguardEnemySpeed('heavy', state.wave),
         hp: 7.0,
         maxHp: 7.0,
         radius: 24,

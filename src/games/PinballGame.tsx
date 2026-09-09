@@ -26,6 +26,7 @@ import {
   type PinballLayout,
 } from '../lib/pinballPhysics';
 import { isArcadeReducedMotion } from '../lib/motionPreferences';
+import { getPinballRescueImpulse } from '../lib/gamePolishBalance';
 
 type GamePhase = 'serving' | 'playing' | 'game-over';
 
@@ -933,10 +934,11 @@ export const PinballGame: React.FC<GameComponentProps> = ({
           const speed = Math.hypot(ball.vx, ball.vy);
           if (speed < 55 && ball.y < layout.flipperY - 35) {
             ball.lowSpeedTime += step;
-            if (ball.lowSpeedTime > 1.5) {
+            const rescueImpulse = getPinballRescueImpulse(ball.lowSpeedTime);
+            if (rescueImpulse > 0) {
               ball.lowSpeedTime = 0;
-              ball.vx += (Math.random() - 0.5) * 150 * speedScale;
-              ball.vy -= 130 * speedScale;
+              ball.vx += (Math.random() - 0.5) * rescueImpulse * speedScale;
+              ball.vy -= rescueImpulse * 0.9 * speedScale;
             }
           } else {
             ball.lowSpeedTime = 0;

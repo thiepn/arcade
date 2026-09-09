@@ -17,6 +17,7 @@ import {
   Radio,
 } from 'lucide-react';
 import { isArcadeReducedMotion } from '../lib/motionPreferences';
+import { getAstroLargeAsteroidCount } from '../lib/gamePolishBalance';
 
 interface Ship {
   x: number;
@@ -249,7 +250,7 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
       state.level = lvl;
       setLevel(lvl);
 
-      const numLarge = 3 + lvl;
+      const numLarge = getAstroLargeAsteroidCount(lvl);
       for (let i = 0; i < numLarge; i++) {
         let x: number, y: number;
         do {

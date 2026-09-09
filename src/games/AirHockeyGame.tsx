@@ -12,6 +12,7 @@ import {
   capAirHockeyVelocity,
   type AirHockeyDifficultyLevel,
 } from '../lib/airHockeyFairness';
+import { getAirHockeyOpeningPace } from '../lib/gamePolishBalance';
 import {
   AIR_HOCKEY_POWER_DURATION_SEC,
   AIR_HOCKEY_POWER_IMPULSE_MULTIPLIER,
@@ -395,7 +396,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
           state.aiMallet.y,
           state.aiTargetX,
           state.aiTargetY,
-          diffConfig.aiSpeed * table.motionScale,
+          diffConfig.aiSpeed * getAirHockeyOpeningPace(60 - state.timeLeft) * table.motionScale,
           dt,
         );
         Object.assign(state.aiMallet, aiMotion);

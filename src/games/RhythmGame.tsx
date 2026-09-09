@@ -18,6 +18,7 @@ import {
   isRhythmHoldComplete,
   shouldBreakRhythmHold,
 } from '../lib/rhythmHoldMastery';
+import { getRhythmMissPenalty } from '../lib/gamePolishBalance';
 
 interface ActiveNote {
   id: number;
@@ -462,7 +463,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
             state.combo = 0;
             state.multiplier = 1;
             state.missHits++;
-            state.grooveHealth = Math.max(0, state.grooveHealth - 7);
+            state.grooveHealth = Math.max(0, state.grooveHealth - getRhythmMissPenalty(state.grooveHealth));
             state.popups.push({
               id: state.nextPopupId++,
               text: 'HOLD BREAK',
@@ -489,7 +490,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
             state.combo = 0;
             state.multiplier = 1;
             state.missHits++;
-            state.grooveHealth = Math.max(0, state.grooveHealth - 7); // Forgiving health drain
+            state.grooveHealth = Math.max(0, state.grooveHealth - getRhythmMissPenalty(state.grooveHealth)); // Forgiving health drain
 
             state.popups.push({
               id: state.nextPopupId++,

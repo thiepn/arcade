@@ -13,6 +13,7 @@ import {
   type BreakoutContractEvent,
 } from '../lib/breakoutMastery';
 import { isArcadeReducedMotion } from '../lib/motionPreferences';
+import { getBreakoutMinimumSpecials } from '../lib/gamePolishBalance';
 
 interface Brick {
   x: number;
@@ -160,6 +161,15 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
           special: specialType,
         });
       }
+    }
+
+    // Avoid dry rounds where random generation yields almost no tactical drops.
+    const minimumSpecials = getBreakoutMinimumSpecials(round);
+    let currentSpecials = bricks.filter((brick) => Boolean(brick.special)).length;
+    for (let index = 0; index < bricks.length && currentSpecials < minimumSpecials; index += 3) {
+      if (bricks[index].special) continue;
+      bricks[index].special = specials[(round + currentSpecials) % specials.length];
+      currentSpecials++;
     }
     return bricks;
   };
