@@ -1,0 +1,29 @@
+name: Scoring Audit
+on:
+  push:
+    branches: [fix/normalized-arcade-scoring]
+permissions:
+  contents: read
+jobs:
+  audit-bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - name: Export tracked source and public dependencies for isolated audit
+        run: |
+          mkdir -p audit-bundle
+          git archive HEAD | gzip > audit-bundle/source.tar.gz
+          tar -czf audit-bundle/dependencies.tar.gz node_modules
+          cp "$(command -v bun)" audit-bundle/bun
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: scoring-audit-bundle
+          path: audit-bundle
+          retention-days: 1
