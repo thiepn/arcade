@@ -59,7 +59,7 @@ try {
     await control.focus();
     await page.keyboard.press('Space');
     assert.equal(await control.getAttribute('aria-pressed'), 'true');
-    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('micro_arcade_stats_v2')).theme), theme);
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('micro_arcade_stats_v3')).theme), theme);
     if (artifacts) await page.screenshot({ path: path.join(artifacts, `arcade-theme-${theme}.png`) });
   }
   await page.locator('#close-stats-modal-btn').click();

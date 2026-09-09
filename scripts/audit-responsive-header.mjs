@@ -164,8 +164,8 @@ try {
         }, null, { timeout: 10000 });
         const leaderboardText = await leaderboardDialog.innerText();
         assert(!leaderboardText.includes('Global leaderboard unavailable. Your local progress is kept.'), 'live leaderboard modal surfaced the generic unavailable fallback');
-        assert(!leaderboardText.includes('not configured in this build'), 'live leaderboard modal thinks the production API is unconfigured');
-        assert(leaderboardText.includes('GLOBAL OVERALL'), 'live leaderboard modal did not render the global board');
+        assert(!leaderboardText.includes('not connected'), 'live leaderboard modal thinks the production API is unconfigured');
+        assert(leaderboardText.includes('Published competitors'), 'live leaderboard modal did not render the global board');
         await leaderboardDialog.getByRole('button', { name: 'Close leaderboards' }).click();
 
         await page.locator('#header-rank-badge-btn').click();

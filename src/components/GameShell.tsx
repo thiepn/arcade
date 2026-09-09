@@ -1,3 +1,6 @@
+import { AP_SCALE, apMicros, contributionMicros, formatPoints, getPolicy, modeLabel, SUBMISSION_MESSAGES } from '../../shared/leaderboard/domain';
+import { OUTBOX_EVENT, getUploadHistory, flushUploads, uploadsAreDurable, type PendingRun } from '../lib/leaderboardOutbox';
+import { RunClock } from '../lib/runClock';
 import { SCORE_VERSION, SCORING_PROFILES, defaultScoreMode, isScoreMode, toArcadePoints } from '../../shared/scoring';
 import type { ScoreDetails } from '../types';
 import React, { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -7,7 +10,7 @@ import { haptics } from '../lib/haptics';
 import { beginLeaderboardSession, submitLeaderboardScore, type LeaderboardPlaySession } from '../lib/leaderboards';
 import { useGamepadBridge } from '../hooks/useGamepadBridge';
 import { ErrorBoundary } from './ErrorBoundary';
-import { isProgressSaved } from '../lib/storage';
+import { getStoredStats, isProgressSaved } from '../lib/storage';
 import {
   ArrowLeft,
   RotateCcw,
@@ -40,6 +43,11 @@ interface GameShellProps {
   obscured?: boolean;
 }
 
+const EngineReady: React.FC<{onReady:()=>void;children:React.ReactNode}> = ({onReady,children}) => {
+  useEffect(onReady,[onReady]);
+  return <>{children}</>;
+};
+
 export const GameShell: React.FC<GameShellProps> = ({
   game,
   bestScore,
@@ -68,7 +76,26 @@ export const GameShell: React.FC<GameShellProps> = ({
   const leaderboardSessionRef = useRef<LeaderboardPlaySession | null>(null);
   const leaderboardSessionPromiseRef = useRef<Promise<LeaderboardPlaySession | null> | null>(null);
   const mountedRef = useRef(true);
-  const [submissionStatus, setSubmissionStatus] = useState<'local' | 'pending' | 'accepted' | 'failed'>('local');
+  const [submissionStatus, setSubmissionStatus] = useState<'local'|'pending'|'accepted'|'failed'|'review'|'rejected'|'expired'|'auth-required'>('local');
+  const [submissionMessage,setSubmissionMessage]=useState('');
+  const [submittedSessionId,setSubmittedSessionId]=useState<string|null>(null);
+  const clockRef=useRef(new RunClock());
+  const engineReadyRef=useRef(false);
+  const clockRunningRef=useRef(true);
+  const requestsRef=useRef(new Map<string,string>());
+  const getSessionRequest=(key:number,mode:string)=>{
+    const id=key+':'+mode;let request=requestsRef.current.get(id);
+    if(!request){request=crypto.randomUUID();requestsRef.current.set(id,request);}return request;
+  };
+  const engineReady=useCallback(()=>{engineReadyRef.current=true;clockRef.current.setActive(clockRunningRef.current);},[]);
+  useEffect(()=>{
+    let cancelled=false;
+    const update=async()=>{if(!submittedSessionId)return;const run=(await getUploadHistory()).find(r=>r.id===submittedSessionId);
+      if(!cancelled&&run){setSubmissionStatus(run.status);setSubmissionMessage(SUBMISSION_MESSAGES[run.lastError??'']??'');}
+    };
+    window.addEventListener(OUTBOX_EVENT,update);void update();
+    return()=>{cancelled=true;window.removeEventListener(OUTBOX_EVENT,update);};
+  },[submittedSessionId]);
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
@@ -86,6 +113,9 @@ export const GameShell: React.FC<GameShellProps> = ({
     bestArcadePoints: number;
     isNewHigh: boolean;
   } | null>(null);
+
+  clockRunningRef.current=!isPaused&&!obscured&&!gameOverData;
+  useEffect(()=>{clockRef.current.setActive(engineReadyRef.current&&clockRunningRef.current);},[isPaused,obscured,gameOverData]);
 
   const gamepad = useGamepadBridge({
     gameId: game.id,
@@ -135,7 +165,10 @@ export const GameShell: React.FC<GameShellProps> = ({
     let cancelled = false;
     leaderboardSessionRef.current = null;
     const sessionKey = gameSessionKey;
-    const request = beginLeaderboardSession(game.id, scoringMode).catch(() => null);
+    const request = beginLeaderboardSession(game.id, scoringMode,getSessionRequest(gameSessionKey,scoringMode),clockRef.current.startedAt).catch((error) => {
+      if(!cancelled&&activeSessionKeyRef.current===sessionKey)setSubmissionMessage(error instanceof Error?error.message:'Could not reserve an online run.');
+      return null;
+    });
     leaderboardSessionPromiseRef.current = request;
     void request.then((session) => {
       if (!cancelled && activeSessionKeyRef.current === sessionKey) {
@@ -157,7 +190,8 @@ export const GameShell: React.FC<GameShellProps> = ({
     setScoringMode(defaultScoreMode(game.id));
     prevArcadePointsRef.current = 0;
     setGameOverData(null);
-    setSubmissionStatus('local');
+    setSubmissionStatus('local');setSubmissionMessage('');setSubmittedSessionId(null);
+    clockRef.current=new RunClock();engineReadyRef.current=false;
     setIsPaused(false);
     gameOverHandledRef.current = false;
     leaderboardSessionRef.current = null;
@@ -167,16 +201,17 @@ export const GameShell: React.FC<GameShellProps> = ({
     setGameSessionKey(nextSessionKey);
   }, [game.id]);
 
-  const handleModeChange = useCallback((modeId: string) => {
-    if (!isScoreMode(game.id, modeId) || modeId === scoringMode) return;
-    leaderboardSessionRef.current = null;
-    leaderboardSessionPromiseRef.current = null;
-    setCurrentRawScore(0);
-    setCurrentArcadePoints(0);
-    prevArcadePointsRef.current = 0;
-    setSubmissionStatus("local");
-    setScoringMode(modeId);
-  }, [game.id, scoringMode]);
+  const handleModeChange = useCallback((modeId:string)=>{
+    if(!isScoreMode(game.id,modeId)||modeId===scoringMode)return;
+    // A mode switch is a new match, not a relabeling of already-earned points.
+    activeSessionKeyRef.current+=1;
+    setGameSessionKey(activeSessionKeyRef.current);
+    setScoringMode(modeId);setCurrentRawScore(0);setCurrentArcadePoints(0);prevArcadePointsRef.current=0;
+    setGameOverData(null);gameOverHandledRef.current=false;setIsPaused(false);
+    setSubmissionStatus('local');setSubmissionMessage('');setSubmittedSessionId(null);
+    leaderboardSessionRef.current=null;leaderboardSessionPromiseRef.current=null;
+    clockRef.current=new RunClock();engineReadyRef.current=false;
+  },[game.id,scoringMode]);
 
   const handleScoreUpdate = useCallback((sessionKey: number, rawScore: number, modeId?: string) => {
     if (!mountedRef.current || !Number.isFinite(rawScore)) return;
@@ -205,6 +240,7 @@ export const GameShell: React.FC<GameShellProps> = ({
     (sessionKey: number, finalScore: number, modeId?: string) => {
       if (!mountedRef.current || sessionKey !== activeSessionKeyRef.current || gameOverHandledRef.current) return;
       gameOverHandledRef.current = true;
+      const timing=clockRef.current.finish();
 
       const rawScore = Number.isFinite(finalScore) ? Math.max(0, Math.floor(finalScore)) : 0;
       const runMode = modeId ?? scoringMode;
@@ -213,14 +249,18 @@ export const GameShell: React.FC<GameShellProps> = ({
       setCurrentRawScore(rawScore);
       setCurrentArcadePoints(arcadePoints);
       const newBestArcadePoints = Math.max(bestScore, arcadePoints);
-      const newBestRawScore = Math.max(bestRawScore, rawScore);
+      const modeBestRaw=getStoredStats().modeBests?.[game.id+':'+runMode]?.rawScore??0;
+      const newBestRawScore = Math.max(modeBestRaw, rawScore);
 
       const submitRemoteScore = async (session: LeaderboardPlaySession | null) => {
         const current = () => mountedRef.current && sessionKey === activeSessionKeyRef.current;
         if (!session) { if (current()) setSubmissionStatus('local'); return; }
-        if (current()) setSubmissionStatus('pending');
-        const accepted = await submitLeaderboardScore(session, rawScore, runMode);
-        if (current()) setSubmissionStatus(accepted ? 'accepted' : 'failed');
+        if(current()){setSubmissionStatus('pending');setSubmittedSessionId(session.id);}
+        try{
+          await submitLeaderboardScore(session,rawScore,runMode,timing.durationMs,timing.activeMs);
+          const queued=(await getUploadHistory()).find(r=>r.id===session.id);
+          if(current()&&queued){setSubmissionStatus(queued.status);setSubmissionMessage(SUBMISSION_MESSAGES[queued.lastError??'']??'');}
+        }catch(error){if(current()){setSubmissionStatus('failed');setSubmissionMessage(error instanceof Error?error.message:'Upload could not be queued.');}}
       };
       if (leaderboardSessionRef.current) {
         void submitRemoteScore(leaderboardSessionRef.current);
@@ -305,7 +345,7 @@ export const GameShell: React.FC<GameShellProps> = ({
   // Backgrounding or locking a device must never let a live run advance unseen.
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.hidden && !gameOverHandledRef.current) setIsPaused(true);
+      if (document.hidden && !gameOverHandledRef.current) { clockRef.current.setActive(false); setIsPaused(true); }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -585,7 +625,8 @@ export const GameShell: React.FC<GameShellProps> = ({
                 </div>
               )}
             >
-              <GameComponent
+              <EngineReady key={gameSessionKey} onReady={engineReady}><GameComponent
+                initialModeId={scoringMode}
                 key={gameSessionKey}
                 onGameOver={sessionCallbacks.onGameOver}
                 onScoreUpdate={sessionCallbacks.onScoreUpdate}
@@ -593,7 +634,7 @@ export const GameShell: React.FC<GameShellProps> = ({
                 isPaused={isPaused || obscured || gameOverData !== null}
                 soundEnabled={soundEnabled}
                 onRestartRequest={handleRestart}
-              />
+              /></EngineReady>
             </Suspense>
           </ErrorBoundary>
 
@@ -684,21 +725,26 @@ export const GameShell: React.FC<GameShellProps> = ({
                   </div>
                 </div>
                 <div className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-[#27272A] bg-[#111114] mb-6 font-mono-arcade text-[10px] sm:text-xs">
-                  <span className="text-zinc-500">BEST SCORE <strong className="text-zinc-200">{gameOverData.bestRawScore.toLocaleString()}</strong></span>
-                  <span className="text-amber-400/80"><Trophy className="w-3 h-3 inline mr-1" />BEST AP <strong>{gameOverData.bestArcadePoints.toLocaleString()}</strong></span>
+                  <span className="text-zinc-500">MODE BEST SCORE <strong className="text-zinc-200">{gameOverData.bestRawScore.toLocaleString()}</strong></span>
+                  <span className="text-amber-400/80"><Trophy className="w-3 h-3 inline mr-1" />GAME BEST AP <strong>{gameOverData.bestArcadePoints.toLocaleString()}</strong></span>
                 </div>
 
                 {/* Action Buttons */}
                 <details className="mb-3 rounded-lg border border-zinc-700 p-3 text-left text-xs text-zinc-300" data-scoring-details>
-                  <summary className="cursor-pointer font-bold">How these points work · v2</summary>
+                  <summary className="cursor-pointer font-bold">How Score, AP and Rating work</summary>
                   <p className="mt-2">{SCORING_PROFILES[game.id]?.basis}</p>
                   <p className="mt-2"><strong>Score</strong> is the native number produced by this game. It is intentionally not comparable with scores from other games. <strong>AP</strong> is calculated separately from that raw score and is the normalized currency used for cross-game rankings.</p>
-                  <p className="mt-2">Each game and supported mode has its own AP calibration. Opening, strong and mastery benchmarks are approximately 1,000 / 3,000 / 6,000 AP. Endless runs keep earning AP with diminishing returns. Overall rating counts your best AP result per game, up to 10,000 AP each.</p>
+                  <p className="mt-2">Each game and supported mode has its own AP calibration. Opening, strong and mastery benchmarks are approximately 1,000 / 3,000 / 6,000 AP. Endless runs keep earning AP with diminishing returns. Overall Rating counts one bounded contribution per game. Finite-game elite targets are calibrated separately so they can reach a full 10,000 contribution too. Raw Score is never added across games. Exact rating ties share a rank; uncapped AP does not break them.</p>
+                  <p className="mt-2">Mode: <strong>{modeLabel(game.id,scoringMode)}</strong>. This run’s rating value: <strong>{formatPoints(contributionMicros(game.id,apMicros(game.id,gameOverData.rawScore,scoringMode),scoringMode)/AP_SCALE)}</strong> / 10,000. Only your best result in this game contributes; replaying does not add it again.</p>
+                  <p className="mt-2">Public scores are checked against game rules and conservative timing limits. This is not replay-verified anti-cheat.</p>
                 </details>
                 <p role="status" aria-live="polite" className="mb-3 text-xs text-zinc-300" data-score-submission={submissionStatus}>
-                  {submissionStatus === 'accepted' ? 'Global score accepted.' : submissionStatus === 'pending' ? 'Submitting global score… You can replay now.' : submissionStatus === 'failed' ? 'Global score not submitted.' : 'This run is local only.'}
+                  {submissionStatus==='accepted'?'Published to the global leaderboard.':submissionStatus==='pending'?'Upload queued. It will retry automatically; you may replay now.':submissionStatus==='review'?'Saved for review; not publicly ranked yet.':submissionStatus==='auth-required'?'Upload paused: restore the original player identity.':submissionStatus==='expired'?'The upload window expired.':submissionStatus==='rejected'?'This run was not ranked.':submissionStatus==='failed'?'Upload could not be saved.':'This run is local only.'}
+                  {submissionMessage&&<span className="block mt-1">{submissionMessage}</span>}
+                  {!uploadsAreDurable()&&<span className="block text-amber-300">Upload storage is unavailable; keep this tab open until submission succeeds.</span>}
                   {' '}{isProgressSaved() ? 'Personal best saved on this device.' : 'Storage unavailable; progress lasts until this page closes.'}
                 </p>
+                {submissionStatus==='pending'&&<button type="button" className="mb-3 min-h-11 px-4 rounded-lg border border-zinc-600 text-xs" onClick={()=>void flushUploads(true)}>Retry upload now</button>}
                 <div className="w-full flex flex-col gap-2.5">
                   <button
                     type="button"

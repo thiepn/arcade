@@ -1,3 +1,7 @@
+# Leaderboard release v3
+
+The current competitive backend targets Supabase, not the retained legacy D1 Worker. See [release, migration, validation and recovery instructions](docs/leaderboard/RELEASE.md). Raw Score, normalized AP and bounded Rating are separate.
+
 # Micro Arcade
 
 Micro Arcade is a browser-based collection of 32 instant-play mini-games built with React, TypeScript, Vite, Tailwind CSS, and an optional Cloudflare Worker + D1 leaderboard service.

@@ -1,5 +1,16 @@
 # Changelog
 
+## Leaderboard v3 — release candidate
+
+- Rebuilt immutable run storage, precise AP and bounded rating with shared ranks.
+- Added current-mode personal records, additive v2 migration and v1 history archive.
+- Added server screening, owner/mode-bound sessions and atomic idempotent receipts.
+- Added durable retry queue, recovery codes, mode filters, pagination and mobile explanations.
+- Fixed mid-match Hockey mode changes and legacy raw-record recovery.
+- Added real PostgreSQL 17 and browser failure-path release gates.
+- Deployment and threat-model details: `docs/leaderboard/RELEASE.md`.
+
+
 ## Scoring v2 — 2026-09-09
 
 - Calibrated Arcade Points across all 32 cabinets and all 36 selectable configurations.

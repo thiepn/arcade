@@ -1,3 +1,4 @@
+import { startLeaderboardSync,getUploadHistory,flushUploads } from '../src/lib/leaderboardOutbox';
 /** Test-only component boundary. Not a production entrypoint or gameplay bot. */
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -15,6 +16,8 @@ function Engine(props: GameComponentProps) {
 }
 const LazyEngine = React.lazy(async () => ({ default: Engine }));
 function Harness(){
+ useEffect(startLeaderboardSync,[]);
+ bridge.outbox=getUploadHistory;bridge.flush=flushUploads;
  const [id,setId]=useState('stack');const [stats,setStats]=useState(getStoredStats);
  useEffect(()=>{bridge.select=setId;},[]);
  const game={...GAMES_REGISTRY.find(g=>g.id===id)!,component:LazyEngine};

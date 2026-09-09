@@ -49,7 +49,7 @@
     "quality:hardening": "bun scripts/audit-repository-hardening.ts",
     "worker:dev": "wrangler dev",
     "worker:check": "tsc -p worker/tsconfig.json --noEmit && wrangler deploy --dry-run --outdir .wrangler-dist",
-    "worker:deploy": "wrangler deploy",
+    "worker:deploy": "bun tools/leaderboard/prevent-legacy-deploy.mjs",
     "d1:migrate:local": "wrangler d1 migrations apply micro-arcade-leaderboards --local",
     "d1:migrate:remote": "wrangler d1 migrations apply micro-arcade-leaderboards --remote",
     "build:pages": "VITE_BASE_PATH=/arcade/ vite build",
@@ -88,7 +88,10 @@
     "quality:gameplay-p25": "bun scripts/audit-gameplay-p25.ts",
     "quality:scoring": "bun scripts/audit-scoring.ts && bun scripts/audit-scoring-storage.ts && bun worker/tests/scoring.mjs",
     "quality:scoring-browser": "bun scripts/audit-browser-scoring.mjs",
-    "quality:scoring-migrations": "python3 scripts/generate-scoring-migrations.py && git diff --exit-code -- supabase/migrations/20260909_scoring_v2.sql worker/migrations/0003_scoring_v2.sql scripts/scoring-postgres-parity.sql"
+    "quality:scoring-migrations": "python3 scripts/generate-scoring-migrations.py && git diff --exit-code -- supabase/migrations/20260909_scoring_v2.sql worker/migrations/0003_scoring_v2.sql scripts/scoring-postgres-parity.sql",
+    "quality:leaderboard": "python3 tools/leaderboard/generate.py --check && bun tests/leaderboard/domain-and-queue.mjs && bun tests/leaderboard/http.mjs",
+    "quality:leaderboard-db": "bun tests/leaderboard/postgres.mjs",
+    "quality:leaderboard-browser": "bun tests/leaderboard/browser.mjs"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",

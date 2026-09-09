@@ -10,7 +10,7 @@ globalThis.localStorage = {
   setItem(key, value) { if (denied) throw new Error('Quota exceeded'); values.set(key, value); },
   removeItem(key) { values.delete(key); },
 };
-const key = 'micro_arcade_stats_v2';
+const key = 'micro_arcade_stats_v3';
 for (const malformed of ['null', '[]', 'true', '42', '"old"', '{broken']) {
   clearAllStats(); values.set(key, malformed);
   assert.deepEqual(getStoredStats().highScores, {});
@@ -46,7 +46,7 @@ await assert.rejects(requestLeaderboardJson('https://example.invalid', {}, 20), 
 globalThis.fetch = async () => new Response('{}', { status: 429 });
 await assert.rejects(requestLeaderboardJson('https://example.invalid'), error => error.code === 'rate_limited');
 globalThis.fetch = async () => new Response('{broken');
-await assert.rejects(requestLeaderboardJson('https://example.invalid'), error => error.code === 'unavailable');
+await assert.rejects(requestLeaderboardJson('https://example.invalid'), error => error.code === 'invalid_response');
 globalThis.fetch = async () => Response.json({ ok: true });
 assert.deepEqual(await requestLeaderboardJson('https://example.invalid'), { ok: true });
 console.log('RC storage/request regression passed: corrupt schemas, existing records, invalid scores, storage denial/recovery, bounded requests, typed errors.');

@@ -46,6 +46,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
   onGameOver,
   onScoreUpdate,
   onModeChange,
+  initialModeId,
   isPaused,
   soundEnabled,
 }) => {
@@ -54,7 +55,8 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
 
-  const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>('MEDIUM');
+  const initialDifficulty: DifficultyLevel = initialModeId==='EASY'||initialModeId==='HARD'?initialModeId:'MEDIUM';
+  const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>(initialDifficulty);
   const [hasGameStarted, setHasGameStarted] = useState(false);
 
   const [hudState, setHudState] = useRenderPublishedState({
@@ -62,7 +64,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
     aiScore: 0,
     timeLeft: 60,
     combo: 0,
-    difficulty: 'MEDIUM' as DifficultyLevel,
+    difficulty: initialDifficulty,
     powerMeter: 0,
     powerPlayTime: 0,
     powerStreak: 0,
@@ -75,7 +77,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
     timeLeft: 60,
     isAlive: true,
     combo: 0,
-    difficulty: 'MEDIUM' as DifficultyLevel,
+    difficulty: initialDifficulty,
     powerMeter: 0,
     powerPlayTimer: 0,
     powerStreak: 0,
