@@ -28,7 +28,15 @@ export function measureUI() {
   const stripChildren=status?[...status.querySelectorAll('.p18-first-run-hint,.p22-promotion-hud')].map(e=>({rect:box(e),parent:box(status)})):[];
   const hudRects = ['.snake-toolbar > div', '.gravity-toolbar, .gravity-actions', '.oneline-arena, .oneline-help']
     .map(selector => [...document.querySelectorAll(selector)].filter(visible).map(box));
-  return {hudRects,width:innerWidth,height:innerHeight,overflow:document.documentElement.scrollWidth-innerWidth,toolbar:box(toolbar),controls,frame:frame&&box(frame),root:root&&box(root),clipped,boards,canvases,stripChildren,renderErrors:window.__uiRenderErrors||[]};
+  // Stress the real score/title layout without fabricating a submitted score.
+  const scoreNodes=[...document.querySelectorAll('.arcade-game-score > div > span:last-child')];
+  const originalScores=scoreNodes.map(e=>e.textContent);
+  scoreNodes.forEach(e=>{e.textContent='100,000,000';});
+  const score=document.querySelector('.arcade-game-score');
+  const title=document.querySelector('.arcade-game-title h1 > span:first-child');
+  const highScoreLayout=score&&title?{score:box(score),title:box(title)}:null;
+  scoreNodes.forEach((e,i)=>{e.textContent=originalScores[i];});
+  return {highScoreLayout,hudRects,width:innerWidth,height:innerHeight,overflow:document.documentElement.scrollWidth-innerWidth,toolbar:box(toolbar),controls,frame:frame&&box(frame),root:root&&box(root),clipped,boards,canvases,stripChildren,renderErrors:window.__uiRenderErrors||[]};
 }
 function contained(r,f) { return r.x>=f.x-2 && r.y>=f.y-2 && r.right<=f.right+2 && r.bottom<=f.bottom+2; }
 function overlap(a,b) { return Math.min(a.right,b.right)-Math.max(a.x,b.x)>1 && Math.min(a.bottom,b.bottom)-Math.max(a.y,b.y)>1; }
@@ -61,6 +69,10 @@ export function assertGeometry(m,label,touch) {
   }
   for (const group of m.hudRects) for (let i=0;i<group.length;i++) for (let j=i+1;j<group.length;j++) {
     assert(!overlap(group[i],group[j]),`${label}: overlapping HUD regions`);
+  }
+  if(m.highScoreLayout) {
+    assert(contained(m.highScoreLayout.score,viewport),`${label}: large score escaped viewport`);
+    assert(!overlap(m.highScoreLayout.score,m.highScoreLayout.title),`${label}: large score covers game title`);
   }
   assert.deepEqual(m.renderErrors,[],`${label}: canvas runtime error`);
 }
