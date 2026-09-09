@@ -1,3 +1,4 @@
+import { formatArcadeScore, formatArcadeGain } from '../../shared/scoring';
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Zap } from 'lucide-react';
 import { GameComponentProps } from '../types';
@@ -388,10 +389,10 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
                   x: getNeonRailLaneX(object.lane, NEON_RAIL_PLAYER_Y, width),
                   y: playerScreenY - 20,
                   text: object.phaseCore
-                    ? `PHASE ROUTE x3 +${points}`
+                    ? `PHASE ROUTE x3 +${points} base`
                     : state.combo >= 4
-                    ? `CHAIN x${multiplier} +${points}`
-                    : `CORE +${points}`,
+                    ? `CHAIN x${multiplier} +${points} base`
+                    : `CORE +${points} base`,
                   color: object.phaseCore || multiplier > 1 ? '#FACC15' : '#34D399',
                   life: 0.8,
                 });
@@ -648,7 +649,7 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
       <div className="pointer-events-none absolute left-2.5 right-2.5 top-2.5 z-10 flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <div className="rounded-xl border border-cyan-400/25 bg-slate-950/80 px-2.5 py-1 font-mono text-xs font-black text-cyan-300 backdrop-blur-md">
-            SCORE {hudState.score.toLocaleString()}
+            SCORE {formatArcadeScore('neonrail', hudState.score)}
           </div>
           <div className="rounded-xl border border-slate-600/40 bg-slate-950/75 px-2 py-1 font-mono text-[9px] font-black text-slate-300">
             {hudState.phraseName.replace('_', ' ')}

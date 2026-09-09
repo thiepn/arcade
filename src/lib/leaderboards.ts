@@ -1,3 +1,4 @@
+import { SCORE_VERSION, arcadeRating, arcadeTotal, defaultScoreMode } from '../../shared/scoring';
 import { UserStats } from '../types';
 import { LeaderboardError, requestLeaderboardJson } from './leaderboardRequest';
 
@@ -76,6 +77,10 @@ interface LeaderboardCache {
   updatedAt: number;
 }
 
+function requireScoreVersion(data: { scoreVersion?: number }): void {
+  if (data.scoreVersion !== SCORE_VERSION) throw new Error('Leaderboard scoring update is not available yet. Your Arcade Points remain saved locally.');
+}
+
 interface ServerGameRow {
   id: string;
   name: string;
@@ -99,7 +104,7 @@ interface ServerOverallRow {
 }
 
 const GUEST_KEY = 'micro_arcade_guest_credential_v1';
-const CACHE_KEY = 'micro_arcade_live_leaderboards_v1';
+const CACHE_KEY = 'micro_arcade_live_leaderboards_v2';
 const LEGACY_FAKE_KEY = 'micro_arcade_global_leaderboards_v2';
 export const LEADERBOARD_UPDATED_EVENT = 'micro-arcade-leaderboards-updated';
 let guestCreationPromise: Promise<string | null> | null = null;
@@ -291,7 +296,7 @@ function normalizeOverallRow(row: ServerOverallRow): GlobalOverallEntry {
 function emptyOverall(stats?: UserStats, weekly = false): OverallLeaderboardData {
   const totalScore = weekly || !stats
     ? 0
-    : (Object.values(stats.highScores) as number[]).reduce((sum, value) => sum + (value || 0), 0);
+    : arcadeTotal(stats.highScores);
   const gamesPlayed = weekly || !stats
     ? 0
     : Object.values(stats.playCounts).filter((count) => (count || 0) > 0).length;
@@ -303,7 +308,7 @@ function emptyOverall(stats?: UserStats, weekly = false): OverallLeaderboardData
       id: 'local-user',
       rank: 0,
       name: weekly ? 'YOU (not ranked this week)' : 'YOU (local only)',
-      ratingScore: gamesPlayed * 1000,
+      ratingScore: weekly || !stats ? 0 : arcadeRating(stats.highScores),
       totalScore,
       badgesUnlocked: 0,
       country: '🌐',
@@ -319,10 +324,12 @@ function emptyOverall(stats?: UserStats, weekly = false): OverallLeaderboardData
 
 export async function refreshGameLeaderboard(gameId: string): Promise<GameLeaderboardData> {
   const data = await apiRequest<{
+    scoreVersion: number;
     entries: ServerGameRow[];
     userEntry: ServerGameRow | null;
     totalCompetitors: number;
   }>(`/v1/leaderboards/${encodeURIComponent(gameId)}?limit=10`);
+  requireScoreVersion(data);
   const normalized: GameLeaderboardData = {
     topEntries: data.entries.map(normalizeGameRow),
     userRank: data.userEntry?.rank ?? null,
@@ -338,10 +345,12 @@ export async function refreshGameLeaderboard(gameId: string): Promise<GameLeader
 
 export async function refreshOverallLeaderboard(): Promise<OverallLeaderboardData> {
   const data = await apiRequest<{
+    scoreVersion: number;
     entries: ServerOverallRow[];
     userEntry: ServerOverallRow | null;
     totalCompetitors: number;
   }>('/v1/leaderboards/overall?limit=20');
+  requireScoreVersion(data);
   const fallback = emptyOverall();
   const normalized: OverallLeaderboardData = {
     topEntries: data.entries.map(normalizeOverallRow),
@@ -358,12 +367,14 @@ export async function refreshOverallLeaderboard(): Promise<OverallLeaderboardDat
 
 export async function refreshWeeklyOverallLeaderboard(): Promise<OverallLeaderboardData> {
   const data = await apiRequest<{
+    scoreVersion: number;
     entries: ServerOverallRow[];
     userEntry: ServerOverallRow | null;
     totalCompetitors: number;
     weekStart: number;
     weekEnd: number;
   }>('/v1/leaderboards/weekly?limit=20');
+  requireScoreVersion(data);
   const fallback = emptyOverall(undefined, true);
   const normalized: OverallLeaderboardData = {
     topEntries: data.entries.map(normalizeOverallRow),
@@ -443,27 +454,32 @@ export function resetAllLeaderboards(): void {
   window.dispatchEvent(new CustomEvent(LEADERBOARD_UPDATED_EVENT));
 }
 
-export async function beginLeaderboardSession(gameId: string): Promise<LeaderboardPlaySession | null> {
+export async function beginLeaderboardSession(gameId: string, modeId = defaultScoreMode(gameId)): Promise<LeaderboardPlaySession | null> {
   if (!isLiveLeaderboardConfigured() || navigator.onLine === false) return null;
   const clientStartedAt = performance.now();
-  const data = await apiRequest<{ session: { id: string; gameId: string; expiresAt: number } }>('/v1/sessions', {
+  const data = await apiRequest<{ scoreVersion: number; session: { modeId: string; scoreVersion: number; id: string; gameId: string; expiresAt: number } }>('/v1/sessions', {
     method: 'POST',
-    body: JSON.stringify({ gameId }),
+    body: JSON.stringify({ gameId, modeId, scoreVersion: SCORE_VERSION }),
   });
+  requireScoreVersion(data);
+  if (data.session.gameId !== gameId || data.session.modeId !== modeId || data.session.scoreVersion !== SCORE_VERSION) throw new Error("Leaderboard session does not match this game mode");
   return { id: data.session.id, gameId: data.session.gameId, expiresAt: data.session.expiresAt, clientStartedAt };
 }
 
-export async function submitLeaderboardScore(session: LeaderboardPlaySession, score: number): Promise<boolean> {
+export async function submitLeaderboardScore(session: LeaderboardPlaySession, score: number, modeId = defaultScoreMode(session.gameId)): Promise<boolean> {
   if (!isLiveLeaderboardConfigured() || !Number.isFinite(score)) return false;
   try {
-    const result = await apiRequest<{ accepted: boolean }>('/v1/scores', {
+    const result = await apiRequest<{ accepted: boolean; scoreVersion: number }>('/v1/scores', {
       method: 'POST',
       body: JSON.stringify({
         sessionId: session.id,
+        modeId,
+        scoreVersion: SCORE_VERSION,
         score: Math.max(0, Math.round(score)),
         durationMs: Math.max(0, performance.now() - session.clientStartedAt),
       }),
     });
+    requireScoreVersion(result);
     if (result.accepted !== true) return false;
     void Promise.allSettled([
       refreshGameLeaderboard(session.gameId),

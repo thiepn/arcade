@@ -569,7 +569,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
                   id: state.nextId++,
                   x: state.px,
                   y: state.py + 25,
-                  text: `+${pts} MAGNET`,
+                  text: `+${pts} base MAGNET`,
                   color: '#A855F7',
                   life: 1.0,
                 });
@@ -653,7 +653,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
                 id: state.nextId++,
                 x: drone.x,
                 y: drone.y + 25,
-                text: `DRONE STOMP +${dronePoints}!`,
+                text: `DRONE STOMP +${dronePoints} base!`,
                 color: '#F43F5E',
                 life: 1.2,
               });
@@ -715,7 +715,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
               id: state.nextId++,
               x: ring.x,
               y: ring.y + 30,
-              text: `WARP BOOST +${ringPts}!`,
+              text: `WARP BOOST +${ringPts} base!`,
               color: '#FACC15',
               life: 1.0,
             });
@@ -753,7 +753,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
                   id: state.nextId++,
                   x: state.px,
                   y: state.py + 34,
-                  text: `APEX x${state.apexPrecisionStreak} +${precisionBonus}`,
+                  text: `APEX x${state.apexPrecisionStreak} +${precisionBonus} base`,
                   color: '#FACC15',
                   life: 1.0,
                 });
@@ -825,7 +825,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
                   id: state.nextId++,
                   x: state.px,
                   y: state.py + 25,
-                  text: `+${gemPoints}`,
+                  text: `+${gemPoints} base`,
                   color: '#38BDF8',
                   life: 1.0,
                 });

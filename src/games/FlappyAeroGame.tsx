@@ -311,7 +311,7 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
               state.score += grazePoints;
               onScoreUpdate(state.score);
               if (soundEnabled) sounds.playWarp();
-              state.popups.push({ id: state.nextId++, x: state.x, y: state.y - 18, text: `GRAZE +${grazePoints}!`, color: '#FACC15', life: 0.7 });
+              state.popups.push({ id: state.nextId++, x: state.x, y: state.y - 18, text: `GRAZE +${grazePoints} base!`, color: '#FACC15', life: 0.7 });
             }
           }
 

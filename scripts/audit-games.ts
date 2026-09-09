@@ -1,3 +1,4 @@
+import { GAME_RULES } from '../shared/scoringProtocol';
 import { readdirSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
@@ -39,10 +40,7 @@ for (const match of registrySource.matchAll(/^\s{4}id:\s*'([a-z0-9-]+)',/gm)) {
   registryIds.add(match[1]);
 }
 
-const workerRuleBlock = /Object\.fromEntries\(\s*\[([\s\S]*?)\]\.map\(\(id\)/.exec(workerSource)?.[1] ?? '';
-const workerGameIds = new Set<string>(
-  [...workerRuleBlock.matchAll(/'([a-z0-9-]+)'/g)].map((match) => match[1]),
-);
+const workerGameIds = new Set(Object.keys(GAME_RULES));
 
 const controlHints = new Map<string, string>();
 for (const component of registeredComponents) {
@@ -66,9 +64,7 @@ if (registeredComponents.size !== importedComponents.size) {
 if (registryIds.size !== registeredComponents.size) {
   errors.push(`Registry contains ${registryIds.size} game IDs but ${registeredComponents.size} registered components.`);
 }
-if (!workerRuleBlock) {
-  errors.push('Unable to parse Cloudflare GAME_RULES accepted-game list.');
-}
+if (!workerSource.includes('shared/scoringProtocol.ts')) errors.push('Worker does not consume the shared scoring rule registry.');
 
 for (const id of registryIds) {
   if (!workerGameIds.has(id)) errors.push(`Frontend game ${id} is missing from Cloudflare GAME_RULES.`);

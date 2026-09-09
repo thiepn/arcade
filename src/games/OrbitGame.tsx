@@ -354,7 +354,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
               state.floatingTexts.push({
                 x: cx,
                 y: cy - state.baseRadii[state.currentLane] - 20,
-                text: `FORMATION x${Math.min(5, state.formationChain)} +${bonus}`,
+                text: `FORMATION x${Math.min(5, state.formationChain)} +${bonus} base`,
                 color: '#34D399',
                 life: 0,
                 maxLife: 36,
@@ -440,7 +440,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
             state.floatingTexts.push({
               x: crX,
               y: crY,
-              text: `ROUTE x${routeMultiplier} +${routePoints}`,
+              text: `ROUTE x${routeMultiplier} +${routePoints} base`,
               color: c.color,
               life: 0,
               maxLife: 35,
@@ -492,7 +492,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
             state.floatingTexts.push({
               x: playerX,
               y: playerY - 18,
-              text: `GRAZE x${state.nearMissChain} +${grazePoints}`,
+              text: `GRAZE x${state.nearMissChain} +${grazePoints} base`,
               color: '#FACC15',
               life: 0,
               maxLife: 30,

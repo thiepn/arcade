@@ -1,3 +1,4 @@
+import { rhythmComboMultiplier } from '../lib/scoringEconomy';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
@@ -66,6 +67,7 @@ const LANE_LABELS = ['D', 'F', 'J', 'K'];
 export const RhythmGame: React.FC<GameComponentProps> = ({
   onGameOver,
   onScoreUpdate,
+  onModeChange,
   isPaused,
   soundEnabled,
 }) => {
@@ -138,8 +140,11 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
 
   // Switch song
   const handleSelectSong = (idx: number) => {
-    setSelectedSongIndex(idx);
     const newSong = RHYTHM_SONGS[idx];
+    if (!newSong || idx === selectedSongIndex) return;
+    setSelectedSongIndex(idx);
+    onModeChange?.(newSong.id);
+    onScoreUpdate(0, newSong.id);
     const state = gameStateRef.current;
     state.song = newSong;
     state.currentBeat = -4; // reset with countdown
@@ -162,7 +167,6 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       isHolding: false,
       holdCompleted: false,
     }));
-    onScoreUpdate(0);
     musicEngine.playSong(newSong, -4);
   };
 
@@ -231,21 +235,13 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
         state.maxCombo = state.combo;
       }
 
-      // Dynamic multipliers
-      let mult = 1;
-      if (state.combo >= 50) mult = 8;
-      else if (state.combo >= 25) mult = 4;
-      else if (state.combo >= 12) mult = 3;
-      else if (state.combo >= 5) mult = 2;
-
-      if (state.isOverdrive) {
-        mult *= 2;
-      }
+      // Precision and earned Overdrive improve rewards without a 16x snowball.
+      const mult = rhythmComboMultiplier(state.combo, state.isOverdrive);
       state.multiplier = mult;
 
-      const earned = points * mult;
+      const earned = Math.round(points * mult);
       state.score += earned;
-      onScoreUpdate(state.score);
+      onScoreUpdate(state.score, state.song.id);
 
       // Restore Groove Health
       state.grooveHealth = Math.min(100, state.grooveHealth + (rating === 'PERFECT' ? 6 : 4));
@@ -290,7 +286,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       state.popups.push({
         id: state.nextPopupId++,
         text: rating,
-        subtext: `${closestSignedErrorMs > 0 ? '+' : ''}${Math.round(closestSignedErrorMs)}ms • +${earned.toLocaleString()}`,
+        subtext: `${closestSignedErrorMs > 0 ? '+' : ''}${Math.round(closestSignedErrorMs)}ms • +${earned.toLocaleString()} base`,
         color: ratingColor,
         lane: laneIndex,
         life: 1.0,
@@ -437,11 +433,11 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
             const holdBonus = getRhythmHoldCompletionBonus(holdBeats, state.multiplier);
             state.score += holdBonus;
             state.grooveHealth = Math.min(100, state.grooveHealth + 3);
-            onScoreUpdate(state.score);
+            onScoreUpdate(state.score, state.song.id);
             state.popups.push({
               id: state.nextPopupId++,
               text: 'HOLD CLEAR',
-              subtext: `+${holdBonus.toLocaleString()}`,
+              subtext: `+${holdBonus.toLocaleString()} base`,
               color: '#34D399',
               lane: note.lane,
               life: 1.0,
@@ -477,7 +473,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
               state.isAlive = false;
               musicEngine.stop();
               if (soundEnabledRef.current) sounds.playGameOver();
-              setSafeTimeout(() => onGameOver(state.score), 400);
+              setSafeTimeout(() => onGameOver(state.score, state.song.id), 400);
               break;
             }
           }
@@ -509,16 +505,16 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
               musicEngine.stop();
               if (soundEnabledRef.current) sounds.playGameOver();
               setSafeTimeout(() => {
-                onGameOver(state.score);
+                onGameOver(state.score, state.song.id);
               }, 400);
             }
           }
         }
 
         // Loop song when complete with track bonus!
-        if (state.currentBeat > state.song.durationBeats) {
+        if (state.isAlive && state.currentBeat > state.song.durationBeats) {
           state.score += 5000;
-          onScoreUpdate(state.score);
+          onScoreUpdate(state.score, state.song.id);
           if (soundEnabledRef.current) sounds.playSongFinish();
           state.currentBeat = 0; // seamless loop
           state.notes.forEach((n) => {

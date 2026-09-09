@@ -1,3 +1,4 @@
+import { formatArcadeScore, formatArcadeGain } from '../../shared/scoring';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
@@ -214,7 +215,7 @@ export const PinballGame: React.FC<GameComponentProps> = ({
       const points = Math.round(basePoints * state.multiplier);
       state.score += points;
       onScoreUpdate(state.score);
-      addScorePopup(label ? `${label} +${points}` : `+${points}`, x, y, color);
+      addScorePopup(label ? `${label} +${points} base` : `+${points} base`, x, y, color);
       return points;
     },
     [addScorePopup, onScoreUpdate],
@@ -1263,7 +1264,7 @@ export const PinballGame: React.FC<GameComponentProps> = ({
         ctx.fillText('GAME OVER', width / 2, height * 0.46);
         ctx.fillStyle = '#A1A1AA';
         ctx.font = 'bold 11px monospace';
-        ctx.fillText(`FINAL SCORE ${state.score}`, width / 2, height * 0.5);
+        ctx.fillText(`ARCADE PTS ${formatArcadeScore('pinball', state.score)}`, width / 2, height * 0.5);
       }
 
       ctx.restore();

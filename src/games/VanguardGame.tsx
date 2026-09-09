@@ -1,3 +1,4 @@
+import { formatArcadeScore, formatArcadeGain } from '../../shared/scoring';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
@@ -984,7 +985,7 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
 
         <div className="bg-[#18181B]/90 border border-zinc-800 px-3.5 py-1.5 rounded-lg backdrop-blur-md">
           <span className="font-mono-arcade text-sm text-cyan-400 font-bold">
-            {score.toLocaleString()}
+            {formatArcadeScore('vanguard', score)}
           </span>
         </div>
       </div>

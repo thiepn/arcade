@@ -375,7 +375,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
               state.score += earnedPts;
               onScoreUpdate(state.score);
               if (soundEnabled) sounds.playScore();
-              state.popups.push({ id: state.nextId++, x: centerX, y: groundY - state.playerY - 25, text: `${evasionText} +${earnedPts}`, color: '#34D399', life: 0.8 });
+              state.popups.push({ id: state.nextId++, x: centerX, y: groundY - state.playerY - 25, text: `${evasionText} +${earnedPts} base`, color: '#34D399', life: 0.8 });
               for (let i = 0; i < 10; i++) {
                 state.particles.push({ x: (Math.random() - 0.5) * 40, y: -state.playerY, vx: (Math.random() - 0.5) * 140, vy: (Math.random() - 0.5) * 140, life: 0.4, maxLife: 0.4, color: '#34D399', size: 3 });
               }

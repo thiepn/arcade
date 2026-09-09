@@ -404,7 +404,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
           const earned = target.points * mult;
           state.score += earned + precision.bonus;
           onScoreUpdate(state.score);
-          addPopup(`+${earned}`, target.x, target.y - 15, target.color, 1.0);
+          addPopup(`+${earned} base`, target.x, target.y - 15, target.color, 1.0);
           if (precision.precise) {
             addPopup(
               precision.razorRush
@@ -479,7 +479,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
         state.score += bonus;
         onScoreUpdate(state.score);
         if (soundEnabled) sounds.playVictory();
-        addPopup(`🔥 ${state.strokeCuts}x SWIPE COMBO! +${bonus}`, p2.x, p2.y - 30, '#FACC15', 1.3);
+        addPopup(`🔥 ${state.strokeCuts}x SWIPE COMBO! +${bonus} base`, p2.x, p2.y - 30, '#FACC15', 1.3);
         state.strokeCuts = 0; // consumed bonus for this stroke
       }
     },

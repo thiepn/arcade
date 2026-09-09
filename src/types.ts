@@ -22,7 +22,16 @@ export type AppTheme =
   | 'matrix-emerald'
   | 'sunset-amber';
 
+export interface ScoreDetails {
+  rawScore: number;
+  modeId: string;
+  scoreVersion: number;
+}
+
 export interface UserStats {
+  scoreVersion?: number;
+  legacyHighScores?: Record<string, number>;
+  bestScoreDetails?: Record<string, ScoreDetails>;
   highScores: Record<string, number>;
   playCounts: Record<string, number>;
   totalPlayTimeSeconds: Record<string, number>;
@@ -35,8 +44,9 @@ export interface UserStats {
 }
 
 export interface GameComponentProps {
-  onGameOver: (finalScore: number) => void;
-  onScoreUpdate: (currentScore: number) => void;
+  onGameOver: (finalScore: number, modeId?: string) => void;
+  onScoreUpdate: (currentScore: number, modeId?: string) => void;
+  onModeChange?: (modeId: string) => void;
   isPaused: boolean;
   soundEnabled: boolean;
   onRestartRequest?: () => void;

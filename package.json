@@ -85,7 +85,10 @@
     "quality:gameplay-p22": "bun scripts/audit-gameplay-p22.ts",
     "quality:gameplay-p23": "bun scripts/audit-gameplay-p23.ts",
     "quality:gameplay-p24": "bun scripts/audit-gameplay-p24.ts",
-    "quality:gameplay-p25": "bun scripts/audit-gameplay-p25.ts"
+    "quality:gameplay-p25": "bun scripts/audit-gameplay-p25.ts",
+    "quality:scoring": "bun scripts/audit-scoring.ts && bun scripts/audit-scoring-storage.ts && bun worker/tests/scoring.mjs",
+    "quality:scoring-browser": "bun scripts/audit-browser-scoring.mjs",
+    "quality:scoring-migrations": "python3 scripts/generate-scoring-migrations.py && git diff --exit-code -- supabase/migrations/20260909_scoring_v2.sql worker/migrations/0003_scoring_v2.sql scripts/scoring-postgres-parity.sql"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",

@@ -1,3 +1,4 @@
+import { arcadeRating, arcadeTotal } from '../../shared/scoring';
 import { UserStats, GameCategory } from '../types';
 import { GAMES_REGISTRY } from '../data/games';
 import { getGlobalLeaderboardForGame } from './leaderboards';
@@ -27,7 +28,7 @@ export function getTotalPlayCount(stats: UserStats): number {
 }
 
 export function getTotalHighScore(stats: UserStats): number {
-  return (Object.values(stats.highScores) as number[]).reduce((a, b) => a + (b || 0), 0);
+  return arcadeTotal(stats.highScores);
 }
 
 export function getUniqueGamesCount(stats: UserStats): number {
@@ -239,7 +240,7 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
   {
     id: 'score_10k',
     title: 'Five Figures',
-    description: 'Accumulate at least 10,000 cumulative score across all your best records.',
+    description: 'Accumulate at least 10,000 combined Arcade Points across all your best records.',
     category: 'scores',
     tier: 'bronze',
     icon: 'Zap',
@@ -248,12 +249,12 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     xpReward: 150,
     getCurrentProgress: (stats) => Math.min(10000, getTotalHighScore(stats)),
     isUnlocked: (stats) => getTotalHighScore(stats) >= 10000,
-    getProgressText: (stats) => `${Math.min(10000, getTotalHighScore(stats)).toLocaleString()} / 10,000 Pts`,
+    getProgressText: (stats) => `${Math.min(10000, getTotalHighScore(stats)).toLocaleString()} / 10,000 AP`,
   },
   {
     id: 'score_30k',
     title: 'Score Gladiator',
-    description: 'Reach 30,000 cumulative score across all high score records.',
+    description: 'Reach 30,000 combined Arcade Points across all high score records.',
     category: 'scores',
     tier: 'silver',
     icon: 'Award',
@@ -262,77 +263,77 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     xpReward: 350,
     getCurrentProgress: (stats) => Math.min(30000, getTotalHighScore(stats)),
     isUnlocked: (stats) => getTotalHighScore(stats) >= 30000,
-    getProgressText: (stats) => `${Math.min(30000, getTotalHighScore(stats)).toLocaleString()} / 30,000 Pts`,
+    getProgressText: (stats) => `${Math.min(30000, getTotalHighScore(stats)).toLocaleString()} / 30,000 AP`,
   },
   {
     id: 'score_75k',
     title: 'Point Titan',
-    description: 'Surpass 75,000 total cumulative score across the arcade catalogue.',
+    description: 'Surpass 60,000 total combined Arcade Points across the arcade catalogue.',
     category: 'scores',
     tier: 'gold',
     icon: 'Medal',
     accentColor: '#F59E0B',
-    targetGoal: 75000,
+    targetGoal: 60000,
     xpReward: 700,
-    getCurrentProgress: (stats) => Math.min(75000, getTotalHighScore(stats)),
-    isUnlocked: (stats) => getTotalHighScore(stats) >= 75000,
-    getProgressText: (stats) => `${Math.min(75000, getTotalHighScore(stats)).toLocaleString()} / 75,000 Pts`,
+    getCurrentProgress: (stats) => Math.min(60000, getTotalHighScore(stats)),
+    isUnlocked: (stats) => getTotalHighScore(stats) >= 60000,
+    getProgressText: (stats) => `${Math.min(60000, getTotalHighScore(stats)).toLocaleString()} / 60,000 AP`,
   },
   {
     id: 'score_150k',
     title: 'Centurion Scorer',
-    description: 'Break through the 150,000 total cumulative score milestone.',
+    description: 'Break through the 100,000 total combined Arcade Points milestone.',
     category: 'scores',
     tier: 'gold',
     icon: 'Star',
     accentColor: '#EC4899',
-    targetGoal: 150000,
+    targetGoal: 100000,
     xpReward: 1000,
-    getCurrentProgress: (stats) => Math.min(150000, getTotalHighScore(stats)),
-    isUnlocked: (stats) => getTotalHighScore(stats) >= 150000,
-    getProgressText: (stats) => `${Math.min(150000, getTotalHighScore(stats)).toLocaleString()} / 150,000 Pts`,
+    getCurrentProgress: (stats) => Math.min(100000, getTotalHighScore(stats)),
+    isUnlocked: (stats) => getTotalHighScore(stats) >= 100000,
+    getProgressText: (stats) => `${Math.min(100000, getTotalHighScore(stats)).toLocaleString()} / 100,000 AP`,
   },
   {
     id: 'score_300k',
-    title: 'Quarter Millionaire',
-    description: 'Accumulate 300,000 total cumulative score across all 20 games.',
+    title: 'Arcade Vanguard',
+    description: 'Accumulate 150,000 total combined Arcade Points across all 32 games.',
     category: 'scores',
     tier: 'diamond',
     icon: 'Gem',
     accentColor: '#8B5CF6',
-    targetGoal: 300000,
+    targetGoal: 150000,
     xpReward: 1600,
-    getCurrentProgress: (stats) => Math.min(300000, getTotalHighScore(stats)),
-    isUnlocked: (stats) => getTotalHighScore(stats) >= 300000,
-    getProgressText: (stats) => `${Math.min(300000, getTotalHighScore(stats)).toLocaleString()} / 300,000 Pts`,
+    getCurrentProgress: (stats) => Math.min(150000, getTotalHighScore(stats)),
+    isUnlocked: (stats) => getTotalHighScore(stats) >= 150000,
+    getProgressText: (stats) => `${Math.min(150000, getTotalHighScore(stats)).toLocaleString()} / 150,000 AP`,
   },
   {
     id: 'score_600k',
-    title: 'Half-Million Titan',
-    description: 'Cross the monumental 600,000 total cumulative high score boundary.',
+    title: 'Circuit Titan',
+    description: 'Cross the monumental 200,000 total cumulative high score boundary.',
     category: 'scores',
     tier: 'diamond',
     icon: 'Crown',
     accentColor: '#F43F5E',
-    targetGoal: 600000,
+    targetGoal: 200000,
     xpReward: 2400,
-    getCurrentProgress: (stats) => Math.min(600000, getTotalHighScore(stats)),
-    isUnlocked: (stats) => getTotalHighScore(stats) >= 600000,
-    getProgressText: (stats) => `${Math.min(600000, getTotalHighScore(stats)).toLocaleString()} / 600,000 Pts`,
+    getCurrentProgress: (stats) => Math.min(200000, getTotalHighScore(stats)),
+    isUnlocked: (stats) => getTotalHighScore(stats) >= 200000,
+    getProgressText: (stats) => `${Math.min(200000, getTotalHighScore(stats)).toLocaleString()} / 200,000 AP`,
   },
   {
     id: 'score_1m',
-    title: 'Millionaire Apex',
-    description: 'Enter the gods of arcade gaming with 1,000,000+ total cumulative score.',
+    title: 'Quarter-Million Apex',
+    description: 'Build an arcade-wide portfolio with 250,000+ total combined Arcade Points.',
     category: 'scores',
     tier: 'master',
     icon: 'Sparkles',
     accentColor: '#FACC15',
-    targetGoal: 1000000,
+    targetGoal: 250000,
     xpReward: 4000,
-    getCurrentProgress: (stats) => Math.min(1000000, getTotalHighScore(stats)),
-    isUnlocked: (stats) => getTotalHighScore(stats) >= 1000000,
-    getProgressText: (stats) => `${Math.min(1000000, getTotalHighScore(stats)).toLocaleString()} / 1,000,000 Pts`,
+    getCurrentProgress: (stats) => Math.min(250000, getTotalHighScore(stats)),
+    isUnlocked: (stats) => getTotalHighScore(stats) >= 250000,
+    getProgressText: (stats) => `${Math.min(250000, getTotalHighScore(stats)).toLocaleString()} / 250,000 AP`,
   },
 
   // =========================================================================
@@ -355,7 +356,7 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
   {
     id: 'variety_grand_tour',
     title: 'Grand Tour',
-    description: 'Play every single mini-game in the entire arcade (all 20 games).',
+    description: 'Play every single mini-game in the entire arcade (all 32 games).',
     category: 'variety',
     tier: 'silver',
     icon: 'Globe',
@@ -383,7 +384,7 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
   {
     id: 'variety_omni_player',
     title: 'Omni-Player',
-    description: 'Score at least 2,500+ points in every single one of the 20 mini-games.',
+    description: 'Score at least 2,500+ points in every single one of the 32 mini-games.',
     category: 'variety',
     tier: 'gold',
     icon: 'Layers',
@@ -392,7 +393,7 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     xpReward: 1200,
     getCurrentProgress: (stats) => Math.min(GAMES_REGISTRY.length, getGamesWithMinScoreCount(stats, 2500)),
     isUnlocked: (stats) => getGamesWithMinScoreCount(stats, 2500) >= GAMES_REGISTRY.length,
-    getProgressText: (stats) => `${Math.min(GAMES_REGISTRY.length, getGamesWithMinScoreCount(stats, 2500))} / ${GAMES_REGISTRY.length} Games (2,500+ Pts)`,
+    getProgressText: (stats) => `${Math.min(GAMES_REGISTRY.length, getGamesWithMinScoreCount(stats, 2500))} / ${GAMES_REGISTRY.length} Games (2,500+ AP)`,
   },
   {
     id: 'variety_elite_mastery',
@@ -406,7 +407,7 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     xpReward: 1800,
     getCurrentProgress: (stats) => Math.min(15, getGamesWithMinScoreCount(stats, 6000)),
     isUnlocked: (stats) => getGamesWithMinScoreCount(stats, 6000) >= 15,
-    getProgressText: (stats) => `${Math.min(15, getGamesWithMinScoreCount(stats, 6000))} / 15 Games (6,000+ Pts)`,
+    getProgressText: (stats) => `${Math.min(15, getGamesWithMinScoreCount(stats, 6000))} / 15 Games (6,000+ AP)`,
   },
   {
     id: 'variety_genre_maestro',
@@ -448,21 +449,21 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     xpReward: 400,
     getCurrentProgress: (stats) => Math.min(5000, getCategoryHighScore(stats, 'Reflex')),
     isUnlocked: (stats) => getCategoryHighScore(stats, 'Reflex') >= 5000,
-    getProgressText: (stats) => `${Math.min(5000, getCategoryHighScore(stats, 'Reflex')).toLocaleString()} / 5,000 Pts`,
+    getProgressText: (stats) => `${Math.min(5000, getCategoryHighScore(stats, 'Reflex')).toLocaleString()} / 5,000 AP`,
   },
   {
     id: 'skill_reflex_olympian',
     title: 'Reflex Olympian',
-    description: 'Score an astonishing 15,000+ points in any Reflex mini-game.',
+    description: 'Score an astonishing 7,500+ points in any Reflex mini-game.',
     category: 'skill',
     tier: 'gold',
     icon: 'Zap',
     accentColor: '#38BDF8',
-    targetGoal: 15000,
+    targetGoal: 7500,
     xpReward: 900,
-    getCurrentProgress: (stats) => Math.min(15000, getCategoryHighScore(stats, 'Reflex')),
-    isUnlocked: (stats) => getCategoryHighScore(stats, 'Reflex') >= 15000,
-    getProgressText: (stats) => `${Math.min(15000, getCategoryHighScore(stats, 'Reflex')).toLocaleString()} / 15,000 Pts`,
+    getCurrentProgress: (stats) => Math.min(7500, getCategoryHighScore(stats, 'Reflex')),
+    isUnlocked: (stats) => getCategoryHighScore(stats, 'Reflex') >= 7500,
+    getProgressText: (stats) => `${Math.min(7500, getCategoryHighScore(stats, 'Reflex')).toLocaleString()} / 7,500 AP`,
   },
   {
     id: 'skill_physics_quantum',
@@ -476,21 +477,21 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     xpReward: 400,
     getCurrentProgress: (stats) => Math.min(6000, getCategoryHighScore(stats, 'Physics')),
     isUnlocked: (stats) => getCategoryHighScore(stats, 'Physics') >= 6000,
-    getProgressText: (stats) => `${Math.min(6000, getCategoryHighScore(stats, 'Physics')).toLocaleString()} / 6,000 Pts`,
+    getProgressText: (stats) => `${Math.min(6000, getCategoryHighScore(stats, 'Physics')).toLocaleString()} / 6,000 AP`,
   },
   {
     id: 'skill_physics_demigod',
     title: 'Physics Demigod',
-    description: 'Score a massive 18,000+ points in any Physics mini-game.',
+    description: 'Score a massive 8,000+ points in any Physics mini-game.',
     category: 'skill',
     tier: 'gold',
     icon: 'Orbit',
     accentColor: '#A855F7',
-    targetGoal: 18000,
+    targetGoal: 8000,
     xpReward: 900,
-    getCurrentProgress: (stats) => Math.min(18000, getCategoryHighScore(stats, 'Physics')),
-    isUnlocked: (stats) => getCategoryHighScore(stats, 'Physics') >= 18000,
-    getProgressText: (stats) => `${Math.min(18000, getCategoryHighScore(stats, 'Physics')).toLocaleString()} / 18,000 Pts`,
+    getCurrentProgress: (stats) => Math.min(8000, getCategoryHighScore(stats, 'Physics')),
+    isUnlocked: (stats) => getCategoryHighScore(stats, 'Physics') >= 8000,
+    getProgressText: (stats) => `${Math.min(8000, getCategoryHighScore(stats, 'Physics')).toLocaleString()} / 8,000 AP`,
   },
   {
     id: 'skill_puzzle_grandmaster',
@@ -512,30 +513,30 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     },
     getProgressText: (stats) => {
       const top = Math.max(getCategoryHighScore(stats, 'Puzzle'), getCategoryHighScore(stats, 'Strategy'));
-      return `${Math.min(8000, top).toLocaleString()} / 8,000 Pts`;
+      return `${Math.min(8000, top).toLocaleString()} / 8,000 AP`;
     },
   },
   {
     id: 'skill_puzzle_singularity',
     title: 'Cognitive Singularity',
-    description: 'Score 20,000+ points in any Puzzle or Strategy mini-game.',
+    description: 'Score 10,000+ points in any Puzzle or Strategy mini-game.',
     category: 'skill',
     tier: 'gold',
     icon: 'Gem',
     accentColor: '#34D399',
-    targetGoal: 20000,
+    targetGoal: 10000,
     xpReward: 900,
     getCurrentProgress: (stats) => {
       const puzzle = getCategoryHighScore(stats, 'Puzzle');
       const strategy = getCategoryHighScore(stats, 'Strategy');
-      return Math.min(20000, Math.max(puzzle, strategy));
+      return Math.min(10000, Math.max(puzzle, strategy));
     },
     isUnlocked: (stats) => {
-      return getCategoryHighScore(stats, 'Puzzle') >= 20000 || getCategoryHighScore(stats, 'Strategy') >= 20000;
+      return getCategoryHighScore(stats, 'Puzzle') >= 10000 || getCategoryHighScore(stats, 'Strategy') >= 10000;
     },
     getProgressText: (stats) => {
       const top = Math.max(getCategoryHighScore(stats, 'Puzzle'), getCategoryHighScore(stats, 'Strategy'));
-      return `${Math.min(20000, top).toLocaleString()} / 20,000 Pts`;
+      return `${Math.min(10000, top).toLocaleString()} / 10,000 AP`;
     },
   },
   {
@@ -550,7 +551,7 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     xpReward: 400,
     getCurrentProgress: (stats) => Math.min(6000, getCategoryHighScore(stats, 'Timing')),
     isUnlocked: (stats) => getCategoryHighScore(stats, 'Timing') >= 6000,
-    getProgressText: (stats) => `${Math.min(6000, getCategoryHighScore(stats, 'Timing')).toLocaleString()} / 6,000 Pts`,
+    getProgressText: (stats) => `${Math.min(6000, getCategoryHighScore(stats, 'Timing')).toLocaleString()} / 6,000 AP`,
   },
   {
     id: 'skill_type_speedster',
@@ -564,7 +565,7 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     xpReward: 400,
     getCurrentProgress: (stats) => Math.min(6000, stats.highScores['typerush'] || 0),
     isUnlocked: (stats) => (stats.highScores['typerush'] || 0) >= 6000,
-    getProgressText: (stats) => `${Math.min(6000, stats.highScores['typerush'] || 0).toLocaleString()} / 6,000 Pts`,
+    getProgressText: (stats) => `${Math.min(6000, stats.highScores['typerush'] || 0).toLocaleString()} / 6,000 AP`,
   },
 
   // =========================================================================
@@ -573,16 +574,16 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
   {
     id: 'feat_pinball_wizard',
     title: 'Pinball Wizard',
-    description: 'Score 12,000+ points on the Neon Pinball machine.',
+    description: 'Score 8,000+ points on the Neon Pinball machine.',
     category: 'skill',
     tier: 'gold',
     icon: 'Orbit',
     accentColor: '#8B5CF6',
-    targetGoal: 12000,
+    targetGoal: 8000,
     xpReward: 700,
-    getCurrentProgress: (stats) => Math.min(12000, stats.highScores['pinball'] || 0),
-    isUnlocked: (stats) => (stats.highScores['pinball'] || 0) >= 12000,
-    getProgressText: (stats) => `${Math.min(12000, stats.highScores['pinball'] || 0).toLocaleString()} / 12,000 Pts`,
+    getCurrentProgress: (stats) => Math.min(8000, stats.highScores['pinball'] || 0),
+    isUnlocked: (stats) => (stats.highScores['pinball'] || 0) >= 8000,
+    getProgressText: (stats) => `${Math.min(8000, stats.highScores['pinball'] || 0).toLocaleString()} / 8,000 AP`,
   },
   {
     id: 'feat_blade_master',
@@ -596,7 +597,7 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     xpReward: 700,
     getCurrentProgress: (stats) => Math.min(10000, stats.highScores['blade'] || 0),
     isUnlocked: (stats) => (stats.highScores['blade'] || 0) >= 10000,
-    getProgressText: (stats) => `${Math.min(10000, stats.highScores['blade'] || 0).toLocaleString()} / 10,000 Pts`,
+    getProgressText: (stats) => `${Math.min(10000, stats.highScores['blade'] || 0).toLocaleString()} / 10,000 AP`,
   },
   {
     id: 'feat_chrono_survivor',
@@ -610,7 +611,7 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     xpReward: 700,
     getCurrentProgress: (stats) => Math.min(8000, stats.highScores['chrono'] || 0),
     isUnlocked: (stats) => (stats.highScores['chrono'] || 0) >= 8000,
-    getProgressText: (stats) => `${Math.min(8000, stats.highScores['chrono'] || 0).toLocaleString()} / 8,000 Pts`,
+    getProgressText: (stats) => `${Math.min(8000, stats.highScores['chrono'] || 0).toLocaleString()} / 8,000 AP`,
   },
   {
     id: 'feat_serpent_ouroboros',
@@ -624,7 +625,7 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     xpReward: 700,
     getCurrentProgress: (stats) => Math.min(10000, stats.highScores['snake'] || 0),
     isUnlocked: (stats) => (stats.highScores['snake'] || 0) >= 10000,
-    getProgressText: (stats) => `${Math.min(10000, stats.highScores['snake'] || 0).toLocaleString()} / 10,000 Pts`,
+    getProgressText: (stats) => `${Math.min(10000, stats.highScores['snake'] || 0).toLocaleString()} / 10,000 AP`,
   },
   {
     id: 'feat_stack_skyscraper',
@@ -638,7 +639,7 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     xpReward: 700,
     getCurrentProgress: (stats) => Math.min(7500, stats.highScores['stack'] || 0),
     isUnlocked: (stats) => (stats.highScores['stack'] || 0) >= 7500,
-    getProgressText: (stats) => `${Math.min(7500, stats.highScores['stack'] || 0).toLocaleString()} / 7,500 Pts`,
+    getProgressText: (stats) => `${Math.min(7500, stats.highScores['stack'] || 0).toLocaleString()} / 7,500 AP`,
   },
   {
     id: 'feat_orbit_apex',
@@ -652,21 +653,21 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     xpReward: 700,
     getCurrentProgress: (stats) => Math.min(8000, stats.highScores['orbit'] || 0),
     isUnlocked: (stats) => (stats.highScores['orbit'] || 0) >= 8000,
-    getProgressText: (stats) => `${Math.min(8000, stats.highScores['orbit'] || 0).toLocaleString()} / 8,000 Pts`,
+    getProgressText: (stats) => `${Math.min(8000, stats.highScores['orbit'] || 0).toLocaleString()} / 8,000 AP`,
   },
   {
     id: 'feat_merge_fusion',
     title: 'Neon Fusion Core',
-    description: 'Score 12,000+ points combining numbered energy tiles in Neon Merge.',
+    description: 'Score 8,000+ points combining numbered energy tiles in Neon Merge.',
     category: 'skill',
     tier: 'gold',
     icon: 'Gem',
     accentColor: '#10B981',
-    targetGoal: 12000,
+    targetGoal: 8000,
     xpReward: 700,
-    getCurrentProgress: (stats) => Math.min(12000, stats.highScores['merge'] || 0),
-    isUnlocked: (stats) => (stats.highScores['merge'] || 0) >= 12000,
-    getProgressText: (stats) => `${Math.min(12000, stats.highScores['merge'] || 0).toLocaleString()} / 12,000 Pts`,
+    getCurrentProgress: (stats) => Math.min(8000, stats.highScores['merge'] || 0),
+    isUnlocked: (stats) => (stats.highScores['merge'] || 0) >= 8000,
+    getProgressText: (stats) => `${Math.min(8000, stats.highScores['merge'] || 0).toLocaleString()} / 8,000 AP`,
   },
   {
     id: 'feat_vanguard_ace',
@@ -680,35 +681,35 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     xpReward: 700,
     getCurrentProgress: (stats) => Math.min(10000, stats.highScores['vanguard'] || 0),
     isUnlocked: (stats) => (stats.highScores['vanguard'] || 0) >= 10000,
-    getProgressText: (stats) => `${Math.min(10000, stats.highScores['vanguard'] || 0).toLocaleString()} / 10,000 Pts`,
+    getProgressText: (stats) => `${Math.min(10000, stats.highScores['vanguard'] || 0).toLocaleString()} / 10,000 AP`,
   },
   {
     id: 'feat_rhythm_virtuoso',
     title: 'Synth Highway Maestro',
-    description: 'Score 15,000+ points hitting flawless beat streaks in Neon Rhythm Tapper.',
+    description: 'Score 6,000+ points hitting flawless beat streaks in Neon Rhythm Tapper.',
     category: 'skill',
     tier: 'gold',
     icon: 'Radio',
     accentColor: '#EC4899',
-    targetGoal: 15000,
+    targetGoal: 6000,
     xpReward: 750,
-    getCurrentProgress: (stats) => Math.min(15000, stats.highScores['rhythm'] || 0),
-    isUnlocked: (stats) => (stats.highScores['rhythm'] || 0) >= 15000,
-    getProgressText: (stats) => `${Math.min(15000, stats.highScores['rhythm'] || 0).toLocaleString()} / 15,000 Pts`,
+    getCurrentProgress: (stats) => Math.min(6000, stats.highScores['rhythm'] || 0),
+    isUnlocked: (stats) => (stats.highScores['rhythm'] || 0) >= 6000,
+    getProgressText: (stats) => `${Math.min(6000, stats.highScores['rhythm'] || 0).toLocaleString()} / 6,000 AP`,
   },
   {
     id: 'feat_tower_ascendant',
     title: 'Gravity Spire Titan',
-    description: 'Reach 12,000+ points ascending the cyber platforms in Gravity Tower Jumper.',
+    description: 'Reach 8,000+ points ascending the cyber platforms in Gravity Tower Jumper.',
     category: 'skill',
     tier: 'gold',
     icon: 'Boxes',
     accentColor: '#38BDF8',
-    targetGoal: 12000,
+    targetGoal: 8000,
     xpReward: 750,
-    getCurrentProgress: (stats) => Math.min(12000, stats.highScores['tower'] || 0),
-    isUnlocked: (stats) => (stats.highScores['tower'] || 0) >= 12000,
-    getProgressText: (stats) => `${Math.min(12000, stats.highScores['tower'] || 0).toLocaleString()} / 12,000 Pts`,
+    getCurrentProgress: (stats) => Math.min(8000, stats.highScores['tower'] || 0),
+    isUnlocked: (stats) => (stats.highScores['tower'] || 0) >= 8000,
+    getProgressText: (stats) => `${Math.min(8000, stats.highScores['tower'] || 0).toLocaleString()} / 8,000 AP`,
   },
 
   // =========================================================================
@@ -850,17 +851,17 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
   },
   {
     id: 'score_millionaire',
-    title: 'Hyper Millionaire',
-    description: 'Amass a monumental 1,000,000 cumulative high score points across all arcade cabinets.',
+    title: 'Arcade Apex',
+    description: 'Amass a monumental 300,000 combined Arcade Points across all arcade cabinets.',
     category: 'scores',
     tier: 'master',
     icon: 'Sparkles',
     accentColor: '#FACC15',
-    targetGoal: 1000000,
+    targetGoal: 300000,
     xpReward: 4000,
-    getCurrentProgress: (stats) => Math.min(1000000, getTotalHighScore(stats)),
-    isUnlocked: (stats) => getTotalHighScore(stats) >= 1000000,
-    getProgressText: (stats) => `${getTotalHighScore(stats).toLocaleString()} / 1,000,000 Pts`,
+    getCurrentProgress: (stats) => Math.min(300000, getTotalHighScore(stats)),
+    isUnlocked: (stats) => getTotalHighScore(stats) >= 300000,
+    getProgressText: (stats) => `${getTotalHighScore(stats).toLocaleString()} / 300,000 AP`,
   },
   {
     id: 'variety_grand_tour_25',
@@ -902,7 +903,7 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     xpReward: 3000,
     getCurrentProgress: (stats) => Math.min(10, getGamesWithMinScoreCount(stats, 10000)),
     isUnlocked: (stats) => getGamesWithMinScoreCount(stats, 10000) >= 10,
-    getProgressText: (stats) => `${Math.min(10, getGamesWithMinScoreCount(stats, 10000))} / 10 Games with 10k+ Pts`,
+    getProgressText: (stats) => `${Math.min(10, getGamesWithMinScoreCount(stats, 10000))} / 10 Games with 10k+ AP`,
   },
   {
     id: 'skill_score_25k_multi_6',
@@ -916,7 +917,7 @@ export const ACHIEVEMENTS_REGISTRY: Achievement[] = [
     xpReward: 4000,
     getCurrentProgress: (stats) => Math.min(6, getGamesWithMinScoreCount(stats, 25000)),
     isUnlocked: (stats) => getGamesWithMinScoreCount(stats, 25000) >= 6,
-    getProgressText: (stats) => `${Math.min(6, getGamesWithMinScoreCount(stats, 25000))} / 6 Games with 25k+ Pts`,
+    getProgressText: (stats) => `${Math.min(6, getGamesWithMinScoreCount(stats, 25000))} / 6 Games with 25k+ AP`,
   },
   {
     id: 'comp_top10_multi_12',
@@ -991,11 +992,8 @@ export function getPlayerRankProfile(stats: UserStats): PlayerRankProfile {
   const totalBadges = ACHIEVEMENTS_REGISTRY.length;
   const completionPercent = Math.round((unlockedCount / totalBadges) * 100);
 
-  // Overall player rating = (Total cumulative score * 0.1) + (XP earned * 3) + (Plays * 15)
-  const totalScore = getTotalHighScore(stats);
-  const totalXP = ACHIEVEMENTS_REGISTRY.filter((a) => a.isUnlocked(stats)).reduce((sum, a) => sum + a.xpReward, 0);
-  const totalPlays = getTotalPlayCount(stats);
-  const ratingScore = Math.round((totalScore * 0.1) + (totalXP * 3) + (totalPlays * 15));
+  // Rating is performance-only and identical to the overall leaderboard.
+  const ratingScore = arcadeRating(stats.highScores);
 
   // Find active tier by highest met threshold
   const currentTier =
@@ -1119,4 +1117,55 @@ export function getPlayerLevelInfo(stats: UserStats): PlayerLevelInfo {
     glowColor: currentThreshold.glowColor,
     badgeTier: currentThreshold.badgeTier,
   };
+}
+
+// Original score badges remain earned; they do not contribute to the performance rating.
+// These frozen v1 predicates only read the immutable legacyHighScores archive.
+const LEGACY_SCORE_PREDICATES: Record<string, (stats: UserStats) => boolean> = {
+  'score_10k': (stats) => getTotalHighScore(stats) >= 10000,
+  'score_30k': (stats) => getTotalHighScore(stats) >= 30000,
+  'score_75k': (stats) => getTotalHighScore(stats) >= 75000,
+  'score_150k': (stats) => getTotalHighScore(stats) >= 150000,
+  'score_300k': (stats) => getTotalHighScore(stats) >= 300000,
+  'score_600k': (stats) => getTotalHighScore(stats) >= 600000,
+  'score_1m': (stats) => getTotalHighScore(stats) >= 1000000,
+  'variety_omni_player': (stats) => getGamesWithMinScoreCount(stats, 2500) >= GAMES_REGISTRY.length,
+  'variety_elite_mastery': (stats) => getGamesWithMinScoreCount(stats, 6000) >= 15,
+  'variety_genre_maestro': (stats) => {
+      return getCategoryTotalScore(stats, 'Reflex') >= 20000 && getCategoryTotalScore(stats, 'Physics') >= 20000;
+    },
+  'skill_reflex_lightning': (stats) => getCategoryHighScore(stats, 'Reflex') >= 5000,
+  'skill_reflex_olympian': (stats) => getCategoryHighScore(stats, 'Reflex') >= 15000,
+  'skill_physics_quantum': (stats) => getCategoryHighScore(stats, 'Physics') >= 6000,
+  'skill_physics_demigod': (stats) => getCategoryHighScore(stats, 'Physics') >= 18000,
+  'skill_puzzle_grandmaster': (stats) => {
+      return getCategoryHighScore(stats, 'Puzzle') >= 8000 || getCategoryHighScore(stats, 'Strategy') >= 8000;
+    },
+  'skill_puzzle_singularity': (stats) => {
+      return getCategoryHighScore(stats, 'Puzzle') >= 20000 || getCategoryHighScore(stats, 'Strategy') >= 20000;
+    },
+  'skill_timing_virtuoso': (stats) => getCategoryHighScore(stats, 'Timing') >= 6000,
+  'skill_type_speedster': (stats) => (stats.highScores['typerush'] || 0) >= 6000,
+  'feat_pinball_wizard': (stats) => (stats.highScores['pinball'] || 0) >= 12000,
+  'feat_blade_master': (stats) => (stats.highScores['blade'] || 0) >= 10000,
+  'feat_chrono_survivor': (stats) => (stats.highScores['chrono'] || 0) >= 8000,
+  'feat_serpent_ouroboros': (stats) => (stats.highScores['snake'] || 0) >= 10000,
+  'feat_stack_skyscraper': (stats) => (stats.highScores['stack'] || 0) >= 7500,
+  'feat_orbit_apex': (stats) => (stats.highScores['orbit'] || 0) >= 8000,
+  'feat_merge_fusion': (stats) => (stats.highScores['merge'] || 0) >= 12000,
+  'feat_vanguard_ace': (stats) => (stats.highScores['vanguard'] || 0) >= 10000,
+  'feat_rhythm_virtuoso': (stats) => (stats.highScores['rhythm'] || 0) >= 15000,
+  'feat_tower_ascendant': (stats) => (stats.highScores['tower'] || 0) >= 12000,
+  'score_millionaire': (stats) => getTotalHighScore(stats) >= 1000000,
+  'skill_score_10k_multi_10': (stats) => getGamesWithMinScoreCount(stats, 10000) >= 10,
+  'skill_score_25k_multi_6': (stats) => getGamesWithMinScoreCount(stats, 25000) >= 6,
+};
+for (const achievement of ACHIEVEMENTS_REGISTRY) {
+  const predicate = LEGACY_SCORE_PREDICATES[achievement.id];
+  if (!predicate) continue;
+  const earnedLegacy = (stats: UserStats) => Boolean(stats.legacyHighScores && Object.keys(stats.legacyHighScores).length && predicate({ ...stats, highScores: stats.legacyHighScores }));
+  const current = achievement.isUnlocked, progress = achievement.getCurrentProgress, text = achievement.getProgressText;
+  achievement.isUnlocked = (stats) => current(stats) || earnedLegacy(stats);
+  achievement.getCurrentProgress = (stats) => earnedLegacy(stats) ? achievement.targetGoal : progress(stats);
+  achievement.getProgressText = (stats) => earnedLegacy(stats) ? 'Earned under original scoring rules' : text(stats);
 }

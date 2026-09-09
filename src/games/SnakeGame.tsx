@@ -342,7 +342,7 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
         setPhaseThreadChain(state.phaseThreadChain);
         onScoreUpdate(state.score);
         addFloatingText(
-          `PHASE THREAD x${state.phaseThreadChain} +${reward}`,
+          `PHASE THREAD x${state.phaseThreadChain} +${reward} base`,
           newHead.x * state.cellSize,
           newHead.y * state.cellSize - 14,
           '#C084FC',

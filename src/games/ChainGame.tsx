@@ -1,3 +1,4 @@
+import { chainOrbReward } from '../lib/scoringEconomy';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
@@ -590,9 +591,8 @@ export const ChainGame: React.FC<GameComponentProps> = ({
                     if (soundEnabled) sounds.playChime(1100);
                   }
 
-                  const multiplier = other.type === 'multiplier' ? 3 : 1;
-                  const comboFactor = Math.floor(state.chainCount / 4) + 1;
-                  const pts = state.chainCount * 140 * multiplier * comboFactor;
+                  const comboFactor = 1 + Math.min(12, Math.max(0, state.chainCount - 1)) * 0.15;
+                  const pts = chainOrbReward(state.chainCount, other.type === 'multiplier');
                   state.score += pts;
 
                   if (state.chainCount % 8 === 0) {
@@ -603,7 +603,7 @@ export const ChainGame: React.FC<GameComponentProps> = ({
                   state.floatingTexts.push({
                     x: other.x,
                     y: other.y,
-                    text: comboFactor > 1 ? `+${pts} (${comboFactor}x)` : `+${pts}`,
+                    text: comboFactor > 1 ? `+${pts} base (${comboFactor.toFixed(2)}x)` : `+${pts} base`,
                     color: other.color,
                     life: 0,
                     maxLife: 24,
@@ -683,8 +683,8 @@ export const ChainGame: React.FC<GameComponentProps> = ({
 
             setComboBanner(
               allOrbsCleared
-                ? `🌟 100% BOARD WIPE! +${waveBonus} PTS`
-                : `🎉 WAVE ${state.wave} CLEARED! +${waveBonus} PTS`
+                ? `🌟 100% BOARD WIPE! +${waveBonus} base`
+                : `🎉 WAVE ${state.wave} CLEARED! +${waveBonus} base`
             );
 
             setSafeTimeout(() => {

@@ -444,7 +444,7 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
                     id: state.nextId++,
                     x: fb.x,
                     y: fb.y - 15,
-                    text: `CASCADE +${dropPts}!`,
+                    text: `CASCADE +${dropPts} base!`,
                     color: '#FACC15',
                     life: 1.0,
                   });
@@ -458,7 +458,7 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
                     id: state.nextId++,
                     x: fb.x,
                     y: fb.y - 34,
-                    text: `SALVO PLAN +${salvoBonus}`,
+                    text: `SALVO PLAN +${salvoBonus} base`,
                     color: '#67E8F9',
                     life: 1.15,
                   });

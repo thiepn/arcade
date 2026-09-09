@@ -1,8 +1,13 @@
-import { UserStats, AppTheme } from '../types';
+import { SCORE_VERSION, toArcadePoints, isScoreMode } from '../../shared/scoring';
+import { UserStats, AppTheme, ScoreDetails } from '../types';
 
-const STORAGE_KEY = 'micro_arcade_stats_v1';
+const STORAGE_KEY = 'micro_arcade_stats_v2';
+const LEGACY_STORAGE_KEY = 'micro_arcade_stats_v1';
 
 const defaultStats: UserStats = {
+  scoreVersion: SCORE_VERSION,
+  legacyHighScores: {},
+  bestScoreDetails: {},
   highScores: {},
   playCounts: {},
   totalPlayTimeSeconds: {},
@@ -14,7 +19,7 @@ const defaultStats: UserStats = {
   theme: 'default',
 };
 
-const freshStats = (): UserStats => ({ ...defaultStats, highScores: {}, playCounts: {}, totalPlayTimeSeconds: {}, favorites: [], recentlyPlayed: [] });
+const freshStats = (): UserStats => ({ ...defaultStats, legacyHighScores: {}, bestScoreDetails: {}, highScores: {}, playCounts: {}, totalPlayTimeSeconds: {}, favorites: [], recentlyPlayed: [] });
 let memoryStats = freshStats();
 let pendingWrite = false;
 export const STORAGE_STATUS_EVENT = 'micro-arcade-storage-status';
@@ -32,8 +37,19 @@ const idList = (value: unknown, limit = 100) => Array.isArray(value) ? [...new S
 function normalizeStats(value: unknown): UserStats {
   const parsed = isRecord(value) ? value : {};
   const themes: AppTheme[] = ['default', 'retro-monochrome', 'cyberpunk', 'matrix-emerald', 'sunset-amber'];
+  const nativeScores = numberMap(parsed.highScores);
+  const migrating = parsed.scoreVersion === undefined || parsed.scoreVersion === 1;
+  const highScores = migrating
+    ? Object.fromEntries(Object.entries(nativeScores).map(([id,raw]) => [id,toArcadePoints(id,raw,undefined,1)] as [string,number]).filter(([,score]) => score > 0))
+    : nativeScores;
+  const bestScoreDetails = Object.fromEntries(Object.entries(isRecord(parsed.bestScoreDetails) ? parsed.bestScoreDetails : {}).filter(([id,v]) =>
+    validId(id) && isRecord(v) && typeof v.rawScore === 'number' && Number.isSafeInteger(v.rawScore) && v.rawScore >= 0 &&
+    typeof v.modeId === 'string' && isScoreMode(id,v.modeId) && v.scoreVersion === SCORE_VERSION));
   return {
-    highScores: numberMap(parsed.highScores),
+    scoreVersion: SCORE_VERSION,
+    legacyHighScores: migrating ? { ...numberMap(parsed.legacyHighScores), ...nativeScores } : numberMap(parsed.legacyHighScores),
+    bestScoreDetails: bestScoreDetails as Record<string,ScoreDetails>,
+    highScores,
     playCounts: numberMap(parsed.playCounts),
     totalPlayTimeSeconds: numberMap(parsed.totalPlayTimeSeconds),
     favorites: idList(parsed.favorites),
@@ -50,8 +66,14 @@ export function getStoredStats(): UserStats {
   // A denied/quota-limited write must not erase this session's progress on the next action.
   if (pendingWrite) return normalizeStats(memoryStats);
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const current = localStorage.getItem(STORAGE_KEY);
+    const raw = current ?? localStorage.getItem(LEGACY_STORAGE_KEY);
     memoryStats = raw ? normalizeStats(JSON.parse(raw)) : freshStats();
+    // A separate key keeps cached v1 clients from overwriting the new point units.
+    if (current === null && raw !== null) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(memoryStats)); }
+      catch { pendingWrite = true; }
+    }
     return normalizeStats(memoryStats);
   } catch {
     return normalizeStats(memoryStats);
@@ -87,7 +109,7 @@ export function recordGamePlay(gameId: string): UserStats {
   return updated;
 }
 
-export function recordScore(gameId: string, score: number): { isNewHighScore: boolean; stats: UserStats } {
+export function recordScore(gameId: string, score: number, details?: ScoreDetails): { isNewHighScore: boolean; stats: UserStats } {
   const current = getStoredStats();
   if (!validId(gameId) || !Number.isFinite(score) || score < 0 || score > Number.MAX_SAFE_INTEGER) {
     return { isNewHighScore: false, stats: current };
@@ -100,10 +122,12 @@ export function recordScore(gameId: string, score: number): { isNewHighScore: bo
     [gameId]: Math.max(prevBest, score),
   };
 
-  const updated: UserStats = {
-    ...current,
-    highScores,
-  };
+  const bestScoreDetails = { ...current.bestScoreDetails };
+  if (isNewHighScore) {
+    if (details) bestScoreDetails[gameId] = details;
+    else delete bestScoreDetails[gameId];
+  }
+  const updated: UserStats = { ...current, highScores, bestScoreDetails };
   saveStats(updated);
   return { isNewHighScore, stats: updated };
 }
@@ -155,6 +179,7 @@ export function updateThemePreference(theme: AppTheme): UserStats {
 }
 
 export function clearAllStats(): UserStats {
+  try { if (typeof window !== 'undefined') localStorage.removeItem(LEGACY_STORAGE_KEY); } catch {}
   const fresh = freshStats();
   saveStats(fresh);
   return fresh;

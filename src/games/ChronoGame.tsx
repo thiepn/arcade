@@ -496,7 +496,7 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
                   const focusBonus = getChronoFocusBonus(state.focusStreak);
                   state.score += focusBonus;
                   setFocusStreak(state.focusStreak);
-                  addScorePopup(`FOCUS LOCK +${focusBonus}`, cx + Math.cos(state.playerAngle) * pR, cy + Math.sin(state.playerAngle) * pR - 18, '#FACC15');
+                  addScorePopup(`FOCUS LOCK +${focusBonus} base`, cx + Math.cos(state.playerAngle) * pR, cy + Math.sin(state.playerAngle) * pR - 18, '#FACC15');
                 } else {
                   state.focusStreak = 0;
                   setFocusStreak(0);

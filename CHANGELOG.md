@@ -1,5 +1,14 @@
 # Changelog
 
+## Scoring v2 — 2026-09-09
+
+- Calibrated Arcade Points across all 32 cabinets and all 36 selectable configurations.
+- Bounded Chain, Drift, Pulse, Matrix and Rhythm reward inflation.
+- Unified local/global/weekly best-per-game rating with a 10,000 AP per-game contribution cap; per-game records remain uncapped.
+- Versioned, mode-bound, server-computed points and non-destructive legacy conversion.
+- Permanent formula, migration, protocol, storage and browser-boundary regression tests.
+- See [the complete audit and calibration limits](docs/SCORING_V2_AUDIT.md).
+
 ## Unreleased
 
 ### Release-candidate reliability pass — 2026-09-08

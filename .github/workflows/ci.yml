@@ -24,6 +24,8 @@ jobs:
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
+      - run: bun run quality:scoring
+      - run: bun run quality:scoring-migrations
       - run: bun run quality:games
       - run: bun run quality:desktop
       - run: bun run quality:blade
@@ -78,6 +80,8 @@ jobs:
       - run: bun run quality:rail
       - run: bun run quality:release32
       - run: bun run quality:hardening
+      - name: Scoring HUD, results, persistence and protocol integration
+        run: SCORING_CHROME_PATH="$(command -v google-chrome)" bun run quality:scoring-browser
       - run: bunx tsc --noEmit
       - run: bun run d1:migrate:local
       - name: Smoke-test Worker API

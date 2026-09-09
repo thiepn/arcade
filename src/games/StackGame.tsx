@@ -208,7 +208,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
         state.floatingTexts.push({
           x: state.currentX + state.currentWidth / 2,
           y: state.blocks.length * state.currentHeight + 38,
-          text: `FOCUS x${state.focusChain} +${reward}`,
+          text: `FOCUS x${state.focusChain} +${reward} base`,
           color: '#FACC15',
           life: 0,
           maxLife: 44,
