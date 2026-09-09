@@ -1,0 +1,56 @@
+name: Leaderboard v3 Production Check
+on:
+  push:
+    branches: [audit/leaderboard-rebuild-source]
+    paths: [.github/workflows/leaderboard-v3-production-check.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify public backend and non-ranking zero-score receipt
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,time,uuid,urllib.request,urllib.error
+          base='https://hycegznamzjhwinegaai.supabase.co/functions/v1/micro-arcade-leaderboards'
+          policy='b467b52542b31e2a942c7af0dfe11eb4598cbf56c50096278a8be1b1a1a79057'
+          def req(path,method='GET',body=None,token=None,expect=200,origin='https://thiepn.dev'):
+              headers={'Origin':origin}
+              if body is not None: headers['Content-Type']='application/json'
+              if token: headers['Authorization']='Bearer '+token
+              request=urllib.request.Request(base+path,data=None if body is None else json.dumps(body).encode(),headers=headers,method=method)
+              try: response=urllib.request.urlopen(request,timeout=20)
+              except urllib.error.HTTPError as e: response=e
+              status=response.code; raw=response.read(); data=json.loads(raw) if raw else None
+              assert status==expect,(path,status,data.get('code') if isinstance(data,dict) else 'invalid body')
+              if origin=='https://thiepn.dev': assert response.headers.get('Access-Control-Allow-Origin')==origin
+              print(method,path,status)
+              return data
+          health=req('/v3/health');assert health['ok'] and health['policyId']==policy and health['protocolVersion']==3
+          req('/v3/health',method='OPTIONS',expect=204)
+          req('/v3/health',expect=403,origin='https://untrusted.invalid')
+          for board in ['overall','weekly','stack','reaction','rhythm?mode=hypernova']:
+              data=req('/v3/leaderboards/'+board);assert data['policyId']==policy and isinstance(data['entries'],list)
+          req('/v1/sessions',method='POST',body={},expect=426)
+          guest=req('/v3/guest',method='POST',body={},expect=201);token=guest['credential'];player=guest['player']['id']
+          print('::add-mask::'+token)
+          me=req('/v3/me',token=token);assert me['player']['id']==player
+          context={'requestId':str(uuid.uuid4()),'gameId':'stack','modeId':'standard','scoreVersion':2,'protocolVersion':3,'policyId':policy}
+          first=req('/v3/sessions',method='POST',body=context,token=token,expect=201)
+          second=req('/v3/sessions',method='POST',body=context,token=token,expect=201)
+          assert first['session']['id']==second['session']['id']
+          time.sleep(1.2)
+          payload={'sessionId':first['session']['id'],'rawScore':0,'modeId':'standard','scoreVersion':2,'protocolVersion':3,'policyId':policy,'durationMs':1000,'activeMs':1000}
+          a=req('/v3/scores',method='POST',body=payload,token=token)
+          b=req('/v3/scores',method='POST',body=payload,token=token)
+          assert a==b and a['status']=='ranked' and a['apMicros']==0 and a['contributionMicros']==0
+          req('/v3/scores',method='POST',body={**payload,'rawScore':1},token=token,expect=409)
+          receipt=req('/v3/sessions/'+payload['sessionId']+'/result',token=token)
+          assert receipt['rawScore']==0 and receipt['apMicros']==0
+          board=req('/v3/leaderboards/overall',token=token);assert board['userEntry'] is None and all(r['id']!=player for r in board['entries'])
+          history=req('/v3/me/runs',token=token);assert history['total']==1
+          print('PASS: production policy/CORS/boards/auth/session idempotency/receipt idempotency/conflicting replay/zero-score exclusion. No positive test score was published.')
+          PY
