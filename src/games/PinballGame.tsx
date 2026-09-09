@@ -1,4 +1,3 @@
-import { formatArcadeScore, formatArcadeGain } from '../../shared/scoring';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
@@ -1264,7 +1263,7 @@ export const PinballGame: React.FC<GameComponentProps> = ({
         ctx.fillText('GAME OVER', width / 2, height * 0.46);
         ctx.fillStyle = '#A1A1AA';
         ctx.font = 'bold 11px monospace';
-        ctx.fillText(`ARCADE PTS ${formatArcadeScore('pinball', state.score)}`, width / 2, height * 0.5);
+        ctx.fillText(`SCORE ${state.score.toLocaleString()}`, width / 2, height * 0.5);
       }
 
       ctx.restore();

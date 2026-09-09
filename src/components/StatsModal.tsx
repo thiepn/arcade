@@ -290,12 +290,13 @@ export const StatsModal: React.FC<StatsModalProps> = ({
 
   // Fetch leaderboard for selected game
   const userHighScore = stats.highScores[selectedGame.id] || 0;
+  const userRawHighScore = stats.rawHighScores?.[selectedGame.id] || 0;
   const userGamePlays = stats.playCounts[selectedGame.id] || 0;
 
   const gameLeaderboardData = useMemo(() => {
     void refreshTick;
-    return getGlobalLeaderboardForGame(selectedGame.id, userHighScore);
-  }, [selectedGame.id, userHighScore, refreshTick]);
+    return getGlobalLeaderboardForGame(selectedGame.id, userHighScore, userRawHighScore);
+  }, [selectedGame.id, userHighScore, userRawHighScore, refreshTick]);
 
   // Overall Arcade Championship Leaderboard
   const overallLeaderboardData = useMemo(() => {
@@ -645,9 +646,10 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                     <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 font-mono-arcade">
                       <div className="text-left sm:text-right">
                         <span className="text-[10px] text-[#71717A] uppercase block leading-tight">Your Best</span>
-                        <span className="text-sm font-black text-amber-400">
-                          {userHighScore > 0 ? `${userHighScore.toLocaleString()} pts` : 'No Score'}
+                        <span className="text-sm font-black text-white">
+                          {userRawHighScore > 0 ? `${userRawHighScore.toLocaleString()} score` : 'No Score'}
                         </span>
+                        {userHighScore > 0 && <span className="text-[10px] font-bold text-cyan-300 block">{userHighScore.toLocaleString()} AP</span>}
                       </div>
 
                       {onLaunchGame && (
@@ -733,7 +735,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                                 <span className="text-xs truncate">{g.title}</span>
                               </div>
                               <span className="text-[10px] font-mono-arcade text-amber-400 shrink-0">
-                                {best > 0 ? best.toLocaleString() : '—'}
+                                {best > 0 ? `${best.toLocaleString()} AP` : '—'}
                               </span>
                             </button>
                           );
@@ -819,7 +821,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                   <div className="col-span-2 sm:col-span-1 text-center">Rank</div>
                   <div className="col-span-6 sm:col-span-6 pl-1 sm:pl-2">Competitor</div>
                   <div className="hidden sm:block sm:col-span-2 text-center">Division</div>
-                  <div className="col-span-4 sm:col-span-3 text-right">Score / Rating</div>
+                  <div className="col-span-4 sm:col-span-3 text-right">{leaderboardScope === 'perGame' ? 'AP / SCORE' : 'RATING'}</div>
                 </div>
 
                 {/* Vertical Table Rows with Zebra Striping */}
@@ -830,6 +832,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                     const isTop3 = entry.rank === 3;
                     const isTopRank = entry.rank <= 3;
                     const scoreValue = 'score' in entry ? entry.score : entry.ratingScore;
+                    const rawScoreValue = 'rawScore' in entry ? entry.rawScore : undefined;
                     const isEven = idx % 2 === 0;
 
                     return (
@@ -910,19 +913,24 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                               )}
                             </span>
                           )}
-                          <span
-                            className={`font-black tabular-nums text-xs sm:text-sm ${
-                              entry.isUser
-                                ? 'text-rose-300'
-                                : isTop1
-                                ? 'text-amber-400'
-                                : isTopRank
-                                ? 'text-white'
-                                : 'text-[#D4D4D8]'
-                            }`}
-                          >
-                            {scoreValue.toLocaleString()}
-                          </span>
+                          <div className="flex flex-col items-end leading-tight">
+                            <span
+                              className={`font-black tabular-nums text-xs sm:text-sm ${
+                                entry.isUser
+                                  ? 'text-rose-300'
+                                  : isTop1
+                                  ? 'text-amber-400'
+                                  : isTopRank
+                                  ? 'text-white'
+                                  : 'text-[#D4D4D8]'
+                              }`}
+                            >
+                              {scoreValue.toLocaleString()}{leaderboardScope === 'perGame' ? ' AP' : ''}
+                            </span>
+                            {leaderboardScope === 'perGame' && typeof rawScoreValue === 'number' && (
+                              <span className="text-[9px] text-[#71717A] tabular-nums">Score {rawScoreValue.toLocaleString()}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -1303,12 +1311,12 @@ export const StatsModal: React.FC<StatsModalProps> = ({
 
                 <div className="p-4 rounded-2xl bg-[#0A0A0C] border border-[#27272A] flex flex-col justify-between gap-1">
                   <span className="text-[10px] text-[#71717A] font-bold uppercase tracking-wider flex items-center gap-1">
-                    <Trophy className="w-3.5 h-3.5 text-amber-400" /> TOTAL SCORE
+                    <Trophy className="w-3.5 h-3.5 text-amber-400" /> TOTAL AP
                   </span>
                   <span className="text-2xl font-black text-amber-400 truncate">
                     {totalScore.toLocaleString()}
                   </span>
-                  <span className="text-[10px] text-[#71717A]">Cumulative High Scores</span>
+                  <span className="text-[10px] text-[#71717A]">Sum of Best Arcade Points</span>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-[#0A0A0C] border border-[#27272A] flex flex-col justify-between gap-1">
@@ -1387,7 +1395,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         {mostPlayedGame.title}
                       </span>
                       <span className="text-xs font-mono-arcade text-amber-400">
-                        {highestPlayCount} {highestPlayCount === 1 ? 'session' : 'sessions logged'} • Best Record: {(stats.highScores[mostPlayedGame.id] || 0).toLocaleString()} pts
+                        {highestPlayCount} {highestPlayCount === 1 ? 'session' : 'sessions logged'} • Best Score: {(stats.rawHighScores?.[mostPlayedGame.id] || 0).toLocaleString()} • Best AP: {(stats.highScores[mostPlayedGame.id] || 0).toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -1810,7 +1818,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
 
                         <div className="flex items-center gap-3 shrink-0">
                           <span className={score > 0 ? 'text-amber-400 font-black' : 'text-[#52525B]'}>
-                            {score > 0 ? score.toLocaleString() : '—'}
+                            {score > 0 ? `${score.toLocaleString()} AP` : '—'}
                           </span>
                           <div className="flex items-center gap-1 text-[#71717A] group-hover:text-white transition-colors text-[11px]">
                             <span>View Board</span>

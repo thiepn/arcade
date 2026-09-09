@@ -163,7 +163,7 @@ export const GameCard: React.FC<GameCardProps> = ({
           <h3 id={titleId} className="truncate text-base font-bold text-white">{game.title}</h3>
           {highScore > 0 && (
             <span className="shrink-0 rounded border border-amber-500/20 bg-amber-950/30 px-1.5 py-0.5 text-[10px] font-bold text-amber-400 font-mono-arcade">
-              BEST {highScore.toLocaleString()}
+              BEST AP {highScore.toLocaleString()}
             </span>
           )}
         </div>

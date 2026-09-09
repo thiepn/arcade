@@ -11,6 +11,8 @@ There was also a separate aggregation inconsistency. The local championship prof
 
 This release replaces both with calibrated Arcade Points (AP), corrects five runaway native reward economies, and limits any one cabinet's overall-rating contribution. It does not make every cabinet mechanically identical, remove optional risk modes, shorten endless games, or award points for waiting.
 
+**Score and AP are intentionally different concepts.** Score is the game-authored raw counter used inside that cabinet; AP is derived from that raw Score only at the arcade/leaderboard boundary. A game may legitimately show 18 Score or 180,000 Score, while AP places equivalent levels of performance onto a comparable competitive scale. AP must never replace the game's Score display.
+
 **These are initial source-derived calibration anchors, not measured human percentiles.** At audit time the live database held only two submitted runs: Stack 18 native points in approximately 23 seconds and Reaction 4,964 in approximately 31 seconds. They cannot establish cross-game skill or difficulty distributions. Historical local-only play is not present in that database. The deterministic tests establish mathematical and integration properties; they do not establish that every human finds every game equally difficult.
 
 ## Plan executed
@@ -41,7 +43,7 @@ The highest supported safe-integer native input maps to fewer than 150,000 AP in
 
 ### Complete cabinet calibration
 
-The three numeric columns are **native engine counters**, not the displayed AP. All primary HUDs, results and saved/ranked records use AP. Transient event popups retaining native units are explicitly labelled `base`; the result explanation distinguishes them.
+The three numeric columns are **native engine counters**. Native **Score** and normalized **Arcade Points (AP)** are separate values by contract: each game HUD and result surface keeps showing its own raw/native Score, while the shared GameShell shows AP beside it as the cross-game competitive value. Local storage preserves both the raw-score personal best and the AP personal best. Per-game and overall rankings use AP only; per-game leaderboard rows may show the associated raw Score as secondary context. Event popups remain in native score units.
 
 | Cabinet | Run structure | Native at 1,000 AP | Native at 3,000 AP | Native at 6,000 AP | Reward/progression basis and engine source |
 |---|---|---:|---:|---:|---|

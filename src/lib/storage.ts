@@ -8,6 +8,7 @@ const defaultStats: UserStats = {
   scoreVersion: SCORE_VERSION,
   legacyHighScores: {},
   bestScoreDetails: {},
+  rawHighScores: {},
   highScores: {},
   playCounts: {},
   totalPlayTimeSeconds: {},
@@ -19,7 +20,7 @@ const defaultStats: UserStats = {
   theme: 'default',
 };
 
-const freshStats = (): UserStats => ({ ...defaultStats, legacyHighScores: {}, bestScoreDetails: {}, highScores: {}, playCounts: {}, totalPlayTimeSeconds: {}, favorites: [], recentlyPlayed: [] });
+const freshStats = (): UserStats => ({ ...defaultStats, legacyHighScores: {}, bestScoreDetails: {}, rawHighScores: {}, highScores: {}, playCounts: {}, totalPlayTimeSeconds: {}, favorites: [], recentlyPlayed: [] });
 let memoryStats = freshStats();
 let pendingWrite = false;
 export const STORAGE_STATUS_EVENT = 'micro-arcade-storage-status';
@@ -45,10 +46,16 @@ function normalizeStats(value: unknown): UserStats {
   const bestScoreDetails = Object.fromEntries(Object.entries(isRecord(parsed.bestScoreDetails) ? parsed.bestScoreDetails : {}).filter(([id,v]) =>
     validId(id) && isRecord(v) && typeof v.rawScore === 'number' && Number.isSafeInteger(v.rawScore) && v.rawScore >= 0 &&
     typeof v.modeId === 'string' && isScoreMode(id,v.modeId) && v.scoreVersion === SCORE_VERSION));
+  const storedRawHighScores = numberMap(parsed.rawHighScores);
+  const detailRawHighScores = Object.fromEntries(Object.entries(bestScoreDetails).map(([id,v]) => [id,(v as ScoreDetails).rawScore]));
+  const rawHighScores = migrating
+    ? { ...storedRawHighScores, ...nativeScores }
+    : { ...detailRawHighScores, ...storedRawHighScores };
   return {
     scoreVersion: SCORE_VERSION,
     legacyHighScores: migrating ? { ...numberMap(parsed.legacyHighScores), ...nativeScores } : numberMap(parsed.legacyHighScores),
     bestScoreDetails: bestScoreDetails as Record<string,ScoreDetails>,
+    rawHighScores,
     highScores,
     playCounts: numberMap(parsed.playCounts),
     totalPlayTimeSeconds: numberMap(parsed.totalPlayTimeSeconds),
@@ -127,7 +134,11 @@ export function recordScore(gameId: string, score: number, details?: ScoreDetail
     if (details) bestScoreDetails[gameId] = details;
     else delete bestScoreDetails[gameId];
   }
-  const updated: UserStats = { ...current, highScores, bestScoreDetails };
+  const rawHighScores = { ...current.rawHighScores };
+  if (details && Number.isSafeInteger(details.rawScore) && details.rawScore >= 0) {
+    rawHighScores[gameId] = Math.max(rawHighScores[gameId] || 0, details.rawScore);
+  }
+  const updated: UserStats = { ...current, highScores, rawHighScores, bestScoreDetails };
   saveStats(updated);
   return { isNewHighScore, stats: updated };
 }

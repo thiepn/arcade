@@ -1,4 +1,3 @@
-import { formatArcadeScore, formatArcadeGain } from '../../shared/scoring';
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Zap } from 'lucide-react';
 import { GameComponentProps } from '../types';
@@ -649,7 +648,7 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
       <div className="pointer-events-none absolute left-2.5 right-2.5 top-2.5 z-10 flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <div className="rounded-xl border border-cyan-400/25 bg-slate-950/80 px-2.5 py-1 font-mono text-xs font-black text-cyan-300 backdrop-blur-md">
-            SCORE {formatArcadeScore('neonrail', hudState.score)}
+            SCORE {hudState.score.toLocaleString()}
           </div>
           <div className="rounded-xl border border-slate-600/40 bg-slate-950/75 px-2 py-1 font-mono text-[9px] font-black text-slate-300">
             {hudState.phraseName.replace('_', ' ')}

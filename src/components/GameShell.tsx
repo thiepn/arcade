@@ -28,6 +28,7 @@ import {
 interface GameShellProps {
   game: GameEntry;
   bestScore: number;
+  bestRawScore?: number;
   soundEnabled: boolean;
   hapticsEnabled?: boolean;
   onToggleSound: () => void;
@@ -42,6 +43,7 @@ interface GameShellProps {
 export const GameShell: React.FC<GameShellProps> = ({
   game,
   bestScore,
+  bestRawScore = 0,
   soundEnabled,
   hapticsEnabled = true,
   onToggleSound,
@@ -52,14 +54,15 @@ export const GameShell: React.FC<GameShellProps> = ({
   onViewLeaderboard,
   obscured = false,
 }) => {
-  const [currentScore, setCurrentScore] = useState(0);
+  const [currentRawScore, setCurrentRawScore] = useState(0);
+  const [currentArcadePoints, setCurrentArcadePoints] = useState(0);
   const [scoringMode, setScoringMode] = useState(() => defaultScoreMode(game.id));
   const [isPaused, setIsPaused] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const shellRef = useRef<HTMLDivElement>(null);
   const gameStageRef = useRef<HTMLElement>(null);
   const gamepadCursorRef = useRef<HTMLDivElement>(null);
-  const prevScoreRef = useRef(0);
+  const prevArcadePointsRef = useRef(0);
   const activeSessionKeyRef = useRef(1);
   const gameOverHandledRef = useRef(false);
   const leaderboardSessionRef = useRef<LeaderboardPlaySession | null>(null);
@@ -77,8 +80,10 @@ export const GameShell: React.FC<GameShellProps> = ({
   }, [hapticsEnabled]);
 
   const [gameOverData, setGameOverData] = useState<{
-    score: number;
-    best: number;
+    rawScore: number;
+    arcadePoints: number;
+    bestRawScore: number;
+    bestArcadePoints: number;
     isNewHigh: boolean;
   } | null>(null);
 
@@ -147,9 +152,10 @@ export const GameShell: React.FC<GameShellProps> = ({
   const handleRestart = useCallback(() => {
     sounds.playClick();
     haptics.medium();
-    setCurrentScore(0);
+    setCurrentRawScore(0);
+    setCurrentArcadePoints(0);
     setScoringMode(defaultScoreMode(game.id));
-    prevScoreRef.current = 0;
+    prevArcadePointsRef.current = 0;
     setGameOverData(null);
     setSubmissionStatus('local');
     setIsPaused(false);
@@ -165,31 +171,34 @@ export const GameShell: React.FC<GameShellProps> = ({
     if (!isScoreMode(game.id, modeId) || modeId === scoringMode) return;
     leaderboardSessionRef.current = null;
     leaderboardSessionPromiseRef.current = null;
-    setCurrentScore(0);
-    prevScoreRef.current = 0;
+    setCurrentRawScore(0);
+    setCurrentArcadePoints(0);
+    prevArcadePointsRef.current = 0;
     setSubmissionStatus("local");
     setScoringMode(modeId);
   }, [game.id, scoringMode]);
 
   const handleScoreUpdate = useCallback((sessionKey: number, rawScore: number, modeId?: string) => {
     if (!mountedRef.current || !Number.isFinite(rawScore)) return;
-    const newScore = toArcadePoints(game.id, rawScore, modeId ?? scoringMode);
+    const normalizedRawScore = Math.max(0, Math.floor(rawScore));
+    const newArcadePoints = toArcadePoints(game.id, normalizedRawScore, modeId ?? scoringMode);
     if (!mountedRef.current || sessionKey !== activeSessionKeyRef.current || gameOverHandledRef.current) return;
-    if (!Number.isFinite(newScore)) return;
+    if (!Number.isFinite(newArcadePoints)) return;
 
-    setCurrentScore(newScore);
+    setCurrentRawScore(normalizedRawScore);
+    setCurrentArcadePoints(newArcadePoints);
 
     // Tactile haptic feedback on scoring increments
-    const prev = prevScoreRef.current;
-    if (newScore > prev) {
-      // Major milestone / thousands threshold vibration
-      if (Math.floor(newScore / 1000) > Math.floor(prev / 1000) && newScore >= 1000) {
+    const prev = prevArcadePointsRef.current;
+    if (newArcadePoints > prev) {
+      // Major AP milestone / thousands threshold vibration
+      if (Math.floor(newArcadePoints / 1000) > Math.floor(prev / 1000) && newArcadePoints >= 1000) {
         haptics.combo();
       } else {
         haptics.score();
       }
     }
-    prevScoreRef.current = newScore;
+    prevArcadePointsRef.current = newArcadePoints;
   }, [game.id, scoringMode]);
 
   const handleGameOver = useCallback(
@@ -199,10 +208,12 @@ export const GameShell: React.FC<GameShellProps> = ({
 
       const rawScore = Number.isFinite(finalScore) ? Math.max(0, Math.floor(finalScore)) : 0;
       const runMode = modeId ?? scoringMode;
-      const safeFinalScore = toArcadePoints(game.id, rawScore, runMode);
-      const { isNewHighScore } = onSaveScore(game.id, safeFinalScore, { rawScore, modeId: runMode, scoreVersion: SCORE_VERSION });
-      setCurrentScore(safeFinalScore);
-      const newBest = Math.max(bestScore, safeFinalScore);
+      const arcadePoints = toArcadePoints(game.id, rawScore, runMode);
+      const { isNewHighScore } = onSaveScore(game.id, arcadePoints, { rawScore, modeId: runMode, scoreVersion: SCORE_VERSION });
+      setCurrentRawScore(rawScore);
+      setCurrentArcadePoints(arcadePoints);
+      const newBestArcadePoints = Math.max(bestScore, arcadePoints);
+      const newBestRawScore = Math.max(bestRawScore, rawScore);
 
       const submitRemoteScore = async (session: LeaderboardPlaySession | null) => {
         const current = () => mountedRef.current && sessionKey === activeSessionKeyRef.current;
@@ -218,12 +229,14 @@ export const GameShell: React.FC<GameShellProps> = ({
       }
 
       setGameOverData({
-        score: safeFinalScore,
-        best: newBest,
+        rawScore,
+        arcadePoints,
+        bestRawScore: newBestRawScore,
+        bestArcadePoints: newBestArcadePoints,
         isNewHigh: isNewHighScore,
       });
 
-      if (isNewHighScore && safeFinalScore > 0) {
+      if (isNewHighScore && arcadePoints > 0) {
         // High score celebratory vibration pattern
         haptics.highScore();
         void import('canvas-confetti')
@@ -242,7 +255,7 @@ export const GameShell: React.FC<GameShellProps> = ({
         haptics.gameOver();
       }
     },
-    [bestScore, game.accentColor, game.id, onSaveScore, scoringMode]
+    [bestRawScore, bestScore, game.accentColor, game.id, onSaveScore, scoringMode]
   );
 
   const sessionCallbacks = useMemo(() => {
@@ -431,21 +444,19 @@ export const GameShell: React.FC<GameShellProps> = ({
           </div>
         </div>
 
-        {/* Center: Live Score Display */}
+        {/* Raw game score stays native; AP is the separate cross-game ranking currency. */}
         <div className="arcade-game-score flex items-center gap-1.5 sm:gap-3 bg-[#18181B] px-2 sm:px-3.5 py-1 rounded-xl border border-[#27272A] font-mono-arcade shrink-0">
           <div className="flex flex-col items-center">
-            <span className="text-[7px] sm:text-[9px] text-[#71717A] font-bold uppercase" title="Calibrated Arcade Points, scoring v2">AP</span>
-            <span data-arcade-points={currentScore} className="text-xs sm:text-base font-bold text-white leading-tight">
-              {currentScore.toLocaleString()}
+            <span className="text-[7px] sm:text-[9px] text-[#71717A] font-bold uppercase" title="Native score from this game">SCORE</span>
+            <span data-raw-score={currentRawScore} className="text-xs sm:text-base font-bold text-white leading-tight">
+              {currentRawScore.toLocaleString()}
             </span>
           </div>
           <div className="w-px h-3.5 sm:h-5 bg-[#27272A]" />
           <div className="flex flex-col items-center">
-            <span className="text-[7px] sm:text-[9px] text-amber-400/80 font-bold uppercase flex items-center gap-0.5">
-              <Trophy className="w-2.5 h-2.5 hidden xs:inline" /> BEST
-            </span>
-            <span className="text-xs sm:text-base font-bold text-amber-400 leading-tight">
-              {Math.max(bestScore, currentScore).toLocaleString()}
+            <span className="text-[7px] sm:text-[9px] text-cyan-300 font-bold uppercase" title="Normalized Arcade Points used for cross-game rankings">AP</span>
+            <span data-arcade-points={currentArcadePoints} className="text-xs sm:text-base font-bold text-cyan-200 leading-tight">
+              {currentArcadePoints.toLocaleString()}
             </span>
           </div>
         </div>
@@ -647,7 +658,7 @@ export const GameShell: React.FC<GameShellProps> = ({
               <div className="w-full max-w-sm max-h-full overflow-y-auto p-4 sm:p-6 rounded-2xl bg-[#18181B] border border-[#27272A] shadow-2xl flex flex-col items-center text-center">
                 {gameOverData.isNewHigh ? (
                   <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/50 text-amber-400 text-xs font-bold font-mono-arcade mb-3">
-                    <Sparkles className="w-3.5 h-3.5" /> NEW HIGH SCORE!
+                    <Sparkles className="w-3.5 h-3.5" /> NEW HIGH SCORE! <span className="text-[9px] opacity-75">AP PB</span>
                   </div>
                 ) : (
                   <span className="text-[10px] font-mono-arcade text-[#71717A] tracking-widest uppercase mb-3 font-bold">
@@ -657,30 +668,32 @@ export const GameShell: React.FC<GameShellProps> = ({
 
                 <h2 className="text-xl font-bold text-white mb-6">{game.title}</h2>
 
-                {/* Score & Best Comparison Block */}
-                <div className="w-full grid grid-cols-2 gap-3 p-4 rounded-xl bg-[#0A0A0B] border border-[#27272A] mb-6 font-mono-arcade">
+                {/* Raw Score and normalized Arcade Points are intentionally separate. */}
+                <div className="w-full grid grid-cols-2 gap-3 p-4 rounded-xl bg-[#0A0A0B] border border-[#27272A] mb-2 font-mono-arcade">
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-[#71717A] font-bold uppercase" title="Calibrated Arcade Points, scoring v2">ARCADE PTS</span>
-                    <span className="text-2xl sm:text-3xl font-black text-white">
-                      {gameOverData.score.toLocaleString()}
+                    <span className="text-[10px] text-[#71717A] font-bold uppercase">SCORE</span>
+                    <span data-result-raw-score={gameOverData.rawScore} className="text-2xl sm:text-3xl font-black text-white">
+                      {gameOverData.rawScore.toLocaleString()}
                     </span>
                   </div>
                   <div className="flex flex-col border-l border-[#27272A] pl-3">
-                    <span className="text-[10px] text-amber-400/80 font-bold uppercase flex items-center justify-center gap-1">
-                      <Trophy className="w-3 h-3" /> BEST
-                    </span>
-                    <span className="text-2xl sm:text-3xl font-black text-amber-400">
-                      {gameOverData.best.toLocaleString()}
+                    <span className="text-[10px] text-cyan-300 font-bold uppercase">ARCADE POINTS</span>
+                    <span data-result-arcade-points={gameOverData.arcadePoints} className="text-2xl sm:text-3xl font-black text-cyan-200">
+                      {gameOverData.arcadePoints.toLocaleString()}
                     </span>
                   </div>
+                </div>
+                <div className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-[#27272A] bg-[#111114] mb-6 font-mono-arcade text-[10px] sm:text-xs">
+                  <span className="text-zinc-500">BEST SCORE <strong className="text-zinc-200">{gameOverData.bestRawScore.toLocaleString()}</strong></span>
+                  <span className="text-amber-400/80"><Trophy className="w-3 h-3 inline mr-1" />BEST AP <strong>{gameOverData.bestArcadePoints.toLocaleString()}</strong></span>
                 </div>
 
                 {/* Action Buttons */}
                 <details className="mb-3 rounded-lg border border-zinc-700 p-3 text-left text-xs text-zinc-300" data-scoring-details>
                   <summary className="cursor-pointer font-bold">How these points work · v2</summary>
                   <p className="mt-2">{SCORING_PROFILES[game.id]?.basis}</p>
-                  <p className="mt-2">Game actions earn base points. Arcade Points calibrate those rewards across all 32 games. Opening, strong and mastery benchmarks are approximately 1,000 / 3,000 / 6,000 AP. Harder Rhythm charts have larger rewards.</p>
-                  <p className="mt-2">Endless runs keep earning points beyond mastery, with diminishing returns. Waiting or pausing adds no bonus. Overall rating counts your best result per game, up to 10,000 AP each; replaying or changing modes never adds duplicate entries.</p>
+                  <p className="mt-2"><strong>Score</strong> is the native number produced by this game. It is intentionally not comparable with scores from other games. <strong>AP</strong> is calculated separately from that raw score and is the normalized currency used for cross-game rankings.</p>
+                  <p className="mt-2">Each game and supported mode has its own AP calibration. Opening, strong and mastery benchmarks are approximately 1,000 / 3,000 / 6,000 AP. Endless runs keep earning AP with diminishing returns. Overall rating counts your best AP result per game, up to 10,000 AP each.</p>
                 </details>
                 <p role="status" aria-live="polite" className="mb-3 text-xs text-zinc-300" data-score-submission={submissionStatus}>
                   {submissionStatus === 'accepted' ? 'Global score accepted.' : submissionStatus === 'pending' ? 'Submitting global score… You can replay now.' : submissionStatus === 'failed' ? 'Global score not submitted.' : 'This run is local only.'}

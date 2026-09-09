@@ -257,6 +257,7 @@ export default function App() {
               game={activeGame}
               obscured={statsModalOpen || overallLeaderboardOpen || profileOpen}
               bestScore={stats.highScores[activeGame.id] || 0}
+              bestRawScore={stats.rawHighScores?.[activeGame.id] || 0}
               soundEnabled={stats.soundEnabled}
               hapticsEnabled={stats.hapticsEnabled ?? true}
               onToggleSound={handleToggleSound}

@@ -295,6 +295,9 @@ interface GameLeaderboardRow {
   name: string;
   country_code: string;
   score: number;
+  raw_score: number;
+  source_version: number;
+  mode_id: string;
   achieved_at: number;
 }
 
@@ -303,7 +306,7 @@ async function gameLeaderboard(request: Request, env: Env, gameId: string, url: 
   const player = await authenticate(request, env, true);
   const limit = parseLimit(url);
   const rows = await env.DB.prepare(
-    `SELECT bs.player_id AS id, p.display_name AS name, p.country_code, bs.score, bs.achieved_at
+    `SELECT bs.player_id AS id, p.display_name AS name, p.country_code, bs.score, bs.raw_score, bs.source_version, bs.mode_id, bs.achieved_at
      FROM best_scores bs JOIN players p ON p.id = bs.player_id
      WHERE bs.score > 0 AND bs.game_id = ?
      ORDER BY bs.score DESC, bs.achieved_at ASC, bs.player_id ASC
@@ -314,7 +317,7 @@ async function gameLeaderboard(request: Request, env: Env, gameId: string, url: 
   let userEntry: (GameLeaderboardRow & { rank: number }) | null = null;
   if (player) {
     const own = await env.DB.prepare(
-      `SELECT bs.player_id AS id, p.display_name AS name, p.country_code, bs.score, bs.achieved_at
+      `SELECT bs.player_id AS id, p.display_name AS name, p.country_code, bs.score, bs.raw_score, bs.source_version, bs.mode_id, bs.achieved_at
        FROM best_scores bs JOIN players p ON p.id = bs.player_id
        WHERE bs.score > 0 AND bs.game_id = ? AND bs.player_id = ?`
     ).bind(gameId, player.id).first<GameLeaderboardRow>();
