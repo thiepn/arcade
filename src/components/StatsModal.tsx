@@ -759,7 +759,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                         </span>
                       </div>
                       <span className="text-[11px] text-[#71717A]">
-                        Unified Rating based on High Scores, Badge XP & Play Volume
+                        Best Arcade Points per game, up to 10,000 each. No play-volume or badge bonus.
                       </span>
                     </div>
                   </div>
@@ -768,7 +768,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                     <div className="text-left sm:text-right">
                       <span className="text-[10px] text-[#71717A] uppercase block leading-tight">Your Championship Rating</span>
                       <span className="text-sm font-black text-amber-400">
-                        {rankProfile.ratingScore.toLocaleString()} PTS
+                        {rankProfile.ratingScore.toLocaleString()} AP
                       </span>
                     </div>
                     <div className="text-right">

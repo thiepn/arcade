@@ -332,7 +332,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
       state.level = Math.floor(state.lines / 10) + 1;
       state.dropInterval = getBlockDropInterval(state.level);
 
-      const label = clearedLines === 4 ? `TETRIS! +${pts}` : `+${pts} LINES!`;
+      const label = clearedLines === 4 ? `TETRIS! +${pts} base` : `+${pts} base LINES!`;
       state.popups.push({
         id: state.nextId++,
         x: 100,

@@ -1,3 +1,4 @@
+import { formatArcadeScore, formatArcadeGain } from '../../shared/scoring';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
@@ -375,7 +376,7 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
         </div>
 
         <div className="flex flex-col items-end gap-1.5">
-          <span className="px-3 py-1.5 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-white text-xs font-mono-arcade tabular-nums">{score.toLocaleString()} PTS</span>
+          <span className="px-3 py-1.5 rounded-xl bg-[#18181B]/90 border border-[#27272A] text-white text-xs font-mono-arcade tabular-nums">{formatArcadeScore('reaction', score)} PTS</span>
           {mistakes > 0 && <span className="px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/25 text-rose-300 text-[10px] font-mono-arcade">ERRORS {mistakes}</span>}
         </div>
       </div>
@@ -432,7 +433,7 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
             {result.correct && result.reactionTimeMs !== null ? (
               <>
                 <div className="font-mono-arcade font-black text-6xl sm:text-7xl text-[#38BDF8] tracking-tight tabular-nums">{result.reactionTimeMs} <span className="text-2xl text-white">MS</span></div>
-                <div className="px-5 py-2 rounded-2xl border border-[#38BDF8]/30 bg-[#38BDF8]/10 text-[#38BDF8] font-mono-arcade font-bold text-sm tracking-wider">{result.grade} • +{result.points.toLocaleString()}</div>
+                <div className="px-5 py-2 rounded-2xl border border-[#38BDF8]/30 bg-[#38BDF8]/10 text-[#38BDF8] font-mono-arcade font-bold text-sm tracking-wider">{result.grade} • +{formatArcadeGain('reaction', score, result.points)}</div>
               </>
             ) : (
               <>

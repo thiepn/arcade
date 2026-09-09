@@ -1,29 +1,7 @@
-type GameRule = { maxScore: number; minDurationMs: number; maxDurationMs: number };
-
-const GAME_RULES: Record<string, GameRule> = Object.fromEntries(
-  [
-    'orbit','stack','reaction','dodge','pulse','merge','typerush','oneline','breakout','perfectstop',
-    'chain','gravity','blade','pinball','chrono','matrix','drift','vanguard','slingshot','snake',
-    'rhythm','tower','pacmaze','flappyaero','roadcross','bubblebuster','astroblaster','laserrope','blockdrop','knifetarget','airhockey','neonrail',
-  ].map((id) => [id, { maxScore: 100_000_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 }])
-);
-
-Object.assign(GAME_RULES, {
-  orbit: { maxScore: 1_000_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 },
-  stack: { maxScore: 100_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 },
-  reaction: { maxScore: 10_000, minDurationMs: 750, maxDurationMs: 10 * 60 * 1000 },
-  pulse: { maxScore: 1_000_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 },
-  typerush: { maxScore: 100_000, minDurationMs: 500, maxDurationMs: 30 * 60 * 1000 },
-  oneline: { maxScore: 100_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 },
-  perfectstop: { maxScore: 100_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 },
-  chain: { maxScore: 1_000_000, minDurationMs: 250, maxDurationMs: 10 * 60 * 1000 },
-  matrix: { maxScore: 1_000_000, minDurationMs: 500, maxDurationMs: 30 * 60 * 1000 },
-  knifetarget: { maxScore: 10_000_000, minDurationMs: 500, maxDurationMs: 30 * 60 * 1000 },
-  airhockey: { maxScore: 1_000_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 },
-});
+import { SCORE_VERSION, toArcadePoints } from '../../shared/scoring.ts';
+import { GAME_RULES, SESSION_TTL_MS, scoreContext } from '../../shared/scoringProtocol.ts';
 
 const encoder = new TextEncoder();
-const SESSION_TTL_MS = 30 * 60 * 1000;
 const MAX_LEADERBOARD_LIMIT = 50;
 const MAX_BODY_BYTES = 4096;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -228,15 +206,17 @@ async function updateMe(request: Request, env: Env): Promise<Response> {
 async function createSession(request: Request, env: Env): Promise<Response> {
   const player = await authenticate(request, env);
   await rateLimit(env.SESSION_RATE_LIMITER, player!.id);
-  const body = await readJson<{ gameId?: string }>(request);
+  const body = await readJson<{ gameId?: string; scoreVersion?: number; modeId?: string }>(request);
   const gameId = typeof body.gameId === 'string' ? body.gameId : '';
   if (!Object.hasOwn(GAME_RULES, gameId)) return response(request, env, { error: 'Unknown game', code: 'unknown_game' }, 400);
+  const context = scoreContext(gameId, body.scoreVersion, body.modeId);
+  if (!context) return response(request, env, { error: 'Unsupported scoring version or mode', code: 'invalid_score_context' }, 400);
   const now = Date.now();
   const id = crypto.randomUUID();
   await env.DB.prepare(
-    'INSERT INTO play_sessions (id, player_id, game_id, issued_at, expires_at) VALUES (?, ?, ?, ?, ?)'
-  ).bind(id, player!.id, gameId, now, now + SESSION_TTL_MS).run();
-  return response(request, env, { session: { id, gameId, issuedAt: now, expiresAt: now + SESSION_TTL_MS } }, 201);
+    'INSERT INTO play_sessions (id, player_id, game_id, issued_at, expires_at, score_version, mode_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).bind(id, player!.id, gameId, now, now + SESSION_TTL_MS, context.scoreVersion, context.modeId).run();
+  return response(request, env, { scoreVersion: SCORE_VERSION, session: { id, gameId, issuedAt: now, expiresAt: now + SESSION_TTL_MS, ...context } }, 201);
 }
 
 interface SessionRow {
@@ -246,20 +226,24 @@ interface SessionRow {
   issued_at: number;
   expires_at: number;
   used_at: number | null;
+  score_version: number;
+  mode_id: string;
 }
 
 async function submitScore(request: Request, env: Env): Promise<Response> {
   const player = await authenticate(request, env);
   await rateLimit(env.SCORE_RATE_LIMITER, player!.id);
-  const body = await readJson<{ sessionId?: string; score?: number; durationMs?: number }>(request);
+  const body = await readJson<{ sessionId?: string; score?: number; durationMs?: number; scoreVersion?: number; modeId?: string }>(request);
   const { sessionId, score, durationMs } = body;
   if (typeof sessionId !== 'string' || !/^[0-9a-f-]{36}$/i.test(sessionId) || typeof score !== 'number' || !Number.isSafeInteger(score) || score < 0 || typeof durationMs !== 'number' || !Number.isFinite(durationMs) || durationMs < 0) {
     return response(request, env, { error: 'Invalid score submission' }, 400);
   }
   const session = await env.DB.prepare(
-    'SELECT id, player_id, game_id, issued_at, expires_at, used_at FROM play_sessions WHERE id = ? AND player_id = ?'
+    'SELECT id, player_id, game_id, issued_at, expires_at, used_at, score_version, mode_id FROM play_sessions WHERE id = ? AND player_id = ?'
   ).bind(sessionId, player!.id).first<SessionRow>();
   if (!session) return response(request, env, { error: 'Unknown play session' }, 404);
+  const context = scoreContext(session.game_id, body.scoreVersion, body.modeId);
+  if (!context || context.scoreVersion !== session.score_version || context.modeId !== session.mode_id) return response(request, env, { error: 'Session scoring mode/version mismatch', code: 'score_context_mismatch' }, 422);
   if (session.used_at !== null) return response(request, env, { error: 'Play session already used' }, 409);
   const now = Date.now();
   if (now > session.expires_at) return response(request, env, { error: 'Play session expired' }, 410);
@@ -273,19 +257,23 @@ async function submitScore(request: Request, env: Env): Promise<Response> {
     return response(request, env, { error: 'Session timing mismatch' }, 422);
   }
 
+  const points = toArcadePoints(session.game_id, score, context.modeId, context.scoreVersion);
   const submissionId = crypto.randomUUID();
   const statements = [
     env.DB.prepare(
-      'INSERT INTO score_submissions (id, session_id, player_id, game_id, score, duration_ms, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).bind(submissionId, session.id, player!.id, session.game_id, score, Math.round(durationMs), now),
+      'INSERT INTO score_submissions (id, session_id, player_id, game_id, score, duration_ms, created_at, raw_score, source_version, mode_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).bind(submissionId, session.id, player!.id, session.game_id, points, Math.round(durationMs), now, score, context.scoreVersion, context.modeId),
     env.DB.prepare(
-      `INSERT INTO best_scores (game_id, player_id, score, achieved_at, submissions)
-       VALUES (?, ?, ?, ?, 1)
+      `INSERT INTO best_scores (game_id, player_id, score, achieved_at, submissions, raw_score, source_version, mode_id)
+       VALUES (?, ?, ?, ?, 1, ?, ?, ?)
        ON CONFLICT(game_id, player_id) DO UPDATE SET
+         raw_score = CASE WHEN excluded.score > best_scores.score THEN excluded.raw_score ELSE best_scores.raw_score END,
+         source_version = CASE WHEN excluded.score > best_scores.score THEN excluded.source_version ELSE best_scores.source_version END,
+         mode_id = CASE WHEN excluded.score > best_scores.score THEN excluded.mode_id ELSE best_scores.mode_id END,
          score = CASE WHEN excluded.score > best_scores.score THEN excluded.score ELSE best_scores.score END,
          achieved_at = CASE WHEN excluded.score > best_scores.score THEN excluded.achieved_at ELSE best_scores.achieved_at END,
          submissions = best_scores.submissions + 1`
-    ).bind(session.game_id, player!.id, score, now),
+    ).bind(session.game_id, player!.id, points, now, score, context.scoreVersion, context.modeId),
     env.DB.prepare('UPDATE play_sessions SET used_at = ? WHERE id = ? AND used_at IS NULL').bind(now, session.id),
   ];
   try {
@@ -299,7 +287,7 @@ async function submitScore(request: Request, env: Env): Promise<Response> {
   }
   const best = await env.DB.prepare('SELECT score, achieved_at FROM best_scores WHERE game_id = ? AND player_id = ?')
     .bind(session.game_id, player!.id).first<{ score: number; achieved_at: number }>();
-  return response(request, env, { accepted: true, gameId: session.game_id, bestScore: best?.score ?? score });
+  return response(request, env, { accepted: true, scoreVersion: SCORE_VERSION, gameId: session.game_id, score: points, bestScore: best?.score ?? points });
 }
 
 interface GameLeaderboardRow {
@@ -317,18 +305,18 @@ async function gameLeaderboard(request: Request, env: Env, gameId: string, url: 
   const rows = await env.DB.prepare(
     `SELECT bs.player_id AS id, p.display_name AS name, p.country_code, bs.score, bs.achieved_at
      FROM best_scores bs JOIN players p ON p.id = bs.player_id
-     WHERE bs.game_id = ?
+     WHERE bs.score > 0 AND bs.game_id = ?
      ORDER BY bs.score DESC, bs.achieved_at ASC, bs.player_id ASC
      LIMIT ?`
   ).bind(gameId, limit).all<GameLeaderboardRow>();
-  const count = await env.DB.prepare('SELECT COUNT(*) AS count FROM best_scores WHERE game_id = ?')
+  const count = await env.DB.prepare('SELECT COUNT(*) AS count FROM best_scores WHERE score > 0 AND game_id = ?')
     .bind(gameId).first<{ count: number }>();
   let userEntry: (GameLeaderboardRow & { rank: number }) | null = null;
   if (player) {
     const own = await env.DB.prepare(
       `SELECT bs.player_id AS id, p.display_name AS name, p.country_code, bs.score, bs.achieved_at
        FROM best_scores bs JOIN players p ON p.id = bs.player_id
-       WHERE bs.game_id = ? AND bs.player_id = ?`
+       WHERE bs.score > 0 AND bs.game_id = ? AND bs.player_id = ?`
     ).bind(gameId, player.id).first<GameLeaderboardRow>();
     if (own) {
       const rankRow = await env.DB.prepare(
@@ -339,7 +327,7 @@ async function gameLeaderboard(request: Request, env: Env, gameId: string, url: 
     }
   }
   const entries = rows.results.map((row, index) => ({ ...row, rank: index + 1, isUser: row.id === player?.id }));
-  return response(request, env, { gameId, entries, userEntry, totalCompetitors: count?.count ?? 0 });
+  return response(request, env, { scoreVersion: SCORE_VERSION, gameId, entries, userEntry, totalCompetitors: count?.count ?? 0 });
 }
 
 interface OverallRow {
@@ -356,13 +344,14 @@ interface OverallRow {
 const OVERALL_CTE = `WITH totals AS (
   SELECT p.id, p.display_name AS name, p.country_code,
          SUM(bs.score) AS total_score,
+         SUM(MIN(bs.score, 10000)) AS rating_score,
          COUNT(*) AS games_played,
          MAX(bs.achieved_at) AS last_achieved_at
   FROM players p JOIN best_scores bs ON bs.player_id = p.id
+  WHERE bs.score > 0
   GROUP BY p.id
 ), rated AS (
-  SELECT *, games_played * 1000 + MIN(CAST(total_score / 10000 AS INTEGER), 999) AS rating_score
-  FROM totals
+  SELECT * FROM totals
 ), ranked AS (
   SELECT *, ROW_NUMBER() OVER (ORDER BY rating_score DESC, total_score DESC, last_achieved_at ASC, id ASC) AS rank
   FROM rated
@@ -372,7 +361,7 @@ const WEEKLY_OVERALL_CTE = `WITH ranked_weekly_submissions AS (
   SELECT player_id, game_id, score, created_at,
          ROW_NUMBER() OVER (PARTITION BY player_id, game_id ORDER BY score DESC, created_at ASC) AS game_rank
   FROM score_submissions
-  WHERE created_at >= ? AND created_at < ?
+  WHERE score > 0 AND created_at >= ? AND created_at < ?
 ), weekly_best AS (
   SELECT player_id, game_id, score, created_at AS achieved_at
   FROM ranked_weekly_submissions
@@ -380,13 +369,13 @@ const WEEKLY_OVERALL_CTE = `WITH ranked_weekly_submissions AS (
 ), totals AS (
   SELECT p.id, p.display_name AS name, p.country_code,
          SUM(wb.score) AS total_score,
+         SUM(MIN(wb.score, 10000)) AS rating_score,
          COUNT(*) AS games_played,
          MAX(wb.achieved_at) AS last_achieved_at
   FROM players p JOIN weekly_best wb ON wb.player_id = p.id
   GROUP BY p.id
 ), rated AS (
-  SELECT *, games_played * 1000 + MIN(CAST(total_score / 10000 AS INTEGER), 999) AS rating_score
-  FROM totals
+  SELECT * FROM totals
 ), ranked AS (
   SELECT *, ROW_NUMBER() OVER (ORDER BY rating_score DESC, total_score DESC, last_achieved_at ASC, id ASC) AS rank
   FROM rated
@@ -399,7 +388,7 @@ async function overallLeaderboard(request: Request, env: Env, url: URL): Promise
     `${OVERALL_CTE} SELECT id, name, country_code, total_score, games_played, rating_score, last_achieved_at, rank
      FROM ranked ORDER BY rank LIMIT ?`
   ).bind(limit).all<OverallRow>();
-  const count = await env.DB.prepare('SELECT COUNT(DISTINCT player_id) AS count FROM best_scores')
+  const count = await env.DB.prepare('SELECT COUNT(DISTINCT player_id) AS count FROM best_scores WHERE score > 0')
     .first<{ count: number }>();
   let userEntry: OverallRow | null = null;
   if (player) {
@@ -409,6 +398,7 @@ async function overallLeaderboard(request: Request, env: Env, url: URL): Promise
     ).bind(player.id).first<OverallRow>();
   }
   return response(request, env, {
+    scoreVersion: SCORE_VERSION,
     entries: rows.results.map((row) => ({ ...row, isUser: row.id === player?.id })),
     userEntry,
     totalCompetitors: count?.count ?? 0,
@@ -424,7 +414,7 @@ async function weeklyOverallLeaderboard(request: Request, env: Env, url: URL): P
      FROM ranked ORDER BY rank LIMIT ?`
   ).bind(start, end, limit).all<OverallRow>();
   const count = await env.DB.prepare(
-    'SELECT COUNT(DISTINCT player_id) AS count FROM score_submissions WHERE created_at >= ? AND created_at < ?'
+    'SELECT COUNT(DISTINCT player_id) AS count FROM score_submissions WHERE score > 0 AND created_at >= ? AND created_at < ?'
   ).bind(start, end).first<{ count: number }>();
   let userEntry: OverallRow | null = null;
   if (player) {
@@ -434,6 +424,7 @@ async function weeklyOverallLeaderboard(request: Request, env: Env, url: URL): P
     ).bind(start, end, player.id).first<OverallRow>();
   }
   return response(request, env, {
+    scoreVersion: SCORE_VERSION,
     entries: rows.results.map((row) => ({ ...row, isUser: row.id === player?.id })),
     userEntry,
     totalCompetitors: count?.count ?? 0,
@@ -452,7 +443,7 @@ export default {
     const url = new URL(request.url);
     try {
       if (url.pathname === '/v1/health' && request.method === 'GET') {
-        return response(request, env, { ok: true, service: 'micro-arcade-leaderboards' });
+        return response(request, env, { ok: true, service: 'micro-arcade-leaderboards', scoreVersion: SCORE_VERSION });
       }
       if (url.pathname === '/v1/guest' && request.method === 'POST') return await createGuest(request, env);
       if (url.pathname === '/v1/me' && request.method === 'GET') return await getMe(request, env);

@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import { getStoredStats, recordScore, recordGamePlay, saveStats, clearAllStats, isProgressSaved } from '../src/lib/storage';
+import { ACHIEVEMENTS_REGISTRY, getPlayerRankProfile } from '../src/lib/achievements';
+import { arcadeRating, toArcadePoints } from '../shared/scoring';
+const values=new Map<string,string>();let denied=false;
+(globalThis as any).window=new EventTarget();
+(globalThis as any).localStorage={getItem:(k:string)=>{if(denied)throw Error('denied');return values.get(k)??null;},setItem:(k:string,v:string)=>{if(denied)throw Error('quota');values.set(k,v);},removeItem:(k:string)=>values.delete(k)};
+const legacy={highScores:{chain:1_400_000,rhythm:1_700_000,stack:18,reaction:4964},playCounts:{chain:15,stack:3},favorites:['stack'],recentlyPlayed:['stack','chain'],soundEnabled:false,hapticsEnabled:false,volume:.4,theme:'cyberpunk',totalPlayTimeSeconds:{chain:600}};
+values.set('micro_arcade_stats_v1',JSON.stringify(legacy));
+const migrated=getStoredStats();
+assert.equal(migrated.scoreVersion,2);assert.deepEqual(migrated.legacyHighScores,legacy.highScores);
+for(const [id,raw] of Object.entries(legacy.highScores))assert.equal(migrated.highScores[id],toArcadePoints(id,raw,undefined,1));
+for(const field of ['playCounts','favorites','recentlyPlayed','soundEnabled','hapticsEnabled','volume','theme','totalPlayTimeSeconds'])assert.deepEqual((migrated as any)[field],(legacy as any)[field]);
+assert.ok(values.has('micro_arcade_stats_v2'));
+for(let i=0;i<25;i++){saveStats(getStoredStats());assert.deepEqual(getStoredStats().highScores,migrated.highScores);assert.deepEqual(getStoredStats().legacyHighScores,legacy.highScores);}
+values.set('micro_arcade_stats_v1',JSON.stringify({...legacy,highScores:{chain:999_999_999}}));
+assert.deepEqual(getStoredStats().highScores,migrated.highScores,'cached old clients cannot overwrite AP');
+assert.equal(ACHIEVEMENTS_REGISTRY.find(a=>a.id==='score_1m')!.isUnlocked(migrated),true,'originally-earned badges stay earned');
+assert.equal(getPlayerRankProfile(migrated).ratingScore,arcadeRating(migrated.highScores),'old badge XP cannot inflate competitive rating');
+const details={rawScore:120,modeId:'standard',scoreVersion:2};recordScore('stack',6000,details);
+assert.deepEqual(getStoredStats().bestScoreDetails?.stack,details);
+assert.equal(recordScore('stack',5900).isNewHighScore,false,'lower AP never replaces best');
+assert.equal(getStoredStats().highScores.stack,6000);
+denied=true;recordScore('stack',6500,{...details,rawScore:143});recordGamePlay('stack');assert.equal(getStoredStats().highScores.stack,6500);assert.equal(isProgressSaved(),false);
+denied=false;saveStats(getStoredStats());assert.equal(isProgressSaved(),true);assert.equal(getStoredStats().highScores.stack,6500);
+clearAllStats();assert.deepEqual(getStoredStats().highScores,{});assert.equal(values.has('micro_arcade_stats_v1'),false,'explicit reset also clears the legacy key');
+assert.equal(ACHIEVEMENTS_REGISTRY.find(a=>a.id==='score_1m')!.isUnlocked(getStoredStats()),false,'legacy badges are not granted to fresh profiles');
+console.log('Scoring storage PASS: v1 archive, separate v2 key, 25 idempotent reload/save cycles, cached-client isolation, settings, badges, raw metadata, PB ordering, quota recovery and explicit reset.');

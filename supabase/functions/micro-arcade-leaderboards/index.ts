@@ -1,32 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-const GAME_IDS = [
-  'orbit','stack','reaction','dodge','pulse','merge','typerush','oneline','breakout','perfectstop',
-  'chain','gravity','blade','pinball','chrono','matrix','drift','vanguard','slingshot','snake',
-  'rhythm','tower','pacmaze','flappyaero','roadcross','bubblebuster','astroblaster','laserrope','blockdrop','knifetarget','airhockey','neonrail',
-] as const;
-
-type GameRule = { maxScore: number; minDurationMs: number; maxDurationMs: number };
-const GAME_RULES: Record<string, GameRule> = Object.fromEntries(
-  GAME_IDS.map((id) => [id, { maxScore: 100_000_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 }]),
-);
-Object.assign(GAME_RULES, {
-  orbit: { maxScore: 1_000_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 },
-  stack: { maxScore: 100_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 },
-  reaction: { maxScore: 10_000, minDurationMs: 750, maxDurationMs: 10 * 60 * 1000 },
-  pulse: { maxScore: 1_000_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 },
-  typerush: { maxScore: 100_000, minDurationMs: 500, maxDurationMs: 30 * 60 * 1000 },
-  oneline: { maxScore: 100_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 },
-  perfectstop: { maxScore: 100_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 },
-  chain: { maxScore: 1_000_000, minDurationMs: 250, maxDurationMs: 10 * 60 * 1000 },
-  matrix: { maxScore: 1_000_000, minDurationMs: 500, maxDurationMs: 30 * 60 * 1000 },
-  knifetarget: { maxScore: 10_000_000, minDurationMs: 500, maxDurationMs: 30 * 60 * 1000 },
-  airhockey: { maxScore: 1_000_000, minDurationMs: 250, maxDurationMs: 30 * 60 * 1000 },
-});
+import { SCORE_VERSION, toArcadePoints } from '../../../shared/scoring.ts';
+import { GAME_RULES, SESSION_TTL_MS, scoreContext } from '../../../shared/scoringProtocol.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const SESSION_TTL_MS = 30 * 60 * 1000;
 const MAX_BODY_BYTES = 4096;
 const MAX_LEADERBOARD_LIMIT = 50;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -240,32 +218,36 @@ async function updateMe(request: Request): Promise<Response> {
 async function createSession(request: Request): Promise<Response> {
   const player = await authenticate(request);
   await allowRate('session', player!.id, 60);
-  const body = await readJson<{ gameId?: string }>(request);
+  const body = await readJson<{ gameId?: string; scoreVersion?: number; modeId?: string }>(request);
   const gameId = typeof body.gameId === 'string' ? body.gameId : '';
   if (!Object.hasOwn(GAME_RULES, gameId)) return json(request, { error: 'Unknown game', code: 'unknown_game' }, 400);
+  const context = scoreContext(gameId, body.scoreVersion, body.modeId);
+  if (!context) return json(request, { error: 'Unsupported scoring version or mode', code: 'invalid_score_context' }, 400);
   const now = Date.now();
   const id = crypto.randomUUID();
   const expiresAt = now + SESSION_TTL_MS;
   const res = await dbFetch('/rest/v1/micro_arcade_play_sessions', {
     method: 'POST', headers: { 'content-type': 'application/json', prefer: 'return=minimal' },
-    body: JSON.stringify({ id, player_id: player!.id, game_id: gameId, issued_at: now, expires_at: expiresAt }),
+    body: JSON.stringify({ id, player_id: player!.id, game_id: gameId, issued_at: now, expires_at: expiresAt, score_version: context.scoreVersion, mode_id: context.modeId }),
   });
   if (!res.ok) throw new Error('Failed to create play session');
-  return json(request, { session: { id, gameId, issuedAt: now, expiresAt } }, 201);
+  return json(request, { scoreVersion: SCORE_VERSION, session: { id, gameId, issuedAt: now, expiresAt, ...context } }, 201);
 }
 
-type SessionRow = { id: string; player_id: string; game_id: string; issued_at: number; expires_at: number; used_at: number | null };
+type SessionRow = { id: string; player_id: string; game_id: string; issued_at: number; expires_at: number; used_at: number | null; score_version: number; mode_id: string };
 async function submitScore(request: Request): Promise<Response> {
   const player = await authenticate(request);
   await allowRate('score', player!.id, 30);
-  const body = await readJson<{ sessionId?: string; score?: number; durationMs?: number }>(request);
+  const body = await readJson<{ sessionId?: string; score?: number; durationMs?: number; scoreVersion?: number; modeId?: string }>(request);
   const { sessionId, score, durationMs } = body;
   if (typeof sessionId !== 'string' || !/^[0-9a-f-]{36}$/i.test(sessionId) || typeof score !== 'number' || !Number.isSafeInteger(score) || score < 0 || typeof durationMs !== 'number' || !Number.isFinite(durationMs) || durationMs < 0) {
     return json(request, { error: 'Invalid score submission' }, 400);
   }
-  const rows = await dbJson<SessionRow[]>(`/rest/v1/micro_arcade_play_sessions?id=eq.${encodeURIComponent(sessionId)}&player_id=eq.${encodeURIComponent(player!.id)}&select=id,player_id,game_id,issued_at,expires_at,used_at&limit=1`);
+  const rows = await dbJson<SessionRow[]>(`/rest/v1/micro_arcade_play_sessions?id=eq.${encodeURIComponent(sessionId)}&player_id=eq.${encodeURIComponent(player!.id)}&select=id,player_id,game_id,issued_at,expires_at,used_at,score_version,mode_id&limit=1`);
   const session = rows[0];
   if (!session) return json(request, { error: 'Unknown play session' }, 404);
+  const context = scoreContext(session.game_id, body.scoreVersion, body.modeId);
+  if (!context || context.scoreVersion !== session.score_version || context.modeId !== session.mode_id) return json(request, { error: 'Session scoring mode/version mismatch', code: 'score_context_mismatch' }, 422);
   if (session.used_at !== null) return json(request, { error: 'Play session already used' }, 409);
   const now = Date.now();
   if (now > session.expires_at) return json(request, { error: 'Play session expired' }, 410);
@@ -274,11 +256,11 @@ async function submitScore(request: Request): Promise<Response> {
   if (!rule || score > rule.maxScore) return json(request, { error: 'Score outside accepted range' }, 422);
   if (elapsed < rule.minDurationMs || elapsed > rule.maxDurationMs) return json(request, { error: 'Session duration outside accepted range' }, 422);
   if (Math.abs(elapsed - durationMs) > 90_000) return json(request, { error: 'Session timing mismatch' }, 422);
-  const result = await rpc<{ ok: boolean; code?: string; gameId?: string; bestScore?: number }>('micro_arcade_consume_score', {
-    p_player_id: player!.id, p_session_id: session.id, p_score: score, p_duration_ms: Math.round(durationMs), p_now: now,
+  const result = await rpc<{ ok: boolean; code?: string; gameId?: string; bestScore?: number }>('micro_arcade_consume_score_v2', {
+    p_player_id: player!.id, p_session_id: session.id, p_score: score, p_duration_ms: Math.round(durationMs), p_now: now, p_source_version: context.scoreVersion, p_mode_id: context.modeId,
   });
-  if (!result.ok) return json(request, { error: 'Play session already used', code: result.code || 'session_used' }, 409);
-  return json(request, { accepted: true, gameId: result.gameId, bestScore: result.bestScore ?? score });
+  if (!result.ok) return json(request, { error: 'Score session could not be consumed', code: result.code || 'session_used' }, result.code === 'session_used' ? 409 : 422);
+  return json(request, { accepted: true, scoreVersion: SCORE_VERSION, gameId: result.gameId, score: toArcadePoints(session.game_id, score, context.modeId, context.scoreVersion), bestScore: result.bestScore });
 }
 
 async function gameLeaderboard(request: Request, gameId: string): Promise<Response> {
@@ -309,7 +291,7 @@ Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...corsHeaders(request), ...secureHeaders() } });
   const path = apiPath(request);
   try {
-    if (path === '/v1/health' && request.method === 'GET') return json(request, { ok: true, service: 'micro-arcade-leaderboards', backend: 'supabase' });
+    if (path === '/v1/health' && request.method === 'GET') return json(request, { ok: true, service: 'micro-arcade-leaderboards', backend: 'supabase', scoreVersion: SCORE_VERSION });
     if (path === '/v1/guest' && request.method === 'POST') return await createGuest(request);
     if (path === '/v1/me' && request.method === 'GET') return await getMe(request);
     if (path === '/v1/me' && request.method === 'PATCH') return await updateMe(request);

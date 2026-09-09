@@ -1,3 +1,5 @@
+import { formatArcadeScore, formatArcadeGain } from '../../shared/scoring';
+import { driftTickReward, DRIFT_TIER_TICKS } from '../lib/scoringEconomy';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
@@ -188,7 +190,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
       state.score += bonus;
       publishScore(state.score);
       setScore(state.score);
-      addScorePopup(`STYLE ROUTE x${state.styleChain} +${bonus}`, state.carX, state.carY - 48, '#FACC15', 1.2);
+      addScorePopup(`STYLE ROUTE x${state.styleChain} +${bonus} base`, state.carX, state.carY - 48, '#FACC15', 1.2);
       if (soundEnabled) sounds.playVictory();
     }
     setStyleRouteIndex(state.styleRouteIndex);
@@ -458,7 +460,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
           }
 
           // Score accumulation
-          const addedDrift = Math.floor((st.isBoosting ? 20 : 10) * st.multiplier);
+          const addedDrift = driftTickReward(st.multiplier, st.isBoosting);
           st.score += addedDrift;
           publishScore(st.score);
           setScore(st.score);
@@ -469,7 +471,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
 
           // Multiplier progression & tiers
           st.driftTimer++;
-          if (st.driftTimer > 30 && st.multiplier < 6) {
+          if (st.driftTimer >= DRIFT_TIER_TICKS && st.multiplier < 6) {
             st.multiplier++;
             st.driftTimer = 0;
             setMultiplier(st.multiplier);
@@ -600,7 +602,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
               st.score += bonus;
               publishScore(st.score);
               setScore(st.score);
-              addScorePopup(`APEX HIT! +${bonus}`, gateX, seg.y - 15, '#34D399', 1.2);
+              addScorePopup(`APEX HIT! +${bonus} base`, gateX, seg.y - 15, '#34D399', 1.2);
               if (soundEnabled) sounds.playVictory();
               recordStyleEvent('apex');
 
@@ -644,7 +646,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
                 st.score += bonus;
                 publishScore(st.score);
                 setScore(st.score);
-                addScorePopup(`CLOSE PASS! +${bonus}`, st.carX, st.carY - 25, '#FACC15');
+                addScorePopup(`CLOSE PASS! +${bonus} base`, st.carX, st.carY - 25, '#FACC15');
                 if (soundEnabled) sounds.playSuccess();
                 recordStyleEvent('rival');
               }
@@ -1142,7 +1144,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
 
           <div className="bg-[#18181B]/90 border border-zinc-800 px-3.5 py-1.5 rounded-lg backdrop-blur-md">
             <span className="font-mono-arcade text-sm text-rose-400 font-bold">
-              {score.toLocaleString()}
+              {formatArcadeScore('drift', score)}
             </span>
           </div>
         </div>

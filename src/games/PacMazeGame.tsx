@@ -492,7 +492,7 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
                 id: state.nextId++,
                 x: offsetX + (ghost.x + 0.5) * tileSize,
                 y: offsetY + (ghost.y + 0.5) * tileSize - 10,
-                text: `+${pts}`,
+                text: `+${pts} base`,
                 color: '#38BDF8',
                 life: 1.2,
               });

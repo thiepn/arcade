@@ -67,7 +67,7 @@ const Row: React.FC<{ entry: GlobalOverallEntry }> = ({ entry }) => {
       </div>
       <div className="text-right">
         <div className="text-xs sm:text-sm font-black text-amber-300 tabular-nums">{number(entry.totalScore)}</div>
-        <div className="text-[9px] uppercase tracking-wider text-zinc-600 font-mono-arcade">combined</div>
+        <div className="text-[9px] uppercase tracking-wider text-zinc-600 font-mono-arcade">total AP</div>
       </div>
     </div>
   );
@@ -118,7 +118,7 @@ export const OverallLeaderboardModal: React.FC<OverallLeaderboardModalProps> = (
   const board = mode === 'global' ? globalBoard : weeklyBoard;
   const title = mode === 'global' ? 'GLOBAL OVERALL' : 'WEEKLY OVERALL';
   const subtitle = mode === 'global'
-    ? 'Permanent arcade ranking across all games'
+    ? 'Best Arcade Points per game • up to 10,000 per game count toward rating'
     : `${formatWeekRange(weeklyBoard.weekStart, weeklyBoard.weekEnd)} • ${timeUntil(weeklyBoard.weekEnd)}`;
 
   const entries = useMemo(() => board.topEntries, [board.topEntries]);
@@ -185,7 +185,7 @@ export const OverallLeaderboardModal: React.FC<OverallLeaderboardModalProps> = (
 
         <div className="mx-4 sm:mx-5 mb-5 rounded-xl border border-[#27272A] overflow-auto min-h-[220px]">
           <div className="grid grid-cols-[34px_minmax(0,1fr)_58px_68px] sm:grid-cols-[52px_minmax(0,1fr)_110px_120px] gap-1 sm:gap-2 px-2 sm:px-4 py-2 bg-[#121215] border-b border-[#27272A] text-[9px] uppercase tracking-wider text-zinc-600 font-mono-arcade">
-            <span className="text-center">Rank</span><span>Player</span><span className="text-right">Rating</span><span className="text-right">Combined</span>
+            <span className="text-center">Rank</span><span>Player</span><span className="text-right">Rating</span><span className="text-right">Total AP</span>
           </div>
           {entries.length > 0 ? entries.map((entry) => <Row key={entry.id} entry={entry} />) : (
             <div className="py-12 text-center text-sm text-zinc-600">{loading ? 'Loading rankings…' : mode === 'weekly' ? 'No weekly scores yet.' : 'No global scores yet.'}</div>

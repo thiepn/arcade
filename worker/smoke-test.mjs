@@ -1,3 +1,4 @@
+import { toArcadePoints } from '../shared/scoring.ts';
 const baseUrl = process.env.LEADERBOARD_SMOKE_URL || 'http://127.0.0.1:8787';
 const origin = 'http://localhost:3000';
 
@@ -63,7 +64,7 @@ const leaderboardResponse = await request('/v1/leaderboards/reaction?limit=10', 
 assert(leaderboardResponse.ok, `leaderboard failed: ${leaderboardResponse.status}`);
 const leaderboard = await leaderboardResponse.json();
 assert(leaderboard.totalCompetitors === 1, 'expected exactly one ranked competitor');
-assert(leaderboard.userEntry?.score === 500, 'authenticated user score missing from leaderboard');
+assert(leaderboard.userEntry?.score === toArcadePoints('reaction',500,undefined,1), 'authenticated user score missing from leaderboard');
 assert(leaderboard.userEntry?.rank === 1, 'authenticated user should rank first');
 
 const replayResponse = await request('/v1/scores', {
@@ -79,21 +80,21 @@ await submitRun('stack', 200, 350);
 const reactionAfterResponse = await request('/v1/leaderboards/reaction?limit=10', { headers: auth });
 assert(reactionAfterResponse.ok, `reaction leaderboard refresh failed: ${reactionAfterResponse.status}`);
 const reactionAfter = await reactionAfterResponse.json();
-assert(reactionAfter.userEntry?.score === 500, 'lower repeat score must not replace the permanent reaction best');
+assert(reactionAfter.userEntry?.score === toArcadePoints('reaction',500,undefined,1), 'lower repeat score must not replace the permanent reaction best');
 
 const overallResponse = await request('/v1/leaderboards/overall?limit=10', { headers: auth });
 assert(overallResponse.ok, `overall leaderboard failed: ${overallResponse.status}`);
 const overall = await overallResponse.json();
 assert(overall.userEntry?.rank === 1, 'overall authenticated user should rank first');
 assert(overall.userEntry?.games_played === 2, 'overall leaderboard should count two ranked games');
-assert(overall.userEntry?.total_score === 700, 'overall combined score should sum best scores across games only');
+assert(overall.userEntry?.total_score === toArcadePoints('reaction',500,undefined,1)+toArcadePoints('stack',200,undefined,1), 'overall combined score should sum best scores across games only');
 
 const weeklyResponse = await request('/v1/leaderboards/weekly?limit=10', { headers: auth });
 assert(weeklyResponse.ok, `weekly leaderboard failed: ${weeklyResponse.status}`);
 const weekly = await weeklyResponse.json();
 assert(weekly.userEntry?.rank === 1, 'weekly authenticated user should rank first');
 assert(weekly.userEntry?.games_played === 2, 'weekly leaderboard should count two games with weekly scores');
-assert(weekly.userEntry?.total_score === 700, 'weekly combined score must use reaction best 500 + stack best 200, not sum repeated reaction submissions');
+assert(weekly.userEntry?.total_score === toArcadePoints('reaction',500,undefined,1)+toArcadePoints('stack',200,undefined,1), 'weekly combined score must use reaction best 500 + stack best 200, not sum repeated reaction submissions');
 assert(weekly.entries?.length === 1, 'weekly leaderboard should contain one overall player row');
 assert(Number.isFinite(weekly.weekStart) && Number.isFinite(weekly.weekEnd), 'weekly boundary metadata missing');
 assert(weekly.weekEnd - weekly.weekStart === 7 * 24 * 60 * 60 * 1000, 'weekly window should be seven days');

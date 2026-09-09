@@ -1,3 +1,5 @@
+import { SCORE_VERSION, SCORING_PROFILES, defaultScoreMode, isScoreMode, toArcadePoints } from '../../shared/scoring';
+import type { ScoreDetails } from '../types';
 import React, { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GameEntry } from '../data/games';
 import { sounds } from '../lib/sound';
@@ -32,7 +34,7 @@ interface GameShellProps {
   onToggleHaptics?: () => void;
   onBackToArcade: () => void;
   onPlayNextRandom: () => void;
-  onSaveScore: (gameId: string, score: number) => { isNewHighScore: boolean };
+  onSaveScore: (gameId: string, score: number, details?: ScoreDetails) => { isNewHighScore: boolean };
   onViewLeaderboard?: (gameId: string) => void;
   obscured?: boolean;
 }
@@ -51,6 +53,7 @@ export const GameShell: React.FC<GameShellProps> = ({
   obscured = false,
 }) => {
   const [currentScore, setCurrentScore] = useState(0);
+  const [scoringMode, setScoringMode] = useState(() => defaultScoreMode(game.id));
   const [isPaused, setIsPaused] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const shellRef = useRef<HTMLDivElement>(null);
@@ -127,7 +130,7 @@ export const GameShell: React.FC<GameShellProps> = ({
     let cancelled = false;
     leaderboardSessionRef.current = null;
     const sessionKey = gameSessionKey;
-    const request = beginLeaderboardSession(game.id).catch(() => null);
+    const request = beginLeaderboardSession(game.id, scoringMode).catch(() => null);
     leaderboardSessionPromiseRef.current = request;
     void request.then((session) => {
       if (!cancelled && activeSessionKeyRef.current === sessionKey) {
@@ -139,24 +142,39 @@ export const GameShell: React.FC<GameShellProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [game.id, gameSessionKey]);
+  }, [game.id, gameSessionKey, scoringMode]);
 
   const handleRestart = useCallback(() => {
     sounds.playClick();
     haptics.medium();
     setCurrentScore(0);
+    setScoringMode(defaultScoreMode(game.id));
     prevScoreRef.current = 0;
     setGameOverData(null);
     setSubmissionStatus('local');
     setIsPaused(false);
     gameOverHandledRef.current = false;
+    leaderboardSessionRef.current = null;
+    leaderboardSessionPromiseRef.current = null;
     const nextSessionKey = activeSessionKeyRef.current + 1;
     activeSessionKeyRef.current = nextSessionKey;
     setGameSessionKey(nextSessionKey);
-  }, []);
+  }, [game.id]);
 
-  const handleScoreUpdate = useCallback((sessionKey: number, newScore: number) => {
-    if (sessionKey !== activeSessionKeyRef.current || gameOverHandledRef.current) return;
+  const handleModeChange = useCallback((modeId: string) => {
+    if (!isScoreMode(game.id, modeId) || modeId === scoringMode) return;
+    leaderboardSessionRef.current = null;
+    leaderboardSessionPromiseRef.current = null;
+    setCurrentScore(0);
+    prevScoreRef.current = 0;
+    setSubmissionStatus("local");
+    setScoringMode(modeId);
+  }, [game.id, scoringMode]);
+
+  const handleScoreUpdate = useCallback((sessionKey: number, rawScore: number, modeId?: string) => {
+    if (!mountedRef.current || !Number.isFinite(rawScore)) return;
+    const newScore = toArcadePoints(game.id, rawScore, modeId ?? scoringMode);
+    if (!mountedRef.current || sessionKey !== activeSessionKeyRef.current || gameOverHandledRef.current) return;
     if (!Number.isFinite(newScore)) return;
 
     setCurrentScore(newScore);
@@ -172,22 +190,25 @@ export const GameShell: React.FC<GameShellProps> = ({
       }
     }
     prevScoreRef.current = newScore;
-  }, []);
+  }, [game.id, scoringMode]);
 
   const handleGameOver = useCallback(
-    (sessionKey: number, finalScore: number) => {
-      if (sessionKey !== activeSessionKeyRef.current || gameOverHandledRef.current) return;
+    (sessionKey: number, finalScore: number, modeId?: string) => {
+      if (!mountedRef.current || sessionKey !== activeSessionKeyRef.current || gameOverHandledRef.current) return;
       gameOverHandledRef.current = true;
 
-      const safeFinalScore = Number.isFinite(finalScore) ? Math.max(0, finalScore) : 0;
-      const { isNewHighScore } = onSaveScore(game.id, safeFinalScore);
+      const rawScore = Number.isFinite(finalScore) ? Math.max(0, Math.floor(finalScore)) : 0;
+      const runMode = modeId ?? scoringMode;
+      const safeFinalScore = toArcadePoints(game.id, rawScore, runMode);
+      const { isNewHighScore } = onSaveScore(game.id, safeFinalScore, { rawScore, modeId: runMode, scoreVersion: SCORE_VERSION });
+      setCurrentScore(safeFinalScore);
       const newBest = Math.max(bestScore, safeFinalScore);
 
       const submitRemoteScore = async (session: LeaderboardPlaySession | null) => {
         const current = () => mountedRef.current && sessionKey === activeSessionKeyRef.current;
         if (!session) { if (current()) setSubmissionStatus('local'); return; }
         if (current()) setSubmissionStatus('pending');
-        const accepted = await submitLeaderboardScore(session, safeFinalScore);
+        const accepted = await submitLeaderboardScore(session, rawScore, runMode);
         if (current()) setSubmissionStatus(accepted ? 'accepted' : 'failed');
       };
       if (leaderboardSessionRef.current) {
@@ -221,14 +242,14 @@ export const GameShell: React.FC<GameShellProps> = ({
         haptics.gameOver();
       }
     },
-    [bestScore, game.accentColor, game.id, onSaveScore]
+    [bestScore, game.accentColor, game.id, onSaveScore, scoringMode]
   );
 
   const sessionCallbacks = useMemo(() => {
     const sessionKey = gameSessionKey;
     return {
-      onGameOver: (finalScore: number) => handleGameOver(sessionKey, finalScore),
-      onScoreUpdate: (newScore: number) => handleScoreUpdate(sessionKey, newScore),
+      onGameOver: (finalScore: number, modeId?: string) => handleGameOver(sessionKey, finalScore, modeId),
+      onScoreUpdate: (newScore: number, modeId?: string) => handleScoreUpdate(sessionKey, newScore, modeId),
     };
   }, [gameSessionKey, handleGameOver, handleScoreUpdate]);
 
@@ -413,8 +434,8 @@ export const GameShell: React.FC<GameShellProps> = ({
         {/* Center: Live Score Display */}
         <div className="arcade-game-score flex items-center gap-1.5 sm:gap-3 bg-[#18181B] px-2 sm:px-3.5 py-1 rounded-xl border border-[#27272A] font-mono-arcade shrink-0">
           <div className="flex flex-col items-center">
-            <span className="text-[7px] sm:text-[9px] text-[#71717A] font-bold uppercase">SCORE</span>
-            <span className="text-xs sm:text-base font-bold text-white leading-tight">
+            <span className="text-[7px] sm:text-[9px] text-[#71717A] font-bold uppercase" title="Calibrated Arcade Points, scoring v2">ARCADE PTS</span>
+            <span data-arcade-points={currentScore} className="text-xs sm:text-base font-bold text-white leading-tight">
               {currentScore.toLocaleString()}
             </span>
           </div>
@@ -557,6 +578,7 @@ export const GameShell: React.FC<GameShellProps> = ({
                 key={gameSessionKey}
                 onGameOver={sessionCallbacks.onGameOver}
                 onScoreUpdate={sessionCallbacks.onScoreUpdate}
+                onModeChange={handleModeChange}
                 isPaused={isPaused || obscured || gameOverData !== null}
                 soundEnabled={soundEnabled}
                 onRestartRequest={handleRestart}
@@ -622,7 +644,7 @@ export const GameShell: React.FC<GameShellProps> = ({
           {/* Game Over Result Panel */}
           {gameOverData && (
             <div className="absolute inset-0 bg-[#0A0A0B]/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
-              <div className="w-full max-w-sm p-6 rounded-2xl bg-[#18181B] border border-[#27272A] shadow-2xl flex flex-col items-center text-center">
+              <div className="w-full max-w-sm max-h-full overflow-y-auto p-4 sm:p-6 rounded-2xl bg-[#18181B] border border-[#27272A] shadow-2xl flex flex-col items-center text-center">
                 {gameOverData.isNewHigh ? (
                   <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/50 text-amber-400 text-xs font-bold font-mono-arcade mb-3">
                     <Sparkles className="w-3.5 h-3.5" /> NEW HIGH SCORE!
@@ -638,7 +660,7 @@ export const GameShell: React.FC<GameShellProps> = ({
                 {/* Score & Best Comparison Block */}
                 <div className="w-full grid grid-cols-2 gap-3 p-4 rounded-xl bg-[#0A0A0B] border border-[#27272A] mb-6 font-mono-arcade">
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-[#71717A] font-bold uppercase">SCORE</span>
+                    <span className="text-[10px] text-[#71717A] font-bold uppercase" title="Calibrated Arcade Points, scoring v2">ARCADE PTS</span>
                     <span className="text-2xl sm:text-3xl font-black text-white">
                       {gameOverData.score.toLocaleString()}
                     </span>
@@ -654,6 +676,12 @@ export const GameShell: React.FC<GameShellProps> = ({
                 </div>
 
                 {/* Action Buttons */}
+                <details className="mb-3 rounded-lg border border-zinc-700 p-3 text-left text-xs text-zinc-300" data-scoring-details>
+                  <summary className="cursor-pointer font-bold">How these points work · v2</summary>
+                  <p className="mt-2">{SCORING_PROFILES[game.id]?.basis}</p>
+                  <p className="mt-2">Game actions earn base points. Arcade Points calibrate those rewards across all 32 games. Opening, strong and mastery benchmarks are approximately 1,000 / 3,000 / 6,000 AP. Harder Rhythm charts have larger rewards.</p>
+                  <p className="mt-2">Endless runs keep earning points beyond mastery, with diminishing returns. Waiting or pausing adds no bonus. Overall rating counts your best result per game, up to 10,000 AP each; replaying or changing modes never adds duplicate entries.</p>
+                </details>
                 <p role="status" aria-live="polite" className="mb-3 text-xs text-zinc-300" data-score-submission={submissionStatus}>
                   {submissionStatus === 'accepted' ? 'Global score accepted.' : submissionStatus === 'pending' ? 'Submitting global score… You can replay now.' : submissionStatus === 'failed' ? 'Global score not submitted.' : 'This run is local only.'}
                   {' '}{isProgressSaved() ? 'Personal best saved on this device.' : 'Storage unavailable; progress lasts until this page closes.'}

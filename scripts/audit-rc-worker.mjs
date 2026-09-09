@@ -1,3 +1,4 @@
+import { toArcadePoints } from '../shared/scoring.ts';
 import assert from 'node:assert/strict';
 const base = process.env.LEADERBOARD_SMOKE_URL || 'http://127.0.0.1:8787';
 const origin = process.env.LEADERBOARD_SMOKE_ORIGIN || 'https://thiepn.dev';
@@ -50,6 +51,6 @@ const profile = await status(await request('/v1/me'), 200);
 assert.equal(profile.activity.submissions, 1);
 assert.equal(profile.activity.rankedGames, 1);
 const board = await status(await request('/v1/leaderboards/stack'), 200);
-assert.equal(board.userEntry.score, 100);
+assert.equal(board.userEntry.score, toArcadePoints('stack',100,undefined,1));
 await status(await request('/v1/leaderboards/constructor'), 404);
 console.log('RC Worker regression passed: production CORS preflight, JSON errors, payload bounds, strict types, game allowlist, display names, concurrent replay, ranking integrity.');

@@ -1,3 +1,4 @@
+import { formatArcadeScore, formatArcadeGain } from '../../shared/scoring';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
@@ -179,7 +180,7 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
       setScore(state.score);
       state.popups.push({
         id: Math.random(),
-        text: `NAV MISSION CLEAR x${state.missionStreak} +${reward}`,
+        text: `NAV MISSION CLEAR x${state.missionStreak} +${reward} base`,
         x: state.probeX,
         y: state.probeY - 34,
         color: '#FACC15',
@@ -649,11 +650,11 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
                   if (soundEnabled) sounds.playWarp();
                 } else if (isPerfect) {
                   haptics.score();
-                  addScorePopup(`PERFECT SLINGSHOT! +${gained}`, node.x, node.y - 35, '#34D399', 1.25);
+                  addScorePopup(`PERFECT SLINGSHOT! +${gained} base`, node.x, node.y - 35, '#34D399', 1.25);
                   if (soundEnabled) sounds.playVictory();
                 } else {
                   haptics.score();
-                  addScorePopup(`+${gained}`, node.x, node.y - 30, '#38BDF8');
+                  addScorePopup(`+${gained} base`, node.x, node.y - 30, '#38BDF8');
                   if (soundEnabled) sounds.playScore();
                 }
 
@@ -780,7 +781,7 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
             st.score += starBonus;
             onScoreUpdate(st.score);
             setScore(st.score);
-            addScorePopup(`+${starBonus}`, star.x, star.y, '#FACC15');
+            addScorePopup(`+${starBonus} base`, star.x, star.y, '#FACC15');
             registerMissionEvent('STARDUST');
             if (star.color === '#FACC15') registerMissionEvent('GOLD_DUST');
             if (soundEnabled) sounds.playPop();
@@ -1081,7 +1082,7 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
           </div>
           <div className="bg-[#18181B]/90 border border-zinc-800 px-3.5 py-1.5 rounded-lg backdrop-blur-md">
             <span className="font-mono-arcade text-sm text-cyan-400 font-bold">
-              {score.toLocaleString()}
+              {formatArcadeScore('slingshot', score)}
             </span>
           </div>
         </div>

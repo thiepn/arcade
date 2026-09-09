@@ -1,3 +1,4 @@
+import { pulsePerfectReward } from '../lib/scoringEconomy';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
@@ -224,8 +225,7 @@ export const PulseGame: React.FC<GameComponentProps> = ({
       successfulBeat = true;
       state.combo++;
       const isFever = state.combo >= 5;
-      const multiplier = isFever ? 3 : 1;
-      const pts = 250 * Math.min(6, state.combo) * multiplier;
+      const pts = pulsePerfectReward(state.combo);
       state.score += pts;
       state.flashAlpha = 0.35;
       state.shake = 6;
@@ -234,7 +234,7 @@ export const PulseGame: React.FC<GameComponentProps> = ({
         state.lives++;
         setLives(state.lives);
       }
-      setLastFeedback({ text: isFever ? '🔥 HYPER PERFECT' : 'PERFECT SYNC', subtext: `${diff > 0 ? '+' : ''}${Math.round(diff)}px • +${pts}`, color: isFever ? 'text-amber-400' : 'text-[#38BDF8]' });
+      setLastFeedback({ text: isFever ? '🔥 HYPER PERFECT' : 'PERFECT SYNC', subtext: `${diff > 0 ? '+' : ''}${Math.round(diff)}px • +${pts} base`, color: isFever ? 'text-amber-400' : 'text-[#38BDF8]' });
       if (soundEnabledRef.current) {
         const scale = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
         sounds.playChime(scale[state.combo % scale.length]);
@@ -245,7 +245,7 @@ export const PulseGame: React.FC<GameComponentProps> = ({
       const pts = 120 * (state.combo >= 5 ? 2 : 1);
       state.score += pts;
       haptics.light();
-      setLastFeedback({ text: 'GREAT', subtext: `${diff > 0 ? 'LATE' : 'EARLY'} • +${pts}`, color: 'text-[#34D399]' });
+      setLastFeedback({ text: 'GREAT', subtext: `${diff > 0 ? 'LATE' : 'EARLY'} • +${pts} base`, color: 'text-[#34D399]' });
       if (soundEnabledRef.current) sounds.playSuccess();
     } else if (absDiff <= 28) {
       successfulBeat = true;
@@ -278,7 +278,7 @@ export const PulseGame: React.FC<GameComponentProps> = ({
         state.syncWagerStreak++;
         const wagerReward = getPulseWagerReward(state.combo, state.syncWagerStreak);
         state.score += wagerReward;
-        setLastFeedback({ text: `SYNC WAGER x${state.syncWagerStreak}!`, subtext: `±${PULSE_WAGER_WINDOW_PX}px BONUS • +${wagerReward}`, color: 'text-fuchsia-300' });
+        setLastFeedback({ text: `SYNC WAGER x${state.syncWagerStreak}!`, subtext: `±${PULSE_WAGER_WINDOW_PX}px BONUS • +${wagerReward} base`, color: 'text-fuchsia-300' });
         if (soundEnabledRef.current) sounds.playVictory();
       } else {
         state.syncWagerStreak = 0;
@@ -290,7 +290,7 @@ export const PulseGame: React.FC<GameComponentProps> = ({
     const pathBonus = advancePathBeat(successfulBeat, wagerSuccess);
     if (pathBonus > 0) {
       state.score += pathBonus;
-      setLastFeedback({ text: 'GROOVE PATH COMPLETE!', subtext: `+${pathBonus} • NEXT PATH QUEUED`, color: 'text-cyan-200' });
+      setLastFeedback({ text: 'GROOVE PATH COMPLETE!', subtext: `+${pathBonus} base • NEXT PATH QUEUED`, color: 'text-cyan-200' });
       if (soundEnabledRef.current) sounds.playSuccess();
     }
 
@@ -549,7 +549,7 @@ export const PulseGame: React.FC<GameComponentProps> = ({
         {combo > 0 && (
           <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all backdrop-blur-md ${feverMode ? 'bg-amber-500/20 border-amber-500/50 text-amber-400 animate-pulse' : 'bg-[#18181B]/90 border-[#27272A] text-white'}`}>
             {feverMode ? <Flame className="w-3.5 h-3.5 fill-current" /> : <Zap className="w-3.5 h-3.5 text-[#38BDF8]" />}
-            <span>{combo}X COMBO {feverMode && '(3X FEVER!)'}</span>
+            <span>{combo}X COMBO {feverMode && '(1.5X FEVER!)'}</span>
           </div>
         )}
       </div>

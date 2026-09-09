@@ -346,7 +346,7 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
           state.floatingTexts.push({
             x: curW / 2,
             y: Math.min(220, curH * 0.34),
-            text: `CONTRACT CLEAR x${state.contractStreak} +${reward}`,
+            text: `CONTRACT CLEAR x${state.contractStreak} +${reward} base`,
             color: '#FACC15',
             life: 0,
             maxLife: 72,
@@ -612,7 +612,7 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
                 state.floatingTexts.push({
                   x: brick.x + brick.w / 2,
                   y: brick.y,
-                  text: `+${pts} (${state.combo}x)`,
+                  text: `+${pts} base (${state.combo}x)`,
                   color: state.combo >= 4 ? '#F43F5E' : '#FACC15',
                   life: 0,
                   maxLife: 30,

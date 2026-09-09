@@ -1,3 +1,4 @@
+import { matrixStepBase } from '../lib/scoringEconomy';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
@@ -171,7 +172,7 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
       setCombo(state.combo);
 
       const stepPoints = getMatrixStepPoints(
-        100 + state.combo * 25,
+        matrixStepBase(state.combo),
         state.overclockActive,
       );
       state.score += stepPoints;
@@ -186,8 +187,8 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
         );
         setStatusMessage(
           state.overclockActive
-            ? `OVERCLOCK VERIFIED! +${clearPoints}`
-            : `CYBER LINK VERIFIED! +${clearPoints}`,
+            ? `OVERCLOCK VERIFIED! +${clearPoints} base`
+            : `CYBER LINK VERIFIED! +${clearPoints} base`,
         );
         state.score += clearPoints;
         onScoreUpdate(state.score);

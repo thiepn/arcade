@@ -178,8 +178,8 @@ export default function App() {
   }, []);
 
   // Save score from inside GameShell
-  const handleSaveScore = useCallback((gameId: string, score: number) => {
-    const result = recordScore(gameId, score);
+  const handleSaveScore = useCallback((gameId: string, score: number, details?: import("./types").ScoreDetails) => {
+    const result = recordScore(gameId, score, details);
     setStats(result.stats);
     return { isNewHighScore: result.isNewHighScore };
   }, []);

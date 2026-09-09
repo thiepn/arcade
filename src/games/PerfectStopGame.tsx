@@ -1,3 +1,4 @@
+import { formatArcadeScore, formatArcadeGain } from '../../shared/scoring';
 import React, { useEffect, useRef, useState } from 'react';
 import { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
@@ -266,7 +267,7 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
 
         <div className="flex flex-col items-end gap-1.5">
           <span className="font-mono-arcade text-xs text-white bg-[#18181B] px-3 py-1.5 rounded-xl border border-[#27272A] tabular-nums">
-            {score.toLocaleString()} PTS
+            {formatArcadeScore('perfectstop', score)} PTS
           </span>
           {streak > 1 && (
             <span className="font-mono-arcade text-[10px] text-[#FACC15] bg-[#18181B] px-2.5 py-1 rounded-lg border border-[#FACC15]/30 flex items-center gap-1">
@@ -287,7 +288,7 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
                 <span className="font-mono-arcade text-xs text-[#A1A1AA] mb-2">Δ {result.distance.toFixed(1)}</span>
               </div>
               <div className={`px-4 py-1.5 rounded-full border font-mono-arcade font-black text-xs tracking-wider ${ratingClass}`}>
-                {result.rating} • +{result.points.toLocaleString()}
+                {result.rating} • +{formatArcadeGain('perfectstop', score, result.points)}
               </div>
             </>
           ) : (
@@ -364,7 +365,7 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
           ) : roundIndex < maxRounds - 1 && !(roundIndex === PERFECT_STOP_ROUNDS.length - 1 && !encoreUnlocked) ? (
             <div className="px-6 py-2.5 rounded-xl bg-[#18181B] text-white font-mono-arcade font-bold text-xs border border-[#27272A]">TAP FOR {PERFECT_STOP_SESSION_ROUNDS[roundIndex + 1].label}</div>
           ) : (
-            <div className="px-6 py-2.5 rounded-xl bg-[#34D399] text-[#09090B] font-mono-arcade font-bold text-xs">FINAL SCORE: {score.toLocaleString()}</div>
+            <div className="px-6 py-2.5 rounded-xl bg-[#34D399] text-[#09090B] font-mono-arcade font-bold text-xs">FINAL SCORE: {formatArcadeScore('perfectstop', score)}</div>
           )}
         </div>
       </div>

@@ -45,6 +45,7 @@ type DifficultyLevel = AirHockeyDifficultyLevel;
 export const AirHockeyGame: React.FC<GameComponentProps> = ({
   onGameOver,
   onScoreUpdate,
+  onModeChange,
   isPaused,
   soundEnabled,
 }) => {
@@ -322,7 +323,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
           state.timeLeft = 0;
           state.isAlive = false;
           if (soundEnabled) sounds.playGameOver();
-          setSafeTimeout(() => onGameOver(state.gameScore), 400);
+          setSafeTimeout(() => onGameOver(state.gameScore, state.difficulty), 400);
         }
 
         if (state.isGoalResetting) {
@@ -450,14 +451,14 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
             }
             const pts = basePts * Math.min(4, state.combo) + powerBonus;
             state.gameScore += pts;
-            onScoreUpdate(state.gameScore);
+            onScoreUpdate(state.gameScore, state.difficulty);
             if (soundEnabled) sounds.playVictory();
 
             state.popups.push({
               id: state.nextId++,
               x: centerX,
               y: centerY - 40,
-              text: state.powerPlayTimer > 0 ? `POWER GOAL x${state.powerStreak}! +${pts}` : `GOAL! +${pts}`,
+              text: state.powerPlayTimer > 0 ? `POWER GOAL x${state.powerStreak}! +${pts} base` : `GOAL! +${pts} base`,
               color: '#38BDF8',
               life: 1.0,
             });
@@ -725,6 +726,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
 
   const changeDifficulty = (lvl: DifficultyLevel) => {
     setSelectedDifficulty(lvl);
+    onModeChange?.(lvl);
     gameStateRef.current.difficulty = lvl;
     if (soundEnabled) sounds.playPuckHit();
   };

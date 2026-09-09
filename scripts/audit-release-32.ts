@@ -1,3 +1,4 @@
+import { GAME_RULES } from '../shared/scoringProtocol';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -20,8 +21,7 @@ const registryEntries = [...registry.matchAll(/^\s{4}id:\s*'([a-z0-9-]+)',[\s\S]
   .map((match) => ({ id: match[1], file: `${match[2]}.tsx` }));
 const registryIds = registryEntries.map((entry) => entry.id);
 const registryFiles = registryEntries.map((entry) => entry.file);
-const workerRuleBlock = /Object\.fromEntries\(\s*\[([\s\S]*?)\]\.map\(\(id\)/.exec(worker)?.[1] ?? '';
-const workerIds = [...workerRuleBlock.matchAll(/'([a-z0-9-]+)'/g)].map((match) => match[1]);
+const workerIds = Object.keys(GAME_RULES);
 
 assert(gameFiles.length === 32, `expected exactly 32 game source modules, found ${gameFiles.length}`);
 assert(registryEntries.length === 32, `expected exactly 32 lazy registry entries, found ${registryEntries.length}`);
@@ -100,7 +100,7 @@ assert(ma4.includes('lazyGameCount !== 32'), 'MA4 lazy-game certification is not
 assert(ma4.includes('gameEntries.length !== 32'), 'MA4 built-game certification is not set to 32');
 assert(mobile.includes('gameFiles.length === 32'), 'mobile runtime audit is not set to 32 games');
 assert(registry.includes("id: 'neonrail'"), 'Neon Rail Shift registration is missing');
-assert(worker.includes("'airhockey','neonrail'"), 'Neon Rail Shift Worker rule is missing');
+assert(Object.hasOwn(GAME_RULES, 'neonrail') && worker.includes('shared/scoringProtocol.ts'), 'Neon Rail Shift Worker rule is missing');
 
 const phaseFiles = [
   ['docs/P17_GAME_FEEL_CERTIFICATION.md','P17 certification document'],['src/lib/gameFeelRuntime.ts','P17 shared feel runtime'],['src/lib/gameFeelProfiles.ts','P17 game feel profile registry'],['src/p17-game-feel.css','P17 bounded feedback stylesheet'],

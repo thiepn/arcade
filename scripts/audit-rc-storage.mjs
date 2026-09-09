@@ -10,19 +10,21 @@ globalThis.localStorage = {
   setItem(key, value) { if (denied) throw new Error('Quota exceeded'); values.set(key, value); },
   removeItem(key) { values.delete(key); },
 };
-const key = 'micro_arcade_stats_v1';
+const key = 'micro_arcade_stats_v2';
 for (const malformed of ['null', '[]', 'true', '42', '"old"', '{broken']) {
   clearAllStats(); values.set(key, malformed);
   assert.deepEqual(getStoredStats().highScores, {});
   assert.doesNotThrow(() => toggleFavoriteGame('orbit'));
 }
 values.set(key, JSON.stringify({ highScores: { orbit: 450, stack: 'oops', bad: -1 }, playCounts: 'bad', favorites: ['orbit', {}, 'orbit'], recentlyPlayed: [1, 'stack'], soundEnabled: 'false', volume: 100 }));
-assert.deepEqual(getStoredStats().highScores, { orbit: 450 });
+assert.deepEqual(getStoredStats().highScores, { orbit: 300 });
+assert.deepEqual(getStoredStats().legacyHighScores, { orbit: 450 });
+assert.equal(getStoredStats().scoreVersion, 2);
 assert.deepEqual(getStoredStats().favorites, ['orbit']);
 assert.deepEqual(getStoredStats().recentlyPlayed, ['stack']);
 assert.equal(getStoredStats().volume, 1);
 assert.equal(getStoredStats().soundEnabled, true);
-for (const score of [NaN, Infinity, -1]) assert.equal(recordScore('orbit', score).stats.highScores.orbit, 450);
+for (const score of [NaN, Infinity, -1]) assert.equal(recordScore('orbit', score).stats.highScores.orbit, 300);
 recordGamePlay('orbit');
 denied = true;
 recordScore('orbit', 900);

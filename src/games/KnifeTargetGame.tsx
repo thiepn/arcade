@@ -355,8 +355,8 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
                   x: impactPoint.x,
                   y: impactPoint.y - 22,
                   text: isKnifeRazorRush(state.precisionChain)
-                    ? `RAZOR RUSH x${state.precisionChain} +${razorPts}`
-                    : `RAZOR MARK +${razorPts}`,
+                    ? `RAZOR RUSH x${state.precisionChain} +${razorPts} base`
+                    : `RAZOR MARK +${razorPts} base`,
                   color: '#FACC15',
                   life: 1.1,
                 });
@@ -387,7 +387,7 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
                     id: state.nextId++,
                     x: impactPoint.x,
                     y: impactPoint.y + 20,
-                    text: `CYBER CRYSTAL +${applePts}!`,
+                    text: `CYBER CRYSTAL +${applePts} base!`,
                     color: '#34D399',
                     life: 1.2,
                   });
@@ -416,7 +416,7 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
                   id: state.nextId++,
                   x: coreX,
                   y: coreY - 40,
-                  text: `STAGE ${state.stage} SHATTERED! +${stageClearPts}`,
+                  text: `STAGE ${state.stage} SHATTERED! +${stageClearPts} base`,
                   color: '#F43F5E',
                   life: 1.5,
                 });
