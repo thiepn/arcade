@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {mkdirSync} from 'node:fs';
-import {chromium} from '@playwright/test';
+import {chromium,expect} from '@playwright/test';
 import {POLICY_ID,AP_SCALE,apMicros,contributionMicros,weekBounds} from '../../shared/leaderboard/domain.ts';
 const port=4186,base=`http://127.0.0.1:${port}`,player='11111111-1111-4111-8111-111111111111',credential=player+'.'+'a'.repeat(43);
 const env={protocolVersion:3,scoreVersion:2,policyId:POLICY_ID};
@@ -61,9 +61,12 @@ try{
  const ctx=await browser.newContext();await ctx.addInitScript(({credential})=>localStorage.setItem('micro_arcade_guest_credential_v1',credential),{credential});const p=await ctx.newPage();p.on('requestfailed',r=>state.failures.push({url:r.url(),error:r.failure()?.errorText}));p.on('pageerror',e=>state.failures.push({error:e.message}));await p.route('**/test-api/**',api);
  await p.goto(base+'/tests/scoring.html');await p.waitForFunction(()=>window.scoreFixture?.finish&&window.scoreFixture?.outbox);await p.waitForTimeout(700);
  state.dropResponse=true;const before=state.runs.size;await p.evaluate(()=>{window.scoreFixture.emit(45,'standard');window.scoreFixture.finish(45,'standard')});
- await p.waitForFunction(async()=> (await window.scoreFixture.outbox()).some(r=>r.status==='pending'&&r.attempts>0));const saved=await p.evaluate(async()=> (await window.scoreFixture.outbox()).find(r=>r.status==='pending'));check(state.runs.size===before+1,'server committed before disconnect: '+JSON.stringify({before,runs:state.runs.size,saved,requests:state.requests.slice(-12),uploads:state.uploads,failures:state.failures}));
+ // IndexedDB predicates are asynchronous; poll their resolved boolean, not a truthy Promise.
+ await expect.poll(()=>p.evaluate(async()=> (await window.scoreFixture.outbox()).some(r=>r.status==='pending'&&r.attempts>0)),{timeout:15000}).toBe(true);
+ const saved=await p.evaluate(async()=> (await window.scoreFixture.outbox()).find(r=>r.status==='pending'));check(state.runs.size===before+1,'server committed before disconnect: '+JSON.stringify({before,runs:state.runs.size,saved,requests:state.requests.slice(-12),uploads:state.uploads,failures:state.failures}));
  state.offlineUpload=true;await p.reload();await p.waitForFunction(()=>window.scoreFixture?.flush);check((await p.evaluate(async()=> (await window.scoreFixture.outbox()).find(r=>r.status==='pending'))).id===saved.id,'IndexedDB survives reload');
- state.offlineUpload=false;await p.evaluate(()=>window.scoreFixture.flush(true));await p.waitForFunction(async()=> (await window.scoreFixture.outbox()).some(r=>r.status==='accepted'));
+ state.offlineUpload=false;await p.evaluate(()=>window.scoreFixture.flush(true));
+ await expect.poll(()=>p.evaluate(async()=> (await window.scoreFixture.outbox()).some(r=>r.status==='accepted')),{timeout:15000}).toBe(true);
  check(state.runs.size===before+1,'lost response retry creates no second record');const sent=state.uploads.filter(r=>r.sessionId===saved.id);check(sent.every(r=>JSON.stringify(r)===JSON.stringify(sent[0])),'raw score, mode and completion duration immutable across reload/retry');
  // A stale callback from the old mode cannot end the new run.
  await p.evaluate(()=>{window.oldFinish=window.scoreFixture.finish;window.scoreFixture.mode('standard')});await p.evaluate(()=>window.scoreFixture.select('rhythm'));await p.waitForSelector('[data-fixture-game="rhythm"]');await p.waitForTimeout(200);
