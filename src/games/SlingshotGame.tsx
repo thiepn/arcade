@@ -17,6 +17,7 @@ import {
   isSlingshotMissionComplete,
   type SlingshotMissionEvent,
 } from '../lib/slingshotMastery';
+import { getSlingshotNodeOffset } from '../lib/gamePolishBalance';
 import { isArcadeReducedMotion } from '../lib/motionPreferences';
 
 interface PlanetNode {
@@ -306,7 +307,7 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
     for (let i = 1; i <= 8; i++) {
       state.nodeCounter++;
       const ny = prevY - (145 + Math.random() * 45);
-      const nx = Math.max(75, Math.min(w - 75, prevX + (Math.random() - 0.5) * 220));
+      const nx = Math.max(75, Math.min(w - 75, prevX + getSlingshotNodeOffset(Math.random())));
       const isWarp = i === 8;
       const isLava = !isWarp && i % 3 === 0;
       const isGas = !isWarp && i % 2 === 0 && !isLava;

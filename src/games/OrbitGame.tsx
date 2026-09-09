@@ -16,6 +16,7 @@ import {
   type OrbitThreatTarget,
 } from '../lib/orbitThreatMastery';
 import { isArcadeReducedMotion } from '../lib/motionPreferences';
+import { getOrbitHazardIntervalMs } from '../lib/gamePolishBalance';
 
 interface Particle {
   x: number;
@@ -401,7 +402,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
         });
 
         // Spawn Spawners
-        const hazardInterval = Math.max(700, 1800 - state.gameTime * 30);
+        const hazardInterval = getOrbitHazardIntervalMs(state.gameTime);
         state.hazardSpawnElapsedMs += dt;
         state.crystalSpawnElapsedMs += dt;
         if (state.hazardSpawnElapsedMs > hazardInterval && state.formationGraceTimer <= 0) {

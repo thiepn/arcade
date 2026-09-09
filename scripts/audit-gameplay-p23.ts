@@ -123,7 +123,7 @@ for (let lineIndex = 0; lineIndex < 8; lineIndex++) for (let step = 0; step < 3;
   assert(plan.gapY >= 60 && plan.gapY + 90 <= 508, 'Aero Flight Line leaves certified vertical margins');
 }
 const aeroGame = read('src/games/FlappyAeroGame.tsx');
-for (const token of ['Math.random() * 40 + 200', 'Math.max(90, 130 - state.gatesCleared * 0.8)', 'Math.min(280, 175 + state.gatesCleared * 3.0)', 'FLIGHT LINE']) assert(aeroGame.includes(token), `Aero lost certified/P23 marker: ${token}`);
+for (const token of ['Math.random() * 40 + 200', 'getFlappyAeroGap(state.gatesCleared)', 'getFlappyAeroScrollSpeed(state.gatesCleared)', 'FLIGHT LINE']) assert(aeroGame.includes(token), `Aero lost certified/P23 marker: ${token}`);
 
 assert(STACK_FOCUS_MAX_CHARGES === 2 && STACK_FOCUS_START_CHARGES === 1 && STACK_FOCUS_EARN_STREAK === 3 && STACK_STANDARD_PERFECT_WINDOW_PX === 4 && STACK_FOCUS_PERFECT_WINDOW_PX === 2, 'Stack Focus contract changed');
 assert(STACK_BLUEPRINTS.length === 5 && STACK_BLUEPRINTS.every((blueprint) => blueprint.steps.length === 3), 'Stack Tower Blueprint roster invalid');
@@ -131,7 +131,7 @@ let stackBlueprint = createStackBlueprintState();
 for (const placement of ['CENTERED','PERFECT','CENTERED'] as const) stackBlueprint = advanceStackBlueprint(stackBlueprint, placement, 6).state;
 assert(stackBlueprint.completions === 1 && stackBlueprint.blueprintIndex === 1, 'Stack CENTERLINE blueprint cannot resolve from real placement classes');
 const stackGame = read('src/games/StackGame.tsx');
-for (const token of ['3.5 * clamp', 'Math.min(4.5', 'TOWER BLUEPRINT', 'classifyStackPlacement']) assert(stackGame.includes(token), `Stack lost certified/P23 marker: ${token}`);
+for (const token of ['getStackTravelSpeed(', 'TOWER BLUEPRINT', 'classifyStackPlacement']) assert(stackGame.includes(token), `Stack lost certified/P23 marker: ${token}`);
 
 const main = read('src/main.tsx');
 const p23Runtime = read('src/lib/p23TransformationRuntime.ts');

@@ -10,6 +10,7 @@ import {
   getOrbSalvoResolutionBonus,
   shouldEarnOrbBurst,
 } from '../lib/orbCannonMastery';
+import { getBubbleDropCadence } from '../lib/gamePolishBalance';
 
 const COLORS = ['#38BDF8', '#EC4899', '#10B981', '#FACC15', '#A855F7'];
 const BUBBLE_RADIUS = 16;
@@ -52,7 +53,7 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
 
   const [hudState, setHudState] = useRenderPublishedState({
     score: 0,
-    shotsUntilDrop: 5,
+    shotsUntilDrop: 6,
     combo: 0,
     multiplier: 1,
     nextColor: COLORS[1],
@@ -65,7 +66,8 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
   const gameStateRef = useRef({
     score: 0,
     shotsCount: 0,
-    shotsUntilDrop: 5,
+    shotsUntilDrop: 6,
+    ceilingDrops: 0,
     isAlive: true,
     combo: 0,
     multiplier: 1,
@@ -204,7 +206,8 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
     const state = gameStateRef.current;
     state.score = 0;
     state.shotsCount = 0;
-    state.shotsUntilDrop = 5;
+    state.ceilingDrops = 0;
+    state.shotsUntilDrop = getBubbleDropCadence(state.ceilingDrops);
     state.combo = 0;
     state.multiplier = 1;
     state.isAlive = true;
@@ -473,7 +476,8 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
 
             // Ceiling drop check
             if (state.shotsUntilDrop <= 0) {
-              state.shotsUntilDrop = 5;
+              state.ceilingDrops++;
+              state.shotsUntilDrop = getBubbleDropCadence(state.ceilingDrops);
               const newRow = Array.from({ length: GRID_COLS }, () => ({
                 color: COLORS[Math.floor(Math.random() * COLORS.length)],
               }));

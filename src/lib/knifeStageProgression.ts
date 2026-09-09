@@ -80,9 +80,12 @@ export const getKnifeStageConfig = (stage: number): KnifeStageConfig => {
 
   return {
     ...base,
-    baseSpeed: Math.min(5.2, speedByMode + tier * 0.28),
+    baseSpeed: Math.min(
+      5.0,
+      speedByMode + Math.min(4, tier) * 0.22 + Math.max(0, tier - 4) * 0.12,
+    ),
     knifeCount: Math.min(14, 8 + cycleIndex + Math.min(2, tier)),
-    preBladeCount: Math.min(5, preBladeByMode + tier),
+    preBladeCount: Math.min(5, preBladeByMode + Math.min(2, tier) + Math.floor(Math.max(0, tier - 2) / 3)),
   };
 };
 

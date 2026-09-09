@@ -18,6 +18,7 @@ import {
   syncTypeRushRelayWave,
   type TypeRushRelayState,
 } from '../lib/typeRushRelays';
+import { getTypeRushBaseSpeed } from '../lib/gamePolishBalance';
 
 interface FallingWord {
   id: number;
@@ -135,7 +136,7 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
       }
     }
 
-    const baseSpeed = (0.15 + Math.min(0.18, state.gameTime * 0.0028)) * wave.speedMultiplier;
+    const baseSpeed = getTypeRushBaseSpeed(state.gameTime, wave.speedMultiplier);
     state.words.push({
       id: state.nextId++,
       word: chosen,

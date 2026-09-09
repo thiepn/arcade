@@ -60,12 +60,12 @@ for (const heading of [
 }
 
 // Stack: physical progression only, capped and independent from mastery score.
-assert(stack.includes('Math.min(4.5, Math.max(0, state.blocks.length - 1) * 0.08)'), 'Stack physical speed ramp marker changed');
+assert(stack.includes('getStackTravelSpeed('), 'Stack viewport-normalized physical speed ramp marker changed');
 assert(!stack.includes('state.score * 0.08'), 'Stack speed regressed to score-driven progression');
 
 // Aero: bounded base pressure. Optional Flow may intentionally exceed the base envelope.
-assert(aero.includes('Math.min(280, 175 + state.gatesCleared * 3.0)'), 'Aero base speed cap changed');
-assert(aero.includes('Math.max(90, 130 - state.gatesCleared * 0.8)'), 'Aero minimum gate gap changed');
+assert(aero.includes('getFlappyAeroScrollSpeed(state.gatesCleared)'), 'Aero base speed envelope changed');
+assert(aero.includes('getFlappyAeroGap(state.gatesCleared)'), 'Aero minimum gate gap envelope changed');
 assert(aero.includes('Math.random() * 40 + 200'), 'Aero gate-spacing floor changed');
 assert(200 / 280 >= 0.7, 'Aero base generated-anchor interval fell below 0.7 s');
 assert(AERO_FLOW_SPEED_MULTIPLIER > 1 && AERO_FLOW_SPEED_MULTIPLIER <= 1.2, 'Aero Flow risk multiplier escaped the certified bound');

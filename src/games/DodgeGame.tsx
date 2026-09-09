@@ -11,6 +11,7 @@ import {
   isDodgePhaseCut,
 } from '../lib/dodgeMastery';
 import { isArcadeReducedMotion } from '../lib/motionPreferences';
+import { getDodgeSpawnDelayMs } from '../lib/gamePolishBalance';
 
 interface Hazard {
   id: number;
@@ -368,7 +369,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
         state.playerX += (state.targetPlayerX - state.playerX) * 0.25;
 
         // Hazard Spawner
-        const spawnDelay = Math.max(380, 1100 - state.gameTime * 25);
+        const spawnDelay = getDodgeSpawnDelayMs(state.gameTime, state.hazards.length);
         state.spawnElapsedMs += dt;
         if (state.spawnElapsedMs > spawnDelay) {
           state.spawnElapsedMs = 0;

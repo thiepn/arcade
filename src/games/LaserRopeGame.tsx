@@ -18,6 +18,7 @@ import {
   getLaserRopeDesiredMode,
   type LaserRopeMode,
 } from '../lib/laserRopeChoreographies';
+import { getLaserRopeWarningFloor } from '../lib/gamePolishBalance';
 
 interface OrbItem {
   id: number;
@@ -243,6 +244,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
             state.direction,
             transitionSpeed,
             candidateBeamsCount,
+            getLaserRopeWarningFloor(transitionSpeed),
           )) {
             state.modeChangeTimer = eligible ? Math.random() * 1.5 + 2.6 : 0.75;
             if (nextMode === 'HIGH') {

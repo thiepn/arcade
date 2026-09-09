@@ -20,6 +20,7 @@ import {
   isAeroFlightTraceHit,
   type AeroFlightTrace,
 } from '../lib/aeroFlightLines';
+import { getFlappyAeroGap, getFlappyAeroScrollSpeed } from '../lib/gamePolishBalance';
 
 interface Gate {
   id: number;
@@ -151,7 +152,7 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
     while (rightmost < bufferTarget) {
       const gapSpacing = Math.random() * 40 + 200;
       const nextX = rightmost + gapSpacing;
-      const gapHeight = Math.max(90, 130 - state.gatesCleared * 0.8);
+      const gapHeight = getFlappyAeroGap(state.gatesCleared);
       const ordinal = state.generatedGateCount++;
       const lineIndex = Math.floor(ordinal / 3);
       const lineStep = ordinal % 3;
@@ -211,7 +212,7 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
         state.y += state.vy * dt;
         state.angle = Math.max(-0.55, Math.min(1.0, state.vy / 380));
 
-        const baseScrollSpeed = Math.min(280, 175 + state.gatesCleared * 3.0);
+        const baseScrollSpeed = getFlappyAeroScrollSpeed(state.gatesCleared);
         state.scrollSpeed = baseScrollSpeed * (state.flowTimer > 0 ? AERO_FLOW_SPEED_MULTIPLIER : 1);
         state.distance += state.scrollSpeed * dt;
 

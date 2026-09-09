@@ -22,6 +22,7 @@ import {
   type StackBlueprintState,
 } from '../lib/stackBlueprints';
 import { isArcadeReducedMotion } from '../lib/motionPreferences';
+import { getStackTravelSpeed } from '../lib/gamePolishBalance';
 
 interface Block {
   x: number;
@@ -171,8 +172,10 @@ export const StackGame: React.FC<GameComponentProps> = ({
     const state = gameStateRef.current;
     state.direction *= -1;
     state.currentX = state.direction === 1 ? -state.currentWidth : state.viewportWidth + state.currentWidth * 0.15;
-    state.speed = 3.5 * clamp(state.viewportWidth / 500, 0.85, 1.7)
-      + Math.min(4.5, Math.max(0, state.blocks.length - 1) * 0.08);
+    state.speed = getStackTravelSpeed(
+      state.blocks.length,
+      clamp(state.viewportWidth / 500, 0.85, 1.7),
+    );
     if (state.blocks.length > 5) state.targetCameraY = (state.blocks.length - 5) * state.currentHeight;
   };
 

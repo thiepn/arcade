@@ -25,6 +25,7 @@ import {
   type PulseGroovePathState,
 } from '../lib/pulseGroovePaths';
 import { isArcadeReducedMotion } from '../lib/motionPreferences';
+import { getPulseComboBpmBoost } from '../lib/gamePolishBalance';
 
 interface Particle {
   x: number;
@@ -147,7 +148,7 @@ export const PulseGame: React.FC<GameComponentProps> = ({
     state.pattern = selectedPattern;
     setPatternInfo(selectedPattern);
 
-    const comboBoost = Math.min(30, Math.floor(state.combo * 1.2));
+    const comboBoost = getPulseComboBpmBoost(state.combo);
     const dynamicBpm = Math.min(155, selectedPattern.baseBpm + comboBoost);
     state.bpm = dynamicBpm;
     setCurrentBpm(dynamicBpm);

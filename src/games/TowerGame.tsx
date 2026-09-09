@@ -15,6 +15,7 @@ import {
   isTowerPrecisionLanding,
 } from '../lib/towerApexMastery';
 import { isArcadeReducedMotion } from '../lib/motionPreferences';
+import { getTowerPlatformGap } from '../lib/gamePolishBalance';
 
 interface Platform {
   id: number;
@@ -279,7 +280,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
     }
 
     while (state.highestPlatformY < targetY) {
-      const gapY = Math.random() * 45 + 46; // 46 to 91 px gap
+      const gapY = getTowerPlatformGap(state.highestPlatformY, Math.random());
       const nextY = state.highestPlatformY + gapY;
       const platW = (Math.random() * 25 + 68) * platformScale;
       const platX = Math.random() * (w - platW - 40) + 20;
