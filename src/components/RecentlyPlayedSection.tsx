@@ -55,7 +55,7 @@ export const RecentlyPlayedSection: React.FC<RecentlyPlayedSectionProps> = ({
                 </h4>
                 {score > 0 ? (
                   <span className="text-[10px] font-mono-arcade text-amber-400 font-semibold">
-                    Best: {score.toLocaleString()}
+                    Best AP: {score.toLocaleString()}
                   </span>
                 ) : (
                   <span className="text-[10px] font-mono-arcade text-[#52525B]">

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { SCORING_PROFILES, RHYTHM_MODES, SCORE_VERSION, toArcadePoints, defaultScoreMode, isScoreMode, arcadeRating, arcadeTotal } from '../shared/scoring';
 import { GAME_RULES, SESSION_TTL_MS, scoreContext } from '../shared/scoringProtocol';
 import { chainOrbReward, matrixStepBase, driftTickReward, DRIFT_TIER_TICKS, pulsePerfectReward, rhythmComboMultiplier } from '../src/lib/scoringEconomy';
@@ -120,6 +120,14 @@ const hockey=['EASY','MEDIUM','HARD'].map(mode=>{
 check(hockey[0].points<hockey[1].points&&hockey[1].points<hockey[2].points,'same six goals reward tougher AI more, without double multiplier');
 // Ensure the changed engines actually use these audited helpers.
 for(const [file,helper] of [['Chain','chainOrbReward'],['Drift','driftTickReward'],['Matrix','matrixStepBase'],['Pulse','pulsePerfectReward'],['Rhythm','rhythmComboMultiplier']])check(readFileSync(`src/games/${file}Game.tsx`,'utf8').includes(helper+'('),`${file}: helper integrated`);
+// The game layer must expose native score only. AP normalization belongs at GameShell / persistence / leaderboard boundaries.
+for(const file of readdirSync('src/games').filter(name=>name.endsWith('Game.tsx'))){
+ const source=readFileSync(`src/games/${file}`,'utf8');
+ check(!source.includes('toArcadePoints(')&&!source.includes('formatArcadeScore')&&!source.includes('formatArcadeGain'),`${file}: raw score is not replaced by AP inside the game`);
+}
+const shellSource=readFileSync('src/components/GameShell.tsx','utf8');
+check(shellSource.includes('data-raw-score={currentRawScore}')&&shellSource.includes('data-arcade-points={currentArcadePoints}'),'GameShell displays raw Score and normalized AP as separate values');
+check(!readFileSync('shared/scoring.ts','utf8').includes('formatArcadeScore'),'shared scoring exposes conversion, not a helper that silently relabels native score as AP');
 mkdirSync('balance-report',{recursive:true});
 writeFileSync('balance-report/golden.json',JSON.stringify(golden,null,2));
 writeFileSync('balance-report/models.json',JSON.stringify({method:'Source-derived deterministic budgets and design benchmarks; not measured human percentiles.',checks,cabinets:32,modes:modeCount,chain:{oldChain36,newChain36},drift:{oldDriftMinute,newDriftMinute},reactionRuns,perfectStop,charts,hockey},null,2));

@@ -32,6 +32,9 @@ export interface UserStats {
   scoreVersion?: number;
   legacyHighScores?: Record<string, number>;
   bestScoreDetails?: Record<string, ScoreDetails>;
+  /** Highest native engine score earned in each game. Not comparable across games. */
+  rawHighScores?: Record<string, number>;
+  /** Best normalized Arcade Points per game. Used for cross-game ranking. */
   highScores: Record<string, number>;
   playCounts: Record<string, number>;
   totalPlayTimeSeconds: Record<string, number>;

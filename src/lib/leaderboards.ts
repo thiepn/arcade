@@ -9,7 +9,12 @@ export interface LeaderboardEntry {
   id: string;
   rank: number;
   name: string;
+  /** Normalized Arcade Points used to rank this board. */
   score: number;
+  /** Native game score preserved for display/context; never used cross-game. */
+  rawScore?: number;
+  modeId?: string;
+  scoreVersion?: number;
   country: string;
   countryCode: string;
   badge?: string;
@@ -86,6 +91,9 @@ interface ServerGameRow {
   name: string;
   country_code: string;
   score: number;
+  raw_score?: number;
+  mode_id?: string;
+  source_version?: number;
   achieved_at: number;
   rank: number;
   isUser?: boolean;
@@ -262,6 +270,9 @@ function normalizeGameRow(row: ServerGameRow): LeaderboardEntry {
     rank: row.rank,
     name: row.isUser ? `${row.name} (YOU)` : row.name,
     score: row.score,
+    rawScore: Number.isSafeInteger(row.raw_score) && (row.raw_score ?? -1) >= 0 ? row.raw_score : undefined,
+    modeId: typeof row.mode_id === 'string' ? row.mode_id : undefined,
+    scoreVersion: Number.isSafeInteger(row.source_version) ? row.source_version : undefined,
     country: countryFlag(row.country_code),
     countryCode: row.country_code,
     badge: row.isUser ? 'PLAYER' : undefined,
@@ -415,12 +426,12 @@ export function getCachedGuestProfile(): GuestProfileData | null {
   return loadCache().profile ?? null;
 }
 
-export function getGlobalLeaderboardForGame(gameId: string, userHighScore: number): GameLeaderboardData {
+export function getGlobalLeaderboardForGame(gameId: string, userHighScore: number, userRawHighScore = 0): GameLeaderboardData {
   const cached = loadCache().games[gameId];
   if (cached) return cached;
   const pendingUser: LeaderboardEntry | null = userHighScore > 0 ? {
-    id: 'local-user', rank: 0, name: 'YOU (local only)', score: userHighScore,
-    country: '🌐', countryCode: 'XX', badge: 'PLAYER', timestamp: 'Local score', isUser: true,
+    id: 'local-user', rank: 0, name: 'YOU (local only)', score: userHighScore, rawScore: userRawHighScore || undefined,
+    country: '🌐', countryCode: 'XX', badge: 'PLAYER', timestamp: 'Local AP', isUser: true,
     division: 'bronze', trend: 'same', level: 1,
   } : null;
   return { topEntries: [], userRank: null, userEntry: pendingUser, totalCompetitors: 0 };

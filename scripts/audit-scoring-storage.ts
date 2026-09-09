@@ -9,7 +9,7 @@ const legacy={highScores:{chain:1_400_000,rhythm:1_700_000,stack:18,reaction:496
 values.set('micro_arcade_stats_v1',JSON.stringify(legacy));
 const migrated=getStoredStats();
 assert.equal(migrated.scoreVersion,2);assert.deepEqual(migrated.legacyHighScores,legacy.highScores);
-for(const [id,raw] of Object.entries(legacy.highScores))assert.equal(migrated.highScores[id],toArcadePoints(id,raw,undefined,1));
+for(const [id,raw] of Object.entries(legacy.highScores)){assert.equal(migrated.highScores[id],toArcadePoints(id,raw,undefined,1));assert.equal(migrated.rawHighScores?.[id],raw);}
 for(const field of ['playCounts','favorites','recentlyPlayed','soundEnabled','hapticsEnabled','volume','theme','totalPlayTimeSeconds'])assert.deepEqual((migrated as any)[field],(legacy as any)[field]);
 assert.ok(values.has('micro_arcade_stats_v2'));
 for(let i=0;i<25;i++){saveStats(getStoredStats());assert.deepEqual(getStoredStats().highScores,migrated.highScores);assert.deepEqual(getStoredStats().legacyHighScores,legacy.highScores);}
@@ -19,10 +19,13 @@ assert.equal(ACHIEVEMENTS_REGISTRY.find(a=>a.id==='score_1m')!.isUnlocked(migrat
 assert.equal(getPlayerRankProfile(migrated).ratingScore,arcadeRating(migrated.highScores),'old badge XP cannot inflate competitive rating');
 const details={rawScore:120,modeId:'standard',scoreVersion:2};recordScore('stack',6000,details);
 assert.deepEqual(getStoredStats().bestScoreDetails?.stack,details);
-assert.equal(recordScore('stack',5900).isNewHighScore,false,'lower AP never replaces best');
+assert.equal(getStoredStats().rawHighScores?.stack,120,'native PB stored separately from AP PB');
+assert.equal(recordScore('stack',5900,{...details,rawScore:200}).isNewHighScore,false,'lower AP never replaces best AP');
 assert.equal(getStoredStats().highScores.stack,6000);
+assert.equal(getStoredStats().rawHighScores?.stack,200,'higher native score can improve raw PB without replacing best AP');
+assert.deepEqual(getStoredStats().bestScoreDetails?.stack,details,'AP-best mode metadata remains tied to the AP record');
 denied=true;recordScore('stack',6500,{...details,rawScore:143});recordGamePlay('stack');assert.equal(getStoredStats().highScores.stack,6500);assert.equal(isProgressSaved(),false);
 denied=false;saveStats(getStoredStats());assert.equal(isProgressSaved(),true);assert.equal(getStoredStats().highScores.stack,6500);
-clearAllStats();assert.deepEqual(getStoredStats().highScores,{});assert.equal(values.has('micro_arcade_stats_v1'),false,'explicit reset also clears the legacy key');
+clearAllStats();assert.deepEqual(getStoredStats().highScores,{});assert.deepEqual(getStoredStats().rawHighScores,{});assert.equal(values.has('micro_arcade_stats_v1'),false,'explicit reset also clears the legacy key');
 assert.equal(ACHIEVEMENTS_REGISTRY.find(a=>a.id==='score_1m')!.isUnlocked(getStoredStats()),false,'legacy badges are not granted to fresh profiles');
-console.log('Scoring storage PASS: v1 archive, separate v2 key, 25 idempotent reload/save cycles, cached-client isolation, settings, badges, raw metadata, PB ordering, quota recovery and explicit reset.');
+console.log('Scoring storage PASS: v1 archive, separate v2 key, 25 idempotent reload/save cycles, cached-client isolation, settings, badges, separate raw/AP PBs, raw metadata, PB ordering, quota recovery and explicit reset.');

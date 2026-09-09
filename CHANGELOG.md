@@ -3,6 +3,7 @@
 ## Scoring v2 — 2026-09-09
 
 - Calibrated Arcade Points across all 32 cabinets and all 36 selectable configurations.
+- Corrected the Score/AP presentation contract: every game now keeps its native raw **Score** in the HUD and results, while **AP** is displayed separately and used for cross-game ranking. Raw-score and AP personal bests are stored independently, and per-game leaderboard rows can show raw Score as secondary context.
 - Bounded Chain, Drift, Pulse, Matrix and Rhythm reward inflation.
 - Unified local/global/weekly best-per-game rating with a 10,000 AP per-game contribution cap; per-game records remain uncapped.
 - Versioned, mode-bound, server-computed points and non-destructive legacy conversion.

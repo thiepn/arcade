@@ -1,4 +1,3 @@
-import { formatArcadeScore, formatArcadeGain } from '../../shared/scoring';
 import { driftTickReward, DRIFT_TIER_TICKS } from '../lib/scoringEconomy';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameComponentProps } from '../types';
@@ -1144,7 +1143,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
 
           <div className="bg-[#18181B]/90 border border-zinc-800 px-3.5 py-1.5 rounded-lg backdrop-blur-md">
             <span className="font-mono-arcade text-sm text-rose-400 font-bold">
-              {formatArcadeScore('drift', score)}
+              {score.toLocaleString()}
             </span>
           </div>
         </div>

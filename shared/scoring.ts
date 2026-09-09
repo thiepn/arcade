@@ -39,9 +39,7 @@ export function toArcadePoints(gameId: string, raw: number, modeId = defaultScor
   const mode = gameId === 'rhythm' ? RHYTHM_MODES[modeId] : undefined;
   return Math.floor(scoreCurve(raw, mode?.anchors ?? profile.anchors) * (mode?.reward ?? 1) + 1e-7);
 }
-export const formatArcadeScore = (gameId: string, raw: number, mode?: string): string => toArcadePoints(gameId,raw,mode).toLocaleString();
-export const formatArcadeGain = (gameId: string, totalAfter: number, gain: number, mode?: string): string =>
-  Math.max(0,toArcadePoints(gameId,totalAfter,mode)-toArcadePoints(gameId,Math.max(0,totalAfter-gain),mode)).toLocaleString();
+/** Native game score stays native in the game UI. AP conversion belongs only at the arcade/leaderboard boundary. */
 export function arcadeRating(scores: Record<string, number>): number {
   return Object.keys(SCORING_PROFILES).reduce((sum,id) => {
     const score = scores[id];
