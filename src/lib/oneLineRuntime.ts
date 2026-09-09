@@ -33,3 +33,14 @@ export const remapOneLinePoint = <T extends { x: number; y: number }>(
   x: point.x * (newWidth / Math.max(1, oldWidth)),
   y: point.y * (newHeight / Math.max(1, oldHeight)),
 });
+
+/** Keep the complete goal ring inside very short arenas without changing its hit radius. */
+export const fitOneLineTarget = <T extends { x: number; y: number; radius: number }>(
+  target: T, width: number, height: number,
+): T => {
+  const inset = target.radius + 3;
+  const fit = (value: number, extent: number) => extent < inset * 2
+    ? extent / 2
+    : Math.max(inset, Math.min(extent - inset, value));
+  return { ...target, x: fit(target.x, width), y: fit(target.y, height) };
+};

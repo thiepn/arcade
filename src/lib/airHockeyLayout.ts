@@ -41,8 +41,11 @@ export const getAirHockeyTableLayout = (
   // insets compress on short mobile/browser-chrome viewports so the table can
   // never be positioned outside the actual rendered stage.
   const sideInset = clamp(width * 0.028, Math.min(6, width * 0.03), Math.min(24, width * 0.08));
-  const topInset = clamp(height * 0.07, Math.min(30, height * 0.08), Math.min(62, height * 0.16));
-  const bottomInset = clamp(height * 0.082, Math.min(38, height * 0.1), Math.min(70, height * 0.18));
+  // Short landscape uses side wings for DOM controls. In portrait, reserve the
+  // full HUD + power/difficulty footprint rather than drawing underneath them.
+  const sideControls = width >= 480 && height <= 400;
+  const topInset = sideControls ? Math.min(8, height * 0.03) : Math.min(width < 480 ? 64 : 40, height * 0.2);
+  const bottomInset = sideControls ? Math.min(8, height * 0.03) : Math.min(104, height * 0.32);
   const availableWidth = Math.max(1, width - sideInset * 2);
   const availableHeight = Math.max(1, height - topInset - bottomInset);
   const aspect = getAirHockeyTargetAspect(width, height);

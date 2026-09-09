@@ -359,7 +359,7 @@ export const GameShell: React.FC<GameShellProps> = ({
     >
       {/* Top Arcade Navigation Bar */}
       <header
-        className={`w-full transition-all duration-200 z-30 select-none ${
+        className={`arcade-game-toolbar w-full transition-all duration-200 z-30 select-none ${
           isFullscreen
             ? 'absolute top-0 left-0 right-0 px-2.5 sm:px-4 py-2 bg-[#0A0A0B]/85 backdrop-blur-md border-b border-[#27272A]/50 flex items-center justify-between gap-1.5 sm:gap-3'
             : 'max-w-4xl px-2.5 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-3 border-b border-[#27272A] bg-[#0A0A0B]/95 backdrop-blur'
@@ -368,7 +368,7 @@ export const GameShell: React.FC<GameShellProps> = ({
         onTouchStart={(e) => e.stopPropagation()}
       >
         {/* Left: Back Button & Title */}
-        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-shrink">
+        <div className="arcade-game-heading flex items-center gap-1.5 sm:gap-3 min-w-0 flex-shrink">
           <button
             type="button"
             id="game-back-btn"
@@ -388,7 +388,7 @@ export const GameShell: React.FC<GameShellProps> = ({
             <span className="hidden sm:inline">ARCADE</span>
           </button>
 
-          <div className="flex flex-col min-w-0">
+          <div className="arcade-game-title flex flex-col min-w-0">
             <h1 className="font-bold text-xs sm:text-base flex items-center gap-1 sm:gap-2 text-white min-w-0">
               <span className="truncate max-w-[90px] xs:max-w-[130px] sm:max-w-[200px] md:max-w-none">{game.title}</span>
               {gamepad.connected && (
@@ -411,7 +411,7 @@ export const GameShell: React.FC<GameShellProps> = ({
         </div>
 
         {/* Center: Live Score Display */}
-        <div className="flex items-center gap-1.5 sm:gap-3 bg-[#18181B] px-2 sm:px-3.5 py-1 rounded-xl border border-[#27272A] font-mono-arcade shrink-0">
+        <div className="arcade-game-score flex items-center gap-1.5 sm:gap-3 bg-[#18181B] px-2 sm:px-3.5 py-1 rounded-xl border border-[#27272A] font-mono-arcade shrink-0">
           <div className="flex flex-col items-center">
             <span className="text-[7px] sm:text-[9px] text-[#71717A] font-bold uppercase">SCORE</span>
             <span className="text-xs sm:text-base font-bold text-white leading-tight">
@@ -430,7 +430,7 @@ export const GameShell: React.FC<GameShellProps> = ({
         </div>
 
         {/* Right: Controls (Fullscreen, Restart, Pause, Sound, Haptics) */}
-        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div className="arcade-game-actions flex items-center gap-1 sm:gap-1.5 shrink-0">
           {onToggleHaptics && (
             <button
               type="button"
@@ -715,13 +715,11 @@ export const GameShell: React.FC<GameShellProps> = ({
         </div>
       </main>
 
-      {/* Bottom Hint (hidden in Fullscreen mode for maximum vertical gameplay room) */}
-      {!isFullscreen && (
-        <footer className="w-full max-w-4xl px-4 py-1.5 flex items-center justify-between text-[10px] sm:text-[11px] font-mono-arcade text-[#52525B] pointer-events-none">
+      {/* A stable status strip keeps teaching/mastery text outside the playfield. */}
+        <footer className="arcade-game-status w-full max-w-4xl px-4 py-1.5 flex items-center justify-between text-[10px] sm:text-[11px] font-mono-arcade text-[#52525B] pointer-events-none">
           <span>{gamepad.connected ? (gamepad.pointerMode ? 'Gamepad: Stick cursor • A hold/click • B pause/back' : 'Gamepad: Stick/D-pad move • A action • B pause/back') : `Controls: ${game.controlsHint}`}</span>
           <span className="hidden sm:inline">Alt+Enter: Fullscreen • Esc: Pause • R: Restart</span>
         </footer>
-      )}
     </div>
   );
 };

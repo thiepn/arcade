@@ -672,7 +672,7 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
       <canvas ref={canvasRef} className="w-full h-full block touch-none" />
 
       {/* Top HUD */}
-      <div className="absolute top-3 left-4 right-4 flex items-center justify-between z-10 pointer-events-none">
+      <div className="snake-toolbar absolute top-3 left-4 right-4 flex items-center justify-between z-10 pointer-events-none">
         <div className="flex items-center gap-3 bg-[#18181B]/90 border border-[#27272A] px-3.5 py-1.5 rounded-xl font-mono-arcade text-xs backdrop-blur-md">
           <div className="flex items-center gap-1 text-cyan-400 font-bold">
             <Sparkles className="w-3.5 h-3.5" />
