@@ -1,7 +1,8 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
+import { CalendarDays, ChevronRight, Crown, Gamepad2, Globe2, Medal, RefreshCw, ShieldCheck, Sparkles, Trophy, Users } from 'lucide-react';
 import { GAMES_REGISTRY } from '../data/games';
 import type { UserStats } from '../types';
-import { AP_SCALE,formatPoints,modeLabel,modesFor,POLICY,POLICY_ID,SUBMISSION_MESSAGES } from '../../shared/leaderboard/domain';
+import { AP_SCALE,formatPoints,modeLabel,modesFor,POLICY_ID,SUBMISSION_MESSAGES } from '../../shared/leaderboard/domain';
 import { currentGameBests,localRating } from '../lib/localCompetition';
 import { existingCredential,exportPlayerRecoveryCode,restorePlayerRecoveryCode,IDENTITY_EVENT,leaderboardRequest } from '../lib/leaderboardIdentity';
 import { flushUploads,getUploadHistory,OUTBOX_EVENT,PUBLISHED_EVENT,refreshReviewedUploads,uploadsAreDurable,type PendingRun } from '../lib/leaderboardOutbox';
@@ -98,37 +99,53 @@ export function LeaderboardPanel({stats,initialGameId}:{stats:UserStats;initialG
  const localBest=scope==='game'?(mode==='all'?currentGameBests(stats)[gameId]:stats.modeBests?.[gameId+':'+mode]):undefined;
  const entries=board.topEntries as Entry[];
  const own=board.userEntry;
- const renderRow=(entry:Entry)=><li key={entry.id} className={`lb-row ${entry.isUser?'lb-self':''}`} data-leaderboard-player={entry.id}>
-  <span className="lb-position">#{entry.rank}</span>
-  <div className="lb-row-body"><div className="lb-person">
-   {scope==='game'?<span className="lb-name">{entry.name}</span>:<button className="lb-name lb-name-button" type="button" aria-label={`Show contributions for ${entry.name}`} aria-expanded={expanded===entry.id} onClick={()=>void showDetails(entry)}>{entry.name}</button>}
-   {entry.isUser&&<span className="lb-you">You</span>}
+ const renderRank=(rank:number)=>rank===1?<Crown aria-hidden="true"/>:rank===2?<Medal aria-hidden="true"/>:rank===3?<Medal aria-hidden="true"/>:<span>#{rank}</span>;
+ const renderRow=(entry:Entry)=><li key={entry.id} className={`lb-row lb-division-${entry.division??'bronze'} ${entry.rank<=3?`lb-podium lb-podium-${entry.rank}`:''} ${entry.isUser?'lb-self':''}`} data-leaderboard-player={entry.id}>
+  <div className="lb-position" aria-label={`Rank ${entry.rank}`}>{renderRank(entry.rank)}</div>
+  <div className="lb-player-cell">
+   <span className="lb-country" aria-hidden="true">{entry.country}</span>
+   <div className="lb-person">
+    {scope==='game'?<span className="lb-name">{entry.name}</span>:<button className="lb-name lb-name-button" type="button" aria-label={`Show contributions for ${entry.name}`} aria-expanded={expanded===entry.id} onClick={()=>void showDetails(entry)}>{entry.name}</button>}
+    <div className="lb-player-meta">{entry.isUser&&<span className="lb-you">YOU</span>}<span>{entry.division?.toUpperCase()??'BRONZE'} DIVISION</span></div>
+   </div>
   </div>
-  <div className="lb-metrics">{scope==='game'&&'score'in entry?<><strong title={`${(entry.apMicros??0)/AP_SCALE} AP`}>{formatPoints(entry.score)} AP</strong><span>Score {entry.rawScore?.toLocaleString()??'Unavailable'} · {modeLabel(gameId,entry.modeId)}</span></>:<><strong title={`${(entry.contributionMicros??0)/AP_SCALE} rating`}>{formatPoints('ratingScore'in entry?entry.ratingScore:0)} rating</strong><span>{'gamesPlayed'in entry?entry.gamesPlayed:0} ranked games · {formatPoints('totalScore'in entry?entry.totalScore:0)} total AP</span></>}</div>
+  <div className="lb-metrics">{scope==='game'&&'score'in entry?<><strong title={`${(entry.apMicros??0)/AP_SCALE} AP`}>{formatPoints(entry.score)} <em>AP</em></strong><span>Score {entry.rawScore?.toLocaleString()??'Unavailable'} · {modeLabel(gameId,entry.modeId)}</span></>:<><strong title={`${(entry.contributionMicros??0)/AP_SCALE} rating`}>{formatPoints('ratingScore'in entry?entry.ratingScore:0)} <em>RATING</em></strong><span>{'gamesPlayed'in entry?entry.gamesPlayed:0} ranked games · {formatPoints('totalScore'in entry?entry.totalScore:0)} total AP</span></>}</div>
   {expanded===entry.id&&<div className="lb-breakdown" aria-live="polite">{detailBusy?<p>Loading contributions…</p>:detailError?<p role="alert">{detailError}</p>:<ul>{breakdown.map(c=><li key={c.gameId}><div><strong>{titleFor(c.gameId)}</strong><span>{modeLabel(c.gameId,c.modeId)} · Score {c.rawScore.toLocaleString()}</span></div><div><strong>{formatPoints(c.contributionMicros/AP_SCALE)} rating</strong><span>{formatPoints(c.apMicros/AP_SCALE)} AP</span></div></li>)}</ul>}</div>}
-  </div>
  </li>;
- return <section className="lb-panel" aria-label="Published arcade leaderboard" data-leaderboard-v3>
-  <div className="lb-tabs" role="group" aria-label="Leaderboard view">{(['overall','weekly','game'] as const).map(value=><button type="button" className="lb-button" aria-pressed={scope===value} key={value} onClick={()=>setScope(value)}>{value==='overall'?'Global':value==='weekly'?'Weekly':'By game'}</button>)}</div>
+ const scopeCopy=scope==='game'?'Ranked by precise AP. Raw Score remains specific to its game and mode.':scope==='weekly'?'Best result from each game completed during the current UTC week.':'One best contribution per game. Equal ratings share the same rank.';
+ return <section className={`lb-panel lb-scope-${scope}`} aria-label="Published arcade leaderboard" data-leaderboard-v3>
+  <div className="lb-tabs" role="group" aria-label="Leaderboard view">
+   <button type="button" className="lb-button" aria-pressed={scope==='overall'} onClick={()=>setScope('overall')}><Globe2 aria-hidden="true"/><span>Global</span></button>
+   <button type="button" className="lb-button" aria-pressed={scope==='weekly'} onClick={()=>setScope('weekly')}><CalendarDays aria-hidden="true"/><span>Weekly</span></button>
+   <button type="button" className="lb-button" aria-pressed={scope==='game'} onClick={()=>setScope('game')}><Gamepad2 aria-hidden="true"/><span>By game</span></button>
+  </div>
   {scope==='game'&&<div className="lb-selectors"><label className="lb-label">Game<select aria-label="Leaderboard game" value={gameId} onChange={e=>{setGameId(e.target.value);setMode('all');}}>{GAMES_REGISTRY.map(g=><option key={g.id} value={g.id}>{g.title}</option>)}</select></label><label className="lb-label">Mode<select aria-label="Leaderboard mode" value={mode} onChange={e=>setMode(e.target.value)}><option value="all">All modes · best AP</option>{modesFor(gameId).map(p=><option key={p.modeId} value={p.modeId}>{p.modeLabel}</option>)}</select></label></div>}
-  <div className="lb-overview"><div><span>Published competitors</span><strong>{total(board).toLocaleString()}</strong></div><div><span>Your published rank</span><strong>{board.userRank?`#${board.userRank}`:'Not ranked'}</strong></div></div>
-  <div className="lb-local"><strong>On this device</strong> · {scope==='game'?localBest?<>Score {localBest.rawScore.toLocaleString()} · {formatPoints(localBest.apMicros/AP_SCALE)} AP · {modeLabel(gameId,localBest.modeId)}</>:'No current-rule local record':<>{formatPoints(localRating(stats))} local rating</>}<span>Local records and pending uploads do not create a published rank.</span></div>
-  <div className="lb-toolbar"><p>{scope==='game'?'Ranked by precise AP. Raw Score stays specific to its game and mode.':scope==='weekly'?'Best result per game, completed during this UTC week.':'One best contribution per game. Equal ratings share a rank.'}</p><button type="button" className="lb-button" disabled={busy||!live} aria-label="Refresh leaderboard" onClick={()=>setTick(n=>n+1)}>{busy?'Loading…':'Refresh'}</button></div>
-  {scope==='weekly'&&'weekEnd'in board&&board.weekEnd&&<p className="lb-caption">UTC week: {new Date(board.weekStart!).toLocaleDateString(undefined,{timeZone:'UTC'})} – {new Date(board.weekEnd-1).toLocaleDateString(undefined,{timeZone:'UTC'})} · Resets Monday 00:00 UTC.</p>}
+  <div className="lb-overview">
+   <div className="lb-stat-card"><div className="lb-stat-icon"><Users aria-hidden="true"/></div><div><span>Published competitors</span><strong>{total(board).toLocaleString()}</strong></div></div>
+   <div className={`lb-stat-card ${board.userRank?'lb-stat-ranked':''}`}><div className="lb-stat-icon"><Trophy aria-hidden="true"/></div><div><span>Your published rank</span><strong>{board.userRank?`#${board.userRank}`:'Not ranked'}</strong></div></div>
+  </div>
+  <div className="lb-local"><div className="lb-local-icon"><ShieldCheck aria-hidden="true"/></div><div><strong>ON THIS DEVICE</strong><p>{scope==='game'?localBest?<>Score {localBest.rawScore.toLocaleString()} · {formatPoints(localBest.apMicros/AP_SCALE)} AP · {modeLabel(gameId,localBest.modeId)}</>:'No current-rule local record':<>{formatPoints(localRating(stats))} local rating</>}</p><span>Local records and pending uploads do not create a published rank.</span></div></div>
+  <div className="lb-toolbar"><div className="lb-rules-summary"><Sparkles aria-hidden="true"/><p>{scopeCopy}</p></div><button type="button" className="lb-button lb-refresh" disabled={busy||!live} aria-label="Refresh leaderboard" onClick={()=>setTick(n=>n+1)}><RefreshCw aria-hidden="true" className={busy?'lb-spin':''}/><span>{busy?'Loading…':'Refresh'}</span></button></div>
+  {scope==='weekly'&&'weekEnd'in board&&board.weekEnd&&<p className="lb-caption lb-week-caption">UTC week: {new Date(board.weekStart!).toLocaleDateString(undefined,{timeZone:'UTC'})} – {new Date(board.weekEnd-1).toLocaleDateString(undefined,{timeZone:'UTC'})} · Resets Monday 00:00 UTC.</p>}
   {board.asOf&&<p className="lb-caption">Snapshot: {new Date(board.asOf).toLocaleString()}{error?' · Previously loaded data':''}</p>}
   {!live&&<p className="lb-warning">This build is local-only. The published leaderboard is not connected.</p>}
   {error&&<p className="lb-warning" role="alert">{error} Refresh to start a new snapshot.</p>}
-  <ol className="lb-list" aria-label="Leaderboard rankings" aria-busy={busy}>{entries.map(renderRow)}</ol>
-  {!entries.length&&<p className="lb-empty">{busy?'Loading rankings…':'No published results in this view yet.'}</p>}
-  {own&&board.userRank&&!entries.some(e=>e.id===own.id)&&<><p className="lb-caption">Your position</p><ol className="lb-list">{renderRow(own)}</ol></>}
-  {board.nextOffset!==null&&board.nextOffset!==undefined&&<button type="button" className="lb-button lb-more" disabled={busy} onClick={()=>void loadMore()}>Load more players</button>}
-  <details className="lb-details"><summary>Scoring & ranking rules</summary>
-   <p><strong>Score</strong> is the game’s raw result. <strong>AP</strong> normalizes it for the game/mode. <strong>Rating</strong> sums your best bounded contribution from each game, up to 10,000 each.</p>
-   <p>Most games reach full contribution at 10,000 AP. The finite games use elite targets: Reaction 6,500 AP, Perfect Stop 6,500 AP, Gravity 8,000 AP. Individual AP records remain uncapped.</p>
-   <p>Repeated attempts and extra modes do not add extra game slots. Exact rating ties share a rank; uncapped total AP is a statistic, not a tie-breaker. Per-game ordering uses micro-AP precision; displayed numbers are shortened to three decimals.</p>
-   <p>Weekly boards use completion time, not retry time. Compatible v2 records carry forward; v1 rules remain in your archive. Public results are plausibility-screened, not replay-verified.</p>
-   <p className="lb-caption">Leaderboard v3 · scoring v2 · policy {POLICY_ID.slice(0,12)}</p>
-  </details>
-  <UploadManager/>
+  <div className="lb-board-shell">
+   <div className="lb-table-head" aria-hidden="true"><span>Rank</span><span>Player</span><span>{scope==='game'?'Arcade Points / Score':'Rating / Total AP'}</span></div>
+   <ol className="lb-list" aria-label="Leaderboard rankings" aria-busy={busy}>{entries.map(renderRow)}</ol>
+   {!entries.length&&<div className="lb-empty"><Trophy aria-hidden="true"/><strong>{busy?'Loading rankings…':'No published results yet'}</strong><span>{busy?'Connecting to the arcade circuit.':'Play a ranked run to put a score on this board.'}</span></div>}
+  </div>
+  {own&&board.userRank&&!entries.some(e=>e.id===own.id)&&<><p className="lb-caption lb-your-position">YOUR POSITION</p><ol className="lb-list lb-pinned-self">{renderRow(own)}</ol></>}
+  {board.nextOffset!==null&&board.nextOffset!==undefined&&<button type="button" className="lb-button lb-more" disabled={busy} onClick={()=>void loadMore()}>Load more players <ChevronRight aria-hidden="true"/></button>}
+  <div className="lb-utility-grid">
+   <details className="lb-details"><summary><span><Trophy aria-hidden="true"/> Scoring & ranking rules</span><ChevronRight className="lb-summary-chevron" aria-hidden="true"/></summary>
+    <div className="lb-details-body"><p><strong>Score</strong> is the game’s raw result. <strong>AP</strong> normalizes it for the game/mode. <strong>Rating</strong> sums your best bounded contribution from each game, up to 10,000 each.</p>
+    <p>Most games reach full contribution at 10,000 AP. The finite games use elite targets: Reaction 6,500 AP, Perfect Stop 6,500 AP, Gravity 8,000 AP. Individual AP records remain uncapped.</p>
+    <p>Repeated attempts and extra modes do not add extra game slots. Exact rating ties share a rank; uncapped total AP is a statistic, not a tie-breaker. Per-game ordering uses micro-AP precision; displayed numbers are shortened to three decimals.</p>
+    <p>Weekly boards use completion time, not retry time. Compatible v2 records carry forward; v1 rules remain in your archive. Public results are plausibility-screened, not replay-verified.</p>
+    <p className="lb-caption">Leaderboard v3 · scoring v2 · policy {POLICY_ID.slice(0,12)}</p></div>
+   </details>
+   <UploadManager/>
+  </div>
  </section>;
 }

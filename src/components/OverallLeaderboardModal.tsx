@@ -1,14 +1,26 @@
 import React,{useEffect,useRef} from 'react';
+import { Trophy, X, Sparkles } from 'lucide-react';
 import type { UserStats } from '../types';
 import { useModalFocus } from '../hooks/useModalFocus';
 import { LeaderboardPanel } from './LeaderboardPanel';
+
 export const OverallLeaderboardModal:React.FC<{stats:UserStats;onClose:()=>void}>=({stats,onClose})=>{
  const dialogRef=useRef<HTMLDivElement>(null);useModalFocus(dialogRef);
  useEffect(()=>{const key=(event:KeyboardEvent)=>{if(event.key==='Escape')onClose();};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[onClose]);
- return <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Overall leaderboards" className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-6 outline-none">
-  <div className="w-full max-w-3xl max-h-[92dvh] rounded-2xl border border-zinc-700 bg-[#0A0A0B] shadow-2xl flex flex-col overflow-hidden">
-   <header className="flex items-center justify-between gap-3 p-4 border-b border-zinc-700"><h2 className="text-lg font-bold text-white">Arcade leaderboards</h2><button type="button" className="lb-button" aria-label="Close leaderboards" onClick={onClose}>Close</button></header>
-   <div className="min-h-0 overflow-y-auto p-3 sm:p-5"><LeaderboardPanel stats={stats}/></div>
+ return <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Overall leaderboards" className="lb-modal-backdrop">
+  <div className="lb-modal-shell">
+   <header className="lb-modal-header">
+    <div className="lb-modal-title-group">
+     <div className="lb-modal-icon"><Trophy aria-hidden="true"/></div>
+     <div className="lb-modal-heading-copy">
+      <div className="lb-modal-kicker"><Sparkles aria-hidden="true"/> LIVE ARCADE CIRCUIT</div>
+      <h2>ARCADE LEADERBOARDS</h2>
+      <p>Normalized Arcade Points · global, weekly and per-game rankings</p>
+     </div>
+    </div>
+    <button type="button" className="lb-icon-button" aria-label="Close leaderboards" onClick={onClose}><X aria-hidden="true"/></button>
+   </header>
+   <div className="lb-modal-body"><LeaderboardPanel stats={stats}/></div>
   </div>
  </div>;
 };
