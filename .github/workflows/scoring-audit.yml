@@ -20,6 +20,8 @@ jobs:
         run: |
           mkdir -p audit-bundle
           git archive HEAD | gzip > audit-bundle/source.tar.gz
+          git fetch --depth=1 origin 4e42911748456f7533fd569a9815828833da8f16
+          git archive 4e42911748456f7533fd569a9815828833da8f16 | gzip > audit-bundle/candidate.tar.gz
           tar -czf audit-bundle/dependencies.tar.gz node_modules
           cp "$(command -v bun)" audit-bundle/bun
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
