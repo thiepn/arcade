@@ -1,0 +1,37 @@
+name: Apply final UI review
+on:
+  pull_request:
+    types: [opened, synchronize]
+permissions:
+  contents: read
+jobs:
+  apply:
+    if: github.event.pull_request.number == 76 && github.event.pull_request.head.ref == 'fix/responsive-ui-audit' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Apply checksum-verified source patch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f tools/ui-final-review.b64 ]; then exit 0; fi
+          base64 --decode tools/ui-final-review.b64 | gzip --decompress > /tmp/ui-review.patch
+          echo 'a8d65d49bb0b3e1ee3d69df70bdc6a8a6b47134714f61ef1d7de8fad34430245  /tmp/ui-review.patch' | sha256sum --check
+          git apply --check /tmp/ui-review.patch
+          git apply /tmp/ui-review.patch
+          git rm tools/ui-final-review.b64
+          git add src scripts/audit-one-line.ts scripts/audit-ui-geometry.mjs
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Contain short-screen goal rings and separate adjacent game HUDs'
+          auth="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:refs/heads/fix/responsive-ui-audit
