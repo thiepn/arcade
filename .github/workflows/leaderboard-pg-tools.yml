@@ -1,0 +1,24 @@
+name: Leaderboard PostgreSQL Test Tools
+on:
+  push:
+    branches: [audit/leaderboard-rebuild-source]
+    paths: [.github/workflows/leaderboard-pg-tools.yml]
+permissions:
+  contents: read
+jobs:
+  tools:
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    timeout-minutes: 10
+    steps:
+      - name: Download official Debian test runtime packages
+        run: |
+          apt-get update -qq
+          mkdir -p /tmp/pg-tools
+          cd /tmp/pg-tools
+          apt-get download postgresql-17 postgresql-client-17 libldap2 libllvm19 libpq5 libxml2 libzstd1 liblz4-1 libicu76
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: leaderboard-pg-tools
+          path: /tmp/pg-tools/*.deb
+          retention-days: 1
