@@ -115,9 +115,87 @@ try {
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Type Rush Keyboard Input', null, { timeout: 2500 });
   assert(await typeInput.evaluate((node) => document.activeElement === node), 'Type Rush did not regain its text input after pause/resume');
 
+  // Regression 3: when Game Over appears, Play Again must become the initial
+  // focus owner even if an upload-retry button is earlier in DOM order. Native
+  // Space activation then does exactly what the result screen advertises.
+  const installResultFixture = async () => page.evaluate(() => {
+    const shell = document.querySelector('.game-shell');
+    if (!(shell instanceof HTMLElement)) throw new Error('Missing game shell for result shortcut fixture');
+
+    window.__keyboardReplayClicks = 0;
+    window.__keyboardRetryClicks = 0;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'keyboard-result-fixture';
+    overlay.className = 'absolute inset-0';
+
+    const dialog = document.createElement('div');
+    const marker = document.createElement('span');
+    marker.textContent = 'SESSION COMPLETE';
+    const heading = document.createElement('h2');
+    heading.textContent = 'RUN COMPLETE';
+    const actions = document.createElement('div');
+
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.id = 'keyboard-retry-fixture';
+    retry.textContent = 'Retry upload now';
+    retry.addEventListener('click', () => { window.__keyboardRetryClicks += 1; });
+
+    const playAgain = document.createElement('button');
+    playAgain.type = 'button';
+    playAgain.id = 'btn-play-again';
+    playAgain.textContent = 'PLAY AGAIN (Space)';
+    playAgain.addEventListener('click', () => {
+      window.__keyboardReplayClicks += 1;
+      overlay.remove();
+    });
+
+    actions.append(retry, playAgain);
+    dialog.append(marker, heading, actions);
+    overlay.append(dialog);
+    shell.append(overlay);
+  });
+
+  await installResultFixture();
+  await page.waitForFunction(() => {
+    const result = document.querySelector('#keyboard-result-fixture');
+    return result?.getAttribute('data-p18-dialog') === 'result' && document.activeElement?.id === 'btn-play-again';
+  }, null, { timeout: 2500 });
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => window.__keyboardReplayClicks === 1, null, { timeout: 2500 });
+  let resultShortcut = await page.evaluate(() => ({
+    replayClicks: window.__keyboardReplayClicks,
+    retryClicks: window.__keyboardRetryClicks,
+    resultStillOpen: Boolean(document.querySelector('#keyboard-result-fixture')),
+  }));
+  assert(resultShortcut.replayClicks === 1, `Default result Space did not trigger Play Again: ${JSON.stringify(resultShortcut)}`);
+  assert(resultShortcut.retryClicks === 0, `Default result Space activated Retry instead of Play Again: ${JSON.stringify(resultShortcut)}`);
+  assert(!resultShortcut.resultStillOpen, `Default result Space left the replay fixture open: ${JSON.stringify(resultShortcut)}`);
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Type Rush Keyboard Input', null, { timeout: 2500 });
+
+  // Keyboard navigation remains normal: if the player intentionally focuses a
+  // different result action, Space activates that action rather than being stolen
+  // by a global replay shortcut.
+  await installResultFixture();
+  await page.waitForFunction(() => document.activeElement?.id === 'btn-play-again', null, { timeout: 2500 });
+  await page.locator('#keyboard-retry-fixture').focus();
+  await page.keyboard.press('Space');
+  await page.waitForTimeout(80);
+  resultShortcut = await page.evaluate(() => ({
+    replayClicks: window.__keyboardReplayClicks,
+    retryClicks: window.__keyboardRetryClicks,
+    resultStillOpen: Boolean(document.querySelector('#keyboard-result-fixture')),
+  }));
+  assert(resultShortcut.replayClicks === 0, `Focused Retry Space was stolen by Play Again: ${JSON.stringify(resultShortcut)}`);
+  assert(resultShortcut.retryClicks === 1, `Focused Retry did not retain native Space activation: ${JSON.stringify(resultShortcut)}`);
+  assert(resultShortcut.resultStillOpen, `Focused Retry unexpectedly closed the result fixture: ${JSON.stringify(resultShortcut)}`);
+  await page.locator('#keyboard-result-fixture').evaluate((node) => node.remove());
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Type Rush Keyboard Input', null, { timeout: 2500 });
+
   assert(failures.length === 0, failures.join(' | '));
   console.log('GAME SHELL KEYBOARD OWNERSHIP AUDIT — PASS');
-  console.log('Space remains gameplay-owned after shell actions, while Type Rush retains its dedicated text-entry focus.');
+  console.log('Space stays gameplay-owned after shell actions; result dialogs default to Play Again without stealing Space from intentionally focused controls; Type Rush retains text-entry focus.');
 
   await context.close();
 } catch (error) {
