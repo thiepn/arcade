@@ -5,6 +5,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { installGameFeelRuntime } from './lib/gameFeelRuntime';
 import { installGameClarityRuntime } from './lib/gameClarityRuntime';
 import { installArcadeCohesionRuntime } from './lib/arcadeCohesionRuntime';
+import { installGameInputRuntime } from './lib/gameInputRuntime';
 import { installP22PromotionRuntime } from './lib/p22PromotionRuntime';
 import { installP23TransformationRuntime } from './lib/p23TransformationRuntime';
 import { installMobileRuntimeCompatibility } from './lib/mobileRuntime';
@@ -21,6 +22,7 @@ installMobileRuntimeCompatibility();
 installGameFeelRuntime();
 installGameClarityRuntime();
 installArcadeCohesionRuntime();
+installGameInputRuntime();
 installP22PromotionRuntime();
 installP23TransformationRuntime();
 
