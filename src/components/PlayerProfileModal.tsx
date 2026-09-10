@@ -26,7 +26,7 @@ interface PlayerProfileModalProps {
 }
 
 function number(value: number): string {
-  return Math.max(0, Math.round(value || 0)).toLocaleString();
+  return Math.max(0, Math.floor(value || 0)).toLocaleString();
 }
 
 function countryFlag(code: string): string {
@@ -220,7 +220,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ stats, o
               <div className="flex justify-between gap-3"><dt className="text-zinc-500">Joined</dt><dd className="font-bold text-zinc-200 text-right">{joined}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-zinc-500">Favorite</dt><dd className="font-bold text-zinc-200 text-right truncate max-w-[55%]">{favoriteGame}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-zinc-500">Most played</dt><dd className="font-bold text-zinc-200 text-right truncate max-w-[55%]">{mostPlayedGame}</dd></div>
-              <div className="flex justify-between gap-3"><dt className="text-zinc-500">Weekly combined</dt><dd className="font-bold text-amber-200">{number(weeklyBoard.userEntry.totalScore)}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-zinc-500">Weekly rating</dt><dd className="font-bold text-amber-200">{number(weeklyBoard.userEntry.ratingScore)}</dd></div>
             </dl>
           </div>
         </div>
