@@ -187,15 +187,28 @@ function persistSnapshot(snapshot: UserStats, replaceRecords = replaceRecordsPen
 
   let persistentResult = safeSet(local, STORAGE_KEY, serialized);
   if (!persistentResult.ok) {
-    safeRemove(local, PREVIOUS_STORAGE_KEY);
-    safeRemove(local, LEGACY_STORAGE_KEY);
-    persistentResult = safeSet(local, STORAGE_KEY, serialized);
+    const failure = classifyStorageFailure('error' in persistentResult ? persistentResult.error : null);
+    // Only reclaim obsolete schema copies for quota pressure when a v3 record is
+    // already durable. During v1/v2 migration the source save remains untouched
+    // until v3 itself has been written successfully.
+    if (failure === 'quota') {
+      const existingV3 = safeGet(local, STORAGE_KEY);
+      if (existingV3.ok && existingV3.value !== null) {
+        safeRemove(local, PREVIOUS_STORAGE_KEY);
+        safeRemove(local, LEGACY_STORAGE_KEY);
+        persistentResult = safeSet(local, STORAGE_KEY, serialized);
+      }
+    }
   }
 
   if (persistentResult.ok) {
     const session = getWebStorage('session');
     safeRemove(session, SESSION_STORAGE_KEY);
     safeRemove(session, SESSION_REPLACE_KEY);
+    // The new schema is now durable, so old migration sources are genuinely
+    // redundant and can be removed without risking the user's only saved copy.
+    safeRemove(local, PREVIOUS_STORAGE_KEY);
+    safeRemove(local, LEGACY_STORAGE_KEY);
     unsavedMemory = false;
     replaceRecordsPending = false;
     setStorageState('persistent');
