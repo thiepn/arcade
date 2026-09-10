@@ -187,8 +187,6 @@ function persistSnapshot(snapshot: UserStats, replaceRecords = replaceRecordsPen
 
   let persistentResult = safeSet(local, STORAGE_KEY, serialized);
   if (!persistentResult.ok) {
-    // Old schema copies are safe to discard after normalization and can recover
-    // quota-constrained origins without touching unrelated site data.
     safeRemove(local, PREVIOUS_STORAGE_KEY);
     safeRemove(local, LEGACY_STORAGE_KEY);
     persistentResult = safeSet(local, STORAGE_KEY, serialized);
@@ -204,7 +202,7 @@ function persistSnapshot(snapshot: UserStats, replaceRecords = replaceRecordsPen
     return true;
   }
 
-  const failure = classifyStorageFailure(persistentResult.error);
+  const failure = classifyStorageFailure('error' in persistentResult ? persistentResult.error : null);
   const session = getWebStorage('session');
   const sessionResult = safeSet(session, SESSION_STORAGE_KEY, serialized);
   if (sessionResult.ok) {
@@ -227,9 +225,6 @@ export function retryStoragePersistence(): boolean {
 export function getStoredStats(): UserStats {
   if (typeof window === 'undefined') return freshStats();
 
-  // Never let an older readable snapshot overwrite progress from a failed write.
-  // Try to heal first; if persistence is still degraded, the current memory copy
-  // remains authoritative for this visit.
   if (unsavedMemory && storageState.mode !== 'persistent') {
     retryStoragePersistence();
     return normalizeStats(memoryStats);
@@ -241,7 +236,7 @@ export function getStoredStats(): UserStats {
   const sessionFallback = safeGet(session, SESSION_STORAGE_KEY);
 
   if (!current.ok) {
-    const failure = classifyStorageFailure(current.error);
+    const failure = classifyStorageFailure('error' in current ? current.error : null);
     if (sessionFallback.ok && sessionFallback.value) {
       try { memoryStats = normalizeStats(JSON.parse(sessionFallback.value)); } catch {}
       const replaceMarker = safeGet(session, SESSION_REPLACE_KEY);
@@ -254,9 +249,6 @@ export function getStoredStats(): UserStats {
     return normalizeStats(memoryStats);
   }
 
-  // A temporary fallback from this tab is newer than the persistent snapshot.
-  // Merge durable record maxima unless the fallback represents an intentional
-  // destructive reset, then immediately attempt to heal localStorage.
   if (sessionFallback.ok && sessionFallback.value) {
     try {
       memoryStats = normalizeStats(JSON.parse(sessionFallback.value));
