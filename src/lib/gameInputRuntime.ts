@@ -97,30 +97,6 @@ const refreshShell = (state: ShellInputState) => {
   state.dialogOpen = dialogOpen;
 };
 
-const handleResultReplayKeyDown = (event: KeyboardEvent) => {
-  if (
-    event.code !== 'Space'
-    || event.repeat
-    || event.isComposing
-    || event.altKey
-    || event.ctrlKey
-    || event.metaKey
-  ) return;
-
-  // Result screens advertise Space as the canonical replay shortcut. That must
-  // outrank whichever result control currently has focus (for example the
-  // asynchronous "Retry upload now" button), and it must run before a mounted
-  // mini-game can consume/prevent the same key event.
-  const playAgain = document.querySelector<HTMLButtonElement>('.game-shell #btn-play-again');
-  if (!playAgain || playAgain.disabled || !playAgain.isConnected) return;
-  const shell = playAgain.closest<HTMLElement>('.game-shell');
-  if (!shell || !shellCanOwnFocus(shell)) return;
-
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  playAgain.click();
-};
-
 const decorateShell = (shell: HTMLElement) => {
   if (shellStates.has(shell)) return;
 
@@ -220,13 +196,11 @@ export const installGameInputRuntime = () => {
   if (installed || typeof window === 'undefined' || typeof document === 'undefined') return teardownGlobal ?? (() => {});
 
   installed = true;
-  window.addEventListener('keydown', handleResultReplayKeyDown, true);
   documentObserver = new MutationObserver(discover);
   documentObserver.observe(document.body, { childList: true, subtree: true });
   discover();
 
   teardownGlobal = () => {
-    window.removeEventListener('keydown', handleResultReplayKeyDown, true);
     documentObserver?.disconnect();
     for (const shell of Array.from(shellStates.keys())) cleanupShell(shell);
     documentObserver = null;
