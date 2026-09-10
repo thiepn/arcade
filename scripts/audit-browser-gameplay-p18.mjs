@@ -5,12 +5,12 @@ const CHROME_PATH = process.env.P18_CHROME_PATH || undefined;
 
 const gameIds = [
   'orbit','stack','reaction','dodge','pulse','merge','typerush','oneline','breakout','perfectstop',
-  'chain','gravity','blade','pinball','chrono','matrix','drift','vanguard','slingshot','snake',
-  'rhythm','tower','pacmaze','flappyaero','roadcross','bubblebuster','astroblaster','laserrope',
+  'chain','blade','pinball','chrono','matrix','drift','vanguard','slingshot','snake',
+  'rhythm','tower','pacmaze','flappyaero','roadcross','bubblebuster','laserrope',
   'blockdrop','knifetarget','airhockey','neonrail',
 ];
 
-const hintGames = new Set(['stack','reaction','pulse','typerush','oneline','perfectstop','chain','gravity','matrix','slingshot','flappyaero','laserrope']);
+const hintGames = new Set(['stack','reaction','pulse','typerush','oneline','perfectstop','chain','matrix','slingshot','flappyaero','laserrope']);
 
 const profiles = [
   { name: 'desktop', viewport: { width: 1280, height: 800 }, isMobile: false, hasTouch: false, reducedMotion: 'no-preference' },
@@ -47,7 +47,6 @@ const runGame = async (page, profile, gameId) => {
       return shell?.getAttribute('data-p18-game') === id && shell?.getAttribute('data-p18-clarity') === 'ready';
     }, gameId, { timeout: 4000 });
 
-    // accessible shell labels
     const initial = await page.evaluate(({ id }) => {
       const shell = document.querySelector('.game-shell');
       const stage = shell?.querySelector('[data-p18-stage]');
@@ -110,7 +109,6 @@ const runGame = async (page, profile, gameId) => {
     await page.waitForFunction(() => Boolean(document.querySelector('[data-p18-dialog="pause"] [data-p18-clarity-panel="true"]')), null, { timeout: 3000 });
     await page.waitForTimeout(60);
 
-    // pause teaching panel
     const pause = await page.evaluate(() => {
       const dialog = document.querySelector('[data-p18-dialog="pause"]');
       const panel = dialog?.querySelector('[data-p18-clarity-panel="true"]');
@@ -231,7 +229,7 @@ try {
 
 const expected = gameIds.length * profiles.length;
 console.log(`\nP18 BROWSER CLARITY CERTIFICATION — ${failures.length ? 'FAIL' : 'PASS'}`);
-console.log(`${passes}/${expected} game/profile sessions certified across desktop, mobile and small-mobile.`);
+console.log(`${passes}/${expected} public game/profile sessions certified across desktop, mobile and small-mobile.`);
 if (failures.length) {
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
