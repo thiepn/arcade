@@ -16,7 +16,6 @@ const games = [
   ['breakout', ['ArrowLeft', 'ArrowRight']],
   ['perfectstop', ['Space']],
   ['chain', []],
-  ['gravity', ['KeyA', 'KeyG']],
   ['blade', []],
   ['pinball', ['KeyA', 'KeyD']],
   ['chrono', ['KeyA', 'Space']],
@@ -31,7 +30,6 @@ const games = [
   ['flappyaero', ['Space']],
   ['roadcross', ['ArrowUp', 'ArrowRight']],
   ['bubblebuster', ['KeyA', 'Space']],
-  ['astroblaster', ['ArrowLeft', 'KeyW', 'Space', 'ShiftLeft']],
   ['laserrope', ['Space', 'ArrowDown']],
   ['blockdrop', ['ArrowLeft', 'ArrowUp', 'Space', 'KeyC']],
   ['knifetarget', ['Space']],
@@ -127,7 +125,7 @@ const dispatchPointerGesture = async (page, profileName, gameId) => {
   const startY = box.y + box.height * 0.68;
   const endY = box.y + box.height * 0.34;
 
-  const dragGames = new Set(['oneline', 'gravity', 'blade', 'airhockey', 'breakout']);
+  const dragGames = new Set(['oneline', 'blade', 'airhockey', 'breakout']);
   if (dragGames.has(gameId)) {
     if (profileName === 'mobile') {
       await page.evaluate(({ sx, sy, ex, ey }) => {
@@ -237,17 +235,10 @@ const runGame = async (page, profile, gameId, keys) => {
     }
     assert(geometry.title.length > 0, 'game title missing from shell');
 
-    // Cold app/game bootstrap is measured separately from active gameplay. The
-    // first Chromium session can legitimately absorb one-time parse/JIT/cache
-    // work, so keep a generous startup ceiling while preserving a much tighter
-    // gameplay long-task budget below.
     const startupLongTasks = await page.evaluate(() => (globalThis.__p3LongTasks || []).slice());
     const startupLongestTask = startupLongTasks.length ? Math.max(...startupLongTasks) : 0;
     assert(startupLongestTask < 2500, `cold-start long task exceeded 2500ms: ${startupLongestTask.toFixed(0)}ms`);
 
-    // Verify pause/help while the game is still deterministically active. Fast
-    // survival games can otherwise end naturally during the input/RAF smoke,
-    // which should not be misclassified as a broken pause control.
     await page.locator('#game-pause-btn').click();
     await page.getByText('GAME PAUSED', { exact: true }).waitFor({ state: 'visible', timeout: 2500 });
     const pauseText = await page.locator('.game-shell').innerText();
@@ -257,7 +248,6 @@ const runGame = async (page, profile, gameId, keys) => {
     await page.locator('#game-pause-btn').click();
     await page.waitForTimeout(80);
 
-    // From this point onward, long-task accounting is gameplay-only.
     await page.evaluate(() => { globalThis.__p3LongTasks = []; });
 
     const beforeFrames = await sampleRaf(page);
@@ -364,7 +354,7 @@ try {
 
 const expectedRuns = games.length * profiles.length;
 console.log(`\nP3 BROWSER GAMEPLAY CERTIFICATION — ${failures.length ? 'FAIL' : 'PASS'}`);
-console.log(`${results.length}/${expectedRuns} game/profile sessions certified across ${games.length} games.`);
+console.log(`${results.length}/${expectedRuns} public game/profile sessions certified across ${games.length} games.`);
 if (failures.length) {
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
