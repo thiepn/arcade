@@ -2,6 +2,7 @@ import { chromium } from '@playwright/test';
 
 const BASE_URL = process.env.STORAGE_BASE_URL || 'http://127.0.0.1:4173';
 const CHROME_PATH = process.env.STORAGE_CHROME_PATH || undefined;
+const PUBLIC_GAME_COUNT = 30;
 const launchOptions = { headless: true, args: ['--disable-dev-shm-usage', '--no-sandbox'] };
 if (CHROME_PATH) launchOptions.executablePath = CHROME_PATH;
 else launchOptions.channel = 'chrome';
@@ -24,7 +25,7 @@ try {
     });
     const page = await context.newPage();
     await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
-    await page.waitForFunction(() => document.querySelectorAll('[id^="play-btn-"]').length === 32, null, { timeout: 8000 });
+    await page.waitForFunction((count) => document.querySelectorAll('[id^="play-btn-"]').length === count, PUBLIC_GAME_COUNT, { timeout: 8000 });
     await page.locator('#play-btn-orbit').click();
     await page.locator('.game-shell').waitFor({ state: 'visible', timeout: 8000 });
     await page.waitForFunction(() => Boolean(sessionStorage.getItem('micro_arcade_stats_v3_session_fallback')), null, { timeout: 3000 });
@@ -34,7 +35,7 @@ try {
     // Reloading the tab must keep the fallback snapshot and must not manufacture
     // the old permanent warning while localStorage is still unwritable.
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => document.querySelectorAll('[id^="play-btn-"]').length === 32, null, { timeout: 8000 });
+    await page.waitForFunction((count) => document.querySelectorAll('[id^="play-btn-"]').length === count, PUBLIC_GAME_COUNT, { timeout: 8000 });
     await page.waitForFunction(() => {
       const raw = sessionStorage.getItem('micro_arcade_stats_v3_session_fallback');
       if (!raw) return false;
@@ -84,7 +85,7 @@ try {
     });
     const page = await context.newPage();
     await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
-    await page.waitForFunction(() => document.querySelectorAll('[id^="play-btn-"]').length === 32, null, { timeout: 8000 });
+    await page.waitForFunction((count) => document.querySelectorAll('[id^="play-btn-"]').length === count, PUBLIC_GAME_COUNT, { timeout: 8000 });
     await page.locator('#play-btn-stack').click();
     await page.getByText(/Browser storage is blocked/i).waitFor({ state: 'visible', timeout: 3000 });
     const dismiss = page.getByRole('button', { name: 'Dismiss storage warning' });
