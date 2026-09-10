@@ -5,6 +5,7 @@ import { UserStats, AppTheme, ScoreDetails } from '../types';
 
 const STORAGE_KEY = 'micro_arcade_stats_v3';
 const SESSION_STORAGE_KEY = 'micro_arcade_stats_v3_session_fallback';
+const SESSION_REPLACE_KEY = 'micro_arcade_stats_v3_session_replace';
 const PREVIOUS_STORAGE_KEY = 'micro_arcade_stats_v2';
 const LEGACY_STORAGE_KEY = 'micro_arcade_stats_v1';
 const STORAGE_WARNING_FAILURE_THRESHOLD = 2;
@@ -38,6 +39,8 @@ const defaultStats: UserStats = {
 
 const freshStats = (): UserStats => ({ ...defaultStats, modeBests: {}, legacyHighScores: {}, bestScoreDetails: {}, rawHighScores: {}, highScores: {}, playCounts: {}, totalPlayTimeSeconds: {}, favorites: [], recentlyPlayed: [] });
 let memoryStats = freshStats();
+let unsavedMemory = false;
+let replaceRecordsPending = false;
 let storageState: ArcadeStorageStatus = {
   mode: 'persistent',
   consecutivePersistentFailures: 0,
@@ -175,8 +178,10 @@ function mergeStoredRecords(target: UserStats, previous: UserStats): UserStats {
   return normalizeStats(merged);
 }
 
-function persistSnapshot(snapshot: UserStats): boolean {
+function persistSnapshot(snapshot: UserStats, replaceRecords = replaceRecordsPending): boolean {
   memoryStats = normalizeStats(snapshot);
+  unsavedMemory = true;
+  replaceRecordsPending = replaceRecordsPending || replaceRecords;
   const serialized = JSON.stringify(memoryStats);
   const local = getWebStorage('local');
 
@@ -190,7 +195,11 @@ function persistSnapshot(snapshot: UserStats): boolean {
   }
 
   if (persistentResult.ok) {
-    safeRemove(getWebStorage('session'), SESSION_STORAGE_KEY);
+    const session = getWebStorage('session');
+    safeRemove(session, SESSION_STORAGE_KEY);
+    safeRemove(session, SESSION_REPLACE_KEY);
+    unsavedMemory = false;
+    replaceRecordsPending = false;
     setStorageState('persistent');
     return true;
   }
@@ -199,6 +208,8 @@ function persistSnapshot(snapshot: UserStats): boolean {
   const session = getWebStorage('session');
   const sessionResult = safeSet(session, SESSION_STORAGE_KEY, serialized);
   if (sessionResult.ok) {
+    if (replaceRecordsPending) safeSet(session, SESSION_REPLACE_KEY, '1');
+    else safeRemove(session, SESSION_REPLACE_KEY);
     setStorageState('session', failure, true);
     return true;
   }
@@ -209,12 +220,21 @@ function persistSnapshot(snapshot: UserStats): boolean {
 
 export function retryStoragePersistence(): boolean {
   if (typeof window === 'undefined') return false;
-  if (storageState.mode === 'persistent') return true;
-  return persistSnapshot(memoryStats);
+  if (storageState.mode === 'persistent' && !unsavedMemory) return true;
+  return persistSnapshot(memoryStats, replaceRecordsPending);
 }
 
 export function getStoredStats(): UserStats {
   if (typeof window === 'undefined') return freshStats();
+
+  // Never let an older readable snapshot overwrite progress from a failed write.
+  // Try to heal first; if persistence is still degraded, the current memory copy
+  // remains authoritative for this visit.
+  if (unsavedMemory && storageState.mode !== 'persistent') {
+    retryStoragePersistence();
+    return normalizeStats(memoryStats);
+  }
+
   const local = getWebStorage('local');
   const session = getWebStorage('session');
   const current = safeGet(local, STORAGE_KEY);
@@ -224,6 +244,9 @@ export function getStoredStats(): UserStats {
     const failure = classifyStorageFailure(current.error);
     if (sessionFallback.ok && sessionFallback.value) {
       try { memoryStats = normalizeStats(JSON.parse(sessionFallback.value)); } catch {}
+      const replaceMarker = safeGet(session, SESSION_REPLACE_KEY);
+      replaceRecordsPending = replaceMarker.ok && replaceMarker.value === '1';
+      unsavedMemory = true;
       setStorageState('session', failure, true);
       return normalizeStats(memoryStats);
     }
@@ -232,15 +255,24 @@ export function getStoredStats(): UserStats {
   }
 
   // A temporary fallback from this tab is newer than the persistent snapshot.
-  // Merge any durable record maxima, then immediately attempt to heal localStorage.
+  // Merge durable record maxima unless the fallback represents an intentional
+  // destructive reset, then immediately attempt to heal localStorage.
   if (sessionFallback.ok && sessionFallback.value) {
     try {
       memoryStats = normalizeStats(JSON.parse(sessionFallback.value));
-      if (current.value) memoryStats = mergeStoredRecords(memoryStats, normalizeStats(JSON.parse(current.value)));
-      persistSnapshot(memoryStats);
+      const replaceMarker = safeGet(session, SESSION_REPLACE_KEY);
+      replaceRecordsPending = replaceMarker.ok && replaceMarker.value === '1';
+      if (!replaceRecordsPending && current.value) {
+        memoryStats = mergeStoredRecords(memoryStats, normalizeStats(JSON.parse(current.value)));
+      }
+      unsavedMemory = true;
+      persistSnapshot(memoryStats, replaceRecordsPending);
       return normalizeStats(memoryStats);
     } catch {
       safeRemove(session, SESSION_STORAGE_KEY);
+      safeRemove(session, SESSION_REPLACE_KEY);
+      replaceRecordsPending = false;
+      unsavedMemory = false;
     }
   }
 
@@ -250,22 +282,22 @@ export function getStoredStats(): UserStats {
   try { memoryStats = raw ? normalizeStats(JSON.parse(raw)) : freshStats(); }
   catch { memoryStats = freshStats(); }
 
-  // Migrate old schemas through the same self-healing write path.
-  if (current.value === null && raw !== null) persistSnapshot(memoryStats);
+  if (current.value === null && raw !== null) persistSnapshot(memoryStats, false);
   return normalizeStats(memoryStats);
 }
 
 export function saveStats(stats: UserStats, replaceRecords=false): void {
   if (typeof window === 'undefined') return;
   memoryStats = normalizeStats(stats);
-  if(!replaceRecords){
+  if (replaceRecords) replaceRecordsPending = true;
+  if(!replaceRecords && !replaceRecordsPending){
     const saved = safeGet(getWebStorage('local'), STORAGE_KEY);
     if(saved.ok && saved.value){
       try { memoryStats = mergeStoredRecords(memoryStats, normalizeStats(JSON.parse(saved.value))); }
       catch {}
     }
   }
-  persistSnapshot(memoryStats);
+  persistSnapshot(memoryStats, replaceRecordsPending);
 }
 
 export function recordGamePlay(gameId: string): UserStats {
@@ -345,6 +377,7 @@ export function clearAllStats(): UserStats {
     safeRemove(local, LEGACY_STORAGE_KEY);
     safeRemove(local, PREVIOUS_STORAGE_KEY);
     safeRemove(session, SESSION_STORAGE_KEY);
+    safeRemove(session, SESSION_REPLACE_KEY);
   }
   const fresh = freshStats();
   saveStats(fresh,true);
