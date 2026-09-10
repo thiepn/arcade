@@ -48,6 +48,7 @@ globalThis.sessionStorage = {
 
 const key = 'micro_arcade_stats_v3';
 const sessionKey = 'micro_arcade_stats_v3_session_fallback';
+const sessionReplaceKey = 'micro_arcade_stats_v3_session_replace';
 for (const malformed of ['null', '[]', 'true', '42', '"old"', '{broken']) {
   clearAllStats();
   localValues.set(key, malformed);
@@ -85,6 +86,20 @@ assert.equal(getStorageStatus().consecutivePersistentFailures, 0);
 assert.equal(sessionValues.has(sessionKey), false, 'Recovered session snapshot should be removed');
 assert.equal(JSON.parse(localValues.get(key)).highScores.orbit, 900);
 
+// Quota-style writes can fail while reads still work. If sessionStorage also
+// fails, the newer dirty in-memory snapshot must remain authoritative instead of
+// being replaced by the older readable localStorage record.
+localWriteDenied = true;
+sessionDenied = true;
+recordScore('orbit', 1100);
+assert.equal(getStorageStatus().mode, 'memory');
+assert.equal(getStoredStats().highScores.orbit, 1100);
+assert.equal(JSON.parse(localValues.get(key)).highScores.orbit, 900);
+localWriteDenied = false;
+sessionDenied = false;
+assert.equal(retryStoragePersistence(), true);
+assert.equal(JSON.parse(localValues.get(key)).highScores.orbit, 1100);
+
 // If both browser stores really are blocked, memory fallback remains loss-safe
 // for the current visit, but only repeated confirmed failure raises a warning.
 localReadDenied = true;
@@ -108,6 +123,19 @@ assert.equal(getStorageStatus().mode, 'persistent');
 assert.equal(getStorageStatus().warning, false);
 assert.equal(JSON.parse(localValues.get(key)).highScores.orbit, 1200);
 
+// Destructive reset is authoritative even when it has to use session fallback;
+// old durable scores must not reappear when primary storage becomes writable.
+localWriteDenied = true;
+const clearedWhileDegraded = clearAllStats();
+assert.deepEqual(clearedWhileDegraded.highScores, {});
+assert.equal(getStorageStatus().mode, 'session');
+assert.equal(sessionValues.get(sessionReplaceKey), '1');
+assert.equal(JSON.parse(localValues.get(key)).highScores.orbit, 1200);
+localWriteDenied = false;
+assert.equal(retryStoragePersistence(), true);
+assert.deepEqual(JSON.parse(localValues.get(key)).highScores, {});
+assert.equal(sessionValues.has(sessionReplaceKey), false);
+
 const defaults = clearAllStats();
 defaults.favorites.push('orbit');
 assert.deepEqual(getStoredStats().favorites, []);
@@ -122,4 +150,4 @@ globalThis.fetch = async () => new Response('{broken');
 await assert.rejects(requestLeaderboardJson('https://example.invalid'), error => error.code === 'invalid_response');
 globalThis.fetch = async () => Response.json({ ok: true });
 assert.deepEqual(await requestLeaderboardJson('https://example.invalid'), { ok: true });
-console.log('RC storage/request regression passed: corrupt schemas, session fallback, confirmed hard failure, automatic recovery, bounded requests, typed errors.');
+console.log('RC storage/request regression passed: corrupt schemas, session fallback, dirty-memory preservation, reset authority, confirmed hard failure, automatic recovery, bounded requests, typed errors.');
