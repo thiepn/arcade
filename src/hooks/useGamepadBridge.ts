@@ -33,6 +33,11 @@ const POINTER_GAMES = new Set([
   'airhockey',
 ]);
 
+const GAMEPAD_DEADZONE = 0.55;
+// After direct touch/pen input, keep the synthetic controller cursor out of the
+// way until the player deliberately moves/uses the controller again.
+const DIRECT_POINTER_COOLDOWN_MS = 900;
+
 const KEY_META: Record<KeyCode, { key: string; code: string }> = {
   ArrowLeft: { key: 'ArrowLeft', code: 'ArrowLeft' },
   ArrowRight: { key: 'ArrowRight', code: 'ArrowRight' },
@@ -141,13 +146,31 @@ export function useGamepadBridge({
     let activeIndex: number | null = null;
     let pointerPressed = false;
     let pointerTarget: Element | null = null;
+    let pointerEngaged = false;
     let cursorX = 0;
     let cursorY = 0;
     let cursorInitialized = false;
+    let suppressPointerUntil = 0;
     let reportedConnected = false;
     let reportedName: string | null = null;
+    const activeDirectPointers = new Set<number>();
     const heldKeys = new Set<KeyCode>();
     const previousButtons = new Map<number, boolean>();
+
+    const hideCursor = () => {
+      if (cursorRef.current) cursorRef.current.style.display = 'none';
+    };
+
+    const releasePointer = () => {
+      if (pointerPressed && pointerTarget) {
+        dispatchPointer(pointerTarget, 'pointercancel', cursorX, cursorY, false);
+      }
+      pointerPressed = false;
+      pointerTarget = null;
+      pointerEngaged = false;
+      cursorInitialized = false;
+      hideCursor();
+    };
 
     const releaseKey = (code: KeyCode) => {
       if (!heldKeys.has(code)) return;
@@ -166,11 +189,36 @@ export function useGamepadBridge({
 
     const releaseAll = () => {
       for (const code of [...heldKeys]) releaseKey(code);
-      if (pointerPressed && pointerTarget) dispatchPointer(pointerTarget, 'pointercancel', cursorX, cursorY, false);
-      pointerPressed = false;
-      pointerTarget = null;
+      releasePointer();
       previousButtons.clear();
     };
+
+    // A real finger/stylus must always win over the synthetic gamepad cursor.
+    // Synthetic events emitted above have isTrusted=false, so they never trip
+    // this arbitration path themselves.
+    const onDirectPointerDown = (event: PointerEvent) => {
+      if (!event.isTrusted || (event.pointerType !== 'touch' && event.pointerType !== 'pen')) return;
+      activeDirectPointers.add(event.pointerId);
+      suppressPointerUntil = performance.now() + DIRECT_POINTER_COOLDOWN_MS;
+      releasePointer();
+    };
+    const onDirectPointerMove = (event: PointerEvent) => {
+      if (!event.isTrusted || (event.pointerType !== 'touch' && event.pointerType !== 'pen')) return;
+      if (!activeDirectPointers.has(event.pointerId) && event.buttons === 0) return;
+      suppressPointerUntil = performance.now() + DIRECT_POINTER_COOLDOWN_MS;
+      if (pointerEngaged || pointerPressed) releasePointer();
+    };
+    const onDirectPointerEnd = (event: PointerEvent) => {
+      if (!event.isTrusted || (event.pointerType !== 'touch' && event.pointerType !== 'pen')) return;
+      activeDirectPointers.delete(event.pointerId);
+      suppressPointerUntil = performance.now() + DIRECT_POINTER_COOLDOWN_MS;
+      releasePointer();
+    };
+
+    window.addEventListener('pointerdown', onDirectPointerDown, true);
+    window.addEventListener('pointermove', onDirectPointerMove, true);
+    window.addEventListener('pointerup', onDirectPointerEnd, true);
+    window.addEventListener('pointercancel', onDirectPointerEnd, true);
 
     const updateConnection = () => {
       const pads = Array.from(navigator.getGamepads?.() ?? []).filter((pad): pad is Gamepad => Boolean(pad?.connected));
@@ -214,44 +262,58 @@ export function useGamepadBridge({
 
       if (!pad || !target) {
         releaseAll();
-        if (cursor) cursor.style.display = 'none';
         frame = requestAnimationFrame(tick);
         return;
       }
 
-      const deadzone = 0.55;
-      const axisX = Math.abs(pad.axes[0] ?? 0) >= deadzone ? (pad.axes[0] ?? 0) : 0;
-      const axisY = Math.abs(pad.axes[1] ?? 0) >= deadzone ? (pad.axes[1] ?? 0) : 0;
+      const axisX = Math.abs(pad.axes[0] ?? 0) >= GAMEPAD_DEADZONE ? (pad.axes[0] ?? 0) : 0;
+      const axisY = Math.abs(pad.axes[1] ?? 0) >= GAMEPAD_DEADZONE ? (pad.axes[1] ?? 0) : 0;
       const dpadLeft = Boolean(pad.buttons[14]?.pressed);
       const dpadRight = Boolean(pad.buttons[15]?.pressed);
       const dpadUp = Boolean(pad.buttons[12]?.pressed);
       const dpadDown = Boolean(pad.buttons[13]?.pressed);
+      const directPointerActive = activeDirectPointers.size > 0;
+      const pointerSuppressed = directPointerActive || now < suppressPointerUntil;
 
       if (pointerMode && !paused && !gameOver) {
         const rect = target.getBoundingClientRect();
-        if (!cursorInitialized) {
-          cursorX = rect.left + rect.width / 2;
-          cursorY = rect.top + rect.height / 2;
-          cursorInitialized = true;
-        }
         const dx = dpadLeft ? -1 : dpadRight ? 1 : axisX;
         const dy = dpadUp ? -1 : dpadDown ? 1 : axisY;
-        const speed = 0.72 * delta;
-        cursorX = Math.max(rect.left + 4, Math.min(rect.right - 4, cursorX + dx * speed));
-        cursorY = Math.max(rect.top + 4, Math.min(rect.bottom - 4, cursorY + dy * speed));
+        const pointerIntent = dx !== 0 || dy !== 0 || Boolean(pad.buttons[0]?.pressed);
 
-        if (cursor) {
-          cursor.style.display = 'block';
-          cursor.style.transform = `translate3d(${Math.round(cursorX)}px, ${Math.round(cursorY)}px, 0)`;
+        if (pointerSuppressed) {
+          if (pointerEngaged || pointerPressed) releasePointer();
+          else hideCursor();
+        } else if (pointerIntent && !pointerEngaged) {
+          // Merely detecting a Gamepad must never paint a cursor at screen center.
+          // The cursor appears only after deliberate controller input.
+          pointerEngaged = true;
         }
 
-        if (dx !== 0 || dy !== 0) {
-          const element = pointerTarget ?? document.elementFromPoint(cursorX, cursorY) ?? target;
-          dispatchPointer(element, 'pointermove', cursorX, cursorY, pointerPressed);
+        if (pointerEngaged && !pointerSuppressed) {
+          if (!cursorInitialized) {
+            cursorX = rect.left + rect.width / 2;
+            cursorY = rect.top + rect.height / 2;
+            cursorInitialized = true;
+          }
+          const speed = 0.72 * delta;
+          cursorX = Math.max(rect.left + 4, Math.min(rect.right - 4, cursorX + dx * speed));
+          cursorY = Math.max(rect.top + 4, Math.min(rect.bottom - 4, cursorY + dy * speed));
+
+          if (cursor) {
+            cursor.style.display = 'block';
+            cursor.style.transform = `translate3d(${Math.round(cursorX)}px, ${Math.round(cursorY)}px, 0)`;
+          }
+
+          if (dx !== 0 || dy !== 0) {
+            const element = pointerTarget ?? document.elementFromPoint(cursorX, cursorY) ?? target;
+            dispatchPointer(element, 'pointermove', cursorX, cursorY, pointerPressed);
+          }
+        } else {
+          hideCursor();
         }
       } else {
-        if (cursor) cursor.style.display = 'none';
-        cursorInitialized = false;
+        releasePointer();
         const directions = directionMapping(gameId);
         if (directions.left) holdKey(directions.left, dpadLeft || axisX < 0);
         if (directions.right) holdKey(directions.right, dpadRight || axisX > 0);
@@ -265,13 +327,13 @@ export function useGamepadBridge({
         const wasPressed = previousButtons.get(index) ?? false;
 
         if (pointerMode && !paused && !gameOver && index === 0) {
-          if (pressed !== wasPressed) {
+          if (!pointerSuppressed && pointerEngaged && pressed !== wasPressed) {
             const element = document.elementFromPoint(cursorX, cursorY) ?? target;
             if (pressed) {
               pointerPressed = true;
               pointerTarget = element;
               dispatchPointer(element, 'pointerdown', cursorX, cursorY, true);
-            } else {
+            } else if (pointerPressed) {
               dispatchPointer(pointerTarget ?? element, 'pointerup', cursorX, cursorY, false);
               pointerPressed = false;
               pointerTarget = null;
@@ -301,8 +363,11 @@ export function useGamepadBridge({
       cancelAnimationFrame(frame);
       window.removeEventListener('gamepadconnected', onConnected);
       window.removeEventListener('gamepaddisconnected', onDisconnected);
+      window.removeEventListener('pointerdown', onDirectPointerDown, true);
+      window.removeEventListener('pointermove', onDirectPointerMove, true);
+      window.removeEventListener('pointerup', onDirectPointerEnd, true);
+      window.removeEventListener('pointercancel', onDirectPointerEnd, true);
       releaseAll();
-      if (cursorRef.current) cursorRef.current.style.display = 'none';
     };
   }, [cursorRef, disabled, gameId, gameOver, paused, pointerMode, targetRef]);
 
