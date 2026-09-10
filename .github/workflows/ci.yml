@@ -150,6 +150,7 @@ jobs:
           fi
           HEADER_CHROME_PATH="$chrome" bun scripts/audit-responsive-header.mjs
           RC_CHROME_PATH="$chrome" bun run quality:rc-browser
+          STORAGE_CHROME_PATH="$chrome" bun run quality:storage-browser
           P3_CHROME_PATH="$chrome" bun run quality:browser-p3
           P17_CHROME_PATH="$chrome" bun run quality:browser-p17
           P18_CHROME_PATH="$chrome" bun run quality:browser-p18
@@ -253,4 +254,3 @@ jobs:
         run: bun run quality:leaderboard-db
         env:
           LB_TEST_DATABASE_URL: postgres://postgres:local-test-only@127.0.0.1:55432/leaderboard_test
-          LB_TEST_RESET: '1'
