@@ -1,5 +1,5 @@
 import type { UserStats,ScoreDetails } from '../types';
-import { AP_SCALE,apMicros,contributionMicros,getPolicy } from '../../shared/leaderboard/domain';
+import { AP_SCALE,apMicros,contributionMicros,displayRating,getPolicy } from '../../shared/leaderboard/domain';
 export type LocalModeBest=ScoreDetails&{apMicros:number;achievedAt:number};
 export function currentGameBests(stats:UserStats):Record<string,LocalModeBest>{
  const result:Record<string,LocalModeBest>={};
@@ -11,7 +11,8 @@ export function currentGameBests(stats:UserStats):Record<string,LocalModeBest>{
  return result;
 }
 export function localRating(stats:UserStats):number{
- return Object.entries(currentGameBests(stats)).reduce((sum,[id,best])=>sum+contributionMicros(id,best.apMicros,best.modeId),0)/AP_SCALE;
+ const total=Object.entries(currentGameBests(stats)).reduce((sum,[id,best])=>sum+contributionMicros(id,best.apMicros,best.modeId),0);
+ return displayRating(total);
 }
 export function currentBestAP(stats:UserStats,id:string):number{return Math.floor((currentGameBests(stats)[id]?.apMicros??0)/AP_SCALE);}
 export function currentBestRaw(stats:UserStats,id:string):number{return currentGameBests(stats)[id]?.rawScore??0;}
