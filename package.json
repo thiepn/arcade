@@ -11,6 +11,7 @@
     "clean": "rm -rf dist .wrangler-dist",
     "lint": "tsc --noEmit",
     "quality:rc-storage": "bun scripts/audit-rc-storage.mjs",
+    "quality:storage-browser": "bun scripts/audit-browser-storage-recovery.mjs",
     "quality:rc-worker": "bun scripts/audit-rc-worker.mjs",
     "quality:rc-contracts": "bun worker/tests/rc-contracts.ts",
     "quality:rc-browser": "bun scripts/audit-rc-browser.mjs",
