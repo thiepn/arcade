@@ -214,7 +214,13 @@ const setupDialogFocus = (state: ShellState, dialog: HTMLElement | null) => {
   }
 
   const frame = requestAnimationFrame(() => {
-    const first = dialog.querySelector<HTMLElement>(FOCUSABLE) ?? dialog;
+    // Result screens explicitly advertise Space as Play Again. Make that action
+    // the initial focus owner so native Space/Enter activation matches the UI,
+    // while Tab can still move to leaderboard/upload controls normally.
+    const preferred = dialog.dataset.p18Dialog === 'result'
+      ? dialog.querySelector<HTMLElement>('#btn-play-again')
+      : null;
+    const first = preferred ?? dialog.querySelector<HTMLElement>(FOCUSABLE) ?? dialog;
     if (!dialog.hasAttribute('tabindex')) dialog.setAttribute('tabindex', '-1');
     first.focus({ preventScroll: true });
   });
