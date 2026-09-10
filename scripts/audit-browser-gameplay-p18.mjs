@@ -9,6 +9,7 @@ const gameIds = [
   'rhythm','tower','pacmaze','flappyaero','roadcross','bubblebuster','laserrope',
   'blockdrop','knifetarget','airhockey','neonrail',
 ];
+const retiredPublicGameIds = ['gravity', 'astroblaster'];
 
 const hintGames = new Set(['stack','reaction','pulse','typerush','oneline','perfectstop','chain','matrix','slingshot','flappyaero','laserrope']);
 
@@ -209,6 +210,10 @@ try {
     const page = await context.newPage();
     await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
+    for (const retiredId of retiredPublicGameIds) {
+      assert(await page.locator(`#play-btn-${retiredId}`).count() === 0, `retired game remained publicly launchable: ${retiredId}`);
+    }
+
     for (const gameId of gameIds) {
       try {
         await runGame(page, profile, gameId);
@@ -229,7 +234,7 @@ try {
 
 const expected = gameIds.length * profiles.length;
 console.log(`\nP18 BROWSER CLARITY CERTIFICATION — ${failures.length ? 'FAIL' : 'PASS'}`);
-console.log(`${passes}/${expected} public game/profile sessions certified across desktop, mobile and small-mobile.`);
+console.log(`${passes}/${expected} public game/profile sessions certified; registered-only Gravity/Astro IDs are certified absent from public launch surfaces.`);
 if (failures.length) {
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
