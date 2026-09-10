@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Download, RefreshCw, WifiOff, X } from 'lucide-react';
-import { isProgressSaved, STORAGE_STATUS_EVENT } from '../lib/storage';
+import { getStorageStatus, retryStoragePersistence, STORAGE_STATUS_EVENT } from '../lib/storage';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -22,7 +22,8 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
   const [installed, setInstalled] = useState(() => isStandalone());
   const [updating, setUpdating] = useState(false);
   const [dismissedInstall, setDismissedInstall] = useState(false);
-  const [progressSaved, setProgressSaved] = useState(isProgressSaved);
+  const [storageStatus, setStorageStatus] = useState(getStorageStatus);
+  const [dismissedStorageWarning, setDismissedStorageWarning] = useState(false);
   const [reloadReady, setReloadReady] = useState(false);
   const updateRequested = useRef(false);
   const controlledAtMount = useRef(Boolean(navigator.serviceWorker?.controller));
@@ -37,22 +38,40 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
   };
 
   useEffect(() => {
-    const onStorage = () => setProgressSaved(isProgressSaved());
+    const syncStorage = () => {
+      const next = getStorageStatus();
+      setStorageStatus(next);
+      if (next.mode === 'persistent') setDismissedStorageWarning(false);
+    };
+    const retryStorage = () => {
+      if (getStorageStatus().mode !== 'persistent') retryStoragePersistence();
+      syncStorage();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') retryStorage();
+    };
     const onController = () => {
       const replacingExistingController = controlledAtMount.current;
       controlledAtMount.current = true;
-      // The first-ever service worker claiming a fresh tab does not require a
-      // reload. A replacement worker does, as does a legacy waiting worker that
-      // this client explicitly activated.
       if (!replacingExistingController && !updateRequested.current) return;
       if (updateTimer.current) clearTimeout(updateTimer.current);
       setReloadReady(true);
     };
-    window.addEventListener(STORAGE_STATUS_EVENT, onStorage);
+
+    window.addEventListener(STORAGE_STATUS_EVENT, syncStorage);
+    window.addEventListener('focus', retryStorage);
+    window.addEventListener('pageshow', retryStorage);
+    document.addEventListener('visibilitychange', onVisibility);
     navigator.serviceWorker?.addEventListener('controllerchange', onController);
+    const retryTimer = window.setTimeout(retryStorage, 2500);
+
     return () => {
-      window.removeEventListener(STORAGE_STATUS_EVENT, onStorage);
+      window.removeEventListener(STORAGE_STATUS_EVENT, syncStorage);
+      window.removeEventListener('focus', retryStorage);
+      window.removeEventListener('pageshow', retryStorage);
+      document.removeEventListener('visibilitychange', onVisibility);
       navigator.serviceWorker?.removeEventListener('controllerchange', onController);
+      window.clearTimeout(retryTimer);
       if (updateTimer.current) clearTimeout(updateTimer.current);
     };
   }, []);
@@ -139,8 +158,6 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
 
   useEffect(() => {
     if (!waitingWorker || activeGame || updating) return;
-    // Older workers may still enter the waiting state; activate them automatically
-    // as soon as the user is on the home surface.
     const timer = setTimeout(() => activateUpdate(waitingWorker), 150);
     return () => clearTimeout(timer);
   }, [waitingWorker, activeGame, updating]);
@@ -152,12 +169,32 @@ export const PwaStatus: React.FC<PwaStatusProps> = ({ activeGame }) => {
       const choice = await installPrompt.userChoice;
       if (choice.outcome === 'accepted') setInstalled(true);
     } finally {
-      // Browser install prompt events are single-use, including dismissals.
       setInstallPrompt(null);
     }
   };
 
-  if (!progressSaved) return <div role="status" className="pwa-status-safe fixed left-3 right-3 z-[90] rounded-xl border border-amber-500/40 bg-[#111114] px-3 py-2 text-xs text-amber-200">Storage unavailable. Progress is kept for this visit; keep this page open to retain it.</div>;
+  if (storageStatus.warning && !dismissedStorageWarning) {
+    const detail = storageStatus.lastFailure === 'quota'
+      ? 'Browser storage is full. Progress is temporarily kept for this tab while Micro Arcade retries automatically.'
+      : storageStatus.lastFailure === 'denied'
+        ? 'Browser storage is blocked. Progress is temporarily kept for this tab while Micro Arcade retries automatically.'
+        : 'Persistent browser storage is unavailable. Progress is temporarily kept for this tab while Micro Arcade retries automatically.';
+    return (
+      <div role="status" aria-live="polite" className="pwa-status-safe fixed inset-x-3 sm:left-auto sm:right-5 sm:w-[420px] z-[90] rounded-xl border border-amber-500/40 bg-[#111114]/98 px-3 py-2 text-xs text-amber-200 shadow-xl backdrop-blur">
+        <div className="flex items-start gap-2">
+          <span className="min-w-0 flex-1">{detail}</span>
+          <button
+            type="button"
+            onClick={() => setDismissedStorageWarning(true)}
+            className="-mr-1 -mt-1 min-h-8 min-w-8 rounded-lg text-amber-200/70 hover:bg-amber-500/10 hover:text-amber-100"
+            aria-label="Dismiss storage warning"
+          >
+            <X className="mx-auto h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!online) {
     return (
