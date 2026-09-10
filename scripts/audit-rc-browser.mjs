@@ -4,6 +4,9 @@ import path from 'node:path';
 import http from 'node:http';
 import { chromium } from '@playwright/test';
 
+const PUBLIC_GAME_COUNT = 30;
+const RETIRED_GAME_IDS = new Set(['gravity', 'astroblaster']);
+
 // Exercise real built service workers on an isolated origin, including failed updates.
 const dist = path.resolve('dist');
 const source = await fs.readFile(path.join(dist, 'sw.js'), 'utf8');
@@ -31,10 +34,12 @@ try {
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(base);
-  await page.waitForFunction(() => document.querySelectorAll('[id^="play-btn-"]').length === 32);
+  await page.waitForFunction(count => document.querySelectorAll('[id^="play-btn-"]').length === count, PUBLIC_GAME_COUNT);
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.waitForFunction(() => navigator.serviceWorker.controller);
   const ids = await page.locator('[id^="play-btn-"]').evaluateAll(nodes => nodes.map(node => node.id.slice(9)));
+  assert.equal(ids.length, PUBLIC_GAME_COUNT, `Expected ${PUBLIC_GAME_COUNT} public games`);
+  assert(ids.every(id => !RETIRED_GAME_IDS.has(id)), 'Retired games leaked into the public launch roster');
   const artifacts = process.env.RC_ARTIFACT_DIR ? path.resolve(process.env.RC_ARTIFACT_DIR) : undefined;
   if (artifacts) await fs.mkdir(artifacts, { recursive: true });
   for (const width of [320, 360, 390, 768, 1024, 1440, 1920]) {
@@ -72,7 +77,7 @@ try {
     await page.locator('#game-back-btn').click();
     await page.locator('.game-shell').waitFor({ state: 'detached' });
   }
-  console.log('PASS all 32 games launch after offline reload; seven responsive widths');
+  console.log(`PASS all ${PUBLIC_GAME_COUNT} public games launch after offline reload; seven responsive widths`);
   await page.locator('#play-btn-flappyaero').click();
   await page.locator('#btn-play-again').waitFor({ state: 'visible', timeout: 30000 });
   await page.locator('#btn-view-leaderboard').focus();
@@ -104,7 +109,7 @@ try {
   const updateNavigation = second.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 });
   await second.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
   await updateNavigation;
-  await second.waitForFunction(() => document.querySelectorAll('[id^="play-btn-"]').length === 32);
+  await second.waitForFunction(count => document.querySelectorAll('[id^="play-btn-"]').length === count, PUBLIC_GAME_COUNT);
   await second.waitForFunction(async () => !(await navigator.serviceWorker.getRegistration()).waiting);
   await page.waitForFunction(async () => (await caches.keys()).some(key => key.endsWith('rc-test-2')));
   assert.notEqual(await second.evaluate(() => performance.timeOrigin), homeMarker, 'Home surface did not reload into the activated build');
