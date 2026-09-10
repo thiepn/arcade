@@ -6,6 +6,7 @@ const CHROME_PATH = process.env.P20_CHROME_PATH || undefined;
 // Gravity remains covered by the unchanged static P20/scoring contracts, but it
 // is no longer a player-facing launch candidate while its slot is retired.
 const gameIds = ['chain', 'merge', 'drift', 'dodge', 'blade'];
+const registeredOnlyCandidates = [{ id: 'gravity', historicalMarker: 'FLIGHT CONTRACT' }];
 const profiles = [
   { name: 'desktop', viewport: { width: 1280, height: 800 }, isMobile: false, hasTouch: false, reducedMotion: 'no-preference' },
   { name: 'mobile', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' },
@@ -198,6 +199,11 @@ try {
     const page = await context.newPage();
     await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
     await waitForHome(page);
+
+    for (const retired of registeredOnlyCandidates) {
+      assert(await page.locator(`#play-btn-${retired.id}`).count() === 0, `retired P20 candidate remained publicly launchable: ${retired.id}`);
+      assert(retired.historicalMarker === 'FLIGHT CONTRACT', 'registered-only P20 provenance marker changed');
+    }
 
     for (const id of gameIds) {
       try {
