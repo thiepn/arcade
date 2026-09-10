@@ -22,6 +22,7 @@ let documentObserver: MutationObserver | null = null;
 let teardownGlobal: (() => void) | null = null;
 
 const GAME_DIALOG_SELECTOR = '[data-p18-dialog="pause"], [data-p18-dialog="result"], [role="dialog"][aria-modal="true"]';
+const INTERACTIVE_SELECTOR = 'button, a[href], input, textarea, select, [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
 
 const getGameplayTarget = (shell: HTMLElement): HTMLElement | null =>
   shell.querySelector<HTMLElement>('[data-p18-stage]')
@@ -83,7 +84,12 @@ const decorateShell = (shell: HTMLElement) => {
   state.onPointerDown = (event) => {
     const target = event.target instanceof Element ? event.target : null;
     const gameplay = getGameplayTarget(shell);
-    if (target && gameplay?.contains(target)) queueGameplayFocus(state);
+    if (!target || !gameplay?.contains(target)) return;
+
+    // Canvas/board taps establish gameplay ownership, but real controls and text
+    // inputs must retain their normal browser focus behavior.
+    if (target.closest(INTERACTIVE_SELECTOR)) return;
+    queueGameplayFocus(state);
   };
 
   state.onClick = (event) => {
