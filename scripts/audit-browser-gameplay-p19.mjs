@@ -3,12 +3,17 @@ import { chromium } from '@playwright/test';
 const BASE_URL = process.env.P19_BASE_URL || 'http://127.0.0.1:4173';
 const CHROME_PATH = process.env.P19_CHROME_PATH || undefined;
 
+// P19 certifies the player-facing library. Gravity and Astro Blaster remain
+// registered in scoring/Worker contracts but are intentionally retired from the
+// public roster until two replacement games take their slots.
 const gameIds = [
   'orbit','stack','reaction','dodge','pulse','merge','typerush','oneline','breakout','perfectstop',
-  'chain','gravity','blade','pinball','chrono','matrix','drift','vanguard','slingshot','snake',
-  'rhythm','tower','pacmaze','flappyaero','roadcross','bubblebuster','astroblaster','laserrope',
+  'chain','blade','pinball','chrono','matrix','drift','vanguard','slingshot','snake',
+  'rhythm','tower','pacmaze','flappyaero','roadcross','bubblebuster','laserrope',
   'blockdrop','knifetarget','airhockey','neonrail',
 ];
+const PUBLIC_GAME_COUNT = gameIds.length;
+const RETIRED_GAME_IDS = new Set(['gravity', 'astroblaster']);
 
 const profiles = [
   { name: 'desktop', viewport: { width: 1280, height: 800 }, isMobile: false, hasTouch: false, reducedMotion: 'no-preference' },
@@ -47,7 +52,7 @@ const collectErrors = (page) => {
 const waitForHome = async (page) => {
   await page.waitForFunction(() => document.documentElement.dataset.p19Cohesion === 'ready', null, { timeout: 5000 });
   await page.locator('main#library-section').waitFor({ state: 'visible', timeout: 8000 });
-  await page.waitForFunction(() => document.querySelectorAll('[data-p19-game-card]').length === 32, null, { timeout: 5000 });
+  await page.waitForFunction((count) => document.querySelectorAll('[data-p19-game-card]').length === count, PUBLIC_GAME_COUNT, { timeout: 5000 });
 };
 
 const certifyHome = async (page, profile) => {
@@ -80,8 +85,9 @@ const certifyHome = async (page, profile) => {
   assert(result.ready === 'ready', 'P19 runtime is not ready on home');
   assert(result.brandTag === 'BUTTON' && result.brandLabel.toLowerCase().includes('micro arcade'), 'home brand is not a named native button');
   assert(result.libraryLandmarks === 1 && result.libraryTag === 'MAIN' && result.filterControls, `home library landmark is not unique/semantic: ${JSON.stringify(result)}`);
-  assert(result.grid && result.cards.length === 32, `home card contract expected 32 canonical cards, found ${result.cards.length}`);
+  assert(result.grid && result.cards.length === PUBLIC_GAME_COUNT, `home card contract expected ${PUBLIC_GAME_COUNT} public cards, found ${result.cards.length}`);
   assert(result.cards.every((card) => card.id && card.play === 1 && card.favorite === 1 && card.title.length > 0 && card.height >= 190), 'home card contract has incomplete/inconsistent card structure');
+  assert(result.cards.every((card) => !RETIRED_GAME_IDS.has(card.id)), `retired game leaked into public cards: ${JSON.stringify(result.cards)}`);
   assert(result.overflowX <= 2, `home has horizontal overflow: ${result.overflowX}px`);
 
   await page.locator('#brand-logo-btn').focus();
@@ -257,7 +263,7 @@ const certifyNavigationStress = async (page) => {
     cards: document.querySelectorAll('[data-p19-game-card]').length,
     overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
   }));
-  assert(state.shells === 0 && state.dialogs === 0 && state.cards === 32, `navigation stress leaked product state: ${JSON.stringify(state)}`);
+  assert(state.shells === 0 && state.dialogs === 0 && state.cards === PUBLIC_GAME_COUNT, `navigation stress leaked product state: ${JSON.stringify(state)}`);
   assert(state.overflowX <= 2, 'navigation stress created home overflow');
 };
 
@@ -310,7 +316,7 @@ try {
 
 const expected = gameIds.length * profiles.length;
 console.log(`\nP19 BROWSER ARCADE COHESION CERTIFICATION — ${failures.length ? 'FAIL' : 'PASS'}`);
-console.log(`${passes}/${expected} game/profile sessions certified plus home, navigation, settings and orientation cohesion checks.`);
+console.log(`${passes}/${expected} public game/profile sessions certified plus home, navigation, settings and orientation cohesion checks.`);
 if (failures.length) {
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
