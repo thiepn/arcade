@@ -3,7 +3,9 @@ import { chromium } from '@playwright/test';
 const BASE_URL = process.env.P20_BASE_URL || 'http://127.0.0.1:4173';
 const CHROME_PATH = process.env.P20_CHROME_PATH || undefined;
 
-const gameIds = ['gravity', 'chain', 'merge', 'drift', 'dodge', 'blade'];
+// Gravity remains covered by the unchanged static P20/scoring contracts, but it
+// is no longer a player-facing launch candidate while its slot is retired.
+const gameIds = ['chain', 'merge', 'drift', 'dodge', 'blade'];
 const profiles = [
   { name: 'desktop', viewport: { width: 1280, height: 800 }, isMobile: false, hasTouch: false, reducedMotion: 'no-preference' },
   { name: 'mobile', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' },
@@ -64,11 +66,7 @@ const waitForShellText = async (page, required, failureMessage) => {
 };
 
 const assertCandidateMarker = async (page, id) => {
-  // GameShell/P18/P19 can mount before a lazy game chunk has completed rendering.
-  // Wait for the actual game-native landmarks instead of sampling immediately.
-  if (id === 'gravity') {
-    await waitForShellText(page, ['FLIGHT CONTRACT'], 'Gravity missing FLIGHT CONTRACT promotion landmark');
-  } else if (id === 'chain') {
+  if (id === 'chain') {
     await waitForShellText(
       page,
       ['RESONANCE', 'PLASMA BLAST', 'TESLA ARC', 'CRYO VORTEX', 'CHARGES'],
@@ -90,10 +88,7 @@ const assertCandidateMarker = async (page, id) => {
 };
 
 const exerciseCandidateInput = async (page, id) => {
-  if (id === 'gravity') {
-    await page.keyboard.press('g');
-    await page.waitForTimeout(50);
-  } else if (id === 'chain') {
+  if (id === 'chain') {
     await page.getByRole('button', { name: /TESLA ARC/i }).click();
     const canvas = page.locator('.game-shell canvas');
     const box = await canvas.boundingBox();
@@ -224,13 +219,15 @@ try {
   await browser.close();
 }
 
+const expected = gameIds.length * profiles.length;
 if (failures.length) {
   console.error('\nP20 BROWSER NEAR-S PROMOTION CERTIFICATION — FAIL');
-  console.error(`${passes}/18 candidate/profile sessions passed.`);
+  console.error(`${passes}/${expected} public candidate/profile sessions passed.`);
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
 
 console.log('\nP20 BROWSER NEAR-S PROMOTION CERTIFICATION — PASS');
-console.log('18/18 candidate/profile sessions certified across Gravity, Chain, Merge, Cyber Drift, Dodge and Laser Blade.');
+console.log(`${expected}/${expected} public candidate/profile sessions certified across Chain, Merge, Cyber Drift, Dodge and Laser Blade.`);
+console.log('Gravity remains covered by the unchanged registered-game/static scoring certification while retired from public launch surfaces.');
 console.log('Desktop, reduced-motion mobile and reduced-motion small-mobile promotion paths remain responsive and error-free.');
