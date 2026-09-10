@@ -43,6 +43,7 @@ export function getPolicy(gameId: string, modeId: string): Policy | null {
 export function modesFor(gameId: string): Policy[] {
   return Object.values(POLICY.policies).filter(p => p.gameId === gameId);
 }
+export const RATING_GAME_COUNT = new Set(Object.values(POLICY.policies).map(p => p.gameId)).size;
 export function modeLabel(gameId: string, modeId?: string): string {
   return modeId === 'legacy' ? 'Legacy rules (archived)' : getPolicy(gameId, modeId ?? 'standard')?.modeLabel ?? 'Unknown mode';
 }
@@ -64,8 +65,13 @@ export function contributionMicros(gameId: string, micros: number, modeId: strin
   return Math.min(POLICY.gameContributionCap * AP_SCALE, Math.floor(micros * POLICY.gameContributionCap / p.contributionTarget));
 }
 export function displayPoints(micros: number): number { return Math.floor(micros / AP_SCALE); }
+/** User-facing championship rating is always 0–10,000. Dividing by the fixed cabinet count preserves ranking order exactly. */
+export function displayRating(contributionMicrosTotal: number): number {
+  return Math.floor(Math.max(0, contributionMicrosTotal) / AP_SCALE / RATING_GAME_COUNT);
+}
+/** All public score/rating text is intentionally integer-only. Canonical micro-AP precision remains internal for fair ordering. */
 export function formatPoints(points: number): string {
-  return Math.max(0, Number.isFinite(points) ? points : 0).toLocaleString(undefined, { maximumFractionDigits: 3 });
+  return Math.floor(Math.max(0, Number.isFinite(points) ? points : 0)).toLocaleString();
 }
 export function weekBounds(now: number): { start: number; end: number } {
   const d = new Date(now);
