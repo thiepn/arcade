@@ -15,6 +15,7 @@ const localValues = new Map();
 const sessionValues = new Map();
 let localReadDenied = false;
 let localWriteDenied = false;
+let v3WriteDenied = false;
 let sessionDenied = false;
 globalThis.window = new EventTarget();
 globalThis.localStorage = {
@@ -23,6 +24,7 @@ globalThis.localStorage = {
     return localValues.get(key) ?? null;
   },
   setItem(key, value) {
+    if (v3WriteDenied && key === 'micro_arcade_stats_v3') throw new DOMException('Quota exceeded', 'QuotaExceededError');
     if (localWriteDenied) throw new DOMException('Quota exceeded', 'QuotaExceededError');
     localValues.set(key, value);
   },
@@ -47,6 +49,7 @@ globalThis.sessionStorage = {
 };
 
 const key = 'micro_arcade_stats_v3';
+const previousKey = 'micro_arcade_stats_v2';
 const sessionKey = 'micro_arcade_stats_v3_session_fallback';
 const sessionReplaceKey = 'micro_arcade_stats_v3_session_replace';
 for (const malformed of ['null', '[]', 'true', '42', '"old"', '{broken']) {
@@ -66,6 +69,25 @@ assert.equal(getStoredStats().volume, 1);
 assert.equal(getStoredStats().soundEnabled, true);
 for (const score of [NaN, Infinity, -1]) assert.equal(recordScore('orbit', score).stats.highScores.orbit, 300);
 recordGamePlay('orbit');
+
+// Migration must never delete the only durable older schema merely to make room
+// for v3. Simulate a quota error that blocks only the v3 write while deletion is
+// otherwise allowed: v2 stays intact until v3 is actually durable.
+clearAllStats();
+localValues.delete(key);
+localValues.set(previousKey, JSON.stringify({ scoreVersion: 2, highScores: { orbit: 321 }, rawHighScores: { orbit: 481 }, favorites: ['orbit'] }));
+v3WriteDenied = true;
+const migrationFallback = getStoredStats();
+assert.equal(migrationFallback.highScores.orbit, 321);
+assert.deepEqual(migrationFallback.favorites, ['orbit']);
+assert(localValues.has(previousKey), 'Migration source was deleted before v3 became durable');
+assert.equal(getStorageStatus().mode, 'session');
+assert(sessionValues.has(sessionKey), 'Migration should fall back to a session snapshot');
+v3WriteDenied = false;
+assert.equal(retryStoragePersistence(), true);
+assert.equal(getStorageStatus().mode, 'persistent');
+assert.equal(JSON.parse(localValues.get(key)).highScores.orbit, 321);
+assert.equal(localValues.has(previousKey), false, 'Obsolete v2 source should be removed only after v3 succeeds');
 
 // A primary write failure is no longer treated as total data loss. The complete
 // snapshot falls back to sessionStorage and can be recovered automatically.
@@ -150,4 +172,4 @@ globalThis.fetch = async () => new Response('{broken');
 await assert.rejects(requestLeaderboardJson('https://example.invalid'), error => error.code === 'invalid_response');
 globalThis.fetch = async () => Response.json({ ok: true });
 assert.deepEqual(await requestLeaderboardJson('https://example.invalid'), { ok: true });
-console.log('RC storage/request regression passed: corrupt schemas, session fallback, dirty-memory preservation, reset authority, confirmed hard failure, automatic recovery, bounded requests, typed errors.');
+console.log('RC storage/request regression passed: corrupt schemas, safe migration fallback, session fallback, dirty-memory preservation, reset authority, confirmed hard failure, automatic recovery, bounded requests, typed errors.');
