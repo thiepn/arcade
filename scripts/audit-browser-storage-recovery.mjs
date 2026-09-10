@@ -9,7 +9,7 @@ else launchOptions.channel = 'chrome';
 const browser = await chromium.launch(launchOptions);
 try {
   // Recoverable primary-store failure: sessionStorage must preserve the snapshot,
-  // the scary memory-only warning must stay hidden, and focus retry must heal it.
+  // the scary memory-only warning must stay hidden, survive a reload, and heal.
   {
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     await context.addInitScript(() => {
@@ -28,8 +28,20 @@ try {
     await page.locator('#play-btn-orbit').click();
     await page.locator('.game-shell').waitFor({ state: 'visible', timeout: 8000 });
     await page.waitForFunction(() => Boolean(sessionStorage.getItem('micro_arcade_stats_v3_session_fallback')), null, { timeout: 3000 });
-    const warningCount = await page.getByText(/Persistent browser storage is unavailable|Browser storage is blocked|Browser storage is full/i).count();
+    let warningCount = await page.getByText(/Persistent browser storage is unavailable|Browser storage is blocked|Browser storage is full/i).count();
     if (warningCount !== 0) throw new Error('Recoverable session fallback displayed a persistent-storage warning');
+
+    // Reloading the tab must keep the fallback snapshot and must not manufacture
+    // the old permanent warning while localStorage is still unwritable.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => document.querySelectorAll('[id^="play-btn-"]').length === 32, null, { timeout: 8000 });
+    await page.waitForFunction(() => {
+      const raw = sessionStorage.getItem('micro_arcade_stats_v3_session_fallback');
+      if (!raw) return false;
+      return (JSON.parse(raw).playCounts?.orbit ?? 0) >= 1;
+    }, null, { timeout: 3000 });
+    warningCount = await page.getByText(/Persistent browser storage is unavailable|Browser storage is blocked|Browser storage is full/i).count();
+    if (warningCount !== 0) throw new Error('Session fallback displayed a warning after reload');
 
     await page.evaluate(() => {
       window.__allowArcadePersistentStorage = true;
@@ -39,7 +51,7 @@ try {
     const healed = await page.evaluate(() => JSON.parse(localStorage.getItem('micro_arcade_stats_v3')));
     if ((healed.playCounts?.orbit ?? 0) < 1) throw new Error('Recovered persistent snapshot lost session progress');
     await context.close();
-    console.log('PASS recoverable localStorage failure uses session fallback without the permanent warning and heals automatically');
+    console.log('PASS recoverable localStorage failure survives reload without the permanent warning and heals automatically');
   }
 
   // Complete denial: warn only after confirmed failure, make the warning dismissible,
@@ -55,6 +67,7 @@ try {
         'micro_arcade_stats_v2',
         'micro_arcade_stats_v3',
         'micro_arcade_stats_v3_session_fallback',
+        'micro_arcade_stats_v3_session_replace',
       ]);
       Storage.prototype.getItem = function (key) {
         if (window.__blockArcadeStorage && blockedKeys.has(String(key))) {
