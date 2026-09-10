@@ -153,7 +153,11 @@ const runGame = async (page, profile, gameId) => {
     const pauseDialog = page.locator('[data-p18-dialog="pause"]');
     await pauseDialog.getByRole('button', { name: /^RESUME \(ESC\)$/i }).click();
     await page.waitForFunction(() => !document.querySelector('[data-p18-dialog="pause"]'), null, { timeout: 2000 });
-    await page.waitForFunction(() => document.activeElement?.id === 'game-pause-btn', null, { timeout: 1500 });
+    await page.waitForFunction(() => {
+      const stage = document.querySelector('[data-p18-stage]');
+      const active = document.activeElement;
+      return Boolean(stage && active && stage.contains(active));
+    }, null, { timeout: 1500 });
 
     await page.locator('#game-restart-btn').click();
     await page.waitForTimeout(100);
