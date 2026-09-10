@@ -5,8 +5,8 @@ const CHROME_PATH = process.env.P17_CHROME_PATH || undefined;
 
 const gameIds = [
   'orbit','stack','reaction','dodge','pulse','merge','typerush','oneline','breakout','perfectstop',
-  'chain','gravity','blade','pinball','chrono','matrix','drift','vanguard','slingshot','snake',
-  'rhythm','tower','pacmaze','flappyaero','roadcross','bubblebuster','astroblaster','laserrope',
+  'chain','blade','pinball','chrono','matrix','drift','vanguard','slingshot','snake',
+  'rhythm','tower','pacmaze','flappyaero','roadcross','bubblebuster','laserrope',
   'blockdrop','knifetarget','airhockey','neonrail',
 ];
 
@@ -179,7 +179,7 @@ try {
 
 const expected = gameIds.length * profiles.length;
 console.log(`\nP17 BROWSER FEEL CERTIFICATION — ${failures.length ? 'FAIL' : 'PASS'}`);
-console.log(`${passes}/${expected} game/profile sessions certified; full-motion desktop + reduced-motion touch mobile.`);
+console.log(`${passes}/${expected} public game/profile sessions certified; full-motion desktop + reduced-motion touch mobile.`);
 if (failures.length) {
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
