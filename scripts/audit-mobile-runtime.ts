@@ -21,6 +21,7 @@ assert(gameFiles.length === 32, `expected 32 game modules, found ${gameFiles.len
 const main = read('src/main.tsx');
 const runtime = read('src/lib/mobileRuntime.ts');
 const loop = read('src/hooks/useGameLoop.ts');
+const gamepadBridge = read('src/hooks/useGamepadBridge.ts');
 const shell = read('src/components/GameShell.tsx');
 const css = read('src/index.css');
 const drift = read('src/games/DriftGame.tsx');
@@ -53,6 +54,31 @@ assert(
     loop.includes('GAME RENDER ERROR') &&
     loop.includes('finally {'),
   'async canvas failures can still collapse into an unexplained black screen',
+);
+
+// A connected-but-idle or phantom gamepad must never paint the cyan virtual
+// cursor in the middle of a touch screen. Direct touch/pen input must suppress
+// it until deliberate controller input occurs again.
+assert(
+  gamepadBridge.includes('let pointerEngaged = false') &&
+    gamepadBridge.includes('pointerIntent && !pointerEngaged') &&
+    gamepadBridge.includes("cursor.style.display = 'block'") &&
+    gamepadBridge.includes("else hideCursor();"),
+  'gamepad virtual cursor is not gated behind deliberate controller pointer input',
+);
+assert(
+  gamepadBridge.includes('event.isTrusted') &&
+    gamepadBridge.includes("event.pointerType !== 'touch'") &&
+    gamepadBridge.includes("event.pointerType !== 'pen'") &&
+    gamepadBridge.includes('DIRECT_POINTER_COOLDOWN_MS') &&
+    gamepadBridge.includes("window.addEventListener('pointerdown', onDirectPointerDown, true)") &&
+    gamepadBridge.includes("window.addEventListener('pointercancel', onDirectPointerEnd, true)"),
+  'touch/pen input does not reliably suppress the synthetic gamepad cursor',
+);
+assert(
+  gamepadBridge.includes('Synthetic events emitted above have isTrusted=false') &&
+    gamepadBridge.includes('releasePointer();'),
+  'gamepad cursor arbitration can recursively react to its own synthetic pointer events',
 );
 
 for (const [width, height, dpr] of [
@@ -129,5 +155,5 @@ const roundRectGames = gameFiles.filter((file) =>
   read(join('src/games', file)).includes('.roundRect('),
 );
 console.log(
-  `Mobile runtime audit passed: ${gameFiles.length} games share safe viewport sizing, canvas-memory limits, render-failure recovery, and roundRect compatibility (${roundRectGames.length} game modules currently rely on it).`,
+  `Mobile runtime audit passed: ${gameFiles.length} games share safe viewport sizing, canvas-memory limits, render-failure recovery, touch/gamepad cursor arbitration, and roundRect compatibility (${roundRectGames.length} game modules currently rely on it).`,
 );
