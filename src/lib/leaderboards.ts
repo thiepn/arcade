@@ -1,5 +1,5 @@
 import { defaultScoreMode } from '../../shared/scoring';
-import { AP_SCALE,POLICY_ID,RunReceipt,UUID,getPolicy,safeInteger } from '../../shared/leaderboard/domain';
+import { AP_SCALE,POLICY_ID,RunReceipt,UUID,displayPoints,displayRating,getPolicy,safeInteger } from '../../shared/leaderboard/domain';
 import { UserStats } from '../types';
 import { leaderboardBase,leaderboardRequest,existingCredential,IDENTITY_EVENT } from './leaderboardIdentity';
 import { enqueueUpload,flushUploads,getUploadHistory,PUBLISHED_EVENT } from './leaderboardOutbox';
@@ -72,10 +72,10 @@ if(typeof window!=='undefined'){
  window.addEventListener(IDENTITY_EVENT,resetAllLeaderboards);window.addEventListener(PUBLISHED_EVENT,resetAllLeaderboards);
  window.addEventListener('storage',e=>{if(e.key==='micro_arcade_guest_credential_v1'){resetAllLeaderboards();window.dispatchEvent(new Event(IDENTITY_EVENT));}});
 }
-function gameRow(r:ServerRow):LeaderboardEntry{return {id:r.id,rank:r.rank,name:r.name,score:r.ap_micros/AP_SCALE,apMicros:r.ap_micros,contributionMicros:r.contribution_micros,
+function gameRow(r:ServerRow):LeaderboardEntry{return {id:r.id,rank:r.rank,name:r.name,score:displayPoints(r.ap_micros),apMicros:r.ap_micros,contributionMicros:r.contribution_micros,
  rawScore:safeInteger(r.raw_score)?r.raw_score:undefined,modeId:r.mode_id,scoreVersion:r.source_version,country:flag(r.country_code),countryCode:r.country_code,
  timestamp:timestamp(r.achieved_at),achievedAt:r.achieved_at,isUser:r.id===owner(),division:getDivisionForRank(r.rank)};}
-function overallRow(r:ServerRow):GlobalOverallEntry{return {id:r.id,rank:r.rank,name:r.name,ratingScore:r.contribution_micros/AP_SCALE,totalScore:r.ap_micros/AP_SCALE,
+function overallRow(r:ServerRow):GlobalOverallEntry{return {id:r.id,rank:r.rank,name:r.name,ratingScore:displayRating(r.contribution_micros),totalScore:displayPoints(r.ap_micros),
  apMicros:r.ap_micros,contributionMicros:r.contribution_micros,gamesPlayed:r.games_played,badgesUnlocked:0,country:flag(r.country_code),countryCode:r.country_code,
  badgeTitle:`${r.games_played} ranked ${r.games_played===1?'game':'games'}`,division:getDivisionForRank(r.rank),level:1,isUser:r.id===owner(),timestamp:timestamp(r.last_achieved_at)};}
 const meta=(b:ServerBoard):BoardMeta=>({asOf:b.asOf,offset:b.offset,nextOffset:b.nextOffset,contributions:b.contributions});
