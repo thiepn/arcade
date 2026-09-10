@@ -9,6 +9,7 @@ const gameIds = [
   'rhythm','tower','pacmaze','flappyaero','roadcross','bubblebuster','laserrope',
   'blockdrop','knifetarget','airhockey','neonrail',
 ];
+const registeredOnlyGameIds = ['gravity', 'astroblaster'];
 
 const profiles = [
   { name: 'desktop-full', viewport: { width: 1280, height: 800 }, isMobile: false, hasTouch: false, reducedMotion: 'no-preference' },
@@ -159,6 +160,12 @@ try {
     const page = await context.newPage();
     await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
+    // Registered-only games remain part of the 32-slot feel/AP architecture, but
+    // their public launch controls must be absent until replacement games arrive.
+    for (const retiredId of registeredOnlyGameIds) {
+      assert(await page.locator(`#play-btn-${retiredId}`).count() === 0, `retired game remained publicly launchable: ${retiredId}`);
+    }
+
     for (const gameId of gameIds) {
       try {
         await runGame(page, profile, gameId);
@@ -179,7 +186,7 @@ try {
 
 const expected = gameIds.length * profiles.length;
 console.log(`\nP17 BROWSER FEEL CERTIFICATION — ${failures.length ? 'FAIL' : 'PASS'}`);
-console.log(`${passes}/${expected} public game/profile sessions certified; full-motion desktop + reduced-motion touch mobile.`);
+console.log(`${passes}/${expected} public game/profile sessions certified; registered-only Gravity/Astro IDs are also certified absent from launch surfaces.`);
 if (failures.length) {
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
