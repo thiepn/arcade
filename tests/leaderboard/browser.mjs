@@ -45,7 +45,7 @@ try{
   const longName=panel.getByRole('button',{name:'Show contributions for ABCDEFGHIJKLMNOPQRST'});check(await longName.textContent()==='ABCDEFGHIJKLMNOPQRST','full long name retained');
   check(await longName.evaluate(e=>getComputedStyle(e).textOverflow!=='ellipsis'&&e.scrollWidth<=e.clientWidth+1),'mobile name wraps, not clips');
   check(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'no page horizontal overflow');
-  await longName.click();await panel.getByText('3,000 rating',{exact:true}).waitFor();check(await panel.getByText('Standard · Score 45').count()===1,'contribution matches native mode context');
+  await longName.click();await panel.getByText('3,000 AP',{exact:true}).waitFor();check(await panel.getByText('Standard · Score 45').count()===1,'contribution matches native mode context');
   await panel.getByRole('button',{name:'Load more players'}).click();await p.waitForFunction(()=>document.querySelectorAll('[data-leaderboard-player]').length===41);
   await panel.getByRole('button',{name:'Load more players'}).click();await p.waitForFunction(()=>document.querySelectorAll('[data-leaderboard-player]').length===45);
   check(await panel.locator(`[data-leaderboard-player="${player}"]`).count()===1,'self deduplicated after pagination');
