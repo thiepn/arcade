@@ -97,9 +97,27 @@ try {
   const soundStateAfterSpace = await sound.getAttribute('aria-pressed');
   assert(soundStateAfterSpace === soundStateAfterClick, `Space toggled Sound again: ${soundStateAfterClick} -> ${soundStateAfterSpace}`);
 
+  // Text-entry games are a deliberate exception to generic stage focus. Type Rush
+  // must keep its hidden keyboard input active on launch and regain it after pause.
+  await page.locator('#game-back-btn').click();
+  await page.waitForFunction(() => !document.querySelector('.game-shell'), null, { timeout: 3000 });
+  await page.locator('#play-btn-typerush').click({ timeout: 8000 });
+  await page.locator('.game-shell').waitFor({ state: 'visible', timeout: 8000 });
+  const typeInput = page.getByRole('textbox', { name: 'Type Rush Keyboard Input' });
+  await typeInput.waitFor({ state: 'attached', timeout: 4000 });
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Type Rush Keyboard Input', null, { timeout: 2500 });
+  assert(await typeInput.evaluate((node) => document.activeElement === node), 'Type Rush launch focus was stolen from its text input');
+
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => Boolean(document.querySelector('[data-p18-dialog="pause"]')), null, { timeout: 2500 });
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('[data-p18-dialog="pause"]'), null, { timeout: 2500 });
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Type Rush Keyboard Input', null, { timeout: 2500 });
+  assert(await typeInput.evaluate((node) => document.activeElement === node), 'Type Rush did not regain its text input after pause/resume');
+
   assert(failures.length === 0, failures.join(' | '));
   console.log('GAME SHELL KEYBOARD OWNERSHIP AUDIT — PASS');
-  console.log('Space remains a gameplay input after restart, pause/resume, keyboard pause/resume and toolbar pointer use.');
+  console.log('Space remains gameplay-owned after shell actions, while Type Rush retains its dedicated text-entry focus.');
 
   await context.close();
 } catch (error) {
