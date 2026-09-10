@@ -254,3 +254,4 @@ jobs:
         run: bun run quality:leaderboard-db
         env:
           LB_TEST_DATABASE_URL: postgres://postgres:local-test-only@127.0.0.1:55432/leaderboard_test
+          LB_TEST_RESET: '1'
