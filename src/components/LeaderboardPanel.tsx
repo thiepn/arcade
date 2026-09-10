@@ -2,7 +2,7 @@ import React,{useCallback,useEffect,useRef,useState} from 'react';
 import { CalendarDays, ChevronRight, Crown, Gamepad2, Globe2, Medal, RefreshCw, ShieldCheck, Sparkles, Trophy, Users } from 'lucide-react';
 import { GAMES_REGISTRY } from '../data/games';
 import type { UserStats } from '../types';
-import { AP_SCALE,formatPoints,modeLabel,modesFor,POLICY_ID,SUBMISSION_MESSAGES } from '../../shared/leaderboard/domain';
+import { AP_SCALE,formatPoints,modeLabel,modesFor,POLICY_ID,RATING_GAME_COUNT,SUBMISSION_MESSAGES } from '../../shared/leaderboard/domain';
 import { currentGameBests,localRating } from '../lib/localCompetition';
 import { existingCredential,exportPlayerRecoveryCode,restorePlayerRecoveryCode,IDENTITY_EVENT,leaderboardRequest } from '../lib/leaderboardIdentity';
 import { flushUploads,getUploadHistory,OUTBOX_EVENT,PUBLISHED_EVENT,refreshReviewedUploads,uploadsAreDurable,type PendingRun } from '../lib/leaderboardOutbox';
@@ -109,10 +109,10 @@ export function LeaderboardPanel({stats,initialGameId}:{stats:UserStats;initialG
     <div className="lb-player-meta">{entry.isUser&&<span className="lb-you">YOU</span>}<span>{entry.division?.toUpperCase()??'BRONZE'} DIVISION</span></div>
    </div>
   </div>
-  <div className="lb-metrics">{scope==='game'&&'score'in entry?<><strong title={`${(entry.apMicros??0)/AP_SCALE} AP`}>{formatPoints(entry.score)} <em>AP</em></strong><span>Score {entry.rawScore?.toLocaleString()??'Unavailable'} · {modeLabel(gameId,entry.modeId)}</span></>:<><strong title={`${(entry.contributionMicros??0)/AP_SCALE} rating`}>{formatPoints('ratingScore'in entry?entry.ratingScore:0)} <em>RATING</em></strong><span>{'gamesPlayed'in entry?entry.gamesPlayed:0} ranked games · {formatPoints('totalScore'in entry?entry.totalScore:0)} total AP</span></>}</div>
-  {expanded===entry.id&&<div className="lb-breakdown" aria-live="polite">{detailBusy?<p>Loading contributions…</p>:detailError?<p role="alert">{detailError}</p>:<ul>{breakdown.map(c=><li key={c.gameId}><div><strong>{titleFor(c.gameId)}</strong><span>{modeLabel(c.gameId,c.modeId)} · Score {c.rawScore.toLocaleString()}</span></div><div><strong>{formatPoints(c.contributionMicros/AP_SCALE)} rating</strong><span>{formatPoints(c.apMicros/AP_SCALE)} AP</span></div></li>)}</ul>}</div>}
+  <div className="lb-metrics">{scope==='game'&&'score'in entry?<><strong title={`${Math.floor((entry.apMicros??0)/AP_SCALE).toLocaleString()} AP`}>{formatPoints(entry.score)} <em>AP</em></strong><span>Score {entry.rawScore?.toLocaleString()??'Unavailable'} · {modeLabel(gameId,entry.modeId)}</span></>:<><strong title={`${formatPoints('ratingScore'in entry?entry.ratingScore:0)} overall rating`}>{formatPoints('ratingScore'in entry?entry.ratingScore:0)} <em>RATING</em></strong><span>{'gamesPlayed'in entry?entry.gamesPlayed:0} ranked games</span></>}</div>
+  {expanded===entry.id&&<div className="lb-breakdown" aria-live="polite">{detailBusy?<p>Loading contributions…</p>:detailError?<p role="alert">{detailError}</p>:<ul>{breakdown.map(c=><li key={c.gameId}><div><strong>{titleFor(c.gameId)}</strong><span>{modeLabel(c.gameId,c.modeId)} · Score {c.rawScore.toLocaleString()}</span></div><div><strong>{formatPoints(c.apMicros/AP_SCALE)} AP</strong><span>Counts toward overall rating</span></div></li>)}</ul>}</div>}
  </li>;
- const scopeCopy=scope==='game'?'Ranked by precise AP. Raw Score remains specific to its game and mode.':scope==='weekly'?'Best result from each game completed during the current UTC week.':'One best contribution per game. Equal ratings share the same rank.';
+ const scopeCopy=scope==='game'?'Ranked by AP. Raw Score remains specific to its game and mode.':scope==='weekly'?'Best result from each game completed during the current UTC week. Rating stays on the same 0–10,000 scale.':'One best contribution per game, combined into a simple 0–10,000 overall rating.';
  return <section className={`lb-panel lb-scope-${scope}`} aria-label="Published arcade leaderboard" data-leaderboard-v3>
   <div className="lb-tabs" role="group" aria-label="Leaderboard view">
    <button type="button" className="lb-button" aria-pressed={scope==='overall'} onClick={()=>setScope('overall')}><Globe2 aria-hidden="true"/><span>Global</span></button>
@@ -131,7 +131,7 @@ export function LeaderboardPanel({stats,initialGameId}:{stats:UserStats;initialG
   {!live&&<p className="lb-warning">This build is local-only. The published leaderboard is not connected.</p>}
   {error&&<p className="lb-warning" role="alert">{error} Refresh to start a new snapshot.</p>}
   <div className="lb-board-shell">
-   <div className="lb-table-head" aria-hidden="true"><span>Rank</span><span>Player</span><span>{scope==='game'?'Arcade Points / Score':'Rating / Total AP'}</span></div>
+   <div className="lb-table-head" aria-hidden="true"><span>Rank</span><span>Player</span><span>{scope==='game'?'Arcade Points / Score':'Overall rating'}</span></div>
    <ol className="lb-list" aria-label="Leaderboard rankings" aria-busy={busy}>{entries.map(renderRow)}</ol>
    {!entries.length&&<div className="lb-empty"><Trophy aria-hidden="true"/><strong>{busy?'Loading rankings…':'No published results yet'}</strong><span>{busy?'Connecting to the arcade circuit.':'Play a ranked run to put a score on this board.'}</span></div>}
   </div>
@@ -139,9 +139,10 @@ export function LeaderboardPanel({stats,initialGameId}:{stats:UserStats;initialG
   {board.nextOffset!==null&&board.nextOffset!==undefined&&<button type="button" className="lb-button lb-more" disabled={busy} onClick={()=>void loadMore()}>Load more players <ChevronRight aria-hidden="true"/></button>}
   <div className="lb-utility-grid">
    <details className="lb-details"><summary><span><Trophy aria-hidden="true"/> Scoring & ranking rules</span><ChevronRight className="lb-summary-chevron" aria-hidden="true"/></summary>
-    <div className="lb-details-body"><p><strong>Score</strong> is the game’s raw result. <strong>AP</strong> normalizes it for the game/mode. <strong>Rating</strong> sums your best bounded contribution from each game, up to 10,000 each.</p>
-    <p>Most games reach full contribution at 10,000 AP. The finite games use elite targets: Reaction 6,500 AP, Perfect Stop 6,500 AP, Gravity 8,000 AP. Individual AP records remain uncapped.</p>
-    <p>Repeated attempts and extra modes do not add extra game slots. Exact rating ties share a rank; uncapped total AP is a statistic, not a tie-breaker. Per-game ordering uses micro-AP precision; displayed numbers are shortened to three decimals.</p>
+    <div className="lb-details-body"><p><strong>Score</strong> is the game’s raw result. <strong>AP</strong> turns that result into a balanced score for that game and mode. <strong>Overall Rating</strong> combines your best result from every game onto one fixed 0–10,000 scale.</p>
+    <p>The ranking still rewards breadth exactly as before: each game can contribute up to 10,000 internally, then the combined total is divided by the {RATING_GAME_COUNT} arcade games. That scaling only makes the number readable; it does not change who ranks above whom.</p>
+    <p>Most games reach full contribution at 10,000 AP. Finite games use elite targets so they are not disadvantaged. Repeated attempts and extra modes do not create extra game slots.</p>
+    <p>Score, AP and Rating are always displayed as whole numbers. The server keeps finer precision internally only to order extremely close results fairly; those decimals are never shown.</p>
     <p>Weekly boards use completion time, not retry time. Compatible v2 records carry forward; v1 rules remain in your archive. Public results are plausibility-screened, not replay-verified.</p>
     <p className="lb-caption">Leaderboard v3 · scoring v2 · policy {POLICY_ID.slice(0,12)}</p></div>
    </details>
