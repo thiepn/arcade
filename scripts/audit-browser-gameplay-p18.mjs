@@ -10,7 +10,11 @@ const gameIds = [
   'blockdrop','knifetarget','airhockey','neonrail',
 ];
 
-const hintGames = new Set(['stack','reaction','pulse','typerush','oneline','perfectstop','chain','gravity','matrix','slingshot','flappyaero','laserrope']);
+// Hex Capture reuses the astroblaster compatibility slot. Its capture mechanic is
+// intentionally non-obvious (arm -> leave safety -> reconnect), so it earns the
+// same one-time, input-transparent teaching hint contract as the other selective
+// first-run games rather than weakening the global no-over-tutoring rule.
+const hintGames = new Set(['stack','reaction','pulse','typerush','oneline','perfectstop','chain','gravity','matrix','slingshot','flappyaero','astroblaster','laserrope']);
 
 const profiles = [
   { name: 'desktop', viewport: { width: 1280, height: 800 }, isMobile: false, hasTouch: false, reducedMotion: 'no-preference' },
