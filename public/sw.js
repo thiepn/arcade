@@ -100,13 +100,12 @@ self.addEventListener('message', (event) => {
 async function navigationResponse(request) {
   const cache = await caches.open(CACHE_NAME);
   try {
-    // Prefer the network for navigations so an online refresh can never be pinned
-    // indefinitely to an obsolete shell/backend configuration.
+    // Prefer the network while online, but never overwrite this versioned cache's
+    // root document. The cache is an immutable complete-build snapshot created at
+    // install time; mixing a newer HTML shell with older precached chunks can make
+    // an offline refresh unrecoverable during an update rollout.
     const network = await fetch(request, { cache: 'no-store' });
-    if (network.ok) {
-      await cache.put(scopeUrl('./'), network.clone());
-      return network;
-    }
+    if (network.ok) return network;
   } catch {}
   return (await cache.match(scopeUrl('./'))) || Response.error();
 }
