@@ -8,11 +8,70 @@ const titleAliases = new Map([
   ['Astro Blaster 360', 'Hex Capture'],
 ]);
 
+const replaceAliasText = (value: string) => {
+  let next = value.replace(/Astro Blaster 360/g, 'Hex Capture');
+  next = next.replace(/\bGravity\b(?!\s+Tower)/g, 'Vector Golf');
+  return next;
+};
+
 /**
- * Gravity and Astro Blaster are retained as internal scoring-slot IDs so the
- * existing 32-slot AP economy does not move. Everything player-facing is
- * replaced directly in the registry before React renders; no DOM mutation or
- * detached-canvas observers are needed.
+ * Keep legacy scoring-slot titles long enough for P17/P18 to identify the shell,
+ * then alias only visible text/labels. This observer is installed once for the
+ * lifetime of the app; unlike the old implementation it owns no per-game canvas
+ * observers, window listeners, or detached DOM references.
+ */
+let aliasesInstalled = false;
+const installVisibleAliases = () => {
+  if (aliasesInstalled || typeof document === 'undefined') return;
+  aliasesInstalled = true;
+  let frame = 0;
+
+  const patch = () => {
+    frame = 0;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const textNodes: Text[] = [];
+    while (walker.nextNode()) textNodes.push(walker.currentNode as Text);
+    for (const node of textNodes) {
+      const parent = node.parentElement;
+      if (!parent || parent.closest('script, style')) continue;
+      const shell = parent.closest<HTMLElement>('.game-shell');
+      // P17/P18 discover the internal compatibility slot from the original
+      // title. Do not replace the shell title until both runtimes have attached.
+      if (shell && (!shell.dataset.p17Game || !shell.dataset.p18Game)) continue;
+      const value = node.nodeValue ?? '';
+      const replacement = replaceAliasText(value);
+      if (replacement !== value) node.nodeValue = replacement;
+    }
+
+    for (const element of Array.from(document.querySelectorAll<HTMLElement>('[aria-label], [title]'))) {
+      for (const attribute of ['aria-label', 'title']) {
+        const value = element.getAttribute(attribute);
+        if (!value) continue;
+        const replacement = replaceAliasText(value);
+        if (replacement !== value) element.setAttribute(attribute, replacement);
+      }
+    }
+  };
+
+  const schedule = () => {
+    if (frame) return;
+    frame = requestAnimationFrame(patch);
+  };
+  const observer = new MutationObserver(schedule);
+  observer.observe(document.documentElement, {
+    subtree: true,
+    childList: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: ['aria-label', 'title', 'data-p17-game', 'data-p18-game'],
+  });
+  schedule();
+};
+
+/**
+ * Gravity and Astro Blaster remain the internal scoring-slot IDs so the existing
+ * 32-slot AP economy does not move. Their engines and visible presentation are
+ * fully replaced, but calibration keys stay stable.
  */
 const updateTeachingProfiles = () => {
   const vectorFeel = P17_GAME_FEEL_PROFILES.find((profile) => profile.id === 'gravity');
@@ -75,7 +134,6 @@ const updateTeachingProfiles = () => {
 export function applyReplacementGames() {
   const vector = GAMES_REGISTRY.find((game) => game.id === 'gravity');
   if (vector) Object.assign(vector, {
-    title: 'Vector Golf',
     tagline: 'Bank. Bounce. Sink.',
     description: 'Six compact neon mini-golf holes built around deliberate bank shots, route stars, moving hazards, and under-par mastery.',
     category: 'Physics',
@@ -91,7 +149,6 @@ export function applyReplacementGames() {
 
   const hex = GAMES_REGISTRY.find((game) => game.id === 'astroblaster');
   if (hex) Object.assign(hex, {
-    title: 'Hex Capture',
     tagline: 'Leave safety. Close the loop. Claim the field.',
     description: 'A fast territory-capture game: draw exposed routes through the grid, reconnect to safety, and trap space before roaming hunters touch your trail.',
     category: 'Strategy',
@@ -106,6 +163,7 @@ export function applyReplacementGames() {
   });
 
   updateTeachingProfiles();
+  installVisibleAliases();
 }
 
 export const REPLACEMENT_TITLE_ALIASES = titleAliases;
