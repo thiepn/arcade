@@ -30,6 +30,12 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, '.'),
+      // The registry keeps the historical compatibility-slot import strings so
+      // the 32-slot AP/Worker/source contracts remain unchanged. At bundle time,
+      // route those two retired implementations to their replacements so Gravity
+      // and Astro Blaster are not shipped or precached as dead production chunks.
+      '../games/GravityGame': path.resolve(import.meta.dirname, 'src/games/VectorGolf.tsx'),
+      '../games/AstroBlasterGame': path.resolve(import.meta.dirname, 'src/games/HexCapture.tsx'),
     },
   },
   build: {

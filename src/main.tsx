@@ -9,6 +9,7 @@ import { installGameInputRuntime } from './lib/gameInputRuntime';
 import { installP22PromotionRuntime } from './lib/p22PromotionRuntime';
 import { installP23TransformationRuntime } from './lib/p23TransformationRuntime';
 import { installMobileRuntimeCompatibility } from './lib/mobileRuntime';
+import { applyReplacementGames } from './lib/replacementGames';
 import './index.css';
 import './p17-game-feel.css';
 import './p18-clarity-accessibility.css';
@@ -25,6 +26,7 @@ installArcadeCohesionRuntime();
 installGameInputRuntime();
 installP22PromotionRuntime();
 installP23TransformationRuntime();
+applyReplacementGames();
 
 window.addEventListener('vite:preloadError', (event) => {
   // Let the error boundary offer recovery; never reload an active run in a loop.
