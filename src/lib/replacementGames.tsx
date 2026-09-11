@@ -2,6 +2,7 @@ import { lazy } from 'react';
 import { GAMES_REGISTRY } from '../data/games';
 import { P17_GAME_FEEL_PROFILES } from './gameFeelProfiles';
 import { P18_GAME_CLARITY_PROFILES } from './gameClarityProfiles';
+import { sanitizeReplacementLocalScores } from './replacementEpoch';
 
 const titleAliases = new Map([
   ['Gravity', 'Vector Golf'],
@@ -132,6 +133,10 @@ const updateTeachingProfiles = () => {
 };
 
 export function applyReplacementGames() {
+  // This runs before React reads persisted stats. It is deliberately idempotent
+  // so storage fallback/recovery can never resurrect retired-game PBs.
+  sanitizeReplacementLocalScores();
+
   const vector = GAMES_REGISTRY.find((game) => game.id === 'gravity');
   if (vector) Object.assign(vector, {
     tagline: 'Bank. Bounce. Sink.',
