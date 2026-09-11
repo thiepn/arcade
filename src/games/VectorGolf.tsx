@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
+import { useLogicalCanvas } from '../hooks/useLogicalCanvas';
 
 const W = 900;
 const H = 560;
@@ -53,6 +54,8 @@ type Hud = { hole: number; par: number; strokes: number; score: number; stars: n
 
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 const stopped = (ball: Ball) => Math.hypot(ball.vx, ball.vy) < 5;
+const isInteractiveTarget = (target: EventTarget | null) =>
+  target instanceof Element && Boolean(target.closest('button, a[href], input, textarea, select, [contenteditable="true"], [role="button"]'));
 
 const initialRuntime = (): Runtime => ({
   hole: 0,
@@ -78,6 +81,8 @@ export const VectorGolf: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
   const gameOverSent = useRef(false);
   const [message, setMessage] = useState('DRAG FROM THE BALL — RELEASE TO SHOOT');
   const [hud, setHud] = useState<Hud>({ hole: 1, par: HOLES[0].par, strokes: 0, score: 0, stars: 0, power: 0.56, guide: true });
+
+  useLogicalCanvas(canvasRef, W, H);
 
   const syncHud = useCallback(() => {
     const st = stateRef.current;
@@ -147,33 +152,44 @@ export const VectorGolf: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
 
   const onPointerMove = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
     const st = stateRef.current;
-    if (!st.dragging) return;
+    if (!st.dragging || isPaused) return;
     st.dragPoint = pointerToWorld(event);
-  }, [pointerToWorld]);
+  }, [isPaused, pointerToWorld]);
 
   const onPointerUp = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
     const st = stateRef.current;
     if (!st.dragging) return;
+    st.dragging = false;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    if (isPaused || st.finished || st.transitionAt) return;
     const p = pointerToWorld(event);
     st.dragPoint = p;
     const dx = st.ball.x - p.x;
     const dy = st.ball.y - p.y;
     takeShot(dx, dy);
-  }, [pointerToWorld, takeShot]);
+  }, [isPaused, pointerToWorld, takeShot]);
+
+  const onPointerCancel = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
+    stateRef.current.dragging = false;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  }, []);
+
+  useEffect(() => {
+    if (isPaused) stateRef.current.dragging = false;
+  }, [isPaused]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat || isPaused) return;
-      const target = event.target instanceof HTMLElement ? event.target : null;
-      if (target?.matches('input, textarea, select, [contenteditable="true"]')) return;
+      if (event.repeat || isPaused || isInteractiveTarget(event.target)) return;
       const st = stateRef.current;
+      if (st.finished) return;
       if (event.code === 'KeyG') {
         st.guide = !st.guide;
         setMessage(st.guide ? 'GUIDE ON' : 'GUIDE OFF');
         syncHud();
         return;
       }
-      if (!stopped(st.ball) || st.finished || st.transitionAt) return;
+      if (!stopped(st.ball) || st.transitionAt) return;
       if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyS', 'Space'].includes(event.code)) event.preventDefault();
       if (event.code === 'ArrowLeft') st.aim -= 0.12;
       else if (event.code === 'ArrowRight') st.aim += 0.12;
@@ -309,6 +325,7 @@ export const VectorGolf: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
         }
       }
 
+      ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
       ctx.clearRect(0, 0, W, H);
       ctx.save();
       if (st.shake > 0) {
@@ -397,7 +414,7 @@ export const VectorGolf: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
         <div><span className="text-amber-300">★</span> {hud.stars}/3</div>
         <div><span className="text-cyan-300">SCORE</span> {hud.score.toLocaleString()}</div>
       </div>
-      <div className="relative min-h-0 flex-1 p-2 sm:p-3">
+      <div className="relative flex min-h-0 flex-1 items-center justify-center p-2 sm:p-3">
         <canvas
           ref={canvasRef}
           width={W}
@@ -405,8 +422,9 @@ export const VectorGolf: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          className="h-full w-full touch-none rounded-xl border border-cyan-400/25 bg-[#07141a] object-contain shadow-[0_0_30px_rgba(34,211,238,.08)]"
+          onPointerCancel={onPointerCancel}
+          className="h-auto max-h-full w-full max-w-full touch-none rounded-xl border border-cyan-400/25 bg-[#07141a] shadow-[0_0_30px_rgba(34,211,238,.08)]"
+          style={{ aspectRatio: `${W} / ${H}` }}
           aria-label="Vector Golf course"
         />
         <div className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full border border-white/10 bg-black/65 px-3 py-1 text-center text-[10px] font-mono-arcade tracking-wider text-slate-200 sm:text-xs">
