@@ -9,7 +9,6 @@ export const UI_PROFILES = [
   [568,320], [667,375], [844,390], [768,1024], [1024,600],
   [1280,720], [1440,900], [1920,1080],
 ];
-const PUBLIC_GAME_COUNT = 30;
 const SPECIAL = new Set(['merge','matrix','rhythm','airhockey','oneline','typerush']);
 export function measureUI() {
   const box = e => { const r=e.getBoundingClientRect(); return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom}; };
@@ -122,8 +121,7 @@ export async function runUIAudit({browser,visit,profiles=UI_PROFILES,out='ui-rep
         await p.evaluate(()=>{window.__uiRenderErrors=[];window.addEventListener('arcade:game-loop-error',e=>window.__uiRenderErrors.push(e.detail?.message||'render failure'));});
         assertGeometry(await p.evaluate(measureUI),`${label}/home`,touch);
         const ids=await p.locator('[id^="play-btn-"]').evaluateAll(es=>es.map(e=>e.id.slice(9)));
-        assert.equal(ids.length,PUBLIC_GAME_COUNT,`Public roster must have ${PUBLIC_GAME_COUNT} games`);
-        assert(!ids.includes('gravity') && !ids.includes('astroblaster'), 'Retired games must not appear in the public roster');
+        assert.equal(ids.length,32,'Roster must have 32 games');
         const search=p.locator('#search-toggle-btn');await search.click();await p.waitForFunction(()=>document.querySelector('#search-toggle-btn').getAttribute('aria-expanded')==='true');
         await search.click();await p.waitForFunction(()=>document.querySelector('#search-toggle-btn').getAttribute('aria-expanded')==='false');
         const sound=p.locator('#sound-toggle-btn'),before=await sound.getAttribute('aria-pressed');await sound.click();await p.waitForFunction(value=>document.querySelector('#sound-toggle-btn').getAttribute('aria-pressed')!==value,before);
@@ -161,7 +159,7 @@ export async function runUIAudit({browser,visit,profiles=UI_PROFILES,out='ui-rep
         await checkDialog(p,'#header-rank-badge-btn','Player profile','[aria-label="Close profile"]',screenshots?out:null,label);
         await checkDialog(p,'#stats-open-btn','Arcade statistics, achievements, leaderboards and settings','#close-stats-modal-btn',screenshots?out:null,label);
         assert.deepEqual(errors,[],`${label}: uncaught browser errors`);
-        console.log(`SCANNED ${label}: ${PUBLIC_GAME_COUNT} public games, six live rotations, header and three dialogs`);
+        console.log(`SCANNED ${label}: 32 games, six live rotations, header and three dialogs`);
       } catch(e) { failures.push(`${label}: ${e.message}`);await p.screenshot({path:path.join(out,`${label}-exception.png`)}).catch(()=>{}); }
       finally { await context.close(); }
     }
@@ -170,8 +168,8 @@ export async function runUIAudit({browser,visit,profiles=UI_PROFILES,out='ui-rep
   await fs.writeFile(path.join(out,'results.json'),JSON.stringify({profiles:profiles.length,gameChecks:rows.length,passed:rows.filter(r=>r.pass).length,failures,rows},null,2));
   for(const failure of failures)console.error(failure);
   assert.equal(failures.length,0,`${failures.length} responsive regressions; see ${out}/results.json`);
-  assert.equal(rows.length,profiles.length*PUBLIC_GAME_COUNT,'Incomplete public game matrix');
-  console.log(`PASS ${rows.length}/${rows.length} public game/viewport checks; ${profiles.length*6} live rotation checks; ${profiles.length*3} app dialogs.`);
+  assert.equal(rows.length,profiles.length*32,'Incomplete game matrix');
+  console.log(`PASS ${rows.length}/${rows.length} game/viewport checks; ${profiles.length*6} live rotation checks; ${profiles.length*3} app dialogs.`);
 }
 if(process.argv[1] && import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href) {
   const browser=await chromium.launch({...(process.env.UI_CHROME_PATH?{executablePath:process.env.UI_CHROME_PATH}:{channel:'chrome'}),args:['--no-sandbox','--disable-dev-shm-usage']});

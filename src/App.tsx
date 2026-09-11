@@ -37,13 +37,6 @@ const OverallLeaderboardModal = lazy(() => import('./components/OverallLeaderboa
 const PlayerProfileModal = lazy(() => import('./components/PlayerProfileModal').then(({ PlayerProfileModal }) => ({ default: PlayerProfileModal })));
 const StressTester = lazy(() => import('./components/StressTester').then(({ StressTester }) => ({ default: StressTester })));
 
-// Keep retired games registered for score/AP compatibility while removing them
-// from every normal player-facing launch surface. Their two slots can be replaced
-// later without recalibrating the existing AP system during the temporary 30-game state.
-const RETIRED_GAME_IDS = new Set(['gravity', 'astroblaster']);
-const PUBLIC_GAMES_REGISTRY = GAMES_REGISTRY.filter((game) => !RETIRED_GAME_IDS.has(game.id));
-const isPublicGameId = (gameId: string) => !RETIRED_GAME_IDS.has(gameId);
-
 const DeferredSurface: React.FC<{ label: string; fullscreen?: boolean }> = ({ label, fullscreen = false }) => (
   <div
     className={`${fullscreen ? 'fixed inset-0 z-[70]' : 'fixed inset-0 z-[90]'} flex items-center justify-center bg-[#0A0A0B]/92 p-6 text-white backdrop-blur-sm`}
@@ -131,7 +124,6 @@ export default function App() {
 
   // Launch a game
   const handleLaunchGame = useCallback((gameId: string) => {
-    if (!isPublicGameId(gameId)) return;
     haptics.click();
     const updated = recordGamePlay(gameId);
     setStats(updated);
@@ -152,9 +144,9 @@ export default function App() {
   // Launch a random game (avoids repeating previous)
   const handlePlayRandomGame = useCallback(() => {
     haptics.medium();
-    const available = PUBLIC_GAMES_REGISTRY.filter((g) => g.id !== activeGameId);
-    const chosen = available[Math.floor(Math.random() * available.length)] || PUBLIC_GAMES_REGISTRY[0];
-    if (chosen) handleLaunchGame(chosen.id);
+    const available = GAMES_REGISTRY.filter((g) => g.id !== activeGameId);
+    const chosen = available[Math.floor(Math.random() * available.length)] || GAMES_REGISTRY[0];
+    handleLaunchGame(chosen.id);
   }, [activeGameId, handleLaunchGame]);
 
   // Toggle favorite
@@ -205,13 +197,13 @@ export default function App() {
   // Recently played game objects
   const recentGameDefs = useMemo(() => {
     return stats.recentlyPlayed
-      .map((id) => PUBLIC_GAMES_REGISTRY.find((g) => g.id === id))
+      .map((id) => GAMES_REGISTRY.find((g) => g.id === id))
       .filter((g): g is GameEntry => Boolean(g));
   }, [stats.recentlyPlayed]);
 
   // Filtered games collection
   const filteredGames = useMemo(() => {
-    return PUBLIC_GAMES_REGISTRY.filter((game) => {
+    return GAMES_REGISTRY.filter((game) => {
       // Tab filter
       if (activeTab === 'favorites' && !stats.favorites.includes(game.id)) {
         return false;
@@ -241,7 +233,7 @@ export default function App() {
     });
   }, [activeTab, selectedCategory, searchQuery, stats.favorites, stats.recentlyPlayed]);
 
-  const activeGame = PUBLIC_GAMES_REGISTRY.find((g) => g.id === activeGameId);
+  const activeGame = GAMES_REGISTRY.find((g) => g.id === activeGameId);
 
   const scrollToLibrary = () => {
     const el = document.getElementById('library-section');
@@ -298,7 +290,7 @@ export default function App() {
           onOpenProfile={() => setProfileOpen(true)}
           searchOpen={searchOpen}
           onToggleSearch={() => setSearchOpen((prev) => !prev)}
-          favoriteCount={stats.favorites.filter(isPublicGameId).length}
+          favoriteCount={stats.favorites.length}
           stats={stats}
         />
 
@@ -307,7 +299,7 @@ export default function App() {
           <Hero
             onPlayRandom={handlePlayRandomGame}
             onBrowseGames={scrollToLibrary}
-            totalGames={PUBLIC_GAMES_REGISTRY.length}
+            totalGames={GAMES_REGISTRY.length}
           />
         )}
 
@@ -315,7 +307,7 @@ export default function App() {
         {activeTab === 'all' && !searchQuery && (
           <RecentlyPlayedSection
             recentGames={recentGameDefs}
-            highScores={Object.fromEntries(PUBLIC_GAMES_REGISTRY.map(g=>[g.id,currentBestAP(stats,g.id)]))}
+            highScores={Object.fromEntries(GAMES_REGISTRY.map(g=>[g.id,currentBestAP(stats,g.id)]))}
             onSelectGame={handleLaunchGame}
           />
         )}
@@ -388,7 +380,7 @@ export default function App() {
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-[#F43F5E] animate-pulse" />
             <span className="font-bold text-[#A1A1AA]">MICRO ARCADE</span>
-            <span>• {PUBLIC_GAMES_REGISTRY.length} MINI-GAMES • 0 SEC ONBOARDING</span>
+            <span>• {GAMES_REGISTRY.length} MINI-GAMES • 0 SEC ONBOARDING</span>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
