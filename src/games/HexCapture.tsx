@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
+import { useLogicalCanvas } from '../hooks/useLogicalCanvas';
 
 const W = 840;
 const H = 560;
@@ -36,6 +37,8 @@ type Hud = { lives: number; score: number; chain: number; percent: number; armed
 const index = (x: number, y: number) => y * COLS + x;
 const inside = (x: number, y: number) => x >= 0 && x < COLS && y >= 0 && y < ROWS;
 const directionDelta = (dir: Dir) => dir === 'up' ? [0, -1] : dir === 'down' ? [0, 1] : dir === 'left' ? [-1, 0] : [1, 0];
+const isInteractiveTarget = (target: EventTarget | null) =>
+  target instanceof Element && Boolean(target.closest('button, a[href], input, textarea, select, [contenteditable="true"], [role="button"]'));
 
 const makeInitialCells = () => {
   const cells = new Uint8Array(COLS * ROWS);
@@ -81,6 +84,8 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
   const [message, setMessage] = useState('PRESS SPACE — LEAVE SAFETY — RECONNECT');
   const [hud, setHud] = useState<Hud>({ lives: 3, score: 0, chain: 0, percent: 0, armed: false, hunters: 1 });
 
+  useLogicalCanvas(canvasRef, W, H);
+
   const syncHud = useCallback(() => {
     const st = stateRef.current;
     setHud({ lives: st.lives, score: st.score, chain: st.chain, percent: st.percent, armed: st.armed || st.drawing, hunters: st.enemies.length });
@@ -89,6 +94,7 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
   const finish = useCallback((won: boolean) => {
     const st = stateRef.current;
     if (st.finished || gameOverSent.current) return;
+    heldDir.current = null;
     st.finished = true;
     if (won) st.score += 8000 + st.lives * 1200;
     onScoreUpdate(st.score);
@@ -107,6 +113,7 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
     const st = stateRef.current;
     const now = performance.now();
     if (st.finished || now < st.hitCooldown) return;
+    heldDir.current = null;
     st.hitCooldown = now + 650;
     clearTrail();
     st.drawing = false;
@@ -125,6 +132,20 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
   const closeCapture = useCallback(() => {
     const st = stateRef.current;
     const cells = st.cells;
+
+    // A route can be closed by several rapid direction inputs before the next
+    // animation frame. Detect a hunter already touching the exposed trail before
+    // converting that trail to safe territory, otherwise a same-frame hit can be
+    // incorrectly erased by the closure.
+    for (const enemy of st.enemies) {
+      const ex = Math.max(0, Math.min(COLS - 1, Math.floor(enemy.x)));
+      const ey = Math.max(0, Math.min(ROWS - 1, Math.floor(enemy.y)));
+      if (cells[index(ex, ey)] === 2) {
+        loseLife('HUNTER HIT TRAIL');
+        return;
+      }
+    }
+
     let trailCells = 0;
     for (let i = 0; i < cells.length; i++) {
       if (cells[i] === 2) { cells[i] = 1; trailCells++; }
@@ -194,7 +215,7 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
     }
     syncHud();
     if (st.percent >= GOAL) finish(true);
-  }, [finish, onScoreUpdate, soundEnabled, syncHud]);
+  }, [finish, loseLife, onScoreUpdate, soundEnabled, syncHud]);
 
   const moveStep = useCallback((dir: Dir) => {
     const st = stateRef.current;
@@ -250,14 +271,19 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
       if (code === 'ArrowRight' || code === 'KeyD') return 'right';
       return null;
     };
+    const clearHeld = () => { heldDir.current = null; };
     const down = (event: KeyboardEvent) => {
-      const target = event.target instanceof HTMLElement ? event.target : null;
-      if (target?.matches('input, textarea, select, [contenteditable="true"]')) return;
+      const st = stateRef.current;
+      if (event.repeat && event.code === 'Space') return;
+      if (isPaused || st.finished || isInteractiveTarget(event.target)) return;
       const dir = keyToDir(event.code);
       if (dir) {
         event.preventDefault();
         heldDir.current = dir;
-        if (!event.repeat) moveStep(dir);
+        if (!event.repeat) {
+          st.lastStep = performance.now();
+          moveStep(dir);
+        }
       } else if (event.code === 'Space' && !event.repeat) {
         event.preventDefault();
         toggleCapture();
@@ -267,13 +293,23 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
       const dir = keyToDir(event.code);
       if (dir && heldDir.current === dir) heldDir.current = null;
     };
+    const visibility = () => { if (document.hidden) clearHeld(); };
     window.addEventListener('keydown', down, { capture: true });
     window.addEventListener('keyup', up, { capture: true });
+    window.addEventListener('blur', clearHeld);
+    document.addEventListener('visibilitychange', visibility);
     return () => {
+      clearHeld();
       window.removeEventListener('keydown', down, { capture: true });
       window.removeEventListener('keyup', up, { capture: true });
+      window.removeEventListener('blur', clearHeld);
+      document.removeEventListener('visibilitychange', visibility);
     };
-  }, [moveStep, toggleCapture]);
+  }, [isPaused, moveStep, toggleCapture]);
+
+  useEffect(() => {
+    if (isPaused) heldDir.current = null;
+  }, [isPaused]);
 
   useEffect(() => {
     let frame = 0;
@@ -318,6 +354,7 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
 
       const cw = W / COLS;
       const ch = H / ROWS;
+      ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
       ctx.clearRect(0, 0, W, H);
       ctx.save();
       if (st.shake > 0) {
@@ -388,7 +425,10 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
   }, [isPaused, loseLife, moveStep]);
 
   const pressDir = (dir: Dir) => {
+    const st = stateRef.current;
+    if (isPaused || st.finished) return;
     heldDir.current = dir;
+    st.lastStep = performance.now();
     moveStep(dir);
   };
   const releaseDir = (dir: Dir) => { if (heldDir.current === dir) heldDir.current = null; };
@@ -401,8 +441,15 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
         <div><span className="text-violet-300">CHAIN</span> x{hud.chain}</div>
         <div><span className="text-violet-300">SCORE</span> {hud.score.toLocaleString()}</div>
       </div>
-      <div className="relative min-h-0 flex-1 p-2 sm:p-3">
-        <canvas ref={canvasRef} width={W} height={H} className="h-full w-full rounded-xl border border-violet-400/25 bg-[#0a0914] object-contain shadow-[0_0_30px_rgba(139,92,246,.08)]" aria-label="Hex Capture territory field" />
+      <div className="relative flex min-h-0 flex-1 items-center justify-center p-2 sm:p-3">
+        <canvas
+          ref={canvasRef}
+          width={W}
+          height={H}
+          className="h-auto max-h-full w-full max-w-full rounded-xl border border-violet-400/25 bg-[#0a0914] shadow-[0_0_30px_rgba(139,92,246,.08)]"
+          style={{ aspectRatio: `${W} / ${H}` }}
+          aria-label="Hex Capture territory field"
+        />
         <div className="pointer-events-none absolute bottom-5 left-1/2 max-w-[92%] -translate-x-1/2 rounded-full border border-white/10 bg-black/70 px-3 py-1 text-center text-[10px] font-mono-arcade tracking-wider text-slate-100 sm:text-xs">
           {message}
         </div>

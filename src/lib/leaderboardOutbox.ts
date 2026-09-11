@@ -17,15 +17,15 @@ export class BrowserOutboxStore implements OutboxStore{
  private prefix='micro_arcade_upload_v3:';
  private open():Promise<IDBDatabase|null>{
   if(this.db)return this.db;
+  if(typeof indexedDB==='undefined')return Promise.resolve(null);
   this.db=new Promise(resolve=>{
-   if(typeof indexedDB==='undefined'){resolve(null);return;}
    try{const request=indexedDB.open('micro_arcade_uploads_v3',1);let settled=false;
-    const done=(db:IDBDatabase|null)=>{if(!settled){settled=true;resolve(db);}else db?.close();};
+    const done=(db:IDBDatabase|null)=>{if(!settled){settled=true;if(!db)this.db=null;resolve(db);}else db?.close();};
     const timeout=setTimeout(()=>done(null),2000);
     request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains('runs'))request.result.createObjectStore('runs',{keyPath:'id'});};
     request.onsuccess=()=>{clearTimeout(timeout);const db=request.result;db.onversionchange=()=>{db.close();this.db=null;};done(db);};
     request.onerror=()=>{clearTimeout(timeout);done(null);};request.onblocked=()=>{clearTimeout(timeout);done(null);};
-   }catch{resolve(null);}
+   }catch{this.db=null;resolve(null);}
   });return this.db;
  }
  private valid(value:unknown):value is PendingRun{
@@ -40,8 +40,9 @@ export class BrowserOutboxStore implements OutboxStore{
  async all():Promise<PendingRun[]>{
   const result=this.fallbackRows(),db=await this.open();
   if(db)try{const rows:PendingRun[]=await new Promise((resolve,reject)=>{const tx=db.transaction('runs','readonly');const get=tx.objectStore('runs').getAll();get.onsuccess=()=>resolve(get.result.filter(v=>this.valid(v)));get.onerror=()=>reject(get.error);});
+   this.durable=true;
    for(const row of rows)if(!result.has(row.id)||(row.updatedAt??0)>=(result.get(row.id)?.updatedAt??0))result.set(row.id,row);
-  }catch{this.db=Promise.resolve(null);}
+  }catch{this.db=null;}
   return [...result.values()];
  }
  async update(id:string,fn:(r:PendingRun|undefined)=>PendingRun|undefined):Promise<PendingRun|undefined>{
@@ -53,12 +54,12 @@ export class BrowserOutboxStore implements OutboxStore{
     result=fn(observed);if(result)result={...result,updatedAt:Date.now()};
     if(result)store.put(result);else store.delete(id);
    }catch(error){mutationError=error;tx.abort();reject(error);}};
-   tx.oncomplete=()=>{this.memory.delete(id);try{localStorage.removeItem(this.prefix+id);}catch{}resolve(result);};
+   tx.oncomplete=()=>{this.durable=true;this.memory.delete(id);try{localStorage.removeItem(this.prefix+id);}catch{}resolve(result);};
    tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(mutationError??tx.error??new Error('Storage transaction aborted'));
-  });}catch(error){if(mutationError)throw mutationError;this.db=Promise.resolve(null);}
+  });}catch(error){if(mutationError)throw mutationError;this.db=null;}
   const next=fn(observed),result=next?{...next,updatedAt:Date.now()}:undefined;
   if(result)this.memory.set(id,result);else this.memory.delete(id);
-  try{if(result)localStorage.setItem(this.prefix+id,JSON.stringify(result));else localStorage.removeItem(this.prefix+id);}catch{this.durable=false;}
+  try{if(result)localStorage.setItem(this.prefix+id,JSON.stringify(result));else localStorage.removeItem(this.prefix+id);this.durable=true;}catch{this.durable=false;}
   return result;
  }
 
@@ -126,7 +127,7 @@ export function startLeaderboardSync():()=>void{
  if(typeof window==='undefined')return()=>{};syncUsers++;
  const online=()=>void flushUploads(true).catch(notify);const visible=()=>{if(!document.hidden)void flushUploads().catch(notify);};
  window.addEventListener('online',online);window.addEventListener(IDENTITY_EVENT,online);document.addEventListener('visibilitychange',visible);void flushUploads().catch(notify);
- return()=>{syncUsers--;window.removeEventListener('online',online);window.removeEventListener(IDENTITY_EVENT,online);document.removeEventListener('visibilitychange',visible);if(syncUsers===0&&timer)clearTimeout(timer);};
+ return()=>{syncUsers=Math.max(0,syncUsers-1);window.removeEventListener('online',online);window.removeEventListener(IDENTITY_EVENT,online);document.removeEventListener('visibilitychange',visible);if(syncUsers===0&&timer){clearTimeout(timer);timer=undefined;}};
 }
 export async function refreshReviewedUploads():Promise<void>{
  for(const row of (await browserStore.all()).filter(r=>r.status==='review')){

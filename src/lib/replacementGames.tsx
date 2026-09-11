@@ -2,11 +2,16 @@ import { lazy } from 'react';
 import { GAMES_REGISTRY } from '../data/games';
 import { P17_GAME_FEEL_PROFILES } from './gameFeelProfiles';
 import { P18_GAME_CLARITY_PROFILES } from './gameClarityProfiles';
-import { getSafeCanvasDpr } from './mobileRuntime';
+import { sanitizeReplacementLocalScores } from './replacementEpoch';
 
 const titleAliases = new Map([
   ['Gravity', 'Vector Golf'],
   ['Astro Blaster 360', 'Hex Capture'],
+]);
+
+const legacyTitleByReplacement = new Map([
+  ['Vector Golf', 'Gravity'],
+  ['Hex Capture', 'Astro Blaster 360'],
 ]);
 
 const replaceAliasText = (value: string) => {
@@ -15,102 +20,59 @@ const replaceAliasText = (value: string) => {
   return next;
 };
 
-const replacementCanvasSpecs = [
-  { selector: 'canvas[aria-label="Vector Golf course"]', logicalWidth: 900, logicalHeight: 560 },
-  { selector: 'canvas[aria-label="Hex Capture territory field"]', logicalWidth: 840, logicalHeight: 560 },
-] as const;
-
-const sizedCanvases = new WeakSet<HTMLCanvasElement>();
-
-const installResponsiveCanvas = (canvas: HTMLCanvasElement, logicalWidth: number, logicalHeight: number) => {
-  if (sizedCanvases.has(canvas)) return;
-  sizedCanvases.add(canvas);
-
-  let frame = 0;
-  const resize = () => {
-    frame = 0;
-    if (!canvas.isConnected) return;
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width < 4 || rect.height < 4) return;
-    const dpr = getSafeCanvasDpr(rect.width, rect.height, window.devicePixelRatio || 1);
-    const backingWidth = Math.max(1, Math.round(rect.width * dpr));
-    const backingHeight = Math.max(1, Math.round(rect.height * dpr));
-    if (canvas.width !== backingWidth) canvas.width = backingWidth;
-    if (canvas.height !== backingHeight) canvas.height = backingHeight;
-
-    // The games keep a stable logical simulation space while the backing store
-    // follows the real rendered box. This prevents browser bitmap stretching at
-    // narrow/tall viewports and keeps DPR memory bounded by the shared runtime.
-    const ctx = canvas.getContext('2d');
-    ctx?.setTransform(backingWidth / logicalWidth, 0, 0, backingHeight / logicalHeight, 0, 0);
-  };
-  const schedule = () => {
-    if (frame) cancelAnimationFrame(frame);
-    frame = requestAnimationFrame(resize);
-  };
-
-  const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
-  observer?.observe(canvas);
-  window.addEventListener('resize', schedule, { passive: true });
-  window.visualViewport?.addEventListener('resize', schedule, { passive: true });
-  // WebKit can defer the first ResizeObserver/rAF past geometry inspection.
-  // Establish a correct backing ratio synchronously on mount, then use the
-  // scheduled path for later viewport changes.
-  resize();
-};
-
-const installReplacementCanvasSizing = (root: ParentNode) => {
-  for (const spec of replacementCanvasSpecs) {
-    const matches: HTMLCanvasElement[] = [];
-    if (root instanceof HTMLCanvasElement && root.matches(spec.selector)) matches.push(root);
-    matches.push(...Array.from(root.querySelectorAll<HTMLCanvasElement>(spec.selector)));
-    for (const canvas of matches) installResponsiveCanvas(canvas, spec.logicalWidth, spec.logicalHeight);
-  }
-};
-
-const patchVisibleAliases = (root: ParentNode) => {
-  installReplacementCanvasSizing(root);
-
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  const textNodes: Text[] = [];
-  while (walker.nextNode()) textNodes.push(walker.currentNode as Text);
-  for (const node of textNodes) {
-    const parent = node.parentElement;
-    if (!parent || parent.closest('script, style')) continue;
-
-    // P17/P18 discover the internal compatibility slot from the original title.
-    // On a live game shell, wait until both runtimes have attached before changing
-    // the visible label. Home cards can be aliased immediately.
-    const shell = parent.closest<HTMLElement>('.game-shell');
-    if (shell && (!shell.dataset.p17Game || !shell.dataset.p18Game)) continue;
-
-    const value = node.nodeValue ?? '';
-    const replacement = replaceAliasText(value);
-    if (replacement !== value) node.nodeValue = replacement;
-  }
-
-  const elements = root instanceof Element ? [root, ...Array.from(root.querySelectorAll('*'))] : Array.from(root.querySelectorAll('*'));
-  for (const element of elements) {
-    for (const attribute of ['aria-label', 'title']) {
-      const value = element.getAttribute(attribute);
-      if (!value) continue;
-      const replacement = replaceAliasText(value);
-      if (replacement !== value) element.setAttribute(attribute, replacement);
-    }
-  }
-};
-
+/**
+ * Registry titles remain the real replacement names so search/filter/stats logic
+ * sees Vector Golf / Hex Capture. A newly mounted game shell briefly exposes the
+ * legacy compatibility title only until P17/P18 have identified the internal AP
+ * slot, then the visible title is restored. This observer is app-lifetime only;
+ * it owns no per-game canvas/listener resources.
+ */
 let aliasesInstalled = false;
 const installVisibleAliases = () => {
   if (aliasesInstalled || typeof document === 'undefined') return;
   aliasesInstalled = true;
   let frame = 0;
+
+  const patch = () => {
+    frame = 0;
+
+    // P17/P18 were registered before this observer. If they saw a new replacement
+    // title and could not identify it, expose the legacy slot title for one
+    // mutation cycle so their existing title maps can attach the correct id.
+    for (const shell of Array.from(document.querySelectorAll<HTMLElement>('.game-shell'))) {
+      if (shell.dataset.p17Game && shell.dataset.p18Game) continue;
+      const title = shell.querySelector<HTMLElement>('h1 > span');
+      if (!title) continue;
+      const legacy = legacyTitleByReplacement.get((title.textContent ?? '').trim());
+      if (legacy) title.textContent = legacy;
+    }
+
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const textNodes: Text[] = [];
+    while (walker.nextNode()) textNodes.push(walker.currentNode as Text);
+    for (const node of textNodes) {
+      const parent = node.parentElement;
+      if (!parent || parent.closest('script, style')) continue;
+      const shell = parent.closest<HTMLElement>('.game-shell');
+      if (shell && (!shell.dataset.p17Game || !shell.dataset.p18Game)) continue;
+      const value = node.nodeValue ?? '';
+      const replacement = replaceAliasText(value);
+      if (replacement !== value) node.nodeValue = replacement;
+    }
+
+    for (const element of Array.from(document.querySelectorAll<HTMLElement>('[aria-label], [title]'))) {
+      for (const attribute of ['aria-label', 'title']) {
+        const value = element.getAttribute(attribute);
+        if (!value) continue;
+        const replacement = replaceAliasText(value);
+        if (replacement !== value) element.setAttribute(attribute, replacement);
+      }
+    }
+  };
+
   const schedule = () => {
     if (frame) return;
-    frame = requestAnimationFrame(() => {
-      frame = 0;
-      patchVisibleAliases(document.body);
-    });
+    frame = requestAnimationFrame(patch);
   };
   const observer = new MutationObserver(schedule);
   observer.observe(document.documentElement, {
@@ -123,6 +85,11 @@ const installVisibleAliases = () => {
   schedule();
 };
 
+/**
+ * Gravity and Astro Blaster remain the internal scoring-slot IDs so the existing
+ * 32-slot AP economy does not move. Their engines and visible presentation are
+ * fully replaced, but calibration keys stay stable.
+ */
 const updateTeachingProfiles = () => {
   const vectorFeel = P17_GAME_FEEL_PROFILES.find((profile) => profile.id === 'gravity');
   if (vectorFeel) Object.assign(vectorFeel, {
@@ -133,6 +100,7 @@ const updateTeachingProfiles = () => {
     failure: 'hazard resets and over-stroked holes clearly identify what cost the run',
     highSpeed: false,
   });
+
   const hexFeel = P17_GAME_FEEL_PROFILES.find((profile) => profile.id === 'astroblaster');
   if (hexFeel) Object.assign(hexFeel, {
     title: 'Hex Capture',
@@ -160,6 +128,7 @@ const updateTeachingProfiles = () => {
     firstRunHint: 'DRAG FROM THE BALL — RELEASE TO SHOOT',
     highSpeed: false,
   });
+
   const hexClarity = P18_GAME_CLARITY_PROFILES.find((profile) => profile.id === 'astroblaster');
   if (hexClarity) Object.assign(hexClarity, {
     title: 'Hex Capture',
@@ -180,8 +149,11 @@ const updateTeachingProfiles = () => {
 };
 
 export function applyReplacementGames() {
+  sanitizeReplacementLocalScores();
+
   const vector = GAMES_REGISTRY.find((game) => game.id === 'gravity');
   if (vector) Object.assign(vector, {
+    title: 'Vector Golf',
     tagline: 'Bank. Bounce. Sink.',
     description: 'Six compact neon mini-golf holes built around deliberate bank shots, route stars, moving hazards, and under-par mastery.',
     category: 'Physics',
@@ -197,6 +169,7 @@ export function applyReplacementGames() {
 
   const hex = GAMES_REGISTRY.find((game) => game.id === 'astroblaster');
   if (hex) Object.assign(hex, {
+    title: 'Hex Capture',
     tagline: 'Leave safety. Close the loop. Claim the field.',
     description: 'A fast territory-capture game: draw exposed routes through the grid, reconnect to safety, and trap space before roaming hunters touch your trail.',
     category: 'Strategy',
