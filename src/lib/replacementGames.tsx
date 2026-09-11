@@ -53,7 +53,10 @@ const installResponsiveCanvas = (canvas: HTMLCanvasElement, logicalWidth: number
   observer?.observe(canvas);
   window.addEventListener('resize', schedule, { passive: true });
   window.visualViewport?.addEventListener('resize', schedule, { passive: true });
-  schedule();
+  // WebKit can defer the first ResizeObserver/rAF past geometry inspection.
+  // Establish a correct backing ratio synchronously on mount, then use the
+  // scheduled path for later viewport changes.
+  resize();
 };
 
 const installReplacementCanvasSizing = (root: ParentNode) => {
