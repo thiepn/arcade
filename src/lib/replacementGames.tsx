@@ -2,6 +2,7 @@ import { lazy } from 'react';
 import { GAMES_REGISTRY } from '../data/games';
 import { P17_GAME_FEEL_PROFILES } from './gameFeelProfiles';
 import { P18_GAME_CLARITY_PROFILES } from './gameClarityProfiles';
+import { getSafeCanvasDpr } from './mobileRuntime';
 
 const titleAliases = new Map([
   ['Gravity', 'Vector Golf'],
@@ -14,13 +15,72 @@ const replaceAliasText = (value: string) => {
   return next;
 };
 
+const replacementCanvasSpecs = [
+  { selector: 'canvas[aria-label="Vector Golf course"]', logicalWidth: 900, logicalHeight: 560 },
+  { selector: 'canvas[aria-label="Hex Capture territory field"]', logicalWidth: 840, logicalHeight: 560 },
+] as const;
+
+const sizedCanvases = new WeakSet<HTMLCanvasElement>();
+
+const installResponsiveCanvas = (canvas: HTMLCanvasElement, logicalWidth: number, logicalHeight: number) => {
+  if (sizedCanvases.has(canvas)) return;
+  sizedCanvases.add(canvas);
+
+  let frame = 0;
+  const resize = () => {
+    frame = 0;
+    if (!canvas.isConnected) return;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width < 4 || rect.height < 4) return;
+    const dpr = getSafeCanvasDpr(rect.width, rect.height, window.devicePixelRatio || 1);
+    const backingWidth = Math.max(1, Math.round(rect.width * dpr));
+    const backingHeight = Math.max(1, Math.round(rect.height * dpr));
+    if (canvas.width !== backingWidth) canvas.width = backingWidth;
+    if (canvas.height !== backingHeight) canvas.height = backingHeight;
+
+    // The games keep a stable logical simulation space while the backing store
+    // follows the real rendered box. This prevents browser bitmap stretching at
+    // narrow/tall viewports and keeps DPR memory bounded by the shared runtime.
+    const ctx = canvas.getContext('2d');
+    ctx?.setTransform(backingWidth / logicalWidth, 0, 0, backingHeight / logicalHeight, 0, 0);
+  };
+  const schedule = () => {
+    if (frame) cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(resize);
+  };
+
+  const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
+  observer?.observe(canvas);
+  window.addEventListener('resize', schedule, { passive: true });
+  window.visualViewport?.addEventListener('resize', schedule, { passive: true });
+  schedule();
+};
+
+const installReplacementCanvasSizing = (root: ParentNode) => {
+  for (const spec of replacementCanvasSpecs) {
+    const matches: HTMLCanvasElement[] = [];
+    if (root instanceof HTMLCanvasElement && root.matches(spec.selector)) matches.push(root);
+    matches.push(...Array.from(root.querySelectorAll<HTMLCanvasElement>(spec.selector)));
+    for (const canvas of matches) installResponsiveCanvas(canvas, spec.logicalWidth, spec.logicalHeight);
+  }
+};
+
 const patchVisibleAliases = (root: ParentNode) => {
+  installReplacementCanvasSizing(root);
+
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const textNodes: Text[] = [];
   while (walker.nextNode()) textNodes.push(walker.currentNode as Text);
   for (const node of textNodes) {
     const parent = node.parentElement;
     if (!parent || parent.closest('script, style')) continue;
+
+    // P17/P18 discover the internal compatibility slot from the original title.
+    // On a live game shell, wait until both runtimes have attached before changing
+    // the visible label. Home cards can be aliased immediately.
+    const shell = parent.closest<HTMLElement>('.game-shell');
+    if (shell && (!shell.dataset.p17Game || !shell.dataset.p18Game)) continue;
+
     const value = node.nodeValue ?? '';
     const replacement = replaceAliasText(value);
     if (replacement !== value) node.nodeValue = replacement;
@@ -55,7 +115,7 @@ const installVisibleAliases = () => {
     childList: true,
     characterData: true,
     attributes: true,
-    attributeFilter: ['aria-label', 'title'],
+    attributeFilter: ['aria-label', 'title', 'data-p17-game', 'data-p18-game'],
   });
   schedule();
 };
