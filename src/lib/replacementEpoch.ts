@@ -48,7 +48,12 @@ const preservePostCutoverBest = (root: JsonRecord, id: string, best: JsonRecord 
     typeof achievedAt !== 'number' || !Number.isSafeInteger(achievedAt) || achievedAt < REPLACEMENT_CUTOVER_MS
   ) return;
 
-  const micros = apMicros(id, rawScore, modeId);
+  let micros: number;
+  try {
+    micros = apMicros(id, rawScore, modeId);
+  } catch {
+    return;
+  }
   if (!Number.isSafeInteger(micros) || micros < 0) return;
 
   mapRecord(root, 'modeBests')[`${id}:${modeId}`] = {
@@ -100,6 +105,10 @@ const sanitizeStorage = (storage: Storage | undefined) => {
  */
 export function sanitizeReplacementLocalScores(): void {
   if (typeof window === 'undefined') return;
-  sanitizeStorage(window.localStorage);
-  sanitizeStorage(window.sessionStorage);
+  try {
+    sanitizeStorage(window.localStorage);
+  } catch {}
+  try {
+    sanitizeStorage(window.sessionStorage);
+  } catch {}
 }
