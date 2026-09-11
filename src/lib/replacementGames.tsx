@@ -9,6 +9,11 @@ const titleAliases = new Map([
   ['Astro Blaster 360', 'Hex Capture'],
 ]);
 
+const legacyTitleByReplacement = new Map([
+  ['Vector Golf', 'Gravity'],
+  ['Hex Capture', 'Astro Blaster 360'],
+]);
+
 const replaceAliasText = (value: string) => {
   let next = value.replace(/Astro Blaster 360/g, 'Hex Capture');
   next = next.replace(/\bGravity\b(?!\s+Tower)/g, 'Vector Golf');
@@ -16,10 +21,11 @@ const replaceAliasText = (value: string) => {
 };
 
 /**
- * Keep legacy scoring-slot titles long enough for P17/P18 to identify the shell,
- * then alias only visible text/labels. This observer is installed once for the
- * lifetime of the app; unlike the old implementation it owns no per-game canvas
- * observers, window listeners, or detached DOM references.
+ * Registry titles remain the real replacement names so search/filter/stats logic
+ * sees Vector Golf / Hex Capture. A newly mounted game shell briefly exposes the
+ * legacy compatibility title only until P17/P18 have identified the internal AP
+ * slot, then the visible title is restored. This observer is app-lifetime only;
+ * it owns no per-game canvas/listener resources.
  */
 let aliasesInstalled = false;
 const installVisibleAliases = () => {
@@ -29,6 +35,18 @@ const installVisibleAliases = () => {
 
   const patch = () => {
     frame = 0;
+
+    // P17/P18 were registered before this observer. If they saw a new replacement
+    // title and could not identify it, expose the legacy slot title for one
+    // mutation cycle so their existing title maps can attach the correct id.
+    for (const shell of Array.from(document.querySelectorAll<HTMLElement>('.game-shell'))) {
+      if (shell.dataset.p17Game && shell.dataset.p18Game) continue;
+      const title = shell.querySelector<HTMLElement>('h1 > span');
+      if (!title) continue;
+      const legacy = legacyTitleByReplacement.get((title.textContent ?? '').trim());
+      if (legacy) title.textContent = legacy;
+    }
+
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     const textNodes: Text[] = [];
     while (walker.nextNode()) textNodes.push(walker.currentNode as Text);
@@ -36,8 +54,6 @@ const installVisibleAliases = () => {
       const parent = node.parentElement;
       if (!parent || parent.closest('script, style')) continue;
       const shell = parent.closest<HTMLElement>('.game-shell');
-      // P17/P18 discover the internal compatibility slot from the original
-      // title. Do not replace the shell title until both runtimes have attached.
       if (shell && (!shell.dataset.p17Game || !shell.dataset.p18Game)) continue;
       const value = node.nodeValue ?? '';
       const replacement = replaceAliasText(value);
@@ -133,12 +149,11 @@ const updateTeachingProfiles = () => {
 };
 
 export function applyReplacementGames() {
-  // This runs before React reads persisted stats. It is deliberately idempotent
-  // so storage fallback/recovery can never resurrect retired-game PBs.
   sanitizeReplacementLocalScores();
 
   const vector = GAMES_REGISTRY.find((game) => game.id === 'gravity');
   if (vector) Object.assign(vector, {
+    title: 'Vector Golf',
     tagline: 'Bank. Bounce. Sink.',
     description: 'Six compact neon mini-golf holes built around deliberate bank shots, route stars, moving hazards, and under-par mastery.',
     category: 'Physics',
@@ -154,6 +169,7 @@ export function applyReplacementGames() {
 
   const hex = GAMES_REGISTRY.find((game) => game.id === 'astroblaster');
   if (hex) Object.assign(hex, {
+    title: 'Hex Capture',
     tagline: 'Leave safety. Close the loop. Claim the field.',
     description: 'A fast territory-capture game: draw exposed routes through the grid, reconnect to safety, and trap space before roaming hunters touch your trail.',
     category: 'Strategy',
