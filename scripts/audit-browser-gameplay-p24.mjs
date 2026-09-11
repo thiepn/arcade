@@ -45,7 +45,10 @@ runGate('scripts/audit-browser-gameplay-p19.mjs', 'P24 canonical P19 contract');
 console.log('Running shared keyboard-ownership regression checks.');
 runGate('scripts/audit-browser-keyboard-controls.mjs', 'P24 keyboard ownership contract');
 
+console.log('Running replacement-game keyboard ownership regression checks.');
+runGate('scripts/audit-browser-replacement-controls.mjs', 'P24 replacement keyboard ownership contract');
+
 console.log('P24 DEFINITIVE 32/32 BROWSER CERTIFICATION — PASS');
 console.log('32 games × 3 canonical profiles = 96 game/profile sessions, plus home, settings-persistence and navigation-stress checks.');
-console.log('Shared Space-key ownership is additionally certified after restart, pause/resume and toolbar interactions.');
+console.log('Shared Space-key ownership is certified after restart, pause/resume, toolbar interactions and while Hex Capture remains mounted beneath a result dialog.');
 console.log('P20-P23 candidate-specific browser gates remain separate permanent prerequisites in CI.');
