@@ -1,37 +1,9 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { Heart, Play } from 'lucide-react';
 import { GameDefinition } from '../types';
-import {
-  Heart,
-  Play,
-  Zap,
-  Layers,
-  Radio,
-  Grid,
-  Keyboard,
-  PenTool,
-  Boxes,
-  Crosshair,
-  Sparkles,
-  Compass,
-  ShieldAlert,
-  Sword,
-  Disc,
-  Hexagon,
-  Terminal,
-  Flame,
-  Rocket,
-  Pickaxe,
-  Ghost,
-  Wind,
-  Footprints,
-  CircleDot,
-  Target,
-  Activity,
-  Grid3X3,
-  Trophy,
-} from 'lucide-react';
 import { sounds } from '../lib/sound';
+import { GamePreview } from './GamePreview';
 
 interface GameCardProps {
   game: GameDefinition;
@@ -43,36 +15,6 @@ interface GameCardProps {
   index?: number;
 }
 
-const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
-  Orbit: Compass,
-  Layers,
-  Zap,
-  ShieldAlert,
-  Radio,
-  Grid,
-  Keyboard,
-  PenTool,
-  Boxes,
-  Crosshair,
-  Sparkles,
-  Compass,
-  Sword,
-  Disc,
-  Hexagon,
-  Terminal,
-  Flame,
-  Rocket,
-  Pickaxe,
-  Ghost,
-  Wind,
-  Footprints,
-  CircleDot,
-  Target,
-  Activity,
-  Grid3X3,
-  Trophy,
-};
-
 export const GameCard: React.FC<GameCardProps> = ({
   game,
   highScore,
@@ -82,7 +24,6 @@ export const GameCard: React.FC<GameCardProps> = ({
   onToggleFavorite,
   index = 0,
 }) => {
-  const IconComponent = ICON_MAP[game.icon] || Zap;
   const titleId = `game-title-${game.id}`;
   const descriptionId = `game-description-${game.id}`;
 
@@ -144,15 +85,10 @@ export const GameCard: React.FC<GameCardProps> = ({
         </button>
       </div>
 
-      <div className="pointer-events-none relative z-0 my-3.5 flex h-28 w-full items-center justify-center overflow-hidden rounded-lg border border-[#27272A]/70 bg-[#0A0A0B]">
-        <div
-          className="flex h-12 w-12 items-center justify-center rounded-xl shadow-sm transition-transform duration-300 group-hover:scale-110"
-          style={{ backgroundColor: `${game.accentColor}14`, color: game.accentColor }}
-        >
-          <IconComponent className="h-6 w-6" />
-        </div>
-        <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-[#0A0A0B]/80 opacity-0 backdrop-blur-[1px] transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-          <span className="flex items-center gap-1.5 rounded-md bg-white px-3.5 py-1 text-xs font-bold text-black shadow-md">
+      <div className="pointer-events-none relative z-0 my-3.5 aspect-[16/9] w-full overflow-hidden rounded-lg border border-[#27272A]/80 bg-[#0A0A0B] shadow-inner">
+        <GamePreview game={game} />
+        <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-[#0A0A0B]/72 opacity-0 backdrop-blur-[1px] transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
+          <span className="flex items-center gap-1.5 rounded-md bg-white px-3.5 py-1.5 text-xs font-bold text-black shadow-md">
             <Play className="h-3 w-3 fill-current" /> PLAY
           </span>
         </div>
