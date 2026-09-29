@@ -50,6 +50,13 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
   const soundEnabledRef = useRef(soundEnabled);
   soundEnabledRef.current = soundEnabled;
   const setSafeTimeout = useSafeTimeout();
+  const activeTimersRef = useRef(new Map<number, {
+    callback: () => void;
+    remainingMs: number;
+    startedAtMs: number | null;
+    timeoutId: ReturnType<typeof setTimeout> | null;
+  }>());
+  const nextActiveTimerIdRef = useRef(1);
 
   const [sequence, setSequence] = useState<number[]>([]);
   const [playerStep, setPlayerStep] = useState<number>(0);
@@ -82,17 +89,54 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
     overclockArmed: false,
   });
 
-  const scheduleWhenActive = useCallback((fn: () => void, delay: number) => {
-    const run = () => {
-      if (!gameStateRef.current.isAlive) return;
-      if (isPausedRef.current) {
-        setSafeTimeout(run, 100);
+  const armActiveTimer = useCallback((timerId: number) => {
+    const timer = activeTimersRef.current.get(timerId);
+    if (
+      !timer ||
+      timer.timeoutId !== null ||
+      isPausedRef.current ||
+      !gameStateRef.current.isAlive
+    ) {
+      return;
+    }
+
+    timer.startedAtMs = performance.now();
+    timer.timeoutId = setSafeTimeout(() => {
+      const current = activeTimersRef.current.get(timerId);
+      if (!current) return;
+
+      current.timeoutId = null;
+      if (!gameStateRef.current.isAlive) {
+        activeTimersRef.current.delete(timerId);
         return;
       }
-      fn();
-    };
-    setSafeTimeout(run, delay);
+
+      if (isPausedRef.current) {
+        if (current.startedAtMs !== null) {
+          const elapsedMs = Math.max(0, performance.now() - current.startedAtMs);
+          current.remainingMs = Math.max(0, current.remainingMs - elapsedMs);
+          current.startedAtMs = null;
+        }
+        return;
+      }
+
+      activeTimersRef.current.delete(timerId);
+      current.startedAtMs = null;
+      current.remainingMs = 0;
+      current.callback();
+    }, timer.remainingMs);
   }, [setSafeTimeout]);
+
+  const scheduleWhenActive = useCallback((fn: () => void, delay: number) => {
+    const timerId = nextActiveTimerIdRef.current++;
+    activeTimersRef.current.set(timerId, {
+      callback: fn,
+      remainingMs: Math.max(0, delay),
+      startedAtMs: null,
+      timeoutId: null,
+    });
+    armActiveTimer(timerId);
+  }, [armActiveTimer]);
 
   const playSequencePlayback = useCallback((seq: number[], speedMs = 320) => {
     setIsShowingSequence(true);
@@ -249,6 +293,29 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
   useEffect(() => {
     startNewRound(1);
   }, [startNewRound]);
+
+  useEffect(() => {
+    const now = performance.now();
+
+    if (isPaused) {
+      for (const timer of activeTimersRef.current.values()) {
+        if (timer.timeoutId !== null) {
+          clearTimeout(timer.timeoutId);
+          timer.timeoutId = null;
+        }
+        if (timer.startedAtMs !== null) {
+          const elapsedMs = Math.max(0, now - timer.startedAtMs);
+          timer.remainingMs = Math.max(0, timer.remainingMs - elapsedMs);
+          timer.startedAtMs = null;
+        }
+      }
+      return;
+    }
+
+    for (const timerId of activeTimersRef.current.keys()) {
+      armActiveTimer(timerId);
+    }
+  }, [armActiveTimer, isPaused]);
 
   // Round Timer countdown
   useEffect(() => {

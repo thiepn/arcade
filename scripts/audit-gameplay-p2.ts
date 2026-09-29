@@ -163,6 +163,10 @@ const registrySource = readFileSync('src/data/games.ts', 'utf8');
 for (const token of ['getMatrixProtocolForRound', 'applyMatrixProtocol', 'expectedSequence', 'PROTOCOL']) {
   assert(matrixSource.includes(token), `Matrix P2 integration missing ${token}`);
 }
+assert(matrixSource.includes('activeTimersRef'), 'Matrix pause no longer tracks pending playback timers');
+assert(matrixSource.includes('timer.remainingMs = Math.max(0, timer.remainingMs - elapsedMs)'), 'Matrix pause no longer preserves playback delay');
+assert(matrixSource.includes('for (const timerId of activeTimersRef.current.keys())'), 'Matrix resume no longer rearms every preserved playback timer');
+assert(!matrixSource.includes('setSafeTimeout(run, 100)'), 'Matrix reverted to pause polling that collapses playback timing after resume');
 for (const token of ['getTypeRushWave', 'chooseTypeRushWord', 'waveLabel', 'wave.scoreMultiplier']) {
   assert(typeRushSource.includes(token), `Type Rush P2 integration missing ${token}`);
 }

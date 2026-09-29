@@ -23,6 +23,10 @@
 
 ## Unreleased
 
+### P2 replay-depth hardening — 2026-09-29
+- Preserve Memory Matrix playback timing across pause/resume: pending pattern flashes now retain their remaining active-time delay instead of expiring behind the pause overlay and collapsing together after resume.
+- Extend the permanent `quality:gameplay-p2` gate to reject the old pause-polling scheduler and require active-time timer preservation.
+
 ### Release-candidate reliability pass — 2026-09-08
 - Preserve local records when storage is corrupt or temporarily unavailable, validate cached rankings, and report storage/submission state accurately.
 - Bound API requests, harden JSON parsing and asynchronous error handling, reject concurrent session replays deterministically, and stabilize tied ranks.
