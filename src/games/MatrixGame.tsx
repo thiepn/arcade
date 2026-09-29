@@ -14,7 +14,6 @@ import {
   MATRIX_OVERCLOCK,
   canArmMatrixOverclock,
   getMatrixClearPoints,
-  getMatrixPlaybackSpeed,
   getMatrixRoundPlaybackSpeed,
   getMatrixSequenceLength,
   getMatrixStepPoints,
