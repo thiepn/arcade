@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { REACTION_ROUNDS } from '../src/lib/reactionGameplay';
+import { getRoadCrossLaneSpeed } from '../src/lib/gamePolishBalance';
 import {
   REACTION_OVERTIME_ROUNDS,
   isReactionOvertimeUnlocked,
@@ -76,6 +77,11 @@ for (let row = 4; row < 36; row++) {
   assert(level >= 0, `Cyber Crosser row ${row} has invalid district level`);
 }
 assert(getRoadCrossCheckpointBonus(2) > getRoadCrossCheckpointBonus(1), 'Cyber Crosser checkpoint rewards do not escalate');
+const representativeRoadSpeeds = [4, 12, 20, 28].map((row) => getRoadCrossLaneSpeed(row, 0.5));
+assert(
+  representativeRoadSpeeds.every((speed, index) => index === 0 || speed > representativeRoadSpeeds[index - 1]),
+  'Cyber Crosser lane speeds do not escalate across authored districts',
+);
 
 const reactionSource = read('src/games/ReactionGame.tsx');
 const perfectSource = read('src/games/PerfectStopGame.tsx');
@@ -90,6 +96,14 @@ for (const token of ['PERFECT_STOP_ENCORE_ROUNDS', 'isPerfectStopEncoreUnlocked'
 for (const token of ['getRoadCrossLaneType', 'getRoadCrossDistrict', 'getRoadCrossCheckpointBonus', 'districtName']) {
   assert(roadSource.includes(token), `Cyber Crosser P6 integration missing ${token}`);
 }
+assert(
+  roadSource.includes('getRoadCrossLaneSpeed(nextRow, Math.random())'),
+  'Cyber Crosser pre-generated districts use their own row difficulty instead of the player\'s opening max row',
+);
+assert(
+  !roadSource.includes('getRoadCrossLaneSpeed(state.maxRowReached, Math.random())'),
+  'Cyber Crosser still freezes pre-generated district speed at the player\'s current max row',
+);
 for (const phrase of ['three-round adaptive overtime', 'three-sector Master Encore', 'authored eight-row districts']) {
   assert(registry.includes(phrase), `registry is missing P6 teaching phrase: ${phrase}`);
 }

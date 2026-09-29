@@ -23,6 +23,10 @@
 
 ## Unreleased
 
+### P6 new-bottom-three hardening — 2026-09-29
+- Fix Cyber Crosser district difficulty generation: pre-generated road and river lanes now derive movement speed from their own row instead of the player's current max row, so later authored districts no longer inherit opening-area traffic speeds.
+- Extend `quality:gameplay-p6` with representative district-speed escalation checks and a source contract that prevents pre-generation from flattening progression.
+
 ### P5 bottom-three hardening — 2026-09-29
 - Make Orbit's route HUD follow the player's next consecutive collectible step rather than the number of crystals already spawned, so the named route cannot advance ahead of actual route progress.
 - Stop Type Rush's global letter listener from consuming shared shell shortcuts while paused or after game over, and freeze direct word-target selection while gameplay is suspended.

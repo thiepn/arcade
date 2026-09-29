@@ -226,7 +226,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
       const type: LaneType = getRoadCrossLaneType(nextRow);
 
       const dir: 1 | -1 = Math.random() < 0.5 ? 1 : -1;
-      const speed = getRoadCrossLaneSpeed(state.maxRowReached, Math.random()) * dir;
+      const speed = getRoadCrossLaneSpeed(nextRow, Math.random()) * dir;
       const vehicles: Vehicle[] = [];
       const logs: RiverLog[] = [];
       const coins: { col: number; collected: boolean }[] = [];
