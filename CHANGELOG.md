@@ -23,6 +23,11 @@
 
 ## Unreleased
 
+### P5 bottom-three hardening — 2026-09-29
+- Make Orbit's route HUD follow the player's next consecutive collectible step rather than the number of crystals already spawned, so the named route cannot advance ahead of actual route progress.
+- Stop Type Rush's global letter listener from consuming shared shell shortcuts while paused or after game over, and freeze direct word-target selection while gameplay is suspended.
+- Extend `quality:gameplay-p5` to permanently certify both interaction contracts.
+
 ### P4 experiential gameplay hardening — 2026-09-29
 - Restore Chain's tool-role integrity: Tesla arcs are now stopped by nullifiers and strip shield HP instead of directly detonating defensive targets, preserving Plasma as the taught defense-breaking tool.
 - Restore One Line's advertised ten-layout variety by giving archetypes 7, 8, and 9 separate authored obstacle/star arrangements instead of sharing one fallback layout.

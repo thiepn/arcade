@@ -26,7 +26,8 @@ assert(!isOrbitNearMiss(20, 10, -2), 'approaching Orbit comet must not score bef
 assert(orbit.includes('routeIndex'), 'Orbit source does not attach authored route indices to crystals');
 assert(orbit.includes('nearMissAwarded'), 'Orbit hazards do not guard one-shot graze scoring');
 assert(orbit.includes('GRAZE x'), 'Orbit lacks graze feedback');
-assert(orbit.includes('getOrbitRouteName(state.routeIndex)'), 'Orbit does not surface the active route identity');
+assert(orbit.includes('getOrbitRouteName(state.lastRouteIndex + 1)'), 'Orbit HUD does not follow the next collectible route step');
+assert(!orbit.includes('getOrbitRouteName(state.routeIndex)'), 'Orbit HUD still labels routes from spawn progress instead of player sequence progress');
 
 // Merge: alternating contracts and a true three-tile planning queue.
 const c1 = getMergeContract(1);
@@ -56,6 +57,14 @@ assert(typeRush.includes('aria-label={`Target ${w.word}`}'), 'Type Rush visible 
 assert(typeRush.includes('previous.typedIndex = 0'), 'Type Rush target switching can strand partial words');
 assert(typeRush.includes('getTypeRushTargetBonus(target.y, target.type, wave.index)'), 'Type Rush scoring does not use risk/urgency bonus');
 assert(typeRush.includes('getTypeRushDirective(gameStateRef.current.waveIndex)'), 'Type Rush does not surface wave directives');
+assert(
+  typeRush.includes("isPausedRef.current || !gameStateRef.current.isAlive || event.key === 'Tab'"),
+  'Type Rush global typing handler steals shell shortcuts while paused or after game over',
+);
+assert(
+  typeRush.includes("if (isPausedRef.current || !state.isAlive) return;"),
+  'Type Rush direct target selection remains interactive while gameplay is suspended',
+);
 
 assert(registry.includes('authored crystal routes'), 'Orbit registry does not teach route mastery');
 assert(registry.includes('three-tile preview'), 'Merge registry does not teach planning preview');

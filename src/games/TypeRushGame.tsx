@@ -236,7 +236,9 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
 
   useEffect(() => {
     const handleWindowKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Tab') return;
+      // When gameplay is suspended or finished, leave letter keys untouched so
+      // GameShell shortcuts such as R restart and N/L post-run actions still work.
+      if (isPausedRef.current || !gameStateRef.current.isAlive || event.key === 'Tab') return;
       if (event.key.length === 1 && /[a-zA-Z]/.test(event.key)) {
         event.preventDefault();
         handleKeyInput(event.key);
@@ -437,6 +439,7 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
               onClick={(event) => {
                 event.stopPropagation();
                 const state = gameStateRef.current;
+                if (isPausedRef.current || !state.isAlive) return;
                 const previous = state.words.find((entry) => entry.id === state.activeWordId);
                 if (previous && previous.id !== w.id) previous.typedIndex = 0;
                 state.activeWordId = w.id;

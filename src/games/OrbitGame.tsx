@@ -562,7 +562,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
           ? `FORMATION • SAFE ${getOrbitLaneName(state.formationSafeLane)}`
           : 'THREAT SCAN';
       ctx.fillText(
-        `${threatLabel} • ${getOrbitRouteName(state.routeIndex)} • FORMATION x${Math.max(1, state.formationChain)} • ROUTE x${getOrbitRouteMultiplier(state.routeChain)} • GRAZE x${Math.max(1, state.nearMissChain)}`,
+        `${threatLabel} • NEXT ${getOrbitRouteName(state.lastRouteIndex + 1)} • FORMATION x${Math.max(1, state.formationChain)} • ROUTE x${getOrbitRouteMultiplier(state.routeChain)} • GRAZE x${Math.max(1, state.nearMissChain)}`,
         cx,
         26,
       );
