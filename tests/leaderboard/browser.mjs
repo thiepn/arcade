@@ -25,7 +25,7 @@ async function api(route){
   let r=state.runs.get(s.id);if(!r){const units=apMicros(s.gameId,body.rawScore,body.modeId);r={...env,accepted:true,status:'ranked',sessionId:s.id,gameId:s.gameId,modeId:s.modeId,rawScore:body.rawScore,apMicros:units,arcadePoints:Math.floor(units/AP_SCALE),contributionMicros:contributionMicros(s.gameId,units,s.modeId),completedAt:Date.now(),code:'ok'};state.runs.set(s.id,r)}
   if(state.dropResponse){state.dropResponse=false;await route.abort('failed');return;}data=r;
  }else if(path.includes('/result')){data=state.runs.get(path.split('/')[3]);}
- else if(path.includes('/contributions'))data={...env,contributions:[{gameId:'stack',modeId:'standard',rawScore:45,apMicros:3000*AP_SCALE,contributionMicros:3000*AP_SCALE,completedAt:Date.now()-5000}]};
+ else if(path.includes('/contributions')){const target=path.split('/')[3],i=Math.max(0,ids.indexOf(target)),weekly=url.searchParams.get('period')==='weekly',asOf=Date.now();data={...env,asOf,player:{id:target,name:i===0?'ABCDEFGHIJKLMNOPQRST':i===44?'Jonathan Longname':`Player ${i+1}`,country_code:'XX',rank:i+1,ap_micros:(6000-i)*AP_SCALE,contribution_micros:(6000-i)*AP_SCALE,achieved_at:asOf-5000,last_achieved_at:asOf-5000,games_played:1},contributions:[{gameId:'stack',modeId:'standard',rawScore:45,apMicros:3000*AP_SCALE,contributionMicros:3000*AP_SCALE,completedAt:asOf-5000}],weekStart:weekly?weekBounds(asOf).start:null,weekEnd:weekly?weekBounds(asOf).end:null};}
  else if(path.includes('/leaderboards/')){
   const isGame=!/(overall|weekly)$/.test(path),weekly=path.endsWith('/weekly'),offset=Number(url.searchParams.get('offset')??0),limit=Number(url.searchParams.get('limit')??20),asOf=Number(url.searchParams.get('asOf')??Date.now());
   const mode=url.searchParams.get('mode')==='all'?'standard':url.searchParams.get('mode')??'standard';
@@ -42,10 +42,13 @@ try{
   const p=await ctx.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.route('**/test-api/**',api);await p.goto(base);await p.locator('#header-leaderboards-pill-btn').click();
   const panel=p.locator('[data-leaderboard-v3]');await panel.locator('[data-leaderboard-player]').first().waitFor();
   check(await panel.locator('[data-leaderboard-player]').count()===21,'top 20 plus pinned self');
-  const longName=panel.getByRole('button',{name:'Show contributions for ABCDEFGHIJKLMNOPQRST'});check(await longName.textContent()==='ABCDEFGHIJKLMNOPQRST','full long name retained');
+  const longName=panel.getByRole('button',{name:'Open player profile for ABCDEFGHIJKLMNOPQRST'});check(await longName.textContent()==='ABCDEFGHIJKLMNOPQRST','full long name retained');
   check(await longName.evaluate(e=>getComputedStyle(e).textOverflow!=='ellipsis'&&e.scrollWidth<=e.clientWidth+1),'mobile name wraps, not clips');
+  check(await panel.locator('[data-leaderboard-player]').first().getByText('Diamond tier',{exact:true}).count()===1,'global leaderboard shows player tier next to name');
   check(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'no page horizontal overflow');
-  await longName.click();await panel.getByText('3,000 AP',{exact:true}).waitFor();check(await panel.getByText('Standard · Score 45').count()===1,'contribution matches native mode context');
+  await longName.click();const profile=panel.locator('[data-player-profile]');await profile.getByRole('heading',{name:'ABCDEFGHIJKLMNOPQRST'}).waitFor();check(await profile.getByText('Diamond tier',{exact:true}).count()>=1,'public profile preserves global tier');
+  check(await profile.getByText('Standard · Score 45').count()===1,'profile shows public best-game contribution context');
+  await profile.getByRole('button',{name:'Back to leaderboard'}).click();await panel.locator('[data-leaderboard-player]').first().waitFor();
   await panel.getByRole('button',{name:'Load more players'}).click();await p.waitForFunction(()=>document.querySelectorAll('[data-leaderboard-player]').length===41);
   await panel.getByRole('button',{name:'Load more players'}).click();await p.waitForFunction(()=>document.querySelectorAll('[data-leaderboard-player]').length===45);
   check(await panel.locator(`[data-leaderboard-player="${player}"]`).count()===1,'self deduplicated after pagination');
@@ -73,5 +76,5 @@ try{
  // A stale callback from the old mode cannot end the new run.
  await p.evaluate(()=>window.scoreFixture.select('rhythm'));await p.waitForSelector('[data-fixture-game="rhythm"] [data-test-engine]');await p.waitForTimeout(200);
  await p.evaluate(()=>{window.oldFinish=window.scoreFixture.finish;window.scoreFixture.mode('hypernova')});await p.waitForTimeout(200);await p.evaluate(()=>window.oldFinish(12345,'cyber_odyssey'));check(await p.locator('[data-result-raw-score]').count()===0,'old-mode callback ignored');
- await ctx.close();console.log(`Leaderboard browser PASS: ${assertions} UI/failure assertions, 4 responsive widths, pagination, mode context, IndexedDB reload and lost-response recovery.`);
+ await ctx.close();console.log(`Leaderboard browser PASS: ${assertions} UI/failure assertions, 4 responsive widths, player tiers/profiles, pagination, mode context, IndexedDB reload and lost-response recovery.`);
 }finally{await browser?.close();server.kill('SIGTERM');}
