@@ -829,6 +829,7 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
         <button
           type="button"
           onMouseDown={() => {
+            if (isPausedRef.current || !gameStateRef.current.isAlive) return;
             gameStateRef.current.playerTurnDir = -1;
             gameStateRef.current.isDirectAiming = false;
             setLeftActive(true);
@@ -838,6 +839,7 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
             setLeftActive(false);
           }}
           onTouchStart={(e) => {
+            if (isPausedRef.current || !gameStateRef.current.isAlive) return;
             e.preventDefault();
             gameStateRef.current.playerTurnDir = -1;
             gameStateRef.current.isDirectAiming = false;
@@ -859,6 +861,7 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
         <button
           type="button"
           onMouseDown={() => {
+            if (isPausedRef.current || !gameStateRef.current.isAlive) return;
             gameStateRef.current.playerTurnDir = 1;
             gameStateRef.current.isDirectAiming = false;
             setRightActive(true);
@@ -868,6 +871,7 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
             setRightActive(false);
           }}
           onTouchStart={(e) => {
+            if (isPausedRef.current || !gameStateRef.current.isAlive) return;
             e.preventDefault();
             gameStateRef.current.playerTurnDir = 1;
             gameStateRef.current.isDirectAiming = false;

@@ -110,6 +110,10 @@ assert(
   chronoSource.includes('if (isPausedRef.current || !state.isAlive || !state.isDirectAiming) return;'),
   'Chrono input can mutate steering/aim while gameplay is suspended',
 );
+assert(
+  (chronoSource.match(/if \(isPausedRef\.current \|\| !gameStateRef\.current\.isAlive\) return;/g) ?? []).length >= 4,
+  'Chrono on-screen steering buttons bypass pause/game-over input ownership',
+);
 for (const token of ['advanceDriftStyleRoute', 'styleRouteIndex', 'styleRouteProgress', 'styleChain', 'STYLE ROUTE']) {
   assert(driftSource.includes(token), `Cyber Drift P13 integration is missing: ${token}`);
 }
