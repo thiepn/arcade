@@ -22,6 +22,7 @@ import {
 import {
   getPacFrightenedDuration,
   getPacGhostMode,
+  getPacGhostLegalDirections,
   getPacGhostSpeed,
   getPacGhostTarget,
 } from '../src/lib/pacGhostAi';
@@ -149,6 +150,28 @@ assert(getPacGhostSpeed(6, false) > getPacGhostSpeed(1, false), 'Pac ghost speed
 assert(getPacGhostSpeed(1, true) < getPacGhostSpeed(1, false), 'Frightened ghosts are not slower');
 assert(getPacFrightenedDuration(8) < getPacFrightenedDuration(1), 'Pac power duration does not tighten at higher levels');
 assert(getPacFrightenedDuration(100) >= 4.5, 'Pac frightened duration falls below fairness floor');
+const pacDeadEndDirections = getPacGhostLegalDirections(
+  1,
+  0,
+  (dx, dy) => !(dx === -1 && dy === 0),
+);
+assert(
+  pacDeadEndDirections.length === 1 &&
+    pacDeadEndDirections[0].dx === -1 &&
+    pacDeadEndDirections[0].dy === 0,
+  'Pac ghost does not reverse when a dead end leaves reverse as the only legal move',
+);
+const pacIntersectionDirections = getPacGhostLegalDirections(
+  1,
+  0,
+  (dx, dy) => dy === 1,
+);
+assert(
+  pacIntersectionDirections.some((direction) => direction.dx === 0 && direction.dy === -1) &&
+    pacIntersectionDirections.some((direction) => direction.dx === 1 && direction.dy === 0) &&
+    !pacIntersectionDirections.some((direction) => direction.dx === -1 && direction.dy === 0),
+  'Pac ghost reverses even though a non-reverse route is available',
+);
 
 // ---------------------------------------------------------------------------
 // Integration checks — gameplay helpers must actually drive the game sources.
@@ -180,7 +203,7 @@ for (const token of ['createNeonRailPhrase', 'createNeonRailChallengePattern', '
 for (const token of ['getKnifeStageConfig', 'getKnifeStageRotationSpeed', 'stageLabel', 'reverseTimer']) {
   assert(knifeSource.includes(token), `Knife Target P2 integration missing ${token}`);
 }
-for (const token of ['getPacGhostMode', 'getPacGhostTarget', 'getPacGhostSpeed', 'state.level++', 'ghostMode']) {
+for (const token of ['getPacGhostMode', 'getPacGhostTarget', 'getPacGhostLegalDirections', 'getPacGhostSpeed', 'state.level++', 'ghostMode']) {
   assert(pacSource.includes(token), `Pac-Runner P2 integration missing ${token}`);
 }
 for (const phrase of [

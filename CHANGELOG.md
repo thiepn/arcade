@@ -26,6 +26,7 @@
 ### P2 replay-depth hardening — 2026-09-29
 - Preserve Memory Matrix playback timing across pause/resume: pending pattern flashes now retain their remaining active-time delay instead of expiring behind the pause overlay and collapsing together after resume.
 - Move Type Rush spawn cadence onto active game time so a pause does not consume the hidden wait until the next word or inject an artificial spawn immediately after resume.
+- Correct Pac-Runner ghost pathing so ghosts still avoid gratuitous 180° turns at intersections but reverse out of genuine dead ends instead of walking through maze walls.
 - Extend the permanent `quality:gameplay-p2` gate to reject the old pause-polling scheduler and require active-time timer preservation.
 
 ### Release-candidate reliability pass — 2026-09-08

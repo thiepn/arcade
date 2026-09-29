@@ -15,6 +15,29 @@ export interface PacPlayerTargetState {
   dirY: number;
 }
 
+export interface PacGhostDirection {
+  dx: number;
+  dy: number;
+}
+
+export const getPacGhostLegalDirections = (
+  dirX: number,
+  dirY: number,
+  isBlocked: (dx: number, dy: number) => boolean,
+): PacGhostDirection[] => {
+  const cardinal: PacGhostDirection[] = [
+    { dx: 0, dy: -1 },
+    { dx: 0, dy: 1 },
+    { dx: -1, dy: 0 },
+    { dx: 1, dy: 0 },
+  ];
+  const legal = cardinal.filter((direction) => !isBlocked(direction.dx, direction.dy));
+  const nonReverse = legal.filter(
+    (direction) => direction.dx !== -dirX || direction.dy !== -dirY,
+  );
+  return nonReverse.length > 0 ? nonReverse : legal;
+};
+
 export interface PacLevelProtocol {
   id: string;
   label: string;

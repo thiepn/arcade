@@ -13,6 +13,7 @@ import {
 import {
   getPacFrightenedDuration,
   getPacGhostMode,
+  getPacGhostLegalDirections,
   getPacGhostSpeed,
   getPacGhostTarget,
   type PacGhostMode,
@@ -433,17 +434,13 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
               targetY = target.y;
             }
 
-            // Available moves (cannot reverse 180 directly)
-            const directions = [
-              { dx: 0, dy: -1 },
-              { dx: 0, dy: 1 },
-              { dx: -1, dy: 0 },
-              { dx: 1, dy: 0 },
-            ].filter((dir) => {
-              // No reverse
-              if (dir.dx === -ghost.dirX && dir.dy === -ghost.dirY) return false;
-              return !isGhostWall(gRow + dir.dy, gCol + dir.dx);
-            });
+            // Avoid 180° reversals when another route exists, but reverse at
+            // genuine dead ends instead of continuing through a wall.
+            const directions = getPacGhostLegalDirections(
+              ghost.dirX,
+              ghost.dirY,
+              (dx, dy) => isGhostWall(gRow + dy, gCol + dx),
+            );
 
             if (directions.length > 0) {
               // Pick direction closest to target
