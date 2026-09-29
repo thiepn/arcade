@@ -20,6 +20,7 @@ import {
   getOneLineMasteryReward,
   isOneLineMasteryClear,
 } from '../src/lib/oneLineMastery';
+import { getBreakoutMinimumSpecials } from '../src/lib/gamePolishBalance';
 
 const read = (path: string) => readFileSync(path, 'utf8');
 const errors: string[] = [];
@@ -38,6 +39,15 @@ assert(advanceBreakoutContractProgress(comboContract, 0, 'COMBO', 5) === 5, 'Bre
 assert(advanceBreakoutContractProgress(comboContract, 5, 'COMBO', 3) === 5, 'Breakout combo contract regresses when combo falls');
 assert(isBreakoutContractComplete(comboContract, 6), 'Breakout combo target cannot complete');
 assert(getBreakoutContractReward(4, 3) > getBreakoutContractReward(1, 1), 'Breakout contract rewards do not scale with round/streak mastery');
+for (let round = 1; round <= 16; round++) {
+  const contract = getBreakoutContract(round);
+  if (contract.kind === 'POWER_BANK' || contract.kind === 'SPECIAL_HUNT') {
+    assert(
+      getBreakoutMinimumSpecials(round) >= contract.target,
+      `Breakout round ${round} late-round POWER/SPECIAL contracts exceed guaranteed marked-brick supply`,
+    );
+  }
+}
 
 // Slingshot — each mission must map to a guaranteed skill opportunity in every sector.
 assert(SLINGSHOT_MISSIONS.length === 4, 'Slingshot must expose four navigation missions');
@@ -73,6 +83,11 @@ for (const token of ['getBreakoutContract', 'advanceBreakoutContractProgress', '
   assert(breakout.includes(token), `Breakout P8 integration missing ${token}`);
 }
 assert(breakout.includes("registerContractEvent('POWER')"), 'Breakout power catches do not advance contracts');
+assert(breakout.includes('originRound: number;'), 'Breakout power drops do not record their source round');
+assert(
+  breakout.includes("if (pUp.originRound === state.round) registerContractEvent('POWER');"),
+  'Breakout prior-round drops can advance the next round\'s Power Bank contract',
+);
 assert(breakout.includes("registerContractEvent('COMBO', state.combo)"), 'Breakout combo hits do not advance contracts');
 
 for (const token of ['getSlingshotMission', 'advanceSlingshotMissionProgress', 'missionProgress', 'missionStreak', 'NAV MISSION']) {
@@ -80,6 +95,10 @@ for (const token of ['getSlingshotMission', 'advanceSlingshotMissionProgress', '
 }
 assert(slingshot.includes("registerMissionEvent('LOCKED_LAUNCH')"), 'Slingshot locked launches do not advance missions');
 assert(slingshot.includes("registerMissionEvent('GOLD_DUST')"), 'Slingshot gold stardust does not advance missions');
+assert(
+  slingshot.includes('if (isPausedRef.current || !gameStateRef.current.isAlive) return;'),
+  'Slingshot post-run keyboard listener can block GameShell restart actions',
+);
 
 for (const token of ['getOneLineMasteryGoal', 'isOneLineMasteryClear', 'masteryStreak', 'MASTER ROUTE']) {
   assert(oneLine.includes(token), `One Line P8 integration missing ${token}`);

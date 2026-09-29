@@ -385,7 +385,7 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
 
   useEffect(() => {
     const handleAction = (e: MouseEvent | TouchEvent | KeyboardEvent) => {
-      if (isPausedRef.current) return;
+      if (isPausedRef.current || !gameStateRef.current.isAlive) return;
       if ('key' in e && e.key !== ' ' && e.key !== 'Enter' && e.key !== 'ArrowUp') return;
       if ('key' in e) e.preventDefault();
       if (e.type === 'touchstart') e.preventDefault();

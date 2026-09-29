@@ -42,6 +42,7 @@ interface PowerUp {
   x: number;
   y: number;
   vy: number;
+  originRound: number;
   type: 'multiball' | 'laser' | 'wide' | 'fireball' | 'points';
   color: string;
   label: string;
@@ -480,7 +481,7 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
           ) {
             haptics.score();
             applyPowerUp(pUp.type, state, curW, curH, soundEnabled);
-            registerContractEvent('POWER');
+            if (pUp.originRound === state.round) registerContractEvent('POWER');
             state.powerUps.splice(p, 1);
             continue;
           }
@@ -959,6 +960,7 @@ function triggerBrickBreak(
       x: brick.x + brick.w / 2,
       y: brick.y + brick.h / 2,
       vy: 2.2,
+      originRound: state.round,
       type: brick.special,
       color: brick.color,
       label: labels[brick.special] || '★',

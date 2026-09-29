@@ -23,6 +23,11 @@
 
 ## Unreleased
 
+### P8 rebalanced-bottom-three hardening — 2026-09-29
+- Attribute Breakout power drops to the round that spawned them so a carry-over drop from the previous board cannot satisfy the next round's Power Bank contract; powerups themselves still carry over and remain usable.
+- Release Orbital Slingshot's Space/Enter/ArrowUp keyboard ownership after game over so GameShell post-run restart actions are no longer suppressed.
+- Extend `quality:gameplay-p8` to certify late-round marked-brick supply, round-scoped Breakout power catches, and Slingshot post-run input ownership.
+
 ### P7 mastery-trio hardening — 2026-09-29
 - Keep Memory Matrix manual/error/timeout replays at the current round's real playback cadence, including Overclock speed, instead of falling back to a fixed 320 ms retry; make the Matrix R replay shortcut consume the event so it cannot also trigger the global shell restart.
 - Harden Knife Target Razor Mark placement with dense safety sampling and a deterministic best-clearance fallback, and stop its keyboard listener from consuming post-run Space/Enter shell actions.
