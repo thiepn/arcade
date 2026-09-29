@@ -133,7 +133,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
     apexActive: false,
     apexTimer: 0,
     apexPrecisionStreak: 0,
-    lastApexPlatformId: null as number | null,
+    apexVisitedPlatformIds: new Set<number>(),
 
     // World & Camera
     cameraY: 0,
@@ -388,7 +388,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
     state.apexActive = false;
     state.apexTimer = 0;
     state.apexPrecisionStreak = 0;
-    state.lastApexPlatformId = null;
+    state.apexVisitedPlatformIds.clear();
     state.physicsAccumulator = 0;
 
     generateWorldUpTo(1800, initialWidth);
@@ -742,9 +742,9 @@ export const TowerGame: React.FC<GameComponentProps> = ({
             ) {
               state.py = platTop + state.radius;
 
-              const countsForApex = shouldCountTowerApexLanding(state.lastApexPlatformId, plat.id);
+              const countsForApex = shouldCountTowerApexLanding(state.apexVisitedPlatformIds, plat.id);
               if (countsForApex) {
-                state.lastApexPlatformId = plat.id;
+                state.apexVisitedPlatformIds.add(plat.id);
                 const precisionLanding = isTowerPrecisionLanding(state.px, plat.x, plat.w);
                 if (precisionLanding) {
                   state.apexPrecisionStreak++;

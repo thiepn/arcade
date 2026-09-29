@@ -17,9 +17,9 @@ export const isTowerPrecisionLanding = (
 };
 
 export const shouldCountTowerApexLanding = (
-  lastPlatformId: number | null,
+  visitedPlatformIds: ReadonlySet<number>,
   platformId: number,
-): boolean => lastPlatformId === null || lastPlatformId !== platformId;
+): boolean => !visitedPlatformIds.has(platformId);
 
 export const getTowerApexCharges = (
   precisionStreak: number,

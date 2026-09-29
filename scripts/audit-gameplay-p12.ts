@@ -75,9 +75,10 @@ assert(TOWER_APEX_BOUNCE_MULTIPLIER === 1.18, 'Tower Apex bounce multiplier chan
 assert(TOWER_APEX_SCORE_MULTIPLIER === 2, 'Tower Apex score multiplier changed');
 assert(isTowerPrecisionLanding(50, 0, 100), 'Tower should accept a platform-center landing');
 assert(!isTowerPrecisionLanding(5, 0, 100), 'Tower precision landing window is too wide');
-assert(shouldCountTowerApexLanding(null, 10), 'Tower first platform should count for Apex mastery');
-assert(shouldCountTowerApexLanding(10, 11), 'Tower newly reached platform should count for Apex mastery');
-assert(!shouldCountTowerApexLanding(10, 10), 'Tower same platform can farm Apex mastery repeatedly');
+const visitedApexPlatforms = new Set([10, 11]);
+assert(shouldCountTowerApexLanding(new Set(), 10), 'Tower first platform should count for Apex mastery');
+assert(shouldCountTowerApexLanding(visitedApexPlatforms, 12), 'Tower newly reached platform should count for Apex mastery');
+assert(!shouldCountTowerApexLanding(visitedApexPlatforms, 10), 'Tower previously visited platform can farm Apex mastery repeatedly');
 assert(getTowerApexCharges(3, 0) === 1 && getTowerApexCharges(6, 2) === 2, 'Tower Apex charge earning/cap is wrong');
 assert(canActivateTowerApexDrive(1, false, true), 'Tower should allow an earned Apex activation');
 assert(!canActivateTowerApexDrive(0, false, true) && !canActivateTowerApexDrive(1, true, true), 'Tower Apex activation guard is too permissive');
@@ -96,8 +97,9 @@ assert(
   'Tower gameplay listener can consume shell controls or auto-repeat Apex/wall-jump actions',
 );
 assert(
-  tower.includes('shouldCountTowerApexLanding(state.lastApexPlatformId, plat.id)'),
-  'Tower same-platform rebound can farm precision rewards and Apex charges',
+  tower.includes('shouldCountTowerApexLanding(state.apexVisitedPlatformIds, plat.id)') &&
+    tower.includes('state.apexVisitedPlatformIds.add(plat.id)'),
+  'Tower revisited-platform rebounds can farm precision rewards and Apex charges',
 );
 
 // Chain: optional ordered use of all three existing tools, with the base three-charge economy preserved.

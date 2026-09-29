@@ -24,7 +24,7 @@
 ## Unreleased
 
 ### P12 next-mastery-trio hardening — 2026-09-29
-- Stop Gravity Tower from farming Apex mastery on repeated rebounds from the same platform: precision streaks, bonuses, charges, and the later Apex Route now advance only when the player lands on a newly reached platform.
+- Stop Gravity Tower from farming Apex mastery on repeated or alternating rebounds across already visited platforms: precision streaks, bonuses, charges, and the later Apex Route now advance only on each platform's first landing.
 - Release Laser Rope and Gravity Tower keyboard ownership while paused/dead and ignore repeat/modifier events so held keys cannot auto-spend double jumps, Redline, Apex Drive, or wall-jump/micro-burst actions.
 - Guard Chain touch capture and tactical tool selection before suspended/finished-state mutation, keeping pause and between-wave state genuinely frozen.
 - Extend `quality:gameplay-p12` to certify unique-platform Apex progression and the trio's input-ownership boundaries.
