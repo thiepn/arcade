@@ -94,6 +94,9 @@ assert(reactionSource.includes("completeAttempt(null, false, 'INHIBITION FAIL')"
 assert(reactionSource.includes("completeAttempt(reactionTimeMs, false, 'WRONG SIDE')"), 'Reaction wrong-choice failure is no longer enforced');
 assert(reactionSource.includes("handleInput('LEFT')") && reactionSource.includes("handleInput('RIGHT')"), 'Reaction left/right controls are incomplete');
 assert(reactionSource.includes('readyPausedDurationRef'), 'Reaction no longer tracks paused READY time');
+assert(reactionSource.includes('activeTimerRef'), 'Reaction pause no longer freezes pending cue timers');
+assert(reactionSource.includes('timer.remainingMs = Math.max(0, timer.remainingMs - elapsedMs)'), 'Reaction pause no longer preserves the remaining pre-cue/decoy delay');
+assert(reactionSource.includes('armActiveTimer();'), 'Reaction resume no longer rearms the preserved cue timer');
 assert(reactionSource.includes('getReactionTimeMs(startTimeRef.current'), 'Reaction no longer excludes pause time from reaction scoring');
 assert(!/Top\s+\d|Bottom\s+\d|percentile/i.test(reactionSource), 'Reaction restored unsupported percentile claims');
 

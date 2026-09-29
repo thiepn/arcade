@@ -29,7 +29,7 @@
 - Isolate modal keyboard actions from game listeners and release canceled gamepad drags and late wake locks.
 - Version complete offline caches by build and scope; reject partial downloads and preserve active tabs during updates.
 - Fix overlapping phone/tablet header controls and keep Favorites/Recent navigation available on small screens.
-- Fix Reaction pause fairness so suspended time after a live cue is excluded from measured reaction time; keep this behavior covered by the permanent P1 gameplay-depth gate.
+- Fix Reaction pause fairness so pre-cue and decoy countdowns freeze while paused and suspended time after a live cue is excluded from measured reaction time; keep both behaviors covered by the permanent P1 gameplay-depth gate.
 - Deploy the dedicated Worker/D1 service, configure its Pages build endpoint, and add reproducible failure-path and real service-worker regression tests.
 
 ### Added

@@ -63,6 +63,11 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
   const soundEnabledRef = useRef(soundEnabled);
   soundEnabledRef.current = soundEnabled;
   const timerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeTimerRef = useRef<{
+    callback: () => void;
+    remainingMs: number;
+    startedAtMs: number | null;
+  } | null>(null);
   const lightsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const circuitStateRef = useRef<ReactionCircuitState>(createReactionCircuitState());
   const circuitPairCleanRef = useRef([true, true, true]);
@@ -94,22 +99,51 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
       clearTimeout(timerTimeoutRef.current);
       timerTimeoutRef.current = null;
     }
+    activeTimerRef.current = null;
     if (lightsIntervalRef.current) {
       clearInterval(lightsIntervalRef.current);
       lightsIntervalRef.current = null;
     }
   }, []);
 
-  const scheduleWhenActive = useCallback((callback: () => void, delayMs: number) => {
-    const run = () => {
+  const armActiveTimer = useCallback(() => {
+    const timer = activeTimerRef.current;
+    if (!timer || isPausedRef.current || timerTimeoutRef.current) return;
+
+    timer.startedAtMs = performance.now();
+    timerTimeoutRef.current = setTimeout(() => {
+      const current = activeTimerRef.current;
+      timerTimeoutRef.current = null;
+      if (!current) return;
+
       if (isPausedRef.current) {
-        timerTimeoutRef.current = setTimeout(run, 100);
+        if (current.startedAtMs !== null) {
+          const elapsedMs = Math.max(0, performance.now() - current.startedAtMs);
+          current.remainingMs = Math.max(0, current.remainingMs - elapsedMs);
+          current.startedAtMs = null;
+        }
         return;
       }
-      callback();
-    };
-    timerTimeoutRef.current = setTimeout(run, delayMs);
+
+      current.startedAtMs = null;
+      current.remainingMs = 0;
+      activeTimerRef.current = null;
+      current.callback();
+    }, timer.remainingMs);
   }, []);
+
+  const scheduleWhenActive = useCallback((callback: () => void, delayMs: number) => {
+    if (timerTimeoutRef.current) {
+      clearTimeout(timerTimeoutRef.current);
+      timerTimeoutRef.current = null;
+    }
+    activeTimerRef.current = {
+      callback,
+      remainingMs: Math.max(0, delayMs),
+      startedAtMs: null,
+    };
+    armActiveTimer();
+  }, [armActiveTimer]);
 
   const startRound = (index: number) => {
     clearRoundTimers();
@@ -290,6 +324,26 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
     startRound(0);
     return clearRoundTimers;
   }, []);
+
+  useEffect(() => {
+    const timer = activeTimerRef.current;
+    if (!timer) return;
+
+    if (isPaused) {
+      if (timerTimeoutRef.current) {
+        clearTimeout(timerTimeoutRef.current);
+        timerTimeoutRef.current = null;
+      }
+      if (timer.startedAtMs !== null) {
+        const elapsedMs = Math.max(0, performance.now() - timer.startedAtMs);
+        timer.remainingMs = Math.max(0, timer.remainingMs - elapsedMs);
+        timer.startedAtMs = null;
+      }
+      return;
+    }
+
+    armActiveTimer();
+  }, [armActiveTimer, isPaused]);
 
   useEffect(() => {
     if (mode !== 'READY') {
