@@ -79,12 +79,27 @@ for (const token of ['isDodgePhaseCut', 'phaseCutChain', 'dashCutCount', 'PHASE 
 }
 assert(dodge.includes('state.dashTimer = 260'), 'Dodge P10 changed the certified 260ms dash duration');
 assert(dodge.includes('state.phaseCutChain = 0'), 'Dodge Phase Cut chain has no reset path');
+assert(dodge.includes('phaseCutEligible: false'), 'Dodge does not distinguish intentional dashes from generic invulnerability');
+assert(dodge.includes('state.phaseCutEligible = true;'), 'Dodge intentional dash does not arm Phase Cut eligibility');
+assert(
+  dodge.includes('state.phaseCutEligible && state.isDashing') &&
+    dodge.includes('state.phaseCutEligible && isDodgePhaseCut'),
+  'Dodge shield invulnerability can earn Phase Cuts',
+);
+assert(
+  dodge.includes('e.repeat || e.altKey || e.ctrlKey || e.metaKey'),
+  'Dodge discrete dash input can auto-chain from key repeat or modifier shortcuts',
+);
 
 for (const token of ['canTriggerAeroFlow', 'flowCharges', 'flowTimer', 'FLOW BOOST', 'getAeroFlowScore', "e.code === 'KeyF'"]) {
   assert(aero.includes(token), `Aero P10 integration missing ${token}`);
 }
 assert(aero.includes('const gravity = 820') && aero.includes('state.vy = -320'), 'Aero Flow changed certified flap physics');
 assert(aero.includes('state.grazeCombo = 0'), 'Aero graze chain no longer requires consecutive grazes');
+assert(
+  aero.includes('if (isPausedRef.current || !state.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;'),
+  'Aero gameplay listener can consume shell restart or auto-flap from key repeat',
+);
 
 for (const token of ['canArmOrbBurst', 'burstCharges', 'burstArmed', 'hasSwappedThisTurn', 'swapChamber', 'BURST ARMED', 'SWAP']) {
   assert(orb.includes(token), `Orb Cannon P10 integration missing ${token}`);
@@ -92,6 +107,19 @@ for (const token of ['canArmOrbBurst', 'burstCharges', 'burstArmed', 'hasSwapped
 assert(!orb.includes('Math.random() < 0.08'), 'Orb Cannon still grants random bomb shots');
 assert(orb.includes('isBomb: state.burstArmed'), 'Orb Cannon Burst does not deterministically control bomb shots');
 assert(orb.includes('shouldEarnOrbBurst(state.combo, dropCount)'), 'Orb Cannon Burst is not earned from authored combo/cascade rules');
+assert(
+  orb.includes('if (isPausedRef.current || !state.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;'),
+  'Orb Cannon keyboard listener can consume shell controls or auto-fire from key repeat',
+);
+assert(
+  orb.includes('if (isPausedRef.current || !gameStateRef.current.isAlive || !containerRef.current) return null;'),
+  'Orb Cannon aim can mutate while gameplay is suspended',
+);
+assert(
+  orb.includes('canSwap: !state.hasSwappedThisTurn && !state.flyingBubble') &&
+    orb.includes('canBurst: state.burstCharges > 0 && !state.burstArmed && !state.flyingBubble'),
+  'Orb Cannon mastery buttons advertise actions while a shot is in flight',
+);
 
 for (const phrase of ['Phase Cut', 'Flow Boost', 'Burst charges']) {
   assert(registry.includes(phrase), `registry is missing P10 teaching phrase: ${phrase}`);

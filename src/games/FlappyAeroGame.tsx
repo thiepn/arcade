@@ -130,6 +130,8 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const state = gameStateRef.current;
+      if (isPausedRef.current || !state.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.code === 'KeyF' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         e.preventDefault();
         triggerFlowBoost();

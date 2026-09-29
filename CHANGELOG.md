@@ -23,6 +23,12 @@
 
 ## Unreleased
 
+### P10 current-bottom-three hardening — 2026-09-29
+- Separate Dodge's intentional dash from shield-granted invulnerability so free shield i-frames cannot earn Phase Cuts, recharge dash economy, or preserve a mastery chain; make dash activation edge-triggered instead of key-repeat-driven.
+- Release Aero's keyboard ownership while paused/dead and ignore repeated/modifier key events so holding Space cannot auto-flap and post-run shell controls remain available.
+- Freeze Orb Cannon aim/keyboard input while suspended, prevent held keys from auto-firing, and make Burst/Swap buttons reflect shot-in-flight availability instead of appearing actionable when the mastery guard will reject them.
+- Extend `quality:gameplay-p10` to certify intentional-dash eligibility, discrete action input, suspended aim ownership, and honest Orb agency UI.
+
 ### P9 next-bottom-three hardening — 2026-09-29
 - Release Stack, Pulse, and Neon Puck Smash keyboard ownership while paused or after game over so their Space/Enter/mastery listeners cannot suppress GameShell post-run actions.
 - Preserve the shared Alt+Enter fullscreen shortcut in Stack and Pulse by ignoring modifier-based shell shortcuts before game-specific input handling.

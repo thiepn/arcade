@@ -61,6 +61,7 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
     burstCharges: ORB_BURST_START_CHARGES,
     burstArmed: false,
     canSwap: true,
+    canBurst: true,
   });
 
   const gameStateRef = useRef({
@@ -149,7 +150,7 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
 
   // Aim helper from viewport coordinates
   const updateAimAngle = (clientX: number, clientY: number): number | null => {
-    if (!containerRef.current) return null;
+    if (isPausedRef.current || !gameStateRef.current.isAlive || !containerRef.current) return null;
     const rect = containerRef.current.getBoundingClientRect();
     const cx = rect.width / 2;
     const cy = rect.height - 35;
@@ -169,6 +170,7 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const state = gameStateRef.current;
+      if (isPausedRef.current || !state.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.code === 'KeyF' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         e.preventDefault();
         armBurst();
@@ -652,7 +654,8 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
           prev.currentBubbleColor === state.currentBubbleColor &&
           prev.burstCharges === state.burstCharges &&
           prev.burstArmed === state.burstArmed &&
-          prev.canSwap === !state.hasSwappedThisTurn
+          prev.canSwap === (!state.hasSwappedThisTurn && !state.flyingBubble) &&
+          prev.canBurst === (state.burstCharges > 0 && !state.burstArmed && !state.flyingBubble)
         ) {
           return prev;
         }
@@ -665,7 +668,8 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
           currentBubbleColor: state.currentBubbleColor,
           burstCharges: state.burstCharges,
           burstArmed: state.burstArmed,
-          canSwap: !state.hasSwappedThisTurn,
+          canSwap: !state.hasSwappedThisTurn && !state.flyingBubble,
+          canBurst: state.burstCharges > 0 && !state.burstArmed && !state.flyingBubble,
         };
       });
 
@@ -719,7 +723,7 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={armBurst}
-          disabled={hudState.burstCharges <= 0 || hudState.burstArmed}
+          disabled={!hudState.canBurst}
           className="rounded-xl border border-pink-400/50 bg-[#18181B]/90 px-3 py-1.5 font-mono text-[10px] font-black text-pink-300 disabled:opacity-35"
         >
           {hudState.burstArmed ? 'BURST ARMED' : `BURST ${hudState.burstCharges}/2 [F]`}

@@ -82,6 +82,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
     dashCharges: 2,
     dashRecharge: 0,
     isDashing: false,
+    phaseCutEligible: false,
     dashTimer: 0,
     dashCutCount: 0,
     phaseCutChain: 0,
@@ -111,6 +112,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
     state.dashCharges--;
     setDashAvailable(state.dashCharges);
     state.dashCutCount = 0;
+    state.phaseCutEligible = true;
     state.isDashing = true;
     state.dashTimer = 260; // 260ms i-frames
     if (soundEnabled) sounds.playWarp();
@@ -169,6 +171,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
     state.hasShield = false;
     state.dashCharges = 2;
     state.dashRecharge = 0;
+    state.phaseCutEligible = false;
     state.dashCutCount = 0;
     state.phaseCutChain = 0;
     setPhaseCutChain(0);
@@ -196,7 +199,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isPausedRef.current || !state.isAlive) return;
+      if (isPausedRef.current || !state.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') state.keys.left = true;
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') state.keys.right = true;
       if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') state.keys.up = true;
@@ -349,6 +352,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
           if (state.ghostTrail.length > 8) state.ghostTrail.pop();
           if (state.dashTimer <= 0) {
             state.isDashing = false;
+            state.phaseCutEligible = false;
             if (state.dashCutCount === 0) {
               state.phaseCutChain = 0;
               setPhaseCutChain(0);
@@ -534,12 +538,16 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
             // Check collision with player. A deliberate dash through an active beam
             // counts once as a Phase Cut instead of being merely passive invulnerability.
             const laserDistance = Math.abs(state.playerX - h.x);
-            if (state.isDashing && !h.phaseCut && isDodgePhaseCut(true, laserDistance, h.width / 2 + state.playerRadius - 2)) {
+            if (state.phaseCutEligible && state.isDashing && !h.phaseCut && isDodgePhaseCut(true, laserDistance, h.width / 2 + state.playerRadius - 2)) {
               h.phaseCut = true;
               registerPhaseCut(h.x, state.playerY, '#EF4444');
             } else if (!state.isDashing && laserDistance < h.width / 2 + state.playerRadius - 2) {
               if (state.hasShield) {
                 state.hasShield = false;
+                state.phaseCutEligible = false;
+                state.dashCutCount = 0;
+                state.phaseCutChain = 0;
+                setPhaseCutChain(0);
                 state.isDashing = true;
                 state.dashTimer = 200;
                 if (soundEnabled) sounds.playPop();
@@ -574,7 +582,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
               h.y + h.height / 2 - state.playerY
             );
 
-            if (isDodgePhaseCut(state.isDashing, hDist, h.width / 2 + state.playerRadius - 3)) {
+            if (state.phaseCutEligible && isDodgePhaseCut(state.isDashing, hDist, h.width / 2 + state.playerRadius - 3)) {
               registerPhaseCut(h.x + h.width / 2, h.y + h.height / 2, h.color);
               state.hazards.splice(i, 1);
               continue;
@@ -583,6 +591,10 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
             if (!state.isDashing && hDist < h.width / 2 + state.playerRadius - 3) {
               if (state.hasShield) {
                 state.hasShield = false;
+                state.phaseCutEligible = false;
+                state.dashCutCount = 0;
+                state.phaseCutChain = 0;
+                setPhaseCutChain(0);
                 state.isDashing = true;
                 state.dashTimer = 200;
                 state.hazards.splice(i, 1);
