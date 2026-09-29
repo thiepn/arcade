@@ -78,6 +78,10 @@ assert(
   'Orbit random hazards can resume before a long formation has safely cleared',
 );
 assert(
+  orbit.includes('state.formationResolveTimer + ORBIT_FORMATION_GRACE_SEC'),
+  'Orbit long formation can collapse the authored cooldown into an immediate follow-up',
+);
+assert(
   orbit.includes('e.repeat || e.altKey || e.ctrlKey || e.metaKey'),
   'Orbit gameplay listener can consume shell controls or auto-repeat lane/reverse actions',
 );

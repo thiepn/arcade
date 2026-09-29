@@ -354,6 +354,10 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
               state.formationGraceTimer,
               state.formationResolveTimer + ORBIT_FORMATION_CLEARANCE_SEC,
             );
+            state.formationCooldownTimer = Math.max(
+              state.formationCooldownTimer,
+              state.formationResolveTimer + ORBIT_FORMATION_GRACE_SEC,
+            );
             state.pendingFormation = null;
           }
         }

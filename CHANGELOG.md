@@ -25,6 +25,7 @@
 
 ### P11 classic-loop hardening — 2026-09-29
 - Make Orbit threat-formation resolution geometry-aware: the certified 1.7-second window remains the minimum, but wide-screen formations now wait for their actual comet travel time plus clearance before awarding the safe-lane mastery bonus, and random hazards stay suppressed through that dynamic window.
+- Extend formation cooldown only when geometry makes a formation outlast the original cadence, preserving post-formation breathing room without slowing ordinary compact-screen runs.
 - Release Orbit, Pac Runner, and Cyber Serpent keyboard/touch ownership while paused or after game over; ignore repeat/modifier key events so discrete mastery/navigation actions cannot auto-fire or consume shared shell shortcuts.
 - Freeze Pac and Snake swipe routing while suspended so queued movement cannot silently change behind pause/game-over overlays.
 - Extend `quality:gameplay-p11` to certify viewport-safe Orbit timing and classic-loop input ownership.
