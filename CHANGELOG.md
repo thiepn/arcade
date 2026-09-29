@@ -23,6 +23,12 @@
 
 ## Unreleased
 
+### P9 next-bottom-three hardening — 2026-09-29
+- Release Stack, Pulse, and Neon Puck Smash keyboard ownership while paused or after game over so their Space/Enter/mastery listeners cannot suppress GameShell post-run actions.
+- Preserve the shared Alt+Enter fullscreen shortcut in Stack and Pulse by ignoring modifier-based shell shortcuts before game-specific input handling.
+- Freeze Stack/Pulse pointer actions and Air Hockey keyboard/pointer target updates while gameplay is suspended, preventing hidden actions or a stored mallet movement jump on resume.
+- Extend `quality:gameplay-p9` to permanently certify those input-ownership boundaries.
+
 ### P8 rebalanced-bottom-three hardening — 2026-09-29
 - Attribute Breakout power drops to the round that spawned them so a carry-over drop from the previous board cannot satisfy the next round's Power Bank contract; powerups themselves still carry over and remain usable.
 - Release Orbital Slingshot's Space/Enter/ArrowUp keyboard ownership after game over so GameShell post-run restart actions are no longer suppressed.

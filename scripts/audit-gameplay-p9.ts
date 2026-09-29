@@ -89,17 +89,41 @@ assert(stack.includes('getStackTravelSpeed(') && stack.includes('state.blocks.le
 assert(getStackTravelSpeed(10, 1) > getStackTravelSpeed(1, 1), 'Stack movement speed does not increase with physical tower growth');
 assert(getStackTravelSpeed(10, 1.7) > getStackTravelSpeed(10, 0.85), 'Stack movement speed no longer preserves viewport scaling');
 assert(!stack.includes('state.score * 0.08'), 'Stack Focus bonus score still accelerates the base movement-speed curve');
+assert(
+  stack.includes('if (isPausedRef.current || !gameStateRef.current.isAlive || e.altKey || e.ctrlKey || e.metaKey) return;'),
+  'Stack gameplay listener can consume shell shortcuts while paused/dead or intercept Alt+Enter',
+);
+assert(
+  stack.includes('if (isPausedRef.current || !gameStateRef.current.isAlive) return;'),
+  'Stack pointer input remains active while gameplay is suspended',
+);
 
 for (const token of ['isPulseWagerHit', 'syncWagerCharges', 'syncWagerArmed', 'syncWagerStreak', 'SYNC WAGER ARMED', "e.code === 'KeyF'"]) {
   assert(pulse.includes(token), `Pulse P9 integration missing ${token}`);
 }
 assert(pulse.includes('if (absDiff <= 8)') && pulse.includes('else if (absDiff <= 18)') && pulse.includes('else if (absDiff <= 28)'), 'Pulse base PERFECT/GREAT/GOOD judgement windows changed');
+assert(
+  pulse.includes('if (isPausedRef.current || !gameStateRef.current.isAlive || e.altKey || e.ctrlKey || e.metaKey) return;'),
+  'Pulse gameplay listener can consume shell shortcuts while paused/dead or intercept Alt+Enter',
+);
+assert(
+  pulse.includes('if (isPausedRef.current || !gameStateRef.current.isAlive) return;'),
+  'Pulse pointer input remains active while gameplay is suspended',
+);
 
 for (const token of ['getAirHockeyPowerMeter', 'powerMeter', 'powerPlayTimer', 'powerStreak', 'POWER PLAY ACTIVE', "e.code === 'Space'"]) {
   assert(puck.includes(token), `Air Hockey P9 integration missing ${token}`);
 }
 assert(puck.includes('incomingDefense = isPlayer && puck.y > centerY && puck.vy > 20'), 'Air Hockey charges Power from non-defensive touches');
 assert(puck.includes('capAirHockeyVelocity(puck.vx, puck.vy, maxSpeed)'), 'Air Hockey P0 puck-speed cap is no longer applied after Power Play contacts');
+assert(
+  puck.includes('if (isPausedRef.current || !state.isAlive || e.altKey || e.ctrlKey || e.metaKey) return;'),
+  'Air Hockey keyboard ownership survives pause/game-over or intercepts shell modifier shortcuts',
+);
+assert(
+  puck.includes('if (isPausedRef.current || !gameStateRef.current.isAlive || !containerRef.current) return;'),
+  'Air Hockey pointer target can change while gameplay is suspended',
+);
 
 for (const phrase of ['Focus charges', 'Sync Wagers', 'Power Play meter']) {
   assert(registry.includes(phrase), `registry is missing P9 teaching phrase: ${phrase}`);

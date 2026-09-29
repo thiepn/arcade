@@ -121,7 +121,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
   };
 
   const updatePointerTarget = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!containerRef.current) return;
+    if (isPausedRef.current || !gameStateRef.current.isAlive || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     gameStateRef.current.targetPlayerX = e.clientX - rect.left;
     gameStateRef.current.targetPlayerY = e.clientY - rect.top;
@@ -132,6 +132,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isPausedRef.current || !gameStateRef.current.isAlive) return;
     e.preventDefault();
     e.currentTarget.setPointerCapture?.(e.pointerId);
     updatePointerTarget(e);
@@ -146,6 +147,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const state = gameStateRef.current;
+      if (isPausedRef.current || !state.isAlive || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.code === 'Space' || e.code === 'KeyF') {
         e.preventDefault();
         triggerPowerPlay();

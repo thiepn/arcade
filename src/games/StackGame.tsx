@@ -353,10 +353,12 @@ export const StackGame: React.FC<GameComponentProps> = ({
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      if (isPausedRef.current || !gameStateRef.current.isAlive) return;
       event.preventDefault();
       placeBlock();
     };
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isPausedRef.current || !gameStateRef.current.isAlive || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyF') {
         e.preventDefault();
         armFocus();

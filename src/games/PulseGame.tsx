@@ -354,11 +354,13 @@ export const PulseGame: React.FC<GameComponentProps> = ({
     nextBeat();
 
     const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      if (isPausedRef.current || !gameStateRef.current.isAlive) return;
       event.preventDefault();
       triggerHit();
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isPausedRef.current || !gameStateRef.current.isAlive || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
         e.preventDefault();
         queuePathChoice('LEFT');
