@@ -23,6 +23,12 @@
 
 ## Unreleased
 
+### P7 mastery-trio hardening — 2026-09-29
+- Keep Memory Matrix manual/error/timeout replays at the current round's real playback cadence, including Overclock speed, instead of falling back to a fixed 320 ms retry; make the Matrix R replay shortcut consume the event so it cannot also trigger the global shell restart.
+- Harden Knife Target Razor Mark placement with dense safety sampling and a deterministic best-clearance fallback, and stop its keyboard listener from consuming post-run Space/Enter shell actions.
+- Stop Neon Rail's keyboard listener from consuming post-run shell actions and teach the desktop Shift: Surge control in-game.
+- Extend `quality:gameplay-p7` to certify replay cadence, Razor target safety, shortcut isolation, post-run input ownership, and Surge teaching.
+
 ### P6 new-bottom-three hardening — 2026-09-29
 - Fix Cyber Crosser district difficulty generation: pre-generated road and river lanes now derive movement speed from their own row instead of the player's current max row, so later authored districts no longer inherit opening-area traffic speeds.
 - Align the traffic-speed tier changes to authored district starts (rows 4/12/20/28) rather than raw eight-row multiples, preventing mid-district difficulty jumps.

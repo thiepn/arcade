@@ -4,6 +4,7 @@ import {
   canArmMatrixOverclock,
   getMatrixClearPoints,
   getMatrixPlaybackSpeed,
+  getMatrixRoundPlaybackSpeed,
   getMatrixSequenceLength,
   getMatrixStepPoints,
 } from '../src/lib/matrixMastery';
@@ -13,6 +14,7 @@ import {
   getKnifeRazorTolerance,
   isKnifeRazorHit,
   isKnifeRazorRush,
+  isKnifeRazorTargetSafe,
 } from '../src/lib/knifeMastery';
 import {
   NEON_RAIL_MAX_SURGE_CHARGES,
@@ -47,6 +49,8 @@ assert(getMatrixPlaybackSpeed(300, true) < getMatrixPlaybackSpeed(300, false), '
 assert(getMatrixPlaybackSpeed(120, true) >= 140, 'Matrix Overclock playback can fall below readability floor');
 assert(getMatrixStepPoints(200, true) > getMatrixStepPoints(200, false), 'Matrix Overclock step scoring does not increase');
 assert(getMatrixClearPoints(1200, true) > getMatrixClearPoints(1200, false), 'Matrix Overclock clear scoring does not increase');
+assert(getMatrixRoundPlaybackSpeed(1, false) > getMatrixRoundPlaybackSpeed(12, false), 'Matrix round playback does not accelerate with progression');
+assert(getMatrixRoundPlaybackSpeed(12, true) < getMatrixRoundPlaybackSpeed(12, false), 'Matrix Overclock round playback is not faster at the same round');
 
 // Knife Target — every generated Razor Mark must remain attainable and reward precision chains.
 assert(getKnifeRazorTolerance(1) > getKnifeRazorTolerance(30), 'Knife Razor tolerance does not tighten with mastery tiers');
@@ -62,6 +66,7 @@ for (let stage = 1; stage <= 18; stage++) {
   }));
   const target = findKnifeRazorTarget(stage, stage + 2, embedded, shields);
   assert(Number.isFinite(target) && target >= 0 && target < Math.PI * 2, `Knife stage ${stage} Razor target escaped angular bounds`);
+  assert(isKnifeRazorTargetSafe(target, embedded, shields), `Knife stage ${stage} Razor target is not safely attainable`);
   assert(isKnifeRazorHit(target, target, stage), `Knife stage ${stage} exact Razor target is not a precision hit`);
   assert(!isKnifeRazorHit(target + 0.5, target, stage), `Knife stage ${stage} Razor hit window is excessively wide`);
 }
@@ -88,16 +93,27 @@ for (const token of ['MATRIX_OVERCLOCK', 'getMatrixSequenceLength', 'overclockAc
   assert(matrix.includes(token), `Matrix P7 integration missing ${token}`);
 }
 assert(matrix.includes('state.overclockActive || replaysLeft <= 0'), 'Matrix Overclock does not disable manual replay');
+assert(matrix.includes('getMatrixRoundPlaybackSpeed(state.round, state.overclockActive)'), 'Matrix retries no longer preserve round/Overclock playback speed');
+assert(matrix.includes("key === 'R') {\n        e.preventDefault();"), 'Matrix R replay shortcut leaks into shell restart');
 
 for (const token of ['findKnifeRazorTarget', 'isKnifeRazorHit', 'precisionTargetAngle', 'precisionChain', 'RAZOR RUSH']) {
   assert(knife.includes(token), `Knife Target P7 integration missing ${token}`);
 }
 assert(knife.includes('getKnifeRazorTolerance(state.stage)'), 'Knife Target does not render the stage-scaled Razor window');
+assert(
+  knife.includes('if (isPausedRef.current || !gameStateRef.current.isAlive) return;'),
+  'Knife keyboard listener blocks post-run shell controls',
+);
 
 for (const token of ['isNeonRailMasteryMilestone', 'triggerSurge', 'surgeCharges', 'surgeTimer', "event.code === 'ShiftLeft'", 'SURGE']) {
   assert(rail.includes(token), `Neon Rail P7 integration missing ${token}`);
 }
 assert(rail.includes('NEON_RAIL_MAX_SURGE_CHARGES'), 'Neon Rail Surge charges are not bounded');
+assert(
+  rail.includes('if (isPausedRef.current || !gameStateRef.current.isAlive) return;'),
+  'Neon Rail keyboard listener blocks post-run shell controls',
+);
+assert(rail.includes('Shift: Surge'), 'Neon Rail desktop controls do not teach how to spend earned Surge');
 
 for (const phrase of ['optional Overclock rounds', 'Razor Marks', 'six consecutive route cores']) {
   assert(registry.includes(phrase), `registry is missing P7 teaching phrase: ${phrase}`);

@@ -28,6 +28,12 @@ export const getMatrixPlaybackSpeed = (baseSpeedMs: number, overclockActive: boo
   return overclockActive ? Math.max(140, Math.round(base * MATRIX_OVERCLOCK.playbackScale)) : base;
 };
 
+export const getMatrixRoundPlaybackSpeed = (round: number, overclockActive: boolean) => {
+  const safeRound = Math.max(1, Math.floor(Number.isFinite(round) ? round : 1));
+  const baseSpeedMs = Math.max(180, 340 - safeRound * 15);
+  return getMatrixPlaybackSpeed(baseSpeedMs, overclockActive);
+};
+
 export const getMatrixStepPoints = (basePoints: number, overclockActive: boolean) =>
   Math.round(Math.max(0, basePoints) * (overclockActive ? MATRIX_OVERCLOCK.stepScoreMultiplier : 1));
 

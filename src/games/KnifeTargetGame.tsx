@@ -155,6 +155,7 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
   // aimed the target, the deterministic default is the bottom-center impact.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isPausedRef.current || !gameStateRef.current.isAlive) return;
       if (
         e.code === 'Space' ||
         e.code === 'ArrowUp' ||

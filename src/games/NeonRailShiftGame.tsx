@@ -155,6 +155,7 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isPausedRef.current || !gameStateRef.current.isAlive) return;
       if (
         event.code === 'ArrowLeft' ||
         event.code === 'ArrowRight' ||
@@ -723,7 +724,7 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
       </div>
 
       <div className="pointer-events-none absolute bottom-3 left-1/2 hidden -translate-x-1/2 rounded-full border border-slate-700/60 bg-slate-950/75 px-3 py-1 font-mono text-[9px] font-bold text-slate-400 backdrop-blur sm:block">
-        A / D or ← / →: Shift rail · Space: Phase
+        A / D or ← / →: Shift rail · Space: Phase · Shift: Surge
       </div>
     </div>
   );

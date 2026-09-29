@@ -31,6 +31,17 @@ export const getKnifeRazorTolerance = (stage: number) => {
   return Math.max(0.09, 0.15 - tier * 0.01);
 };
 
+export const isKnifeRazorTargetSafe = (
+  angle: number,
+  embeddedAngles: readonly number[] = [],
+  shields: readonly KnifeMasteryShield[] = [],
+): boolean => {
+  const minimumBladeClearance = 0.42;
+  const shieldMargin = 0.14;
+  return embeddedAngles.every((embedded) => distance(angle, embedded) >= minimumBladeClearance) &&
+    shields.every((shield) => !insideShield(angle, shield, shieldMargin));
+};
+
 export const findKnifeRazorTarget = (
   stage: number,
   targetIndex: number,
@@ -40,17 +51,30 @@ export const findKnifeRazorTarget = (
   const safeStage = Math.max(1, Math.floor(stage));
   const safeIndex = Math.max(0, Math.floor(targetIndex));
   const start = normalize(safeStage * 0.47 + safeIndex * GOLDEN_ANGLE);
-  const minimumBladeClearance = 0.42;
-  const shieldMargin = 0.14;
-
-  for (let attempt = 0; attempt < 32; attempt++) {
-    const candidate = normalize(start + (attempt / 32) * TAU);
-    const bladeSafe = embeddedAngles.every((angle) => distance(candidate, angle) >= minimumBladeClearance);
-    const shieldSafe = shields.every((shield) => !insideShield(candidate, shield, shieldMargin));
-    if (bladeSafe && shieldSafe) return candidate;
+  const candidateCount = 256;
+  for (let attempt = 0; attempt < candidateCount; attempt++) {
+    const candidate = normalize(start + (attempt / candidateCount) * TAU);
+    if (isKnifeRazorTargetSafe(candidate, embeddedAngles, shields)) return candidate;
   }
 
-  return start;
+  // Actual stage generation leaves a safe arc, but keep a deterministic
+  // best-clearance fallback for adversarial/custom layouts instead of blindly
+  // returning a potentially shielded starting angle.
+  let bestCandidate = start;
+  let bestClearance = Number.NEGATIVE_INFINITY;
+  for (let attempt = 0; attempt < candidateCount; attempt++) {
+    const candidate = normalize(start + (attempt / candidateCount) * TAU);
+    const bladeClearance = embeddedAngles.length
+      ? Math.min(...embeddedAngles.map((embedded) => distance(candidate, embedded) - 0.22))
+      : Math.PI;
+    const shieldPenalty = shields.some((shield) => insideShield(candidate, shield, 0)) ? -Math.PI : 0;
+    const clearance = Math.min(bladeClearance, shieldPenalty === 0 ? Math.PI : shieldPenalty);
+    if (clearance > bestClearance) {
+      bestClearance = clearance;
+      bestCandidate = candidate;
+    }
+  }
+  return bestCandidate;
 };
 
 export const isKnifeRazorHit = (hitAngle: number, targetAngle: number, stage: number) => {

@@ -15,6 +15,7 @@ import {
   canArmMatrixOverclock,
   getMatrixClearPoints,
   getMatrixPlaybackSpeed,
+  getMatrixRoundPlaybackSpeed,
   getMatrixSequenceLength,
   getMatrixStepPoints,
 } from '../lib/matrixMastery';
@@ -189,10 +190,7 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
     setSequence(newSeq);
     setProtocol(nextProtocol);
 
-    const playbackSpeed = getMatrixPlaybackSpeed(
-      Math.max(180, 340 - round * 15),
-      nextOverclockActive,
-    );
+    const playbackSpeed = getMatrixRoundPlaybackSpeed(round, nextOverclockActive);
     playSequencePlayback(newSeq, playbackSpeed);
   }, [playSequencePlayback]);
 
@@ -265,7 +263,10 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
         scheduleWhenActive(() => {
           state.playerStep = 0;
           setPlayerStep(0);
-          playSequencePlayback(state.sequence);
+          playSequencePlayback(
+            state.sequence,
+            getMatrixRoundPlaybackSpeed(state.round, state.overclockActive),
+          );
         }, 1000);
       }
     }
@@ -278,7 +279,10 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
     setReplaysLeft((prev) => prev - 1);
     state.playerStep = 0;
     setPlayerStep(0);
-    playSequencePlayback(state.sequence);
+    playSequencePlayback(
+      state.sequence,
+      getMatrixRoundPlaybackSpeed(state.round, state.overclockActive),
+    );
   }, [isShowingSequence, playSequencePlayback, replaysLeft]);
 
   const toggleOverclock = useCallback(() => {
@@ -343,7 +347,10 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
           scheduleWhenActive(() => {
             state.playerStep = 0;
             setPlayerStep(0);
-            playSequencePlayback(state.sequence);
+            playSequencePlayback(
+            state.sequence,
+            getMatrixRoundPlaybackSpeed(state.round, state.overclockActive),
+          );
           }, 800);
         }
       }
@@ -382,6 +389,7 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
       if (key in keyMap) {
         handleNodeClick(keyMap[key]);
       } else if (key === 'R') {
+        e.preventDefault();
         handleReplayPattern();
       } else if (key === 'O') {
         toggleOverclock();
