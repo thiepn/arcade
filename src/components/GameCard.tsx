@@ -8,6 +8,9 @@ import { GamePreview } from './GamePreview';
 interface GameCardProps {
   game: GameDefinition;
   highScore: number;
+  rank: number | null;
+  rankLoading?: boolean;
+  rankUnavailable?: boolean;
   playCount: number;
   isFavorite: boolean;
   onSelect: (gameId: string) => void;
@@ -18,6 +21,9 @@ interface GameCardProps {
 export const GameCard: React.FC<GameCardProps> = ({
   game,
   highScore,
+  rank,
+  rankLoading = false,
+  rankUnavailable = false,
   playCount,
   isFavorite,
   onSelect,
@@ -95,15 +101,37 @@ export const GameCard: React.FC<GameCardProps> = ({
       </div>
 
       <div className="pointer-events-none relative z-0 flex flex-col gap-1">
-        <div className="flex items-baseline justify-between gap-2">
-          <h3 id={titleId} className="truncate text-base font-bold text-white">{game.title}</h3>
-          {highScore > 0 && (
-            <span className="shrink-0 rounded border border-amber-500/20 bg-amber-950/30 px-1.5 py-0.5 text-[10px] font-bold text-amber-400 font-mono-arcade">
-              BEST AP {highScore.toLocaleString()}
-            </span>
-          )}
-        </div>
+        <h3 id={titleId} className="truncate text-base font-bold text-white">{game.title}</h3>
         <p id={descriptionId} className="line-clamp-1 text-xs text-[#71717A]">{game.tagline}</p>
+        <div
+          className="mt-2 grid grid-cols-2 gap-1.5 font-mono-arcade"
+          data-game-competition-stats={game.id}
+          aria-label={`Your stats for ${game.title}`}
+        >
+          <span className="flex min-w-0 items-center justify-between gap-1 rounded-md border border-amber-500/20 bg-amber-950/25 px-2 py-1">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-amber-500/70">My AP</span>
+            <strong data-game-ap={game.id} className="truncate text-[11px] font-bold text-amber-300">
+              {highScore.toLocaleString()}
+            </strong>
+          </span>
+          <span
+            className="flex min-w-0 items-center justify-between gap-1 rounded-md border border-cyan-500/20 bg-cyan-950/20 px-2 py-1"
+            aria-label={
+              rankLoading
+                ? 'Rank loading'
+                : rank !== null
+                  ? `Rank ${rank}`
+                  : rankUnavailable
+                    ? 'Rank unavailable'
+                    : 'Unranked'
+            }
+          >
+            <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-500/70">My rank</span>
+            <strong data-game-rank={game.id} className="truncate text-[11px] font-bold text-cyan-300">
+              {rankLoading ? '…' : rank !== null ? `#${rank.toLocaleString()}` : rankUnavailable ? '—' : 'UNRANKED'}
+            </strong>
+          </span>
+        </div>
         <span className="sr-only">Played {playCount.toLocaleString()} times.</span>
       </div>
     </motion.article>

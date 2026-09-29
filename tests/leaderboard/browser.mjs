@@ -30,7 +30,7 @@ async function api(route){
   const isGame=!/(overall|weekly)$/.test(path),weekly=path.endsWith('/weekly'),offset=Number(url.searchParams.get('offset')??0),limit=Number(url.searchParams.get('limit')??20),asOf=Number(url.searchParams.get('asOf')??Date.now());
   const mode=url.searchParams.get('mode')==='all'?'standard':url.searchParams.get('mode')??'standard';
   const rows=ids.map((id,i)=>({id,name:i===44?'Jonathan Longname':i===0?'ABCDEFGHIJKLMNOPQRST':`Player ${i+1}`,country_code:'XX',rank:i+1,ap_micros:(6000-i)*AP_SCALE,contribution_micros:(6000-i)*AP_SCALE,raw_score:isGame?45000:undefined,mode_id:isGame?mode:undefined,source_version:2,achieved_at:asOf-5000,last_achieved_at:asOf-5000,games_played:1}));
-  const bounds=weekBounds(asOf);data={...env,entries:rows.slice(offset,offset+limit),userEntry:rows[44],totalCompetitors:45,asOf,offset,nextOffset:offset+limit<45?offset+limit:null,contributions:[],weekStart:weekly?bounds.start:null,weekEnd:weekly?bounds.end:null};
+  const bounds=weekBounds(asOf),contributions=isGame?[]:[{gameId:'stack',modeId:'standard',rawScore:45,apMicros:3000*AP_SCALE,contributionMicros:3000*AP_SCALE,completedAt:asOf-5000}];data={...env,entries:rows.slice(offset,offset+limit),userEntry:rows[44],totalCompetitors:45,asOf,offset,nextOffset:offset+limit<45?offset+limit:null,contributions,weekStart:weekly?bounds.start:null,weekEnd:weekly?bounds.end:null};
  }else {status=404;data={...env,code:'not_found'}}
  await route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
 }
@@ -39,7 +39,11 @@ try{
  browser=await chromium.launch({executablePath:process.env.SCORING_CHROME_PATH||'/usr/bin/chromium',args:['--no-sandbox']});mkdirSync('balance-report/leaderboard',{recursive:true});
  for(const width of [320,390,768,1280]){
   const ctx=await browser.newContext({viewport:{width,height:width===320?568:844},reducedMotion:'reduce'});await ctx.addInitScript(({credential})=>localStorage.setItem('micro_arcade_guest_credential_v1',credential),{credential});
-  const p=await ctx.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.route('**/test-api/**',api);await p.goto(base);await p.locator('#header-leaderboards-pill-btn').click();
+  const p=await ctx.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.route('**/test-api/**',api);await p.goto(base);
+  const stackCard=p.locator('#game-card-stack');await p.waitForFunction(()=>document.querySelector('[data-game-rank="stack"]')?.textContent==='#45');
+  check((await stackCard.locator('[data-game-ap="stack"]').textContent())?.replace(/\D/g,'')==='5956','game card shows player AP');
+  check(await stackCard.locator('[data-game-rank="stack"]').textContent()==='#45','game card shows per-game rank');
+  await p.locator('#header-leaderboards-pill-btn').click();
   const panel=p.locator('[data-leaderboard-v3]');await panel.locator('[data-leaderboard-player]').first().waitFor();
   check(await panel.locator('[data-leaderboard-player]').count()===21,'top 20 plus pinned self');
   const longName=panel.getByRole('button',{name:'Open player profile for ABCDEFGHIJKLMNOPQRST'});check(await longName.textContent()==='ABCDEFGHIJKLMNOPQRST','full long name retained');
@@ -76,5 +80,5 @@ try{
  // A stale callback from the old mode cannot end the new run.
  await p.evaluate(()=>window.scoreFixture.select('rhythm'));await p.waitForSelector('[data-fixture-game="rhythm"] [data-test-engine]');await p.waitForTimeout(200);
  await p.evaluate(()=>{window.oldFinish=window.scoreFixture.finish;window.scoreFixture.mode('hypernova')});await p.waitForTimeout(200);await p.evaluate(()=>window.oldFinish(12345,'cyber_odyssey'));check(await p.locator('[data-result-raw-score]').count()===0,'old-mode callback ignored');
- await ctx.close();console.log(`Leaderboard browser PASS: ${assertions} UI/failure assertions, 4 responsive widths, player tiers/profiles, pagination, mode context, IndexedDB reload and lost-response recovery.`);
+ await ctx.close();console.log(`Leaderboard browser PASS: ${assertions} UI/failure assertions, 4 responsive widths, home-card AP/rank, player tiers/profiles, pagination, mode context, IndexedDB reload and lost-response recovery.`);
 }finally{await browser?.close();server.kill('SIGTERM');}

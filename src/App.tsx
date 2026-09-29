@@ -1,5 +1,12 @@
 import { startLeaderboardSync } from './lib/leaderboardOutbox';
 import { currentBestAP,currentBestRaw } from './lib/localCompetition';
+import {
+  getGlobalLeaderboardForGame,
+  isLiveLeaderboardConfigured,
+  LEADERBOARD_UPDATED_EVENT,
+  refreshGameLeaderboard,
+  refreshOverallLeaderboard,
+} from './lib/leaderboards';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -66,6 +73,95 @@ export default function App() {
   const [stressTesterOpen, setStressTesterOpen] = useState<boolean>(false);
   const [statsModalTab, setStatsModalTab] = useState<'stats' | 'achievements' | 'leaderboards'>('stats');
   const [statsModalGameId, setStatsModalGameId] = useState<string | undefined>(undefined);
+  const [homeLeaderboardTick, setHomeLeaderboardTick] = useState(0);
+  const [rankLoadingIds, setRankLoadingIds] = useState<Set<string> | null>(() =>
+    isLiveLeaderboardConfigured() ? null : new Set()
+  );
+  const [rankUnavailableIds, setRankUnavailableIds] = useState<Set<string>>(new Set());
+  const [rankSummaryUnavailable, setRankSummaryUnavailable] = useState(false);
+
+  useEffect(() => {
+    const handleLeaderboardUpdate = () => setHomeLeaderboardTick((tick) => tick + 1);
+    window.addEventListener(LEADERBOARD_UPDATED_EVENT, handleLeaderboardUpdate);
+    return () => window.removeEventListener(LEADERBOARD_UPDATED_EVENT, handleLeaderboardUpdate);
+  }, []);
+
+  // Keep the home library's per-game AP/rank summary current without fetching all 32 boards.
+  useEffect(() => {
+    if (activeGameId !== null) return;
+    if (!isLiveLeaderboardConfigured()) {
+      setRankLoadingIds(new Set());
+      setRankUnavailableIds(new Set());
+      setRankSummaryUnavailable(true);
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    const refreshHomeCompetition = async () => {
+      const candidates = new Set<string>();
+      for (const game of GAMES_REGISTRY) {
+        if (currentBestAP(stats, game.id) > 0) candidates.add(game.id);
+      }
+
+      setRankLoadingIds(null);
+      setRankUnavailableIds(new Set());
+      setRankSummaryUnavailable(false);
+
+      try {
+        const overall = await refreshOverallLeaderboard({ signal: controller.signal });
+        for (const contribution of overall.contributions ?? []) candidates.add(contribution.gameId);
+      } catch {
+        if (!cancelled) setRankSummaryUnavailable(true);
+      }
+
+      if (cancelled) return;
+
+      const validIds = [...candidates].filter((gameId) =>
+        GAMES_REGISTRY.some((game) => game.id === gameId)
+      );
+      setRankLoadingIds(new Set(validIds));
+
+      let cursor = 0;
+      const worker = async () => {
+        while (!cancelled) {
+          const gameId = validIds[cursor++];
+          if (!gameId) return;
+          try {
+            await refreshGameLeaderboard(gameId, 'all', { signal: controller.signal });
+          } catch {
+            if (!cancelled) {
+              setRankUnavailableIds((current) => {
+                const next = new Set(current);
+                next.add(gameId);
+                return next;
+              });
+            }
+          } finally {
+            if (!cancelled) {
+              setRankLoadingIds((current) => {
+                if (current === null || !current.has(gameId)) return current;
+                const next = new Set(current);
+                next.delete(gameId);
+                return next;
+              });
+            }
+          }
+        }
+      };
+
+      await Promise.all(
+        Array.from({ length: Math.min(4, validIds.length) }, () => worker())
+      );
+    };
+
+    void refreshHomeCompetition();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [activeGameId]);
 
   // Sync sound settings with sound engine
   useEffect(() => {
@@ -233,6 +329,22 @@ export default function App() {
     });
   }, [activeTab, selectedCategory, searchQuery, stats.favorites, stats.recentlyPlayed]);
 
+  const gameCompetition = useMemo(() => {
+    void homeLeaderboardTick;
+    return Object.fromEntries(
+      GAMES_REGISTRY.map((game) => {
+        const board = getGlobalLeaderboardForGame(game.id);
+        return [
+          game.id,
+          {
+            ap: Math.max(currentBestAP(stats, game.id), board.userEntry?.score ?? 0),
+            rank: board.userRank,
+          },
+        ];
+      })
+    ) as Record<string, { ap: number; rank: number | null }>;
+  }, [stats, homeLeaderboardTick]);
+
   const activeGame = GAMES_REGISTRY.find((g) => g.id === activeGameId);
 
   const scrollToLibrary = () => {
@@ -328,18 +440,31 @@ export default function App() {
           {filteredGames.length > 0 ? (
             <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               <AnimatePresence mode="popLayout">
-                {filteredGames.map((game, index) => (
-                  <GameCard
-                    key={game.id}
-                    game={game}
-                    highScore={currentBestAP(stats,game.id)}
-                    playCount={stats.playCounts[game.id] || 0}
-                    isFavorite={stats.favorites.includes(game.id)}
-                    onSelect={handleLaunchGame}
-                    onToggleFavorite={handleToggleFavorite}
-                    index={index}
-                  />
-                ))}
+                {filteredGames.map((game, index) => {
+                  const competition = gameCompetition[game.id] ?? { ap: 0, rank: null };
+                  const rankLoading =
+                    competition.rank === null &&
+                    (rankLoadingIds === null || rankLoadingIds.has(game.id));
+                  const rankUnavailable =
+                    competition.rank === null &&
+                    !rankLoading &&
+                    (rankUnavailableIds.has(game.id) || rankSummaryUnavailable);
+                  return (
+                    <GameCard
+                      key={game.id}
+                      game={game}
+                      highScore={competition.ap}
+                      rank={competition.rank}
+                      rankLoading={rankLoading}
+                      rankUnavailable={rankUnavailable}
+                      playCount={stats.playCounts[game.id] || 0}
+                      isFavorite={stats.favorites.includes(game.id)}
+                      onSelect={handleLaunchGame}
+                      onToggleFavorite={handleToggleFavorite}
+                      index={index}
+                    />
+                  );
+                })}
               </AnimatePresence>
             </motion.div>
           ) : (
