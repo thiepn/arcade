@@ -171,6 +171,9 @@ for (const token of ['getTypeRushWave', 'chooseTypeRushWord', 'waveLabel', 'wave
   assert(typeRushSource.includes(token), `Type Rush P2 integration missing ${token}`);
 }
 assert(!typeRushSource.includes('const WORD_BANK = ['), 'Type Rush reverted to one flat word bank');
+assert(typeRushSource.includes('lastSpawnGameTimeMs'), 'Type Rush spawning no longer tracks active game time');
+assert(typeRushSource.includes('activeGameTimeMs - state.lastSpawnGameTimeMs'), 'Type Rush spawning still uses wall-clock time across pause/resume');
+assert(!typeRushSource.includes('currentTime - state.lastSpawn'), 'Type Rush reverted to wall-clock spawn cadence');
 for (const token of ['createNeonRailPhrase', 'createNeonRailChallengePattern', 'phraseName', 'phaseCore']) {
   assert(railSource.includes(token), `Neon Rail P2 integration missing ${token}`);
 }

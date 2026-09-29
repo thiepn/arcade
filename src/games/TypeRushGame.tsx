@@ -75,7 +75,7 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
     streak: 0,
     charsTyped: 0,
     startTime: Date.now(),
-    lastSpawn: 0,
+    lastSpawnGameTimeMs: Number.NEGATIVE_INFINITY,
     gameTime: 0,
     waveIndex: 0,
     freezeTimer: 0,
@@ -256,6 +256,7 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
     state.charsTyped = 0;
     state.words = [];
     state.gameTime = 0;
+    state.lastSpawnGameTimeMs = Number.NEGATIVE_INFINITY;
     state.waveIndex = 0;
     state.freezeTimer = 0;
     state.relayState = createTypeRushRelayState();
@@ -297,9 +298,13 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
           publishRelayHud(state.relayState);
           if (soundEnabledRef.current) sounds.playChime(700 + wave.index * 120);
         }
-        if (currentTime - state.lastSpawn > wave.spawnIntervalMs && state.words.length < wave.maxWords) {
+        const activeGameTimeMs = state.gameTime * 1000;
+        if (
+          activeGameTimeMs - state.lastSpawnGameTimeMs > wave.spawnIntervalMs &&
+          state.words.length < wave.maxWords
+        ) {
           spawnWord();
-          state.lastSpawn = currentTime;
+          state.lastSpawnGameTimeMs = activeGameTimeMs;
         }
 
         let livesLost = 0;
