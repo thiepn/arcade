@@ -29,6 +29,7 @@
 - Freeze Chrono steering/direct-aim input—including its on-screen steering paddles—while paused/dead and reject repeat/modifier key events so Focus/EMP cannot auto-retrigger from a held key.
 - Make Cyber Drift's Nitro keyboard action edge-triggered and modifier-safe while preserving held steering from the initial keydown.
 - Extend `quality:gameplay-p13` and the dedicated Drift gate to certify shell-shortcut ownership, suspended pointer state, and discrete mastery actions.
+- Align the P18 Gravity clarity profile with the new `Q` Recall binding so first-run/help teaching and registry controls stay identical.
 
 ### P12 next-mastery-trio hardening — 2026-09-29
 - Stop Gravity Tower from farming Apex mastery on repeated or alternating rebounds across already visited platforms: precision streaks, bonuses, charges, and the later Apex Route now advance only on each platform's first landing.
