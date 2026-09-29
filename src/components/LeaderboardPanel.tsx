@@ -1,12 +1,12 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
-import { CalendarDays, ChevronRight, Crown, Gamepad2, Globe2, Medal, RefreshCw, ShieldCheck, Sparkles, Trophy, Users } from 'lucide-react';
+import { ArrowLeft, CalendarDays, ChevronRight, Crown, Gamepad2, Globe2, Medal, RefreshCw, ShieldCheck, Sparkles, Trophy, Users } from 'lucide-react';
 import { GAMES_REGISTRY } from '../data/games';
 import type { UserStats } from '../types';
 import { AP_SCALE,formatPoints,modeLabel,modesFor,POLICY_ID,RATING_GAME_COUNT,SUBMISSION_MESSAGES } from '../../shared/leaderboard/domain';
 import { currentGameBests,localRating } from '../lib/localCompetition';
 import { existingCredential,exportPlayerRecoveryCode,restorePlayerRecoveryCode,IDENTITY_EVENT,leaderboardRequest } from '../lib/leaderboardIdentity';
 import { flushUploads,getUploadHistory,OUTBOX_EVENT,PUBLISHED_EVENT,refreshReviewedUploads,uploadsAreDurable,type PendingRun } from '../lib/leaderboardOutbox';
-import { Contribution,GameLeaderboardData,GlobalOverallEntry,LeaderboardEntry,OverallLeaderboardData,getGlobalLeaderboardForGame,getOverallArcadeLeaderboard,getWeeklyOverallLeaderboard,getPlayerContributions,isLiveLeaderboardConfigured,refreshGameLeaderboard,refreshOverallLeaderboard,refreshWeeklyOverallLeaderboard } from '../lib/leaderboards';
+import { GameLeaderboardData,GlobalOverallEntry,LeaderboardEntry,LeaderboardDivision,OverallLeaderboardData,PublicPlayerProfileData,getGlobalLeaderboardForGame,getOverallArcadeLeaderboard,getWeeklyOverallLeaderboard,getPublicPlayerProfile,isLiveLeaderboardConfigured,refreshGameLeaderboard,refreshOverallLeaderboard,refreshWeeklyOverallLeaderboard } from '../lib/leaderboards';
 import './leaderboard.css';
 type Scope='overall'|'weekly'|'game';
 type Board=GameLeaderboardData|OverallLeaderboardData;
@@ -65,14 +65,15 @@ export function LeaderboardPanel({stats,initialGameId}:{stats:UserStats;initialG
  const [gameId,setGameId]=useState(initialGameId??GAMES_REGISTRY[0].id),[mode,setMode]=useState('all');
  const [board,setBoard]=useState<Board>(()=>initialGameId?getGlobalLeaderboardForGame(initialGameId):getOverallArcadeLeaderboard());
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[tick,setTick]=useState(0),[clock,setClock]=useState(Date.now());
- const [expanded,setExpanded]=useState<string|null>(null),[breakdown,setBreakdown]=useState<Contribution[]>([]),[detailError,setDetailError]=useState(''),[detailBusy,setDetailBusy]=useState(false);
+ const [selectedPlayer,setSelectedPlayer]=useState<{id:string;name:string;country:string;division:LeaderboardDivision}|null>(null);
+ const [publicProfile,setPublicProfile]=useState<PublicPlayerProfileData|null>(null),[profileBusy,setProfileBusy]=useState(false),[profileError,setProfileError]=useState(''),[profileTick,setProfileTick]=useState(0);
  const rolledWeek=useRef(0);
- const sequence=useRef(0),detailSequence=useRef(0),abort=useRef<AbortController|null>(null);
+ const sequence=useRef(0),profileSequence=useRef(0),abort=useRef<AbortController|null>(null);
  const live=isLiveLeaderboardConfigured();
  const fetchBoard=useCallback((options:{offset?:number;asOf?:number;signal?:AbortSignal}={})=>scope==='game'?refreshGameLeaderboard(gameId,mode,options):scope==='weekly'?refreshWeeklyOverallLeaderboard(options):refreshOverallLeaderboard(options),[scope,gameId,mode]);
  useEffect(()=>{
   const id=++sequence.current;abort.current?.abort();const controller=new AbortController();abort.current=controller;
-  setError('');setExpanded(null);detailSequence.current++;
+  setError('');
   setBoard(scope==='game'?getGlobalLeaderboardForGame(gameId,0,0,mode):scope==='weekly'?getWeeklyOverallLeaderboard():getOverallArcadeLeaderboard());
   if(!live){setBusy(false);return;}
   setBusy(true);void fetchBoard({signal:controller.signal}).then(data=>{if(id===sequence.current)setBoard(data);}).catch(e=>{if(id===sequence.current&&!controller.signal.aborted)setError(briefError(e));}).finally(()=>{if(id===sequence.current)setBusy(false);});
@@ -84,35 +85,74 @@ export function LeaderboardPanel({stats,initialGameId}:{stats:UserStats;initialG
   return()=>{window.removeEventListener(PUBLISHED_EVENT,update);window.removeEventListener(IDENTITY_EVENT,update);clearInterval(interval);};
  },[]);
  useEffect(()=>{if(scope==='weekly'&&'weekEnd'in board&&board.weekEnd&&clock>=board.weekEnd&&rolledWeek.current!==board.weekEnd){rolledWeek.current=board.weekEnd;setTick(n=>n+1);}},[scope,board,clock]);
- useEffect(()=>()=>{detailSequence.current++;},[]);
+ useEffect(()=>{
+  if(!selectedPlayer){setPublicProfile(null);setProfileError('');setProfileBusy(false);return;}
+  const id=++profileSequence.current;setPublicProfile(null);setProfileError('');setProfileBusy(true);
+  void getPublicPlayerProfile(selectedPlayer.id).then(data=>{if(id===profileSequence.current)setPublicProfile(data);}).catch(e=>{if(id===profileSequence.current)setProfileError(briefError(e));}).finally(()=>{if(id===profileSequence.current)setProfileBusy(false);});
+  return()=>{profileSequence.current++;};
+ },[selectedPlayer,profileTick]);
  const loadMore=async()=>{
   if(busy||board.nextOffset===null||board.nextOffset===undefined)return;const id=sequence.current;setBusy(true);setError('');
   try{const next=await fetchBoard({offset:board.nextOffset,asOf:board.asOf,signal:abort.current?.signal});if(id===sequence.current)setBoard(previous=>({...next,topEntries:[...new Map([...previous.topEntries,...next.topEntries].map(r=>[r.id,r])).values()]} as Board));}
   catch(e){if(id===sequence.current)setError(briefError(e));}finally{if(id===sequence.current)setBusy(false);}
  };
- const showDetails=async(entry:Entry)=>{
-  if(expanded===entry.id){setExpanded(null);detailSequence.current++;return;}
-  const id=++detailSequence.current;setExpanded(entry.id);setBreakdown([]);setDetailError('');setDetailBusy(true);
-  try{const data=await getPlayerContributions(entry.id,scope==='weekly',board.asOf);if(id===detailSequence.current)setBreakdown(data);}
-  catch(e){if(id===detailSequence.current)setDetailError(briefError(e));}finally{if(id===detailSequence.current)setDetailBusy(false);}
- };
  const localBest=scope==='game'?(mode==='all'?currentGameBests(stats)[gameId]:stats.modeBests?.[gameId+':'+mode]):undefined;
  const entries=board.topEntries as Entry[];
  const own=board.userEntry;
  const renderRank=(rank:number)=>rank===1?<Crown aria-hidden="true"/>:rank===2?<Medal aria-hidden="true"/>:rank===3?<Medal aria-hidden="true"/>:<span>#{rank}</span>;
+ const tierLabel=(division:LeaderboardDivision)=>division.charAt(0).toUpperCase()+division.slice(1)+' tier';
+ const openPlayer=(entry:Entry)=>setSelectedPlayer({id:entry.id,name:entry.name,country:entry.country,division:entry.division??'bronze'});
  const renderRow=(entry:Entry)=><li key={entry.id} className={`lb-row lb-division-${entry.division??'bronze'} ${entry.rank<=3?`lb-podium lb-podium-${entry.rank}`:''} ${entry.isUser?'lb-self':''}`} data-leaderboard-player={entry.id}>
   <div className="lb-position" aria-label={`Rank ${entry.rank}`}>{renderRank(entry.rank)}</div>
   <div className="lb-player-cell">
    <span className="lb-country" aria-hidden="true">{entry.country}</span>
    <div className="lb-person">
-    {scope==='game'?<span className="lb-name">{entry.name}</span>:<button className="lb-name lb-name-button" type="button" aria-label={`Show contributions for ${entry.name}`} aria-expanded={expanded===entry.id} onClick={()=>void showDetails(entry)}>{entry.name}</button>}
-    <div className="lb-player-meta">{entry.isUser&&<span className="lb-you">YOU</span>}<span>{entry.division?.toUpperCase()??'BRONZE'} DIVISION</span></div>
+    <div className="lb-name-line">
+     <button className="lb-name lb-name-button" type="button" aria-label={`Open player profile for ${entry.name}`} onClick={()=>openPlayer(entry)}>{entry.name}</button>
+     <span className={`lb-tier lb-tier-${entry.division??'bronze'}`}>{tierLabel(entry.division??'bronze')}</span>
+    </div>
+    <div className="lb-player-meta">{entry.isUser&&<span className="lb-you">YOU</span>}<span>VIEW PROFILE</span></div>
    </div>
   </div>
   <div className="lb-metrics">{scope==='game'&&'score'in entry?<><strong title={`${Math.floor((entry.apMicros??0)/AP_SCALE).toLocaleString()} AP`}>{formatPoints(entry.score)} <em>AP</em></strong><span>Score {entry.rawScore?.toLocaleString()??'Unavailable'} · {modeLabel(gameId,entry.modeId)}</span></>:<><strong title={`${formatPoints('ratingScore'in entry?entry.ratingScore:0)} overall rating`}>{formatPoints('ratingScore'in entry?entry.ratingScore:0)} <em>RATING</em></strong><span>{'gamesPlayed'in entry?entry.gamesPlayed:0} ranked games</span></>}</div>
-  {expanded===entry.id&&<div className="lb-breakdown" aria-live="polite">{detailBusy?<p>Loading contributions…</p>:detailError?<p role="alert">{detailError}</p>:<ul>{breakdown.map(c=><li key={c.gameId}><div><strong>{titleFor(c.gameId)}</strong><span>{modeLabel(c.gameId,c.modeId)} · Score {c.rawScore.toLocaleString()}</span></div><div><strong>{formatPoints(c.apMicros/AP_SCALE)} AP</strong><span>Counts toward overall rating</span></div></li>)}</ul>}</div>}
  </li>;
  const scopeCopy=scope==='game'?'Ranked by AP. Raw Score remains specific to its game and mode.':scope==='weekly'?'Best result from each game completed during the current UTC week. Rating stays on the same 0–10,000 scale.':'One best contribution per game, combined into a simple 0–10,000 overall rating.';
+ if(selectedPlayer){
+  const shown=publicProfile;
+  const division=shown?.division??selectedPlayer.division;
+  return <section className="lb-panel lb-player-profile-page" aria-label={`Player profile for ${shown?.name??selectedPlayer.name}`} data-player-profile>
+   <button type="button" className="lb-button lb-profile-back" aria-label="Back to leaderboard" onClick={()=>setSelectedPlayer(null)}><ArrowLeft aria-hidden="true"/> Back to leaderboard</button>
+   <div className="lb-profile-hero">
+    <div className="lb-profile-identity">
+     <span className="lb-profile-flag" aria-hidden="true">{shown?.country??selectedPlayer.country}</span>
+     <div>
+      <div className="lb-profile-name-line"><h2>{shown?.name??selectedPlayer.name}</h2><span className={`lb-tier lb-tier-${division}`}>{tierLabel(division)}</span></div>
+      <p>{shown?`${shown.countryCode} · PLAYER ${shown.id.slice(0,8).toUpperCase()}`:'Loading public arcade profile…'}</p>
+     </div>
+    </div>
+   </div>
+   {profileBusy&&<div className="lb-profile-status" role="status">Loading player profile…</div>}
+   {profileError&&<div className="lb-warning" role="alert">{profileError}<button type="button" className="lb-button" onClick={()=>setProfileTick(n=>n+1)}>Retry</button></div>}
+   {shown&&<>
+    <div className="lb-profile-stats">
+     <div><Globe2 aria-hidden="true"/><span>Global rank</span><strong>#{shown.globalRank}</strong></div>
+     <div><Trophy aria-hidden="true"/><span>Overall rating</span><strong>{formatPoints(shown.globalRating)}</strong></div>
+     <div><CalendarDays aria-hidden="true"/><span>Weekly rank</span><strong>{shown.weeklyRank?`#${shown.weeklyRank}`:'—'}</strong></div>
+     <div><Gamepad2 aria-hidden="true"/><span>Ranked games</span><strong>{shown.rankedGames}</strong></div>
+    </div>
+    <div className="lb-profile-summary">
+     <div><span>Tier</span><strong>{tierLabel(shown.division)}</strong></div>
+     <div><span>Weekly rating</span><strong>{formatPoints(shown.weeklyRating)}</strong></div>
+     <div><span>Total AP</span><strong>{formatPoints(shown.totalScore)}</strong></div>
+     <div><span>Last ranked activity</span><strong>{new Date(shown.lastActiveAt).toLocaleDateString()}</strong></div>
+    </div>
+    <div className="lb-profile-contributions">
+     <div className="lb-profile-section-title"><div><Trophy aria-hidden="true"/><span>Best game contributions</span></div><small>{shown.contributions.length} ranked {shown.contributions.length===1?'game':'games'}</small></div>
+     {shown.contributions.length?<ol>{shown.contributions.map(c=><li key={c.gameId}><div><strong>{titleFor(c.gameId)}</strong><span>{modeLabel(c.gameId,c.modeId)} · Score {c.rawScore.toLocaleString()}</span></div><div><strong>{formatPoints(c.apMicros/AP_SCALE)} AP</strong><span>Best contribution</span></div></li>)}</ol>:<p className="lb-profile-status">No public ranked contributions are available.</p>}
+    </div>
+   </>}
+  </section>;
+ }
  return <section className={`lb-panel lb-scope-${scope}`} aria-label="Published arcade leaderboard" data-leaderboard-v3>
   <div className="lb-tabs" role="group" aria-label="Leaderboard view">
    <button type="button" className="lb-button" aria-pressed={scope==='overall'} onClick={()=>setScope('overall')}><Globe2 aria-hidden="true"/><span>Global</span></button>
