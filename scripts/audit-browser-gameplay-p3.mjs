@@ -39,6 +39,13 @@ const games = [
   ['neonrail', ['ArrowLeft', 'Space']],
 ];
 
+const canvasGames = new Set([
+  'orbit', 'stack', 'dodge', 'pulse', 'oneline', 'breakout', 'chain', 'gravity',
+  'blade', 'pinball', 'chrono', 'drift', 'vanguard', 'slingshot', 'snake',
+  'rhythm', 'tower', 'pacmaze', 'flappyaero', 'roadcross', 'bubblebuster',
+  'astroblaster', 'laserrope', 'blockdrop', 'knifetarget', 'airhockey', 'neonrail',
+]);
+
 const profiles = QUICK
   ? [{ name: 'desktop', viewport: { width: 1280, height: 800 }, isMobile: false, hasTouch: false }]
   : [
@@ -202,7 +209,14 @@ const runGame = async (page, profile, gameId, keys) => {
     await page.locator(`#play-btn-${gameId}`).click({ timeout: 8000 });
     const shell = page.locator('.game-shell');
     await shell.waitFor({ state: 'visible', timeout: 8000 });
-    await page.waitForTimeout(180);
+    await page.waitForFunction(() => {
+      const stage = document.querySelector('.game-shell main');
+      return stage?.getAttribute('data-game-engine-ready') === 'true';
+    }, undefined, { timeout: 8000 });
+    await page.waitForFunction(() => !document.querySelector('.game-shell [role="status"][aria-busy="true"]'), undefined, { timeout: 4000 });
+    const initialSessionKey = await page.locator('.game-shell main').getAttribute('data-game-session-key');
+    assert(initialSessionKey, 'game session key missing after engine mount');
+    await page.waitForTimeout(80);
 
     const shellBox = await shell.boundingBox();
     const stageBox = await page.locator('.game-shell main').boundingBox();
@@ -265,6 +279,9 @@ const runGame = async (page, profile, gameId, keys) => {
     assert(beforeFrames.maxGap < 700, `severe pre-input frame gap: ${beforeFrames.maxGap.toFixed(0)}ms`);
 
     const canvasBefore = await canvasSignal(page);
+    if (canvasGames.has(gameId)) {
+      assert(canvasBefore.present, 'expected canvas game mounted without a canvas');
+    }
     if (canvasBefore.present) {
       assert(canvasBefore.cssWidth > 100 && canvasBefore.cssHeight > 100, 'canvas has collapsed CSS size');
       assert(canvasBefore.backingWidth > 0 && canvasBefore.backingHeight > 0, 'canvas backing store is empty');
@@ -283,8 +300,16 @@ const runGame = async (page, profile, gameId, keys) => {
     assert(afterFrames.maxGap < 700, `severe post-input frame gap: ${afterFrames.maxGap.toFixed(0)}ms`);
 
     await page.locator('#game-restart-btn').click();
-    await page.waitForTimeout(120);
+    await page.waitForFunction((previousKey) => {
+      const stage = document.querySelector('.game-shell main');
+      return stage?.getAttribute('data-game-session-key') !== previousKey &&
+        stage?.getAttribute('data-game-engine-ready') === 'true';
+    }, initialSessionKey, { timeout: 8000 });
     assert(await shell.isVisible(), 'game shell disappeared after restart');
+    assert(
+      await page.locator('.game-shell [role="status"][aria-busy="true"]').count() === 0,
+      'game remained in loading fallback after restart',
+    );
 
     const longTasks = await page.evaluate(() => (globalThis.__p3LongTasks || []).slice());
     const longestTask = longTasks.length ? Math.max(...longTasks) : 0;
@@ -297,6 +322,10 @@ const runGame = async (page, profile, gameId, keys) => {
 
     await page.locator('#game-back-btn').click();
     await page.locator(`#play-btn-${gameId}`).waitFor({ state: 'visible', timeout: 4000 });
+    assert(
+      await page.evaluate(() => !document.body.classList.contains('game-active')),
+      'game-active body lock survived exit to arcade',
+    );
 
     return {
       gameId,

@@ -23,6 +23,10 @@
 
 ## Unreleased
 
+### P3 browser/runtime hardening — 2026-09-29
+- Make the all-game P3 browser gate require a genuinely mounted lazy game engine rather than merely a visible shared shell, and verify the loading fallback has cleared.
+- Require the expected canvas on all 27 canvas-based cabinets, verify restart produces a fresh ready engine session, and verify exiting a game releases the global `game-active` page lock.
+
 ### P2 replay-depth hardening — 2026-09-29
 - Preserve Memory Matrix playback timing across pause/resume: pending pattern flashes now retain their remaining active-time delay instead of expiring behind the pause overlay and collapsing together after resume.
 - Move Type Rush spawn cadence onto active game time so a pause does not consume the hidden wait until the next word or inject an artificial spawn immediately after resume.

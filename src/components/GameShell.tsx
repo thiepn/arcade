@@ -67,6 +67,7 @@ export const GameShell: React.FC<GameShellProps> = ({
   const [scoringMode, setScoringMode] = useState(() => defaultScoreMode(game.id));
   const [isPaused, setIsPaused] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [engineReadyState, setEngineReadyState] = useState(false);
   const shellRef = useRef<HTMLDivElement>(null);
   const gameStageRef = useRef<HTMLElement>(null);
   const gamepadCursorRef = useRef<HTMLDivElement>(null);
@@ -87,7 +88,11 @@ export const GameShell: React.FC<GameShellProps> = ({
     const id=key+':'+mode;let request=requestsRef.current.get(id);
     if(!request){request=crypto.randomUUID();requestsRef.current.set(id,request);}return request;
   };
-  const engineReady=useCallback(()=>{engineReadyRef.current=true;clockRef.current.setActive(clockRunningRef.current);},[]);
+  const engineReady=useCallback(()=>{
+    engineReadyRef.current=true;
+    setEngineReadyState(true);
+    clockRef.current.setActive(clockRunningRef.current);
+  },[]);
   useEffect(()=>{
     let cancelled=false;
     const update=async()=>{if(!submittedSessionId)return;const run=(await getUploadHistory()).find(r=>r.id===submittedSessionId);
@@ -191,7 +196,7 @@ export const GameShell: React.FC<GameShellProps> = ({
     prevArcadePointsRef.current = 0;
     setGameOverData(null);
     setSubmissionStatus('local');setSubmissionMessage('');setSubmittedSessionId(null);
-    clockRef.current=new RunClock();engineReadyRef.current=false;
+    clockRef.current=new RunClock();engineReadyRef.current=false;setEngineReadyState(false);
     setIsPaused(false);
     gameOverHandledRef.current = false;
     leaderboardSessionRef.current = null;
@@ -210,7 +215,7 @@ export const GameShell: React.FC<GameShellProps> = ({
     setGameOverData(null);gameOverHandledRef.current=false;setIsPaused(false);
     setSubmissionStatus('local');setSubmissionMessage('');setSubmittedSessionId(null);
     leaderboardSessionRef.current=null;leaderboardSessionPromiseRef.current=null;
-    clockRef.current=new RunClock();engineReadyRef.current=false;
+    clockRef.current=new RunClock();engineReadyRef.current=false;setEngineReadyState(false);
   },[game.id,scoringMode]);
 
   const handleScoreUpdate = useCallback((sessionKey: number, rawScore: number, modeId?: string) => {
@@ -589,6 +594,8 @@ export const GameShell: React.FC<GameShellProps> = ({
       {/* Main Game Stage Area */}
       <main
         ref={gameStageRef}
+        data-game-engine-ready={engineReadyState ? 'true' : 'false'}
+        data-game-session-key={gameSessionKey}
         className={`relative flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden transition-all duration-150 ${
           isFullscreen
             ? 'h-full max-w-none max-h-none p-0 pt-12'
