@@ -24,11 +24,16 @@ export interface BoardMeta{asOf?:number;offset?:number;nextOffset?:number|null;c
 export interface GameLeaderboardData extends BoardMeta{topEntries:LeaderboardEntry[];userRank:number|null;userEntry:LeaderboardEntry|null;totalCompetitors:number}
 export interface OverallLeaderboardData extends BoardMeta{topEntries:GlobalOverallEntry[];userRank:number|null;userEntry:GlobalOverallEntry;totalWorldCompetitors:number;weekStart?:number;weekEnd?:number}
 export interface GuestProfileData{id:string;name:string;countryCode:string;createdAt:number;submissions:number;rankedGames:number;reviews?:number;legacyRuns?:number}
+export interface PublicPlayerProfileData{
+ id:string;name:string;country:string;countryCode:string;globalRank:number;weeklyRank:number|null;globalRating:number;weeklyRating:number;
+ totalScore:number;rankedGames:number;division:LeaderboardDivision;lastActiveAt:number;contributions:Contribution[];
+}
 interface ServerRow{
  id:string;name:string;country_code:string;rank:number;ap_micros:number;contribution_micros:number;
  raw_score?:number;mode_id?:string;source_version?:number;achieved_at:number;last_achieved_at:number;games_played:number;isUser?:boolean;
 }
 interface ServerBoard{entries:ServerRow[];userEntry:ServerRow|null;totalCompetitors:number;asOf:number;offset:number;nextOffset:number|null;contributions:Contribution[];weekStart?:number;weekEnd?:number}
+interface PlayerInspection{player:ServerRow|null;contributions:Contribution[];asOf:number}
 const CACHE_PREFIX='micro_arcade_board_v3:';
 export const LEADERBOARD_UPDATED_EVENT='micro-arcade-leaderboards-updated';
 const cache=new Map<string,{owner:string;policyId:string;savedAt:number;data:unknown}>();
@@ -112,6 +117,20 @@ export async function simulateLiveCompetition(gameId:string):Promise<void>{await
 export async function getPlayerContributions(playerId:string,weekly=false,asOf?:number):Promise<Contribution[]>{
  if(!UUID.test(playerId))throw new Error('Invalid player');const query=new URLSearchParams({period:weekly?'weekly':'overall'});if(asOf)query.set('asOf',String(asOf));
  const data=await leaderboardRequest<{contributions:unknown}>(`/v3/players/${playerId}/contributions?${query}`);if(!checkContributions(data.contributions))throw new LeaderboardError('invalid_response','Invalid contribution breakdown.',503);return data.contributions;
+}
+export async function getPublicPlayerProfile(playerId:string):Promise<PublicPlayerProfileData>{
+ if(!UUID.test(playerId))throw new Error('Invalid player');
+ const inspect=async(period:'overall'|'weekly'):Promise<PlayerInspection>=>{
+  const data=await leaderboardRequest<PlayerInspection>(`/v3/players/${playerId}/contributions?period=${period}`);
+  if(!data||!safeInteger(data.asOf)||(data.player!==null&&!checkRow(data.player))||!checkContributions(data.contributions))throw new LeaderboardError('invalid_response','Invalid player profile.',503);
+  return data;
+ };
+ const [overall,weekly]=await Promise.all([inspect('overall'),inspect('weekly')]);
+ if(!overall.player)throw new LeaderboardError('player_not_ranked','This player is no longer ranked.',404);
+ const row=overall.player,week=weekly.player;
+ return {id:row.id,name:row.name,country:flag(row.country_code),countryCode:row.country_code,globalRank:row.rank,weeklyRank:week?.rank??null,
+  globalRating:displayRating(row.contribution_micros),weeklyRating:week?displayRating(week.contribution_micros):0,totalScore:displayPoints(row.ap_micros),rankedGames:row.games_played,
+  division:getDivisionForRank(row.rank),lastActiveAt:row.last_achieved_at,contributions:overall.contributions};
 }
 export async function beginLeaderboardSession(gameId:string,modeId=defaultScoreMode(gameId),requestId:string=crypto.randomUUID(),clientStartedAt=performance.now()):Promise<LeaderboardPlaySession|null>{
  if(!isLiveLeaderboardConfigured()||navigator.onLine===false)return null;
