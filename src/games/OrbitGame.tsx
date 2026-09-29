@@ -5,6 +5,7 @@ import { useGameLoop, useSafeTimeout } from '../hooks/useGameLoop';
 import { getFrameInvariantBlend, getFrameInvariantDecay, getFrameScale } from '../lib/frameRateRuntime';
 import { getOrbitRouteLane, getOrbitRouteName, getOrbitRouteMultiplier, isOrbitNearMiss } from '../lib/orbitMastery';
 import {
+  ORBIT_FORMATION_CLEARANCE_SEC,
   ORBIT_FORMATION_COOLDOWN_SEC,
   ORBIT_FORMATION_GRACE_SEC,
   ORBIT_FORMATION_RESOLVE_SEC,
