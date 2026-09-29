@@ -47,7 +47,7 @@ try{
   check(await panel.locator('[data-leaderboard-player]').first().getByText('Diamond tier',{exact:true}).count()===1,'global leaderboard shows player tier next to name');
   check(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'no page horizontal overflow');
   await longName.click();const profile=p.locator('[data-player-profile]');await profile.getByRole('heading',{name:'ABCDEFGHIJKLMNOPQRST'}).waitFor();check(await profile.getByText('Diamond tier',{exact:true}).count()>=1,'public profile preserves global tier');
-  check(await profile.getByText('Standard · Score 45').count()===1,'profile shows public best-game contribution context');
+  await profile.getByText('Standard · Score 45').waitFor();check(await profile.getByText('Standard · Score 45').count()===1,'profile shows public best-game contribution context');
   await profile.getByRole('button',{name:'Back to leaderboard'}).click();await panel.locator('[data-leaderboard-player]').first().waitFor();
   await panel.getByRole('button',{name:'Load more players'}).click();await p.waitForFunction(()=>document.querySelectorAll('[data-leaderboard-player]').length===41);
   await panel.getByRole('button',{name:'Load more players'}).click();await p.waitForFunction(()=>document.querySelectorAll('[data-leaderboard-player]').length===45);
