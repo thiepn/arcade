@@ -297,7 +297,35 @@ export const ChainGame: React.FC<GameComponentProps> = ({
         lastX = target.x;
         lastY = target.y;
 
-        // Directly detonate the target
+        // Tesla bridges distant ordinary orbs, but defensive targets retain
+        // their advertised counters: Plasma is the tool that bypasses them.
+        if (target.type === 'dampener') {
+          state.floatingTexts.push({
+            x: target.x,
+            y: target.y,
+            text: '✕ ARC NULLIFIED',
+            color: '#7C3AED',
+            life: 0,
+            maxLife: 26,
+          });
+          if (soundEnabled) sounds.playTone(220, 0.08, 'sawtooth');
+          return;
+        }
+
+        if (target.type === 'shielded' && target.shieldHp > 0) {
+          target.shieldHp--;
+          state.floatingTexts.push({
+            x: target.x,
+            y: target.y,
+            text: 'SHIELD -1',
+            color: '#38BDF8',
+            life: 0,
+            maxLife: 24,
+          });
+          if (soundEnabled) sounds.playTone(480, 0.05, 'triangle');
+          return;
+        }
+
         target.state = 'exploding';
         target.explosionRadius = 6;
         target.detonatorType = 'tesla';

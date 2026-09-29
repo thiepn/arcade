@@ -24,6 +24,7 @@
 ## Unreleased
 
 ### P4 experiential gameplay hardening — 2026-09-29
+- Restore Chain's tool-role integrity: Tesla arcs are now stopped by nullifiers and strip shield HP instead of directly detonating defensive targets, preserving Plasma as the taught defense-breaking tool.
 - Restore One Line's advertised ten-layout variety by giving archetypes 7, 8, and 9 separate authored obstacle/star arrangements instead of sharing one fallback layout.
 - Reset One Line's three-attempt budget whenever a fresh procedural stage is generated so failures cannot leak into the next stage or a random reroll.
 - Freeze in-progress One Line drawing during pause and prevent pointer release from launching physics behind the pause overlay; extend `quality:gameplay-p4` to guard all three contracts.

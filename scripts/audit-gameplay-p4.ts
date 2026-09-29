@@ -38,6 +38,10 @@ assert(orbit.includes('↑ / ↓:'), 'Orbit help does not distinguish lane-only 
 assert(chain.includes('PLASMA — BREAK SHIELDS / NULLIFIERS'), 'Chain lacks visible Plasma purpose teaching');
 assert(chain.includes('TESLA — BRIDGE DISTANT ORBS'), 'Chain lacks visible Tesla purpose teaching');
 assert(chain.includes('CRYO — PULL ORBS INTO A CLUSTER'), 'Chain lacks visible Cryo purpose teaching');
+assert(chain.includes("target.type === 'dampener'"), 'Chain Tesla does not respect nullifier defense');
+assert(chain.includes('ARC NULLIFIED'), 'Chain Tesla nullifier feedback is missing');
+assert(chain.includes("target.type === 'shielded' && target.shieldHp > 0"), 'Chain Tesla bypasses shield defense instead of stripping it');
+assert(chain.includes("p.detonatorType !== 'plasma'"), 'Chain defensive orbs no longer reserve direct bypass for Plasma');
 assert(registry.includes('Spend three tactical detonations to engineer the biggest cascade.'), 'Chain registry still undersells the three-charge tactical loop');
 assert(!registry.includes('Tap anywhere once to spawn the initial detonation.'), 'stale one-tap Chain instruction remains');
 
