@@ -18,7 +18,7 @@ assert(source.includes('advanceSlingshotProbe(st)'), 'free-flight integration is
 assert(!source.includes('st.probeX += st.probeVx;') && !source.includes('st.probeY += st.probeVy;'), 'legacy per-render-frame free-flight integration remains');
 assert(source.includes('st.orbitAngle += st.orbitSpeed;') && source.includes('for (let simStep = 0; simStep < batch.steps'), 'orbit motion is not enclosed by the fixed-step clock');
 assert(source.includes('if (!state.isTethered || !state.isAlive || isPausedRef.current) return;'), 'launchProbe is not pause-gated');
-assert(source.includes('if (isPausedRef.current) return;'), 'window/canvas launch input is not pause-gated');
+assert(source.includes('if (isPausedRef.current || !gameStateRef.current.isAlive) return;'), 'window/canvas launch input is not pause/game-over gated');
 assert(!/onResize:\s*\(w, h\)\s*=>\s*\{\s*if \(gameStateRef\.current\.nodes\.length/.test(source), 'resize still only handles first initialization');
 assert(source.includes('st.nodes = st.nodes.map') && source.includes('st.stardust = st.stardust.map') && source.includes('st.asteroids = st.asteroids.map'), 'resize does not remap core active world geometry');
 assert(source.includes('st.nebulae = st.nebulae.map') && source.includes('st.trail = st.trail.map'), 'resize does not preserve background/trail world state');
