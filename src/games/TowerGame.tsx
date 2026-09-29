@@ -13,6 +13,7 @@ import {
   getTowerApexReward,
   getTowerPrecisionBonus,
   isTowerPrecisionLanding,
+  shouldCountTowerApexLanding,
 } from '../lib/towerApexMastery';
 import { isArcadeReducedMotion } from '../lib/motionPreferences';
 import { getTowerPlatformGap } from '../lib/gamePolishBalance';
@@ -132,6 +133,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
     apexActive: false,
     apexTimer: 0,
     apexPrecisionStreak: 0,
+    lastApexPlatformId: null as number | null,
 
     // World & Camera
     cameraY: 0,
@@ -174,7 +176,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const state = gameStateRef.current;
-      if (isPausedRef.current || !state.isAlive) return;
+      if (isPausedRef.current || !state.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
         state.leftPressed = true;
       }
@@ -386,6 +388,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
     state.apexActive = false;
     state.apexTimer = 0;
     state.apexPrecisionStreak = 0;
+    state.lastApexPlatformId = null;
     state.physicsAccumulator = 0;
 
     generateWorldUpTo(1800, initialWidth);
@@ -739,26 +742,30 @@ export const TowerGame: React.FC<GameComponentProps> = ({
             ) {
               state.py = platTop + state.radius;
 
-              const precisionLanding = isTowerPrecisionLanding(state.px, plat.x, plat.w);
-              if (precisionLanding) {
-                state.apexPrecisionStreak++;
-                state.apexCharges = getTowerApexCharges(state.apexPrecisionStreak, state.apexCharges);
-                const precisionBonus = getTowerApexReward(
-                  getTowerPrecisionBonus(state.apexPrecisionStreak),
-                  state.apexActive,
-                );
-                state.score += precisionBonus;
-                publishScore(state.score);
-                state.popups.push({
-                  id: state.nextId++,
-                  x: state.px,
-                  y: state.py + 34,
-                  text: `APEX x${state.apexPrecisionStreak} +${precisionBonus} base`,
-                  color: '#FACC15',
-                  life: 1.0,
-                });
-              } else {
-                state.apexPrecisionStreak = 0;
+              const countsForApex = shouldCountTowerApexLanding(state.lastApexPlatformId, plat.id);
+              if (countsForApex) {
+                state.lastApexPlatformId = plat.id;
+                const precisionLanding = isTowerPrecisionLanding(state.px, plat.x, plat.w);
+                if (precisionLanding) {
+                  state.apexPrecisionStreak++;
+                  state.apexCharges = getTowerApexCharges(state.apexPrecisionStreak, state.apexCharges);
+                  const precisionBonus = getTowerApexReward(
+                    getTowerPrecisionBonus(state.apexPrecisionStreak),
+                    state.apexActive,
+                  );
+                  state.score += precisionBonus;
+                  publishScore(state.score);
+                  state.popups.push({
+                    id: state.nextId++,
+                    x: state.px,
+                    y: state.py + 34,
+                    text: `APEX x${state.apexPrecisionStreak} +${precisionBonus} base`,
+                    color: '#FACC15',
+                    life: 1.0,
+                  });
+                } else {
+                  state.apexPrecisionStreak = 0;
+                }
               }
 
               if (plat.type === 'spring') {

@@ -23,6 +23,7 @@ import {
   getTowerApexReward,
   getTowerPrecisionBonus,
   isTowerPrecisionLanding,
+  shouldCountTowerApexLanding,
 } from '../src/lib/towerApexMastery';
 import {
   CHAIN_RESONANCE_ORDERS,
@@ -61,6 +62,10 @@ assert(rope.includes('getLaserRopeRedlineSpeed(effectiveSpeed, true) - effective
 assert(rope.includes('getLaserRopeRedlineReward'), 'Laser Rope does not apply Redline reward scaling');
 assert(rope.includes('state.sweepAngle += effectiveSpeed * state.direction * dt;'), 'Laser Rope certified baseline sweep update was replaced');
 assert(rope.includes('Activate Redline'), 'Laser Rope lacks a touch-accessible Redline control');
+assert(
+  rope.includes('if (isPausedRef.current || !state.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;'),
+  'Laser Rope gameplay listener can consume shell controls or auto-repeat jump/Redline actions',
+);
 
 // Gravity Tower: precision-center mastery earns an optional higher-bounce ascent window.
 assert(TOWER_APEX_EARN_EVERY === 3, 'Tower Apex charge cadence changed');
@@ -70,6 +75,9 @@ assert(TOWER_APEX_BOUNCE_MULTIPLIER === 1.18, 'Tower Apex bounce multiplier chan
 assert(TOWER_APEX_SCORE_MULTIPLIER === 2, 'Tower Apex score multiplier changed');
 assert(isTowerPrecisionLanding(50, 0, 100), 'Tower should accept a platform-center landing');
 assert(!isTowerPrecisionLanding(5, 0, 100), 'Tower precision landing window is too wide');
+assert(shouldCountTowerApexLanding(null, 10), 'Tower first platform should count for Apex mastery');
+assert(shouldCountTowerApexLanding(10, 11), 'Tower newly reached platform should count for Apex mastery');
+assert(!shouldCountTowerApexLanding(10, 10), 'Tower same platform can farm Apex mastery repeatedly');
 assert(getTowerApexCharges(3, 0) === 1 && getTowerApexCharges(6, 2) === 2, 'Tower Apex charge earning/cap is wrong');
 assert(canActivateTowerApexDrive(1, false, true), 'Tower should allow an earned Apex activation');
 assert(!canActivateTowerApexDrive(0, false, true) && !canActivateTowerApexDrive(1, true, true), 'Tower Apex activation guard is too permissive');
@@ -83,6 +91,14 @@ assert(tower.includes('getTowerApexReward(deltaAlt * 2, state.apexActive)'), 'To
 assert(tower.includes("e.code === 'KeyF'"), 'Tower Apex keyboard activation is missing');
 assert(tower.includes('Activate Apex Drive'), 'Tower lacks a touch-accessible Apex control');
 assert(tower.includes('const dt = TOWER_FIXED_STEP_SEC'), 'Tower P12 broke the fixed-step simulation contract');
+assert(
+  tower.includes('if (isPausedRef.current || !state.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;'),
+  'Tower gameplay listener can consume shell controls or auto-repeat Apex/wall-jump actions',
+);
+assert(
+  tower.includes('shouldCountTowerApexLanding(state.lastApexPlatformId, plat.id)'),
+  'Tower same-platform rebound can farm precision rewards and Apex charges',
+);
 
 // Chain: optional ordered use of all three existing tools, with the base three-charge economy preserved.
 assert(CHAIN_RESONANCE_ORDERS.length === 3, 'Chain must expose three rotating Resonance Orders');
@@ -104,6 +120,14 @@ assert(chain.includes('RESONANCE {resonanceOrder.name}'), 'Chain does not surfac
 assert(chain.includes('PLASMA — BREAK SHIELDS / NULLIFIERS'), 'Chain P12 lost Plasma purpose teaching');
 assert(chain.includes('TESLA — BRIDGE DISTANT ORBS'), 'Chain P12 lost Tesla purpose teaching');
 assert(chain.includes('CRYO — PULL ORBS INTO A CLUSTER'), 'Chain P12 lost Cryo purpose teaching');
+assert(
+  chain.includes('if (isPausedRef.current || gameStateRef.current.isFinished) return;'),
+  'Chain touch input is captured before suspended-state guard',
+);
+assert(
+  chain.includes('if (isPausedRef.current || state.isFinished) return;'),
+  'Chain tool selection can mutate gameplay state while paused or between waves',
+);
 
 assert(registry.includes('Redline charges'), 'Laser Rope registry copy does not teach Redline mastery');
 assert(registry.includes('Apex Drive charges'), 'Tower registry copy does not teach Apex Drive mastery');

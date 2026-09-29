@@ -397,6 +397,7 @@ export const ChainGame: React.FC<GameComponentProps> = ({
     setResonanceFailed(false);
 
     const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      if (isPausedRef.current || gameStateRef.current.isFinished) return;
       if ('touches' in e) e.preventDefault();
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -911,8 +912,10 @@ export const ChainGame: React.FC<GameComponentProps> = ({
   });
 
   const selectWeapon = (tool: DetonatorTool) => {
+    const state = gameStateRef.current;
+    if (isPausedRef.current || state.isFinished) return;
     setSelectedTool(tool);
-    gameStateRef.current.selectedTool = tool;
+    state.selectedTool = tool;
     if (soundEnabled) sounds.playClick();
   };
 
