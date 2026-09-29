@@ -98,6 +98,7 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
     state.particles = [];
     state.physicsRunning = false;
     state.physicsAccumulator = 0;
+    state.attempts = 0;
     state.viewportWidth = w;
     state.viewportHeight = h;
     state.stuckTimer = 0;
@@ -204,8 +205,8 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
         { x: w * 0.5, y: h * 0.22, radius: 8, collected: false },
         { x: w * 0.72, y: h * 0.55, radius: 8, collected: false }
       );
-    } else {
-      // Diagonal Stairway
+    } else if (archetype === 7) {
+      // Diagonal Stairway — alternating bounce/solid stepping stones.
       obs.push(
         { x: w * 0.25, y: h * 0.32, w: 24, h: 24, type: 'bouncer' },
         { x: w * 0.45, y: h * 0.48, w: 24, h: 24, type: 'wall' },
@@ -215,6 +216,31 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
         { x: w * 0.35, y: h * 0.22, radius: 8, collected: false },
         { x: w * 0.55, y: h * 0.38, radius: 8, collected: false },
         { x: w * 0.75, y: h * 0.52, radius: 8, collected: false }
+      );
+    } else if (archetype === 8) {
+      // Split Gate — thread the central corridor, then use the lower rebound.
+      obs.push(
+        { x: w * 0.34, y: h * 0.18, w: 20, h: h * 0.34, type: 'wall' },
+        { x: w * 0.34, y: h * 0.66, w: 20, h: h * 0.2, type: 'wall' },
+        { x: w * 0.62, y: h * 0.58, w: w * 0.2, h: 20, type: 'bouncer' }
+      );
+      stars.push(
+        { x: w * 0.28, y: h * 0.58, radius: 8, collected: false },
+        { x: w * 0.48, y: h * 0.58, radius: 8, collected: false },
+        { x: w * 0.7, y: h * 0.46, radius: 8, collected: false }
+      );
+    } else {
+      // Rebound Bowl — descend through a narrow shelf and climb off twin pads.
+      obs.push(
+        { x: w * 0.22, y: h * 0.42, w: w * 0.22, h: 18, type: 'wall' },
+        { x: w * 0.56, y: h * 0.42, w: w * 0.22, h: 18, type: 'wall' },
+        { x: w * 0.36, y: h * 0.7, w: 26, h: 22, type: 'bouncer' },
+        { x: w * 0.62, y: h * 0.66, w: 26, h: 22, type: 'bouncer' }
+      );
+      stars.push(
+        { x: w * 0.5, y: h * 0.34, radius: 8, collected: false },
+        { x: w * 0.48, y: h * 0.62, radius: 8, collected: false },
+        { x: w * 0.72, y: h * 0.74, radius: 8, collected: false }
       );
     }
 
@@ -299,7 +325,7 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
     };
 
     const handlePointerMove = (e: MouseEvent | TouchEvent) => {
-      if (!isDrawingRef.current || gameStateRef.current.physicsRunning) return;
+      if (isPausedRef.current || !isDrawingRef.current || gameStateRef.current.physicsRunning) return;
       if ('touches' in e) e.preventDefault();
       const pt = getPos(e);
       const pts = gameStateRef.current.linePoints;
@@ -324,6 +350,10 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
 
     const handlePointerUp = () => {
       if (!isDrawingRef.current) return;
+      if (isPausedRef.current) {
+        isDrawingRef.current = false;
+        return;
+      }
       isDrawingRef.current = false;
       const pts = gameStateRef.current.linePoints;
       if (pts.length >= 2) {

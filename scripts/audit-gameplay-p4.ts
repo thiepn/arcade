@@ -47,6 +47,15 @@ for (const term of ['Multiball', 'Laser', 'Wide Paddle', 'Fireball']) {
 assert(registry.includes('limited ink budget'), 'One Line copy does not explain its ink constraint');
 assert(registry.includes('stars are optional bonus targets'), 'One Line copy does not explain optional star mastery');
 assert(oneline.includes('RELEASE TO RUN PHYSICS'), 'One Line in-game hint does not explain the draw/release state transition');
+assert(oneline.includes('archetype === 7'), 'One Line does not expose distinct archetype 7');
+assert(oneline.includes('archetype === 8'), 'One Line does not expose distinct archetype 8');
+assert(oneline.includes('Rebound Bowl'), 'One Line archetypes 7–9 collapsed back into one fallback layout');
+assert(oneline.includes('state.attempts = 0;'), 'One Line fresh levels do not reset the per-level attempt budget');
+assert(oneline.includes('if (isPausedRef.current || !isDrawingRef.current'), 'One Line drawing can continue behind the pause overlay');
+assert(
+  oneline.includes("if (isPausedRef.current) {\n        isDrawingRef.current = false;"),
+  'One Line pointer release can launch physics while paused',
+);
 
 assert(registry.includes('firewall phrases appear every four growth steps'), 'Cyber Serpent registry does not explain firewall progression');
 assert(!registry.includes('dodge the lethal laser perimeter'), 'Cyber Serpent still advertises a nonexistent lethal perimeter');

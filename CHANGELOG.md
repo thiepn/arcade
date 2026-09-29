@@ -23,6 +23,11 @@
 
 ## Unreleased
 
+### P4 experiential gameplay hardening — 2026-09-29
+- Restore One Line's advertised ten-layout variety by giving archetypes 7, 8, and 9 separate authored obstacle/star arrangements instead of sharing one fallback layout.
+- Reset One Line's three-attempt budget whenever a fresh procedural stage is generated so failures cannot leak into the next stage or a random reroll.
+- Freeze in-progress One Line drawing during pause and prevent pointer release from launching physics behind the pause overlay; extend `quality:gameplay-p4` to guard all three contracts.
+
 ### P3 browser/runtime hardening — 2026-09-29
 - Make the all-game P3 browser gate require a genuinely mounted lazy game engine rather than merely a visible shared shell, and verify the loading fallback has cleared.
 - Require the expected canvas on all 27 canvas-based cabinets, verify restart produces a fresh ready engine session, and verify exiting a game releases the global `game-active` page lock.
