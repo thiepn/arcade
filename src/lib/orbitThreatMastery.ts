@@ -18,6 +18,15 @@ export const ORBIT_FORMATION_WARNING_SEC = 1.2;
 export const ORBIT_FORMATION_COOLDOWN_SEC = 7.2;
 export const ORBIT_FORMATION_RESOLVE_SEC = 1.7;
 export const ORBIT_FORMATION_GRACE_SEC = 2.0;
+export const ORBIT_FORMATION_CLEARANCE_SEC = 0.3;
+
+export const getOrbitFormationResolveDurationSec = (
+  travelDistancePx: number,
+  speedPxPerFrame: number,
+): number => {
+  const travelSeconds = Math.max(0, travelDistancePx) / (Math.max(0.01, speedPxPerFrame) * 60);
+  return Math.max(ORBIT_FORMATION_RESOLVE_SEC, travelSeconds + ORBIT_FORMATION_CLEARANCE_SEC);
+};
 
 export const ORBIT_THREAT_FORMATIONS: readonly OrbitThreatFormation[] = [
   {

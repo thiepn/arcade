@@ -196,6 +196,7 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
 
     // Keyboard controls
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isPausedRef.current || !state.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
       if (['ArrowUp', 'KeyW'].includes(e.code)) {
         e.preventDefault();
         changeDirection(0, -1);
@@ -216,12 +217,13 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
     let touchStartY = 0;
 
     const handleTouchStart = (e: TouchEvent) => {
+      if (isPausedRef.current || !state.isAlive) return;
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
-      if (!e.changedTouches.length) return;
+      if (isPausedRef.current || !state.isAlive || !e.changedTouches.length) return;
       const dx = e.changedTouches[0].clientX - touchStartX;
       const dy = e.changedTouches[0].clientY - touchStartY;
       const absDx = Math.abs(dx);

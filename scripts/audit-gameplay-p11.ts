@@ -4,6 +4,7 @@ import {
   ORBIT_FORMATION_COOLDOWN_SEC,
   ORBIT_FORMATION_GRACE_SEC,
   ORBIT_FORMATION_RESOLVE_SEC,
+  getOrbitFormationResolveDurationSec,
   ORBIT_FORMATION_WARNING_SEC,
   ORBIT_THREAT_FORMATIONS,
   getOrbitFormationBonus,
@@ -55,6 +56,14 @@ assert(safeLanes.size === 3, 'Orbit formations must rotate safe lanes across inn
 assert(ORBIT_FORMATION_WARNING_SEC >= 1 && ORBIT_FORMATION_WARNING_SEC <= 1.5, 'Orbit warning must remain readable');
 assert(ORBIT_FORMATION_COOLDOWN_SEC >= 6, 'Orbit formations must not spam the player');
 assert(ORBIT_FORMATION_GRACE_SEC >= ORBIT_FORMATION_RESOLVE_SEC, 'Orbit random-hazard grace must cover formation resolution');
+assert(
+  getOrbitFormationResolveDurationSec(150, 3.3) === ORBIT_FORMATION_RESOLVE_SEC,
+  'Orbit compact formation timing should preserve the certified 1.7s resolve floor',
+);
+assert(
+  getOrbitFormationResolveDurationSec(900, 3.3) > ORBIT_FORMATION_RESOLVE_SEC,
+  'Orbit wide formation travel must extend beyond the fixed resolve floor',
+);
 assert(getOrbitFormationBonus(1) === 250, 'Orbit formation chain must start at +250');
 assert(getOrbitFormationBonus(5) === 1250 && getOrbitFormationBonus(99) === 1250, 'Orbit formation bonus must cap at 5x');
 assert(orbit.includes('pendingFormation'), 'Orbit source is missing telegraphed pending formations');
@@ -63,6 +72,15 @@ assert(orbit.includes('formationResolveTimer'), 'Orbit source is missing formati
 assert(orbit.includes('spawnFormationHazard'), 'Orbit source is missing authored formation hazard spawning');
 assert(orbit.includes('formationGraceTimer <= 0'), 'Orbit random hazards are not paused around formations');
 assert(orbit.includes('FORMATION x'), 'Orbit HUD/feedback is missing formation mastery chain');
+assert(orbit.includes('getOrbitFormationResolveDurationSec'), 'Orbit formation resolution is still viewport-timing blind');
+assert(
+  orbit.includes('state.formationResolveTimer + ORBIT_FORMATION_CLEARANCE_SEC'),
+  'Orbit random hazards can resume before a long formation has safely cleared',
+);
+assert(
+  orbit.includes('e.repeat || e.altKey || e.ctrlKey || e.metaKey'),
+  'Orbit gameplay listener can consume shell controls or auto-repeat lane/reverse actions',
+);
 
 assert(PAC_HUNT_TIMER_FACTOR > 0.5 && PAC_HUNT_TIMER_FACTOR < 0.75, 'Pac Hunt must meaningfully shorten frightened time without deleting it');
 assert(PAC_HUNT_GHOST_SPEED_MULTIPLIER > 1.2 && PAC_HUNT_GHOST_SPEED_MULTIPLIER < 1.5, 'Pac Hunt ghost speed multiplier is outside the intended risk band');
@@ -79,6 +97,14 @@ assert(pac.includes('getPacHuntGhostSpeed'), 'Pac source does not apply Hunt gho
 assert(pac.includes('getPacHuntCapturePoints'), 'Pac source does not apply Hunt capture rewards');
 assert(pac.includes('HUNT RUSH'), 'Pac source does not expose Hunt Rush feedback');
 assert(pac.includes("event.code === 'KeyF'"), 'Pac Hunt keyboard activation is missing');
+assert(
+  pac.includes('event.repeat || event.altKey || event.ctrlKey || event.metaKey'),
+  'Pac Hunt listener can consume shell controls or repeat activation/movement input',
+);
+assert(
+  pac.includes('if (isPausedRef.current || !gameStateRef.current.isAlive || !touchStartRef.current) return;'),
+  'Pac swipe routing can mutate queued movement while suspended',
+);
 
 assert(SNAKE_PHASE_THREAD_EXTENSION_EVERY === 3, 'Snake Phase Thread extension cadence must stay every three unique cells');
 assert(SNAKE_PHASE_THREAD_EXTENSION_TICKS === 6, 'Snake Phase Thread extension must stay bounded to six ticks');
@@ -94,6 +120,14 @@ assert(snake.includes('phaseThreadCells.has(cellKey)'), 'Snake source can farm t
 assert(snake.includes('getSnakePhaseThreadReward'), 'Snake source is missing Phase Thread scoring');
 assert(snake.includes('extendSnakeGhostTimerForThread'), 'Snake source is missing bounded Phase Thread timer extension');
 assert(snake.includes('PHASE THREAD'), 'Snake source is missing Phase Thread feedback');
+assert(
+  snake.includes('e.repeat || e.altKey || e.ctrlKey || e.metaKey'),
+  'Snake keyboard routing can consume shell controls or repeat direction input while suspended',
+);
+assert(
+  snake.includes('if (isPausedRef.current || !state.isAlive || !e.changedTouches.length) return;'),
+  'Snake swipe routing remains active while gameplay is suspended',
+);
 
 assert(registry.includes('telegraphed threat formations'), 'Orbit registry copy does not teach formations');
 assert(registry.includes('Hunt Rush'), 'Pac registry copy does not teach Hunt Rush');

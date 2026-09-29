@@ -172,6 +172,8 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
   // Capture desktop controls before browser scrolling or shell-level handlers.
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      const state = gameStateRef.current;
+      if (isPausedRef.current || !state.isAlive || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
       if (event.code === 'KeyF' || event.code === 'ShiftLeft' || event.code === 'ShiftRight') {
         event.preventDefault();
         triggerHuntRush();
@@ -181,8 +183,6 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
       if (!direction || !shouldCapturePacKey(event)) return;
 
       event.preventDefault();
-      const state = gameStateRef.current;
-      if (!state.isAlive || isPausedRef.current) return;
       queuePacDirection(state, direction.x, direction.y);
     };
 
@@ -194,11 +194,12 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    if (isPausedRef.current || !gameStateRef.current.isAlive) return;
     touchStartRef.current = { x: e.clientX, y: e.clientY };
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!touchStartRef.current) return;
+    if (isPausedRef.current || !gameStateRef.current.isAlive || !touchStartRef.current) return;
     const dx = e.clientX - touchStartRef.current.x;
     const dy = e.clientY - touchStartRef.current.y;
     const threshold = 18;

@@ -10,6 +10,7 @@ import {
   ORBIT_FORMATION_RESOLVE_SEC,
   ORBIT_FORMATION_WARNING_SEC,
   getOrbitFormationBonus,
+  getOrbitFormationResolveDurationSec,
   getOrbitLaneName,
   getOrbitThreatFormation,
   type OrbitThreatFormation,
@@ -209,6 +210,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
       trail: [],
       nearMissAwarded: false,
     });
+    return getOrbitFormationResolveDurationSec(distance, speed);
   }, []);
 
   const spawnCrystal = useCallback(() => {
@@ -232,11 +234,15 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
     if (!canvas) return;
 
     const handlePointerDown = (e: PointerEvent) => {
+      const state = gameStateRef.current;
+      if (isPausedRef.current || !state.isAlive) return;
       e.preventDefault();
       pulseOrbit();
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      const state = gameStateRef.current;
+      if (isPausedRef.current || !state.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.key === ' ' || e.key === 'Spacebar') {
         e.preventDefault();
         pulseOrbit();
@@ -335,11 +341,18 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
           state.formationWarningTimer = Math.max(0, state.formationWarningTimer - frameSeconds);
           if (state.formationWarningTimer === 0 && state.pendingFormation) {
             const formation = state.pendingFormation;
-            formation.targets.forEach((target) => {
-              spawnFormationHazard(target, curW, curH, cx, cy);
-            });
+            const resolveDurations = formation.targets.map((target) =>
+              spawnFormationHazard(target, curW, curH, cx, cy),
+            );
             state.formationSafeLane = formation.safeLane;
-            state.formationResolveTimer = ORBIT_FORMATION_RESOLVE_SEC;
+            state.formationResolveTimer = Math.max(
+              ORBIT_FORMATION_RESOLVE_SEC,
+              ...resolveDurations,
+            );
+            state.formationGraceTimer = Math.max(
+              state.formationGraceTimer,
+              state.formationResolveTimer + ORBIT_FORMATION_CLEARANCE_SEC,
+            );
             state.pendingFormation = null;
           }
         }

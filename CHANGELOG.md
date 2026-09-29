@@ -23,6 +23,12 @@
 
 ## Unreleased
 
+### P11 classic-loop hardening — 2026-09-29
+- Make Orbit threat-formation resolution geometry-aware: the certified 1.7-second window remains the minimum, but wide-screen formations now wait for their actual comet travel time plus clearance before awarding the safe-lane mastery bonus, and random hazards stay suppressed through that dynamic window.
+- Release Orbit, Pac Runner, and Cyber Serpent keyboard/touch ownership while paused or after game over; ignore repeat/modifier key events so discrete mastery/navigation actions cannot auto-fire or consume shared shell shortcuts.
+- Freeze Pac and Snake swipe routing while suspended so queued movement cannot silently change behind pause/game-over overlays.
+- Extend `quality:gameplay-p11` to certify viewport-safe Orbit timing and classic-loop input ownership.
+
 ### P10 current-bottom-three hardening — 2026-09-29
 - Separate Dodge's intentional dash from shield-granted invulnerability so free shield i-frames cannot earn Phase Cuts, recharge dash economy, or preserve a mastery chain; make dash activation edge-triggered instead of key-repeat-driven.
 - Release Aero's keyboard ownership while paused/dead and ignore repeated/modifier key events so holding Space cannot auto-flap and post-run shell controls remain available.
