@@ -77,7 +77,9 @@ for (let row = 4; row < 36; row++) {
   assert(level >= 0, `Cyber Crosser row ${row} has invalid district level`);
 }
 assert(getRoadCrossCheckpointBonus(2) > getRoadCrossCheckpointBonus(1), 'Cyber Crosser checkpoint rewards do not escalate');
-const representativeRoadSpeeds = [4, 12, 20, 28].map((row) => getRoadCrossLaneSpeed(row, 0.5));
+const representativeRoadSpeeds = [4, 12, 20, 28].map((row) =>
+  getRoadCrossLaneSpeed(getRoadCrossDistrictLevel(row) * ROAD_CROSS_DISTRICT_LENGTH, 0.5),
+);
 assert(
   representativeRoadSpeeds.every((speed, index) => index === 0 || speed > representativeRoadSpeeds[index - 1]),
   'Cyber Crosser lane speeds do not escalate across authored districts',
@@ -97,12 +99,13 @@ for (const token of ['getRoadCrossLaneType', 'getRoadCrossDistrict', 'getRoadCro
   assert(roadSource.includes(token), `Cyber Crosser P6 integration missing ${token}`);
 }
 assert(
-  roadSource.includes('getRoadCrossLaneSpeed(nextRow, Math.random())'),
-  'Cyber Crosser pre-generated districts use their own row difficulty instead of the player\'s opening max row',
+  roadSource.includes('getRoadCrossLaneSpeed(getRoadCrossDistrictLevel(nextRow) * ROAD_CROSS_DISTRICT_LENGTH, Math.random())'),
+  'Cyber Crosser pre-generated lanes do not align speed tiers to authored district boundaries',
 );
 assert(
-  !roadSource.includes('getRoadCrossLaneSpeed(state.maxRowReached, Math.random())'),
-  'Cyber Crosser still freezes pre-generated district speed at the player\'s current max row',
+  !roadSource.includes('getRoadCrossLaneSpeed(state.maxRowReached, Math.random())') &&
+    !roadSource.includes('getRoadCrossLaneSpeed(nextRow, Math.random())'),
+  'Cyber Crosser uses player progress or raw row tiers instead of authored district-aligned speed tiers',
 );
 for (const phrase of ['three-round adaptive overtime', 'three-sector Master Encore', 'authored eight-row districts']) {
   assert(registry.includes(phrase), `registry is missing P6 teaching phrase: ${phrase}`);

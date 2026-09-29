@@ -5,7 +5,7 @@ import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
 import { getFrameInvariantBlend } from '../lib/frameRateRuntime';
 import { canAcceptRoadCrossMove, getRoadCrossBoardMetrics } from '../lib/roadCrossSupport';
-import { getRoadCrossCheckpointBonus, getRoadCrossDistrict, getRoadCrossDistrictLevel, getRoadCrossLaneType } from '../lib/roadCrossMastery';
+import { ROAD_CROSS_DISTRICT_LENGTH, getRoadCrossCheckpointBonus, getRoadCrossDistrict, getRoadCrossDistrictLevel, getRoadCrossLaneType } from '../lib/roadCrossMastery';
 import { getRoadCrossLaneSpeed } from '../lib/gamePolishBalance';
 
 type LaneType = 'grass' | 'road' | 'train' | 'river';
@@ -226,7 +226,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
       const type: LaneType = getRoadCrossLaneType(nextRow);
 
       const dir: 1 | -1 = Math.random() < 0.5 ? 1 : -1;
-      const speed = getRoadCrossLaneSpeed(nextRow, Math.random()) * dir;
+      const speed = getRoadCrossLaneSpeed(getRoadCrossDistrictLevel(nextRow) * ROAD_CROSS_DISTRICT_LENGTH, Math.random()) * dir;
       const vehicles: Vehicle[] = [];
       const logs: RiverLog[] = [];
       const coins: { col: number; collected: boolean }[] = [];

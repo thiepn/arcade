@@ -25,6 +25,7 @@
 
 ### P6 new-bottom-three hardening — 2026-09-29
 - Fix Cyber Crosser district difficulty generation: pre-generated road and river lanes now derive movement speed from their own row instead of the player's current max row, so later authored districts no longer inherit opening-area traffic speeds.
+- Align the traffic-speed tier changes to authored district starts (rows 4/12/20/28) rather than raw eight-row multiples, preventing mid-district difficulty jumps.
 - Extend `quality:gameplay-p6` with representative district-speed escalation checks and a source contract that prevents pre-generation from flattening progression.
 
 ### P5 bottom-three hardening — 2026-09-29
