@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowLeft, ArrowRight, Award, Brain, Gauge, Play, Shield
 import { useSafeTimeout } from '../hooks/useGameLoop';
 import {
   REACTION_ROUNDS,
+  getReactionTimeMs,
   requiresChoice,
   scoreReactionAttempt,
   usesInhibitionDecoy,
@@ -53,6 +54,8 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const startTimeRef = useRef(0);
+  const readyPauseStartedAtRef = useRef<number | null>(null);
+  const readyPausedDurationRef = useRef(0);
   const scoreRef = useRef(0);
   const attemptLockedRef = useRef(false);
   const isPausedRef = useRef(isPaused);
@@ -112,6 +115,8 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
     clearRoundTimers();
     const config = getSessionRound(index);
     attemptLockedRef.current = false;
+    readyPauseStartedAtRef.current = null;
+    readyPausedDurationRef.current = 0;
     setMode('WAITING');
     setLightsCount(0);
     setChoiceTarget(null);
@@ -142,8 +147,10 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
               lastChoiceRef.current = nextChoice;
             }
             setChoiceTarget(nextChoice);
-            setMode('READY');
+            readyPauseStartedAtRef.current = null;
+            readyPausedDurationRef.current = 0;
             startTimeRef.current = performance.now();
+            setMode('READY');
             if (soundEnabledRef.current) sounds.playChime(1200);
           };
 
@@ -263,7 +270,10 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
       return;
     }
     if (mode === 'READY') {
-      const reactionTimeMs = Math.round(performance.now() - startTimeRef.current);
+      const responseAt = performance.now();
+      const pausedDurationMs = readyPausedDurationRef.current +
+        (readyPauseStartedAtRef.current === null ? 0 : responseAt - readyPauseStartedAtRef.current);
+      const reactionTimeMs = getReactionTimeMs(startTimeRef.current, responseAt, pausedDurationMs);
       const needsChoice = requiresChoice(roundConfig.kind);
       if (needsChoice && choice !== choiceTarget) {
         completeAttempt(reactionTimeMs, false, 'WRONG SIDE');
@@ -280,6 +290,25 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
     startRound(0);
     return clearRoundTimers;
   }, []);
+
+  useEffect(() => {
+    if (mode !== 'READY') {
+      readyPauseStartedAtRef.current = null;
+      return;
+    }
+
+    if (isPaused) {
+      if (readyPauseStartedAtRef.current === null) {
+        readyPauseStartedAtRef.current = performance.now();
+      }
+      return;
+    }
+
+    if (readyPauseStartedAtRef.current !== null) {
+      readyPausedDurationRef.current += performance.now() - readyPauseStartedAtRef.current;
+      readyPauseStartedAtRef.current = null;
+    }
+  }, [isPaused, mode]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

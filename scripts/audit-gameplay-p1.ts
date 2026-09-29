@@ -7,6 +7,7 @@ import {
 } from '../src/lib/perfectStopGameplay';
 import {
   REACTION_ROUNDS,
+  getReactionTimeMs,
   requiresChoice,
   scoreReactionAttempt,
   usesInhibitionDecoy,
@@ -71,6 +72,15 @@ for (const round of REACTION_ROUNDS) {
   assert(wrong.points === 0, `${round.label}: incorrect response still earns points`);
 }
 
+assert(
+  getReactionTimeMs(1000, 1800, 500) === 300,
+  'Reaction paused reaction timing still counts suspended wall-clock time',
+);
+assert(
+  getReactionTimeMs(1000, 1300, -250) === 300,
+  'Reaction timing accepts a negative pause duration',
+);
+
 const perfectStopSource = read('src/games/PerfectStopGame.tsx');
 assert(perfectStopSource.includes('PERFECT_STOP_ROUNDS'), 'Perfect Stop no longer consumes authored challenge rounds');
 assert(perfectStopSource.includes('targetElementRef'), 'Perfect Stop moving target is no longer rendered');
@@ -83,6 +93,8 @@ assert(reactionSource.includes('REACTION_ROUNDS'), 'Reaction no longer consumes 
 assert(reactionSource.includes("completeAttempt(null, false, 'INHIBITION FAIL')"), 'Reaction inhibition failure is no longer enforced');
 assert(reactionSource.includes("completeAttempt(reactionTimeMs, false, 'WRONG SIDE')"), 'Reaction wrong-choice failure is no longer enforced');
 assert(reactionSource.includes("handleInput('LEFT')") && reactionSource.includes("handleInput('RIGHT')"), 'Reaction left/right controls are incomplete');
+assert(reactionSource.includes('readyPausedDurationRef'), 'Reaction no longer tracks paused READY time');
+assert(reactionSource.includes('getReactionTimeMs(startTimeRef.current'), 'Reaction no longer excludes pause time from reaction scoring');
 assert(!/Top\s+\d|Bottom\s+\d|percentile/i.test(reactionSource), 'Reaction restored unsupported percentile claims');
 
 const registry = read('src/data/games.ts');

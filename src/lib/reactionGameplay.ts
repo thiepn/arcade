@@ -131,5 +131,12 @@ export const scoreReactionAttempt = (
   };
 };
 
+export const getReactionTimeMs = (
+  startedAtMs: number,
+  respondedAtMs: number,
+  pausedDurationMs = 0,
+): number =>
+  Math.max(0, Math.round(respondedAtMs - startedAtMs - Math.max(0, pausedDurationMs)));
+
 export const requiresChoice = (kind: ReactionRoundKind) => kind === 'choice' || kind === 'mixed';
 export const usesInhibitionDecoy = (kind: ReactionRoundKind) => kind === 'inhibit' || kind === 'mixed';
