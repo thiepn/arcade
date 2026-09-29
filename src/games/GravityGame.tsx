@@ -525,6 +525,7 @@ export const GravityGame: React.FC<GameComponentProps> = ({
 
     const handleMove = (e: MouseEvent | TouchEvent) => {
       const state = gameStateRef.current;
+      if (isPausedRef.current || !state.isAlive) return;
       const pos = getPos(e);
 
       if (state.hasLaunched && state.isSteering) {
@@ -542,6 +543,10 @@ export const GravityGame: React.FC<GameComponentProps> = ({
       state.isSteering = false;
       state.steerImpulsePending = false;
 
+      if (isPausedRef.current || !state.isAlive) {
+        state.isAiming = false;
+        return;
+      }
       if (!state.isAiming || state.hasLaunched) return;
       state.isAiming = false;
 
@@ -562,25 +567,26 @@ export const GravityGame: React.FC<GameComponentProps> = ({
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'r' || e.key === 'R' || e.key === 'Escape') {
-        handleRecallProbe();
+      const state = gameStateRef.current;
+      if (isPausedRef.current || !state.isAlive || e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.key === 'q' || e.key === 'Q') {
+        if (!e.repeat) handleRecallProbe();
       } else if (e.key === 'g' || e.key === 'G') {
-        handleFlipGravity();
+        if (!e.repeat) handleFlipGravity();
       } else if (e.key === 'a' || e.key === 'ArrowLeft') {
         handleRotateDirection(-0.25);
       } else if (e.key === 'd' || e.key === 'ArrowRight') {
         handleRotateDirection(0.25);
       } else if (e.key === ' ' || e.key === 'w' || e.key === 'ArrowUp') {
-        handleForwardBoost();
+        if (!e.repeat) handleForwardBoost();
       } else if (e.key === 's' || e.key === 'ArrowDown') {
-        // Retro-brake
-        const state = gameStateRef.current;
-        if (state.hasLaunched && state.isAlive) {
+        // Retro-brake intentionally supports held-key repeat for continuous braking.
+        if (state.hasLaunched) {
           state.probe.vx *= 0.75;
           state.probe.vy *= 0.75;
           if (soundEnabled) sounds.playPop();
         }
-      } else if (e.key === 'Shift') {
+      } else if (e.key === 'Shift' && !e.repeat) {
         setIsSlowMo((prev) => !prev);
       }
     };
@@ -1170,7 +1176,7 @@ export const GravityGame: React.FC<GameComponentProps> = ({
           onClick={handleRecallProbe}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#18181B] hover:bg-[#27272A] active:bg-[#3F3F46] text-[#A1A1AA] hover:text-white border border-[#27272A] font-mono-arcade text-xs transition-colors cursor-pointer backdrop-blur-md"
         >
-          <RotateCcw className="w-3.5 h-3.5" /> RE-AIM [R]
+          <RotateCcw className="w-3.5 h-3.5" /> RE-AIM [Q]
         </button>
       </div>
 
@@ -1215,7 +1221,7 @@ export const GravityGame: React.FC<GameComponentProps> = ({
             onClick={handleRecallProbe}
             className="px-3 py-2.5 bg-[#18181B]/90 hover:bg-[#27272A] text-zinc-400 hover:text-white font-mono-arcade text-xs font-bold rounded-xl border border-zinc-700 backdrop-blur-md transition-all cursor-pointer flex items-center justify-center gap-1"
           >
-            <RotateCcw className="w-3.5 h-3.5" /> RECALL [R]
+            <RotateCcw className="w-3.5 h-3.5" /> RECALL [Q]
           </button>
         </div>
       ) : (

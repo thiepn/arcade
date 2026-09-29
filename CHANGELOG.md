@@ -23,6 +23,13 @@
 
 ## Unreleased
 
+### P13 flight-focus-style hardening — 2026-09-30
+- Remap Gravity Recall from `R/Escape` to `Q` so the advertised Flight Contract recall action no longer collides with GameShell's global Restart/Pause shortcuts; update in-game and registry teaching accordingly.
+- Cancel Gravity aim/steer pointer mutation while suspended and prevent pointer release from launching a queued slingshot behind the pause/game-over overlay; keep A/D repeat steering while making boost/flip/recall/slow-mo discrete.
+- Freeze Chrono steering/direct-aim input while paused/dead and reject repeat/modifier key events so Focus/EMP cannot auto-retrigger from a held key.
+- Make Cyber Drift's Nitro keyboard action edge-triggered and modifier-safe while preserving held steering from the initial keydown.
+- Extend `quality:gameplay-p13` and the dedicated Drift gate to certify shell-shortcut ownership, suspended pointer state, and discrete mastery actions.
+
 ### P12 next-mastery-trio hardening — 2026-09-29
 - Stop Gravity Tower from farming Apex mastery on repeated or alternating rebounds across already visited platforms: precision streaks, bonuses, charges, and the later Apex Route now advance only on each platform's first landing.
 - Release Laser Rope and Gravity Tower keyboard ownership while paused/dead and ignore repeat/modifier events so held keys cannot auto-spend double jumps, Redline, Apex Drive, or wall-jump/micro-burst actions.

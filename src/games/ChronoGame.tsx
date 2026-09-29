@@ -281,6 +281,7 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
     // Keyboard handlers
     const handleKeyDown = (e: KeyboardEvent) => {
       const state = gameStateRef.current;
+      if (isPausedRef.current || !state.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === ' ') {
         e.preventDefault();
       }
@@ -319,6 +320,8 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
 
     // Touch & Pointer handlers:
     const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      const state = gameStateRef.current;
+      if (isPausedRef.current || !state.isAlive) return;
       const clientX = 'touches' in e && e.touches.length > 0 ? e.touches[0].clientX : (e as MouseEvent).clientX;
       const clientY = 'touches' in e && e.touches.length > 0 ? e.touches[0].clientY : (e as MouseEvent).clientY;
       const rect = canvas.getBoundingClientRect();
@@ -343,7 +346,8 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
     };
 
     const handlePointerMove = (e: MouseEvent | TouchEvent) => {
-      if (!gameStateRef.current.isDirectAiming) return;
+      const state = gameStateRef.current;
+      if (isPausedRef.current || !state.isAlive || !state.isDirectAiming) return;
       const clientX = 'touches' in e && e.touches.length > 0 ? e.touches[0].clientX : (e as MouseEvent).clientX;
       const clientY = 'touches' in e && e.touches.length > 0 ? e.touches[0].clientY : (e as MouseEvent).clientY;
       const targetAngle = getPointerAngle(clientX, clientY);

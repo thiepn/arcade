@@ -19,7 +19,7 @@ assert(source.includes('st.spawnTimer++;'), 'spawn cadence escaped the fixed-ste
 assert(source.includes('seg.y += currentSpeed;'), 'track obstacle motion escaped the fixed-step contract');
 assert(source.includes('st.boostTimer -= dt;'), 'nitro duration is not elapsed-time controlled');
 assert(!source.includes('setSafeTimeout') && !source.includes('useSafeTimeout'), 'nitro still uses a wall-clock timeout');
-assert(source.includes('if (isPausedRef.current || !gameStateRef.current.isAlive) return;'), 'keyboard/pointer input is not pause guarded');
+assert(source.includes('if (isPausedRef.current || !gameStateRef.current.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;'), 'Drift keyboard input is not pause/game-over/repeat/modifier guarded');
 
 const renderMarker = source.indexOf('// --- RENDERING ---');
 const particleUpdate = source.indexOf('p.life -= 0.03;');

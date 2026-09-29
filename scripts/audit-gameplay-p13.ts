@@ -88,12 +88,36 @@ const registry = readFileSync('src/data/games.ts', 'utf8');
 for (const token of ['getGravityFlightContract', 'contractStreak', 'boostsUsed', 'flipsUsed', 'recallsUsed', 'FLIGHT CONTRACT']) {
   assert(gravitySource.includes(token), `Gravity P13 integration is missing: ${token}`);
 }
+assert(gravitySource.includes("e.key === 'q' || e.key === 'Q'"), 'Gravity Recall keyboard binding is missing');
+assert(!gravitySource.includes("e.key === 'r' || e.key === 'R' || e.key === 'Escape'"), 'Gravity must not hijack GameShell R/Escape restart/pause shortcuts');
+assert(
+  gravitySource.includes('if (isPausedRef.current || !state.isAlive) {') &&
+    gravitySource.includes('state.isAiming = false;'),
+  'Gravity pointer release can launch a probe while gameplay is suspended',
+);
+assert(
+  gravitySource.includes('if (!e.repeat) handleForwardBoost();'),
+  'Gravity held boost key can drain the Flight Contract boost budget through key repeat',
+);
 for (const token of ['isChronoFocusHit', 'focusCharges', 'focusArmed', 'focusStreak', 'FOCUS WAGER']) {
   assert(chronoSource.includes(token), `Chrono P13 integration is missing: ${token}`);
 }
+assert(
+  chronoSource.includes('if (isPausedRef.current || !state.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;'),
+  'Chrono keyboard input can mutate steering/Focus/EMP while suspended or auto-repeat discrete actions',
+);
+assert(
+  chronoSource.includes('if (isPausedRef.current || !state.isAlive || !state.isDirectAiming) return;'),
+  'Chrono input can mutate steering/aim while gameplay is suspended',
+);
 for (const token of ['advanceDriftStyleRoute', 'styleRouteIndex', 'styleRouteProgress', 'styleChain', 'STYLE ROUTE']) {
   assert(driftSource.includes(token), `Cyber Drift P13 integration is missing: ${token}`);
 }
+assert(
+  driftSource.includes('if (isPausedRef.current || !gameStateRef.current.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;'),
+  'Cyber Drift Nitro can auto-retrigger from held keys or consume shell modifier shortcuts',
+);
+assert(registry.includes('[Q] Recall'), 'Gravity registry does not teach the non-conflicting Recall shortcut');
 for (const phrase of ['Flight Contracts', 'Focus Wager', 'Style Routes']) {
   assert(registry.includes(phrase), `game registry does not teach P13 mechanic: ${phrase}`);
 }

@@ -203,7 +203,7 @@ export const DriftGame: React.FC<GameComponentProps> = ({
 
     // Input Handlers
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isPausedRef.current || !gameStateRef.current.isAlive) return;
+      if (isPausedRef.current || !gameStateRef.current.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
         gameStateRef.current.steerInput = -1;
         setSteerLeft(true);
