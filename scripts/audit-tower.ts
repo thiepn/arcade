@@ -14,7 +14,7 @@ assert(source.includes('plat.x += plat.vx;') && source.includes('drone.x += dron
 assert(source.includes('state.vx *= 0.89;'), 'Tower friction baseline changed unexpectedly');
 assert(source.includes('state.laserY += state.laserSpeed * dt;'), 'Tower hazard laser is not time-scaled');
 assert(source.includes('state.jetpackTimer -= dt;') && source.includes('state.magnetTimer -= dt;'), 'Tower power-up timers are not time-scaled');
-assert(source.includes('if (isPausedRef.current || !state.isAlive) return;'), 'Tower keyboard input can mutate gameplay while paused');
+assert(source.includes('if (isPausedRef.current || !state.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;'), 'Tower keyboard input is not pause/game-over/repeat/modifier gated');
 assert(source.includes('isPausedRef.current || !gameStateRef.current.isAlive'), 'Tower pointer input can mutate gameplay while paused');
 
 const simulate = (fps: number, seconds = 6) => {

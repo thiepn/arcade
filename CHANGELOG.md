@@ -28,6 +28,7 @@
 - Release Laser Rope and Gravity Tower keyboard ownership while paused/dead and ignore repeat/modifier events so held keys cannot auto-spend double jumps, Redline, Apex Drive, or wall-jump/micro-burst actions.
 - Guard Chain touch capture and tactical tool selection before suspended/finished-state mutation, keeping pause and between-wave state genuinely frozen.
 - Extend `quality:gameplay-p12` to certify unique-platform Apex progression and the trio's input-ownership boundaries.
+- Update the dedicated Tower refresh-rate gate to require the stronger pause/game-over/repeat/modifier keyboard guard instead of its obsolete pause-only source marker.
 
 ### P11 classic-loop hardening — 2026-09-29
 - Make Orbit threat-formation resolution geometry-aware: the certified 1.7-second window remains the minimum, but wide-screen formations now wait for their actual comet travel time plus clearance before awarding the safe-lane mastery bonus, and random hazards stay suppressed through that dynamic window.
