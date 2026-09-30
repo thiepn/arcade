@@ -23,6 +23,15 @@
 
 ## Unreleased
 
+### P21 strong-A promotion / distinctive-depth hardening — 2026-09-30
+- Keep the original six P21 promotion scorecards frozen; strengthen current behavior/evidence instead of inflating ratings.
+- Clear interrupted held input in Breakout, Tower and Chrono on focus/pointer ownership loss, preventing movement from leaking across Pause/alt-tab/cancel paths.
+- Fix Neon Puck Smash keyboard Power Play so it follows the live Sound setting rather than its mount-time closure.
+- Cancel One Line interrupted strokes atomically on blur/touch cancellation instead of allowing stale partial geometry to survive into the next interaction.
+- Expose Puck difficulty/Power Play, Tower Apex, Pac Hunt Rush, One Line Master Route and Chrono Focus/EMP/rotation through explicit semantic mastery state.
+- Strengthen the P21 browser matrix around real Puck difficulty state, One Line blur-cancel behavior, Chrono held-rotation recovery and P18 Resume focus restoration.
+- Preserve P16 balance/fairness envelopes, P17 feedback hierarchy, P18 teaching/accessibility, P19 cohesion, P20 flagship contracts and all game-specific identities.
+
 ### P20 near-S promotion / flagship-quality hardening — 2026-09-30
 - Keep the original six P20 S-promotion scorecards frozen; improve current evidence instead of inflating ratings.
 - Fix Dodge keyboard Dash so it follows the live Sound setting rather than the listener's mount-time `soundEnabled` value, and clear held directional input on window blur.
