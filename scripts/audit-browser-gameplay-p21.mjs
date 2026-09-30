@@ -83,18 +83,52 @@ const assertCandidateMarker = async (page, id) => {
   }
 };
 
+const assertFlagshipDepthSemantics = async (page, id, phase = 'before') => {
+  if (id === 'airhockey') {
+    const group = page.getByRole('group', { name: 'Difficulty' });
+    assert(await group.count() === 1, 'Neon Puck Smash difficulty controls are not one named group');
+    const master = page.getByRole('button', { name: 'Difficulty MASTER' });
+    assert(['true', 'false'].includes(await master.getAttribute('aria-pressed')), 'Puck MASTER difficulty does not expose selected state');
+    const power = page.getByRole('button', { name: /Power Play/i });
+    assert(await power.getAttribute('aria-keyshortcuts') === 'Space F', 'Puck Power Play does not expose Space/F shortcuts');
+    assert(['true', 'false'].includes(await power.getAttribute('aria-pressed')), 'Puck Power Play does not expose active state');
+    if (phase === 'after') assert(await master.getAttribute('aria-pressed') === 'true', 'Puck MASTER selection did not update semantic state');
+  } else if (id === 'tower') {
+    const apex = page.getByRole('button', { name: 'Activate Apex Drive' });
+    assert(await apex.getAttribute('aria-keyshortcuts') === 'F Shift', 'Tower Apex does not expose F/Shift shortcuts');
+    assert(['true', 'false'].includes(await apex.getAttribute('aria-pressed')), 'Tower Apex does not expose active state');
+  } else if (id === 'oneline') {
+    const mastery = page.getByRole('group', { name: /Master Route/i });
+    assert(await mastery.count() === 1, 'One Line Master Route state is not semantically exposed');
+  } else if (id === 'chrono') {
+    const focus = page.getByRole('button', { name: /Focus Wager/i });
+    assert(await focus.getAttribute('aria-keyshortcuts') === 'F Shift', 'Chrono Focus does not expose F/Shift shortcuts');
+    assert(['true', 'false'].includes(await focus.getAttribute('aria-pressed')), 'Chrono Focus does not expose armed state');
+    const left = page.getByRole('button', { name: 'Rotate left' });
+    const right = page.getByRole('button', { name: 'Rotate right' });
+    assert(['true', 'false'].includes(await left.getAttribute('aria-pressed')) && ['true', 'false'].includes(await right.getAttribute('aria-pressed')), 'Chrono rotation controls do not expose held state');
+    if (phase === 'after') assert(await right.getAttribute('aria-pressed') === 'false', 'Chrono blur cleanup left rotation active');
+  }
+};
+
 const exerciseCandidateInput = async (page, id) => {
   if (id === 'breakout') {
-    await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(80);
+    await page.keyboard.down('ArrowRight');
+    await page.waitForTimeout(40);
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+    await page.keyboard.up('ArrowRight');
+    await page.waitForTimeout(40);
   } else if (id === 'airhockey') {
     await puckMasterControl(page).click();
     await page.keyboard.press('ArrowLeft');
     await page.waitForTimeout(80);
     await waitForShellText(page, ['MASTER', 'POWER'], 'Puck difficulty/power state disappeared after input');
   } else if (id === 'tower') {
-    await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(80);
+    await page.keyboard.down('ArrowRight');
+    await page.waitForTimeout(40);
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+    await page.keyboard.up('ArrowRight');
+    await page.waitForTimeout(40);
   } else if (id === 'pacmaze') {
     await page.keyboard.press('ArrowLeft');
     await page.waitForTimeout(80);
@@ -104,13 +138,17 @@ const exerciseCandidateInput = async (page, id) => {
     if (box) {
       await page.mouse.move(box.x + box.width * 0.18, box.y + box.height * 0.25);
       await page.mouse.down();
-      await page.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.65, { steps: 8 });
+      await page.mouse.move(box.x + box.width * 0.45, box.y + box.height * 0.45, { steps: 4 });
+      await page.evaluate(() => window.dispatchEvent(new Event('blur')));
       await page.mouse.up();
     }
     await page.waitForTimeout(80);
+    assert(await page.locator('.oneline-help').getAttribute('aria-hidden') === 'false', 'One Line blur-cancel accidentally launched an interrupted stroke');
   } else if (id === 'chrono') {
     await page.keyboard.down('ArrowRight');
-    await page.waitForTimeout(60);
+    await page.waitForFunction(() => document.querySelector('button[aria-label="Rotate right"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 1000 });
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+    await page.waitForFunction(() => document.querySelector('button[aria-label="Rotate right"]')?.getAttribute('aria-pressed') === 'false', null, { timeout: 1000 });
     await page.keyboard.up('ArrowRight');
   }
 };
@@ -130,6 +168,7 @@ const runCandidate = async (page, profile, id) => {
   try {
     await launch(page, id);
     await assertCandidateMarker(page, id);
+    await assertFlagshipDepthSemantics(page, id, 'before');
 
     const shellState = await page.evaluate(() => {
       const shell = document.querySelector('.game-shell');
@@ -151,6 +190,7 @@ const runCandidate = async (page, profile, id) => {
 
     await exerciseCandidateInput(page, id);
     await assertCandidateMarker(page, id);
+    await assertFlagshipDepthSemantics(page, id, 'after');
 
     await page.locator('#game-pause-btn').click();
     await page.waitForFunction(() => Boolean(document.querySelector('[data-p18-dialog="pause"][data-p19-dialog="pause"]')), null, { timeout: 3000 });
@@ -162,6 +202,10 @@ const runCandidate = async (page, profile, id) => {
     assert(pauseText.includes('OBJECTIVE') && pauseText.includes('BACK TO ARCADE'), `${id} pause lost P18/P19 teaching/navigation`);
     assertPauseMastery(id, pauseText);
     await page.locator('[data-p19-dialog="pause"]').getByRole('button', { name: /^RESUME \(ESC\)$/i }).click();
+    await page.waitForFunction(() => {
+      const stage = document.querySelector('[data-p18-stage]');
+      return Boolean(stage && document.activeElement === stage);
+    }, null, { timeout: 1500 });
 
     await page.locator('#game-restart-btn').click();
     await page.waitForTimeout(120);
