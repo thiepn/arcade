@@ -226,12 +226,20 @@ export const DriftGame: React.FC<GameComponentProps> = ({
       }
     };
 
+    const releaseSteeringInput = () => {
+      gameStateRef.current.steerInput = 0;
+      setSteerLeft(false);
+      setSteerRight(false);
+    };
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', releaseSteeringInput);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', releaseSteeringInput);
     };
   }, [triggerNitro]);
 
@@ -1197,6 +1205,8 @@ export const DriftGame: React.FC<GameComponentProps> = ({
           type="button"
           onClick={triggerNitro}
           disabled={nitroEnergy < 25 || isBoosting}
+          aria-label={isBoosting ? 'Nitro boost active' : `Nitro boost, ${Math.round(nitroEnergy)} percent energy`}
+          aria-keyshortcuts="Space"
           className={`px-3 sm:px-6 py-3 sm:py-4 rounded-xl font-mono-arcade text-[10px] sm:text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 select-none backdrop-blur-md ${
             nitroEnergy >= 25 && !isBoosting
               ? 'bg-cyan-600/90 hover:bg-cyan-500 text-white border-cyan-400 shadow-lg shadow-cyan-500/40 active:scale-95'
