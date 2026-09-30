@@ -994,6 +994,8 @@ export const ChainGame: React.FC<GameComponentProps> = ({
               : 'text-[#A1A1AA] hover:text-white hover:bg-[#27272A]'
           }`}
           title="Heavy Concussive Blast - Breaks Shields & Nullifiers"
+          aria-label="Select Plasma Blast — breaks shields and nullifiers"
+          aria-pressed={selectedTool === 'plasma'}
         >
           <Bomb className="w-3.5 h-3.5" /> PLASMA BLAST
         </button>
@@ -1007,6 +1009,8 @@ export const ChainGame: React.FC<GameComponentProps> = ({
               : 'text-[#A1A1AA] hover:text-white hover:bg-[#27272A]'
           }`}
           title="Forking Chain Lightning - Bridges Wide Distances"
+          aria-label="Select Tesla Arc — bridges distant orbs"
+          aria-pressed={selectedTool === 'tesla'}
         >
           <Zap className="w-3.5 h-3.5" /> TESLA ARC
         </button>
@@ -1020,6 +1024,8 @@ export const ChainGame: React.FC<GameComponentProps> = ({
               : 'text-[#A1A1AA] hover:text-white hover:bg-[#27272A]'
           }`}
           title="Gravity Singularity - Forcefully Pulls & Clusters Orbs"
+          aria-label="Select Cryo Vortex — pulls orbs into a cluster"
+          aria-pressed={selectedTool === 'cryo'}
         >
           <Snowflake className="w-3.5 h-3.5" /> CRYO VORTEX
         </button>
