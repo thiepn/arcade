@@ -218,11 +218,18 @@ export const TowerGame: React.FC<GameComponentProps> = ({
       }
     };
 
+    const releaseMovementInput = () => {
+      gameStateRef.current.leftPressed = false;
+      gameStateRef.current.rightPressed = false;
+    };
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', releaseMovementInput);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', releaseMovementInput);
     };
   }, [soundEnabled]);
 
@@ -1276,6 +1283,7 @@ export const TowerGame: React.FC<GameComponentProps> = ({
       id="tower-game-container"
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       onPointerLeave={handlePointerUp}
       className="relative w-full h-full min-h-0 flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none"
     >
@@ -1340,6 +1348,8 @@ export const TowerGame: React.FC<GameComponentProps> = ({
           triggerApexDrive();
         }}
         disabled={hudState.apexCharges <= 0 || hudState.apexActive}
+        aria-pressed={hudState.apexActive}
+        aria-keyshortcuts="F Shift"
         className="absolute bottom-10 right-3 z-20 px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-400/60 text-amber-200 font-mono text-[10px] font-black disabled:opacity-45 pointer-events-auto"
         aria-label="Activate Apex Drive"
       >
