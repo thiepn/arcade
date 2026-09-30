@@ -239,10 +239,15 @@ for (const marker of [
   '## Evidence ledger',
   '## Adversarial promotion review',
   '## Manual acceptance boundary',
+  '## 2026-09-30 distinctive-depth hardening addendum',
   '- **S: 17**',
   '- **A: 8**',
   '- **B: 7**',
 ]) assert(report.includes(marker), `P21 report missing ${marker}`);
+assert(report.includes('The original six P21 promotion scorecards remain frozen.'), 'P21 hardening does not explicitly freeze the promotion scorecards');
+assert(report.includes('keyboard-triggered Power Play now reads the live Sound preference'), 'P21 hardening does not document the Puck stale-sound fix');
+assert(report.includes('a drawing stroke interrupted by blur/touch cancellation is cancelled atomically'), 'P21 hardening does not document One Line ownership recovery');
+assert(report.includes('held/direct rotation is released on blur/touch cancellation'), 'P21 hardening does not document Chrono ownership recovery');
 assert((report.match(/PROMOTE TO S/g) ?? []).length >= 6, 'P21 report must contain six explicit promotion decisions');
 
 // P21 application delta contains no replay recorder/playback or retention metagame.
