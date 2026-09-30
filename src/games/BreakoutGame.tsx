@@ -231,6 +231,7 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isPausedRef.current || !state.isAlive || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') state.keys.left = true;
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') state.keys.right = true;
       if (e.key === ' ' || e.key === 'Spacebar') {
@@ -246,14 +247,22 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
       }
     };
 
+    const releaseHeldInput = () => {
+      state.keys.left = false;
+      state.keys.right = false;
+      state.keys.space = false;
+    };
+
     canvas.addEventListener('mousedown', handlePointer);
     window.addEventListener('mousemove', handlePointer);
     window.addEventListener('mouseup', handlePointerUp);
     canvas.addEventListener('touchstart', handlePointer, { passive: false });
     window.addEventListener('touchmove', handlePointer, { passive: false });
     window.addEventListener('touchend', handlePointerUp);
+    window.addEventListener('touchcancel', releaseHeldInput);
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', releaseHeldInput);
 
     return () => {
       canvas.removeEventListener('mousedown', handlePointer);
@@ -262,8 +271,10 @@ export const BreakoutGame: React.FC<GameComponentProps> = ({
       canvas.removeEventListener('touchstart', handlePointer);
       window.removeEventListener('touchmove', handlePointer);
       window.removeEventListener('touchend', handlePointerUp);
+      window.removeEventListener('touchcancel', releaseHeldInput);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', releaseHeldInput);
     };
   }, []);
 
