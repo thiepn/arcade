@@ -134,7 +134,7 @@ assert(drift.includes('aria-keyshortcuts="Space"') && drift.includes('Nitro boos
 for (const marker of ['state.dashTimer = 260', "type: 'laser_warning'", 'laserTimer: 1200', "h.type = 'laser_active'", 'isDodgePhaseCut', 'registerPhaseCut', 'ghostTrail']) {
   assert(dodge.includes(marker), `Dodge promotion evidence missing ${marker}`);
 }
-assert(dodge.includes('const soundEnabledRef = useRef(soundEnabled);') && dodge.includes('if (soundEnabledRef.current) sounds.playWarp();'), 'Dodge keyboard Dash can use stale sound state');
+assert(dodge.includes('const soundEnabledRef = useRef(soundEnabled);') && dodge.includes('if (soundEnabledRef.current) sounds.playWarp();') && dodge.includes('if (soundEnabledRef.current) sounds.playSuccess();'), 'Dodge mastery audio can use stale sound state');
 assert(dodge.includes('releaseDirectionalInput') && dodge.includes("window.addEventListener('blur', releaseDirectionalInput)") && dodge.includes("window.removeEventListener('blur', releaseDirectionalInput)"), 'Dodge can retain held movement after focus loss');
 assert(dodge.includes('aria-keyshortcuts="Space"') && dodge.includes('disabled={dashAvailable <= 0}'), 'Dodge Warp Dash lacks flagship shortcut/disabled semantics');
 assert(dodge.includes('Warp Dash, ${dashAvailable} charge${dashAvailable === 1 ?'), 'Dodge Warp Dash accessible charge state is missing');
