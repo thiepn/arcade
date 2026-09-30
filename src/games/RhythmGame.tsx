@@ -31,6 +31,7 @@ interface ActiveNote {
   isMissed?: boolean;
   isHolding?: boolean;
   holdCompleted?: boolean;
+  holdReleaseStartedBeat?: number | null;
   scoreAwarded?: boolean;
 }
 
@@ -167,6 +168,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       isMissed: false,
       isHolding: false,
       holdCompleted: false,
+      holdReleaseStartedBeat: null,
     }));
     musicEngine.playSong(newSong, -4);
   };
@@ -204,6 +206,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       if (closestNote.type === 'hold' && (closestNote.holdBeats ?? 0) > 0) {
         closestNote.isHolding = true;
         closestNote.holdCompleted = false;
+        closestNote.holdReleaseStartedBeat = null;
       }
       let points = 60;
       let rating: 'PERFECT' | 'GREAT' | 'GOOD' = 'GOOD';
@@ -328,6 +331,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
       isMissed: false,
       isHolding: false,
       holdCompleted: false,
+      holdReleaseStartedBeat: null,
     }));
 
     musicEngine.setMuted(!soundEnabledRef.current);
@@ -349,8 +353,21 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
 
   // Keyboard events
   useEffect(() => {
+    const clearHeldLanes = () => {
+      laneHeldRef.current = [false, false, false, false];
+      setActiveLanes([false, false, false, false]);
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.repeat) return;
+      if (
+        isPausedRef.current ||
+        !gameStateRef.current.isAlive ||
+        e.repeat ||
+        e.altKey ||
+        e.ctrlKey ||
+        e.metaKey ||
+        e.isComposing
+      ) return;
       for (let i = 0; i < 4; i++) {
         if (LANE_KEYS[i].includes(e.code)) {
           e.preventDefault();
@@ -383,9 +400,11 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', clearHeldLanes);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', clearHeldLanes);
     };
   }, [handleLaneTrigger]);
 
@@ -428,6 +447,12 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
         for (const note of state.notes) {
           if (!note.isHolding) continue;
           const holdBeats = note.holdBeats ?? 0;
+          const laneHeld = laneHeldRef.current[note.lane];
+          if (laneHeld) {
+            note.holdReleaseStartedBeat = null;
+          } else if (note.holdReleaseStartedBeat == null) {
+            note.holdReleaseStartedBeat = judgementBeat;
+          }
           if (isRhythmHoldComplete(judgementBeat, note.beatTime, holdBeats)) {
             note.isHolding = false;
             note.holdCompleted = true;
@@ -451,7 +476,8 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
               startBeat: note.beatTime,
               holdBeats,
               bpm: state.song.bpm,
-              laneHeld: laneHeldRef.current[note.lane],
+              laneHeld,
+              releaseStartedBeat: note.holdReleaseStartedBeat,
             })
           ) {
             note.isHolding = false;
@@ -523,6 +549,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
             n.isMissed = false;
             n.isHolding = false;
             n.holdCompleted = false;
+            n.holdReleaseStartedBeat = null;
           });
           laneHeldRef.current = [false, false, false, false];
         }
@@ -930,6 +957,7 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
               type="button"
               id={`lane-btn-${idx}`}
               onPointerDown={(e) => {
+                if (isPausedRef.current || !gameStateRef.current.isAlive) return;
                 e.preventDefault();
                 laneHeldRef.current[idx] = true;
                 setActiveLanes((prev) => {
@@ -948,6 +976,14 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
                 });
               }}
               onPointerLeave={() => {
+                laneHeldRef.current[idx] = false;
+                setActiveLanes((prev) => {
+                  const next = [...prev];
+                  next[idx] = false;
+                  return next;
+                });
+              }}
+              onPointerCancel={() => {
                 laneHeldRef.current[idx] = false;
                 setActiveLanes((prev) => {
                   const next = [...prev];

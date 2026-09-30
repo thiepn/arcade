@@ -84,6 +84,8 @@ for (const token of [
 
 assert(!source.includes('const BLOCK_SIZE = 22'), 'fixed 22px board size returned');
 assert(source.includes('state.canHold = true'), 'hold availability is not restored after placement');
+assert(source.includes('if (e.repeat && isDiscreteAction) return;'), 'held discrete controls can repeat into a newly spawned piece');
+assert(source.includes('Soft drop must not bypass the normal lock-delay decision window.'), 'soft drop bypasses lock delay');
 assert(source.includes('min-h-0'), 'Block Drop root is not shrink-safe');
 
 const registry = readFileSync('src/data/games.ts', 'utf8');

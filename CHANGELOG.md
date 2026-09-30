@@ -23,6 +23,13 @@
 
 ## Unreleased
 
+### P14 flagship-depth hardening — 2026-09-30
+- Make Rhythm's 90 ms hold-release grace measure from the actual release moment instead of the note head, so brief mid-hold keyboard/touch jitter is genuinely forgiven.
+- Clear Rhythm lane ownership on window blur, reject suspended/modifier lane presses, and handle pointer cancellation so phantom held lanes cannot auto-complete hold notes.
+- Keep Block Drop movement/soft-drop repeat behavior, but make rotate, hard drop, and Hold edge-triggered so held keys cannot act on freshly spawned pieces; soft drop no longer bypasses the 550 ms lock-delay window.
+- Make Laser Blade's multi-cut reward truly stroke-bounded: a physical swipe can earn it once, continuous holding cannot manufacture fresh swipe windows, and pause/pointer-cancel ends the stroke.
+- Expand `quality:gameplay-p14` plus the Block Drop dedicated gate around release grace, input ownership, lock delay, and one-stroke reward integrity.
+
 ### P13 flight-focus-style hardening — 2026-09-30
 - Remap Gravity Recall from `R/Escape` to `Q` so the advertised Flight Contract recall action no longer collides with GameShell's global Restart/Pause shortcuts; update in-game and registry teaching accordingly.
 - Cancel Gravity aim/steer pointer mutation while suspended and prevent pointer release from launching a queued slingshot behind the pause/game-over overlay; keep A/D repeat steering while making boost/flip/recall/slow-mo discrete.

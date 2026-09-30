@@ -279,8 +279,10 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
       state.currentPiece.y += 1;
       state.score += 1;
       if (state.lockTimer > 0) state.lockTimer = 0.5;
-    } else {
-      lockPiece();
+    } else if (state.lockTimer === 0) {
+      // Soft drop must not bypass the normal lock-delay decision window.
+      state.lockTimer = 0.55;
+      state.lockResets = 0;
     }
   };
 
@@ -378,6 +380,24 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const state = gameStateRef.current;
+      if (
+        isPausedRef.current ||
+        !state.isAlive ||
+        e.altKey ||
+        e.ctrlKey ||
+        e.metaKey ||
+        e.isComposing
+      ) return;
+      const isDiscreteAction =
+        e.code === 'ArrowUp' ||
+        e.code === 'KeyW' ||
+        e.code === 'Space' ||
+        e.code === 'KeyC' ||
+        e.code === 'ShiftLeft' ||
+        e.code === 'ShiftRight';
+      if (e.repeat && isDiscreteAction) return;
+
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
         e.preventDefault();
         moveHorizontal(-1);

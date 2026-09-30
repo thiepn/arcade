@@ -123,8 +123,8 @@ export const BladeGame: React.FC<GameComponentProps> = ({
     floatingTexts: [] as FloatingText[],
 
     isPointerDown: false,
-    strokeStartTime: 0,
     strokeCuts: 0,
+    strokeComboAwarded: false,
 
     spawnTimer: 0,
     spawnInterval: 65,
@@ -473,14 +473,14 @@ export const BladeGame: React.FC<GameComponentProps> = ({
         }
       }
 
-      // Discrete single-swipe multi-cut bonus (e.g. slicing 3+ in one quick stroke)
-      if (state.strokeCuts >= 3) {
+      // One physical swipe earns the multi-cut bonus at most once.
+      if (state.strokeCuts >= 3 && !state.strokeComboAwarded) {
         const bonus = state.strokeCuts * 150;
         state.score += bonus;
+        state.strokeComboAwarded = true;
         onScoreUpdate(state.score);
         if (soundEnabled) sounds.playVictory();
         addPopup(`🔥 ${state.strokeCuts}x SWIPE COMBO! +${bonus} base`, p2.x, p2.y - 30, '#FACC15', 1.3);
-        state.strokeCuts = 0; // consumed bonus for this stroke
       }
     },
     [addPopup, onGameOver, onScoreUpdate, soundEnabled]
@@ -495,33 +495,21 @@ export const BladeGame: React.FC<GameComponentProps> = ({
 
     const state = gameStateRef.current;
     state.isPointerDown = true;
-    state.strokeStartTime = performance.now();
     state.strokeCuts = 0;
+    state.strokeComboAwarded = false;
     state.bladeTrail = [{ x, y, time: performance.now() }];
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!containerRef.current || isPausedRef.current) return;
+    if (!containerRef.current) return;
+    const state = gameStateRef.current;
+    if (isPausedRef.current || !state.isAlive || !state.isPointerDown) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const state = gameStateRef.current;
-    if (!state.isPointerDown && e.buttons > 0) {
-      state.isPointerDown = true;
-      state.strokeStartTime = performance.now();
-      state.strokeCuts = 0;
-    }
-
-    if (state.isPointerDown && state.isAlive) {
+    {
       const now = performance.now();
-
-      // Reset single-stroke cut counter if finger has been held down longer than 320ms
-      if (now - state.strokeStartTime > 320) {
-        state.strokeStartTime = now;
-        state.strokeCuts = 0;
-      }
-
       const trail = state.bladeTrail;
       const prev = trail[trail.length - 1];
 
@@ -541,7 +529,17 @@ export const BladeGame: React.FC<GameComponentProps> = ({
     const state = gameStateRef.current;
     state.isPointerDown = false;
     state.strokeCuts = 0;
+    state.strokeComboAwarded = false;
   };
+
+  useEffect(() => {
+    if (!isPaused) return;
+    const state = gameStateRef.current;
+    state.isPointerDown = false;
+    state.strokeCuts = 0;
+    state.strokeComboAwarded = false;
+    state.bladeTrail = [];
+  }, [isPaused]);
 
   const setSafeTimeout = useSafeTimeout();
 
@@ -900,6 +898,7 @@ export const BladeGame: React.FC<GameComponentProps> = ({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       onPointerLeave={handlePointerUp}
       className="relative w-full h-full min-h-0 flex flex-col items-center justify-center bg-[#05050A] select-none overflow-hidden touch-none cursor-crosshair"
     >

@@ -16,16 +16,19 @@ export const shouldBreakRhythmHold = ({
   holdBeats,
   bpm,
   laneHeld,
+  releaseStartedBeat = startBeat,
 }: {
   judgementBeat: number;
   startBeat: number;
   holdBeats: number;
   bpm: number;
   laneHeld: boolean;
+  releaseStartedBeat?: number | null;
 }) => {
   if (laneHeld || isRhythmHoldComplete(judgementBeat, startBeat, holdBeats)) return false;
-  const elapsedMs = Math.max(0, judgementBeat - startBeat) * (60_000 / bpm);
-  return elapsedMs > RHYTHM_HOLD_RELEASE_GRACE_MS;
+  const releaseBeat = releaseStartedBeat ?? judgementBeat;
+  const releasedForMs = Math.max(0, judgementBeat - releaseBeat) * (60_000 / bpm);
+  return releasedForMs > RHYTHM_HOLD_RELEASE_GRACE_MS;
 };
 
 export const getRhythmHoldCompletionBonus = (

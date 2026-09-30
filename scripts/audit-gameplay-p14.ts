@@ -36,6 +36,8 @@ assert(isRhythmHoldComplete(6, 4, 2), 'hold does not complete at its tail');
 assert(!shouldBreakRhythmHold({ judgementBeat: 4.1, startBeat: 4, holdBeats: 2, bpm: 120, laneHeld: false }), 'brief release inside grace breaks hold');
 assert(shouldBreakRhythmHold({ judgementBeat: 4.3, startBeat: 4, holdBeats: 2, bpm: 120, laneHeld: false }), 'early released hold is not broken');
 assert(!shouldBreakRhythmHold({ judgementBeat: 5, startBeat: 4, holdBeats: 2, bpm: 120, laneHeld: true }), 'held lane incorrectly breaks hold');
+assert(!shouldBreakRhythmHold({ judgementBeat: 5.5, startBeat: 4, holdBeats: 2, bpm: 120, laneHeld: false, releaseStartedBeat: 5.4 }), 'brief mid-hold release inside grace breaks hold');
+assert(shouldBreakRhythmHold({ judgementBeat: 5.65, startBeat: 4, holdBeats: 2, bpm: 120, laneHeld: false, releaseStartedBeat: 5.4 }), 'sustained mid-hold release does not break hold');
 assert(!shouldBreakRhythmHold({ judgementBeat: 6.1, startBeat: 4, holdBeats: 2, bpm: 120, laneHeld: false }), 'completed hold is treated as broken');
 assert(getRhythmHoldCompletionBonus(2, 2) > getRhythmHoldCompletionBonus(1, 1), 'hold reward does not scale with duration/multiplier');
 
@@ -91,6 +93,9 @@ for (const token of [
 assert(rhythm.includes("closestNote.type === 'hold'"), 'hold note head does not enter sustained state');
 assert(rhythm.includes('laneHeldRef.current[i] = true') && rhythm.includes('laneHeldRef.current[i] = false'), 'keyboard hold ownership is not tracked');
 assert(rhythm.includes('laneHeldRef.current[idx] = true') && rhythm.includes('laneHeldRef.current[idx] = false'), 'touch hold ownership is not tracked');
+assert(rhythm.includes('releaseStartedBeat: note.holdReleaseStartedBeat'), 'Rhythm release grace is not measured from the actual hold release');
+assert(rhythm.includes("window.addEventListener('blur', clearHeldLanes)"), 'Rhythm can retain phantom held lanes after focus loss');
+assert(rhythm.includes('onPointerCancel={() =>'), 'Rhythm touch cancellation can leave a lane falsely held');
 
 const block = read('src/games/BlockDropGame.tsx');
 for (const token of [
@@ -106,6 +111,8 @@ for (const token of [
   assert(block.includes(token), `Block Drop mastery integration missing: ${token}`);
 }
 assert(!block.includes('TETROMINO_KEYS[Math.floor(Math.random() * TETROMINO_KEYS.length)]'), 'independent random tetromino draw returned');
+assert(block.includes('if (e.repeat && isDiscreteAction) return;'), 'Block Drop held hard-drop/hold/rotate keys can spill into newly spawned pieces');
+assert(block.includes('Soft drop must not bypass the normal lock-delay decision window.'), 'Block Drop soft drop bypasses the certified lock delay');
 
 const blade = read('src/games/BladeGame.tsx');
 for (const token of [
@@ -115,9 +122,13 @@ for (const token of [
   'RAZOR RUSH',
   "target.type === 'bomb'",
   'state.strokeCuts >= 3',
+  'strokeComboAwarded',
+  'onPointerCancel={handlePointerUp}',
 ]) {
   assert(blade.includes(token), `Laser Blade precision integration missing: ${token}`);
 }
+assert(!blade.includes('strokeStartTime'), 'Laser Blade can manufacture new swipe bonuses without a new physical stroke');
+assert(blade.includes('if (state.strokeCuts >= 3 && !state.strokeComboAwarded)'), 'Laser Blade can pay the multi-cut reward more than once per physical swipe');
 
 const registry = read('src/data/games.ts');
 assert(registry.includes('hold the lane through the full laser tail'), 'Rhythm registry does not teach real hold-note behavior');
