@@ -23,6 +23,12 @@
 
 ## Unreleased
 
+### P15 historical-audit hardening — 2026-09-30
+- Keep the original P15 roster document immutable instead of rescoring it after later gameplay hardening; P20–P24 depend on P15 as historical provenance.
+- Strengthen `quality:gameplay-p15` with the exact post-P14 baseline SHA and an exact 32-row historical score signature, so scores/grades/ranks cannot be silently rewritten while still satisfying arithmetic checks.
+- Certify non-increasing rank totals, the exact 5 S / 20 A / 7 B distribution, canonical top-five/bottom-five summaries, and the original P16 balance handoff/exit decision.
+- No gameplay, current P24 score ledger, or historical P15 rating is changed.
+
 ### P14 flagship-depth hardening — 2026-09-30
 - Make Rhythm's 90 ms hold-release grace measure from the actual release moment instead of the note head, so brief mid-hold keyboard/touch jitter is genuinely forgiven.
 - Clear Rhythm lane ownership on window blur, reject suspended/modifier lane presses, and handle pointer cancellation so phantom held lanes cannot auto-complete hold notes.
