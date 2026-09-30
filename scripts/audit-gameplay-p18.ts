@@ -134,8 +134,8 @@ for (const id of ['game-back-btn','game-restart-btn','game-pause-btn','game-soun
 assert(runtime.includes("setAttribute('aria-label'"), 'P18 runtime does not assign accessible names');
 assert(shell.includes('aria-label={isPaused ? \'Resume game\' : \'Pause game\'}') && shell.includes('aria-pressed={isPaused}'), 'GameShell pause control lacks native stateful semantics');
 assert(shell.includes("aria-label={soundEnabled ? 'Mute sound' : 'Unmute sound'}") && shell.includes('aria-pressed={soundEnabled}'), 'GameShell sound control lacks native stateful semantics');
-assert(shell.includes("aria-keyshortcuts="Alt+Enter"") && shell.includes('aria-pressed={isFullscreen}'), 'GameShell fullscreen control lacks native shortcut/state semantics');
-assert(shell.includes("aria-keyshortcuts="R""), 'GameShell restart control lacks its native shortcut semantic');
+assert(shell.includes('aria-keyshortcuts="Alt+Enter"') && shell.includes('aria-pressed={isFullscreen}'), 'GameShell fullscreen control lacks native shortcut/state semantics');
+assert(shell.includes('aria-keyshortcuts="R"'), 'GameShell restart control lacks its native shortcut semantic');
 assert(css.includes(':focus-visible'), 'P18 visible keyboard-focus treatment is missing');
 assert(css.includes('min-height: 44px'), 'P18 coarse-pointer action targets do not approach 44px');
 assert(css.includes('min-width: 42px') && css.includes('min-height: 42px'), 'P18 shell touch-target floor is missing');
