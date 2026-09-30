@@ -71,6 +71,12 @@ const p18 = read('docs/P18_CLARITY_ACCESSIBILITY_CERTIFICATION.md');
 const p19 = read('docs/P19_ARCADE_COHESION_CERTIFICATION.md');
 const p20 = read('docs/P20_NEAR_S_PROMOTION_CERTIFICATION.md');
 const report = read('docs/P21_STRONG_A_PROMOTION_CERTIFICATION.md');
+const breakoutSource = read('src/games/BreakoutGame.tsx');
+const puckSource = read('src/games/AirHockeyGame.tsx');
+const towerSource = read('src/games/TowerGame.tsx');
+const pacSource = read('src/games/PacMazeGame.tsx');
+const oneLineSource = read('src/games/OneLineGame.tsx');
+const chronoSource = read('src/games/ChronoGame.tsx');
 const browserAudit = read('scripts/audit-browser-gameplay-p21.mjs');
 const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
 const ci = read('.github/workflows/ci.yml');
@@ -126,6 +132,8 @@ assert(getBreakoutRoundIdentity(1).label === 'CONTROL READ', 'Breakout opening a
 assert(getBreakoutRoundIdentity(8).label === 'SPECIAL FINALE', 'Breakout finale authored identity changed');
 assert(getBreakoutContract(1).target === 6, 'Breakout opening combo target changed');
 assert(getBreakoutContract(6).target === 3, 'Breakout late Power Bank target should tighten from 2 to 3');
+assert(breakoutSource.includes('isPausedRef.current || !state.isAlive || e.altKey || e.ctrlKey || e.metaKey'), 'Breakout keyboard input can mutate held state while suspended');
+assert(breakoutSource.includes('releaseHeldInput') && breakoutSource.includes("window.addEventListener('blur', releaseHeldInput)") && breakoutSource.includes("window.addEventListener('touchcancel', releaseHeldInput)"), 'Breakout held movement/laser input is not released on interrupted ownership');
 
 // Puck: match progression changes only score conversion inside the existing Power window.
 assert(AIR_HOCKEY_POWER_MAX === 100 && AIR_HOCKEY_POWER_DEFENSE_GAIN === 34 && AIR_HOCKEY_POWER_GOAL_GAIN === 12, 'Puck Power meter economy changed');
@@ -135,12 +143,17 @@ assert(AIR_HOCKEY_POWER_STREAK_BONUS_SCALES.every((value, index, values) => inde
 assert(getAirHockeyPowerGoalBonus(500, 1) === 250 && getAirHockeyPowerGoalBonus(500, 4) === 675, 'Puck P21 conversion rewards changed unexpectedly');
 assert(AIR_HOCKEY_PLAYER_MAX_SPEED === 1050 && AIR_HOCKEY_MAX_PUCK_SPEED === 680, 'Puck certified velocity caps changed');
 assert(AIR_HOCKEY_DIFFICULTY_CONFIG.EASY.reactionMs === 165 && AIR_HOCKEY_DIFFICULTY_CONFIG.MEDIUM.reactionMs === 105 && AIR_HOCKEY_DIFFICULTY_CONFIG.HARD.reactionMs === 70, 'Puck AI reaction bounds changed');
+assert(puckSource.includes('const soundEnabledRef = useRef(soundEnabled);') && puckSource.includes('if (soundEnabledRef.current) sounds.playPowerUp();'), 'Puck keyboard Power Play can use stale sound state');
+assert(puckSource.includes('role="group" aria-label="Difficulty"'), 'Puck difficulty choices are not exposed as one named control group');
+assert(puckSource.includes('aria-pressed={isSelected}') && puckSource.includes('aria-keyshortcuts="Space F"'), 'Puck selected difficulty/Power Play shortcuts are not semantically exposed');
 
 // Tower: five precision centers create a score-only route completion; prior Apex economy is frozen.
 assert(TOWER_APEX_EARN_EVERY === 3 && TOWER_APEX_MAX_CHARGES === 2 && TOWER_APEX_DURATION_SEC === 4.5, 'Tower Apex charge/duration contract changed');
 assert(TOWER_APEX_ROUTE_LENGTH === 5 && TOWER_APEX_ROUTE_COMPLETE_BONUS === 900, 'Tower P21 route contract changed');
 assert(getTowerApexRouteBonus(4) === 0 && getTowerApexRouteBonus(5) === 900 && getTowerApexRouteBonus(10) === 900, 'Tower route completion cadence is incorrect');
 assert(getTowerPrecisionBonus(1) === 150 && getTowerPrecisionBonus(5) === 1650 && getTowerPrecisionBonus(99) === 750, 'Tower precision/route reward integration changed');
+assert(towerSource.includes('releaseMovementInput') && towerSource.includes("window.addEventListener('blur', releaseMovementInput)") && towerSource.includes('onPointerCancel={handlePointerUp}'), 'Tower can retain movement after focus/pointer ownership loss');
+assert(towerSource.includes('aria-pressed={hudState.apexActive}') && towerSource.includes('aria-keyshortcuts="F Shift"'), 'Tower Apex state/shortcut semantics are missing');
 
 // Pac: six authored level protocols vary tactical rhythm while preserving certified floors/caps.
 assert(PAC_LEVEL_PROTOCOLS.length === 6, 'Pac must expose six authored level protocols');
