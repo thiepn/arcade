@@ -217,6 +217,43 @@ const runGame = async (page, profile, gameId) => {
     assert(afterRestart.hints === 0, 'restart repeated a dismissed first-run hint');
     assert(afterRestart.overflowX <= 2, `restart created horizontal overflow: ${afterRestart.overflowX}px`);
 
+    // Synthetic result shell: certify shared result semantics independently of
+    // each game's distinct terminal trigger, including the stable Play Again anchor.
+    await page.evaluate(() => {
+      const stage = document.querySelector('[data-p18-stage]');
+      if (!stage) return;
+      const overlay = document.createElement('div');
+      overlay.className = 'absolute inset-0';
+      overlay.dataset.p18SyntheticResult = 'true';
+      overlay.innerHTML = '<div><h2>RESULT TEST</h2><div><button id="btn-play-again" type="button">PLAY AGAIN</button></div></div>';
+      stage.appendChild(overlay);
+    });
+    await page.waitForFunction(() => Boolean(document.querySelector('[data-p18-synthetic-result="true"][data-p18-dialog="result"] [data-p18-result-guidance="true"]')), null, { timeout: 1500 });
+    await page.waitForTimeout(30);
+    const resultSurface = await page.evaluate(() => {
+      const dialog = document.querySelector('[data-p18-synthetic-result="true"]');
+      const playAgain = document.getElementById('btn-play-again');
+      return {
+        role: dialog?.getAttribute('role') || '',
+        modal: dialog?.getAttribute('aria-modal') || '',
+        guidanceRows: dialog?.querySelectorAll('.p18-result-row').length || 0,
+        playAgainFocused: document.activeElement === playAgain,
+        toolbarInert: Boolean(document.querySelector('.arcade-game-toolbar')?.inert),
+      };
+    });
+    assert(resultSurface.role === 'dialog' && resultSurface.modal === 'true', 'result surface lacks modal accessible semantics');
+    assert(resultSurface.guidanceRows === 2, 'result surface lacks failure/next-try guidance');
+    assert(resultSurface.playAgainFocused, 'result surface does not initially focus Play Again');
+    assert(resultSurface.toolbarInert, 'result surface did not isolate background toolbar');
+
+    await page.evaluate(() => document.querySelector('[data-p18-synthetic-result="true"]')?.remove());
+    await page.waitForFunction(() => {
+      const stage = document.querySelector('[data-p18-stage]');
+      return !document.querySelector('[data-p18-dialog="result"]') &&
+        !document.querySelector('.arcade-game-toolbar')?.inert &&
+        document.activeElement === stage;
+    }, null, { timeout: 1500 });
+
     assert(pageErrors.length === 0, `page errors: ${pageErrors.join(' | ')}`);
     assert(consoleErrors.length === 0, `console errors: ${consoleErrors.join(' | ')}`);
 
