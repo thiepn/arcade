@@ -58,9 +58,12 @@ for (const marker of [
   "p19-action-tertiary",
 ]) assert(runtime.includes(marker), `P19 runtime missing canonical marker ${marker}`);
 
-assert(runtime.includes("button.textContent = 'BACK TO ARCADE'"), 'P19 pause exit terminology is not normalized to Back to Arcade');
-assert(runtime.includes("dialog.setAttribute('inert', '')"), 'P19 modal-stack protection does not inert lower dialogs');
+assert(shell.includes('BACK TO ARCADE') && !shell.includes('EXIT TO ARCADE'), 'P19 pause exit terminology is not canonical in GameShell source');
+assert(!runtime.includes("button.textContent = 'BACK TO ARCADE'"), 'P19 still rewrites canonical pause navigation copy after render');
+assert(runtime.includes('stackSuppressionState = new Map<HTMLElement'), 'P19 modal-stack protection does not track reversible ownership state');
+assert(runtime.includes('dialog.inert = true;'), 'P19 modal-stack protection does not inert lower dialogs');
 assert(runtime.includes("dialog.setAttribute('aria-hidden', 'true')"), 'P19 modal-stack protection does not hide lower dialogs from accessibility APIs');
+assert(runtime.includes('dialog.inert = previous.inert;') && runtime.includes('previous.ariaHidden'), 'P19 modal-stack protection does not restore pre-existing accessibility state');
 assert(runtime.includes('new MutationObserver(decorate)'), 'P19 cohesion runtime does not discover lazy/shared surfaces');
 assert(runtime.includes('observer?.disconnect();'), 'P19 cohesion runtime lacks observer cleanup');
 
@@ -69,7 +72,7 @@ for (const landmark of ["GAME PAUSED", "SESSION COMPLETE", "NEW HIGH SCORE!", "g
   assert(shell.includes(landmark), `P19 changed required P18/GameShell landmark ${landmark}`);
 }
 assert(p18Runtime.includes("normalise(node.textContent ?? '') === 'GAME PAUSED'"), 'P18 pause landmark contract changed');
-assert(p18Runtime.includes("text === 'SESSION COMPLETE' || text === 'NEW HIGH SCORE!'"), 'P18 result landmark contract changed');
+assert(p18Runtime.includes("querySelector<HTMLElement>('#btn-play-again')") && p18Runtime.includes("text.startsWith('NEW HIGH SCORE!')"), 'P18 result discovery contract changed');
 
 // Home semantics: one true library landmark, separate controls region, named product controls.
 assert((app.match(/id="library-section"/g) ?? []).length === 1, 'App must expose exactly one library-section landmark');
@@ -87,6 +90,11 @@ for (const id of ['search-toggle-btn','sound-toggle-btn','stats-open-btn','heade
 }
 assert(header.includes('aria-label="Open global leaderboards"'), 'P19 leaderboard utility lacks an explicit accessible name');
 assert(header.includes("aria-label={soundEnabled ? 'Mute sound' : 'Unmute sound'}"), 'P19 home sound utility does not expose state in its accessible name');
+assert(header.includes('aria-keyshortcuts="M"'), 'P19 home sound utility advertises M visually but not semantically');
+assert(app.includes("(e.key === 'm' || e.key === 'M')") && app.includes('updateSoundPreference(newSound)'), 'P19 home does not implement the advertised M sound shortcut');
+assert(app.includes('const editing = Boolean(target?.closest'), 'P19 home shortcut layer does not protect editable controls');
+assert(runtime.includes("const pressed = soundButton.getAttribute('aria-pressed');"), 'P19 shell sound cohesion does not use semantic state as its source of truth');
+assert(!runtime.includes('lucide-volume-2') && !runtime.includes('lucide-volume-x'), 'P19 shell sound cohesion is coupled to Lucide implementation classes');
 
 // Recovery actions must distinguish retrying the failed surface from safely returning to the arcade.
 assert(errorBoundary.includes('private handleRetry'), 'P19 recovery surface lacks an independent retry path');
@@ -196,6 +204,11 @@ for (const profile of ["name: 'desktop'", "name: 'mobile'", "name: 'small-mobile
 assert(browserAudit.includes('home card contract'), 'P19 browser audit does not certify the arcade home card contract');
 assert(browserAudit.includes('navigation stress'), 'P19 browser audit does not certify cross-game navigation stress');
 assert(browserAudit.includes('settings persistence'), 'P19 browser audit does not certify shared settings persistence');
+assert(browserAudit.includes('home M shortcut did not toggle sound'), 'P19 browser audit does not certify the shared M sound shortcut');
+assert(browserAudit.includes('settings persistence did not reach Orbit exactly'), 'P19 browser audit does not require exact home/game sound semantics');
+assert(browserAudit.includes('modal stack ownership'), 'P19 browser audit does not certify reversible app-modal stack ownership');
+assert(browserAudit.includes('p19StackSuppressed'), 'P19 browser audit does not inspect the P19-owned modal suppression marker');
+assert(browserAudit.includes("document.activeElement === stage"), 'P19 browser audit does not preserve P18 gameplay focus restoration after Resume');
 assert(browserAudit.includes('orientation recovery'), 'P19 browser audit does not certify viewport/orientation recovery');
 assert(browserAudit.includes('exit leaked P19'), 'P19 browser audit does not certify P19 cleanup');
 assert(browserAudit.includes("locator('main#library-section')"), 'P19 browser audit does not bind to the canonical library main landmark');
