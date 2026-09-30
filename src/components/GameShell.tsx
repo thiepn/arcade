@@ -709,7 +709,7 @@ export const GameShell: React.FC<GameShellProps> = ({
                     }}
                     className="w-full py-2 rounded-xl bg-transparent hover:bg-[#1E1E24] text-zinc-400 hover:text-white transition-colors cursor-pointer"
                   >
-                    EXIT TO ARCADE
+                    BACK TO ARCADE
                   </button>
                 </div>
               </div>
