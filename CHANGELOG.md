@@ -23,6 +23,14 @@
 
 ## Unreleased
 
+### P18 clarity / teaching / accessibility hardening — 2026-09-30
+- Make pause/result dialogs genuinely modal by reversibly inerting toolbar and gameplay sibling subtrees, and redirect programmatic focus escape back into the active dialog.
+- Restore focus to the gameplay region after Resume/Play Again so keyboard games do not accidentally re-activate the Pause toolbar control on their next Space/Enter input.
+- Add native stateful ARIA semantics for Pause, Sound, Haptics, Fullscreen, Restart, and Back controls; keep Escape shortcut ownership aligned with the actual pause/result state.
+- Refresh fullscreen accessible names on native/browser fullscreen changes instead of leaving stale labels on an already-decorated shell.
+- Restrict first-run hint dismissal to genuine active gameplay input, excluding paused/result controls, editable targets, modifiers, repeats, and IME composition.
+- Extend the permanent P18 browser/source gates to certify modal background isolation, forced focus containment, gameplay focus restoration, stateful control semantics, fullscreen-label refresh, and cleanup.
+
 ### P17 game-feel runtime hardening — 2026-09-30
 - Stop P17's semantic MutationObserver from treating text inside interactive controls as gameplay mastery/warning/failure feedback, preventing static HOLD/BURST-style labels from generating false effects.
 - Add an explicit GameShell active-play marker and restrict generic pointer/keyboard feedback to engine-ready, unpaused, unobscured live play; editable text input is ignored.
