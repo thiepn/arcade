@@ -50,7 +50,7 @@ const setAccessibleControlNames = (state: ShellState) => {
   for (const [id, label, shortcut] of labels) {
     const button = shell.querySelector<HTMLElement>(`#${id}`);
     if (!button) continue;
-    button.setAttribute('aria-label', shortcut ? `${label} (${shortcut})` : label);
+    button.setAttribute('aria-label', label);
     if (shortcut) button.setAttribute('aria-keyshortcuts', shortcut);
     else button.removeAttribute('aria-keyshortcuts');
   }
@@ -61,7 +61,7 @@ const setAccessibleControlNames = (state: ShellState) => {
   const sound = shell.querySelector<HTMLElement>('#game-sound-btn');
   if (sound) {
     const enabled = sound.getAttribute('aria-pressed') === 'true';
-    sound.setAttribute('aria-label', enabled ? 'Mute sound (M)' : 'Unmute sound (M)');
+    sound.setAttribute('aria-label', enabled ? 'Mute sound' : 'Unmute sound');
     sound.setAttribute('aria-keyshortcuts', 'M');
   }
 
