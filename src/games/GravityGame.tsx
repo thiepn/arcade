@@ -1152,7 +1152,7 @@ export const GravityGame: React.FC<GameComponentProps> = ({
               : 'bg-[#18181B]/90 border-[#27272A] text-cyan-300 hover:text-white'
           }`}
           title="Flip gravitational polarity (Attract <-> Repel)"
-          aria-label={gravityInverted ? 'Set gravity field to attract' : 'Set gravity field to repel'}
+          aria-label="Repel gravity"
           aria-pressed={gravityInverted}
           aria-keyshortcuts="G"
         >
@@ -1164,7 +1164,7 @@ export const GravityGame: React.FC<GameComponentProps> = ({
           <button
             type="button"
             onClick={() => setIsSlowMo(!isSlowMo)}
-            aria-label={isSlowMo ? 'Disable slow motion' : 'Enable slow motion'}
+            aria-label="Slow motion"
             aria-pressed={isSlowMo}
             aria-keyshortcuts="Shift"
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-mono-arcade text-xs transition-colors cursor-pointer backdrop-blur-md ${
