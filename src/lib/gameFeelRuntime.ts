@@ -105,8 +105,6 @@ const restartClass = (
   className: string,
   durationMs: number,
 ) => {
-  const sequence = String((Number(element.dataset.p17Sequence ?? '0') || 0) + 1);
-  element.dataset.p17Sequence = sequence;
   element.classList.remove(className);
   void element.offsetWidth;
   element.classList.add(className);
@@ -118,7 +116,7 @@ const restartClass = (
   }
   cancelShellTimer(state, elementTimers.get(className));
   const timer = scheduleShellTimer(state, () => {
-    if (element.dataset.p17Sequence === sequence) element.classList.remove(className);
+    element.classList.remove(className);
     if (elementTimers?.get(className) === timer) elementTimers.delete(className);
   }, durationMs);
   elementTimers.set(className, timer);

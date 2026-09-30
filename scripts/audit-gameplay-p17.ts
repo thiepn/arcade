@@ -119,6 +119,8 @@ assert(runtime.includes('nodeTimers: Map<HTMLElement, number>;'), 'P17 feedback 
 assert(runtime.includes('classTimers: WeakMap<HTMLElement, Map<string, number>>;'), 'P17 repeated semantic/control classes do not own replaceable timers');
 assert(runtime.includes('cancelShellTimer(state, state.nodeTimers.get(node));'), 'P17 reused feedback nodes can accumulate stale animation timers');
 assert(runtime.includes('cancelShellTimer(state, elementTimers.get(className));'), 'P17 repeated semantic/control classes can accumulate stale animation timers');
+assert(!runtime.includes('element.dataset.p17Sequence'), "P17 different feedback kinds can invalidate each other's class cleanup through a shared element sequence");
+assert(runtime.includes('element.classList.remove(className);\n    if (elementTimers?.get(className) === timer)'), 'P17 class cleanup is not independently owned per feedback class');
 assert(runtime.includes("if (isInteractiveControl(anchor) || anchor.closest('.p17-feedback-layer')) continue;"), 'P17 semantic scanner can misclassify static interactive control labels as gameplay events');
 assert(runtime.includes('isEditableTarget(event.target)'), 'P17 keyboard acknowledgement can react to editable text input');
 assert(runtime.includes('if (!state || !isGameplayActive(state)) return;'), 'P17 keyboard acknowledgement can fire while gameplay is suspended');
@@ -200,6 +202,7 @@ assert(browserAudit.includes("keyboard input did not receive immediate P17 ackno
 assert(browserAudit.includes("editable input leaked P17 gameplay acknowledgement"), 'P17 browser audit does not certify editable-input isolation');
 assert(browserAudit.includes("interactive control emitted a gameplay input burst"), 'P17 browser audit does not certify control-vs-gameplay feedback separation');
 assert(browserAudit.includes("static control label emitted semantic mastery feedback"), 'P17 browser audit does not certify static-control semantic isolation');
+assert(browserAudit.includes("overlapping feedback classes do not clean up independently"), 'P17 browser audit does not certify independent overlapping class cleanup');
 assert(browserAudit.includes('exit leaked P17 shell/layer'), 'P17 browser audit does not certify exit cleanup');
 
 // Permanent gate wiring.

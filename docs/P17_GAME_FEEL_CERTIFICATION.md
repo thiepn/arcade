@@ -154,6 +154,7 @@ The 32-game feel profiles, eight-node visual pool, P15 grades and P16 balance en
 - **Active-play ownership:** GameShell now exposes an explicit active-play state. Generic pointer/keyboard acknowledgement fires only after the engine is ready and while the run is neither paused, obscured nor on the result screen.
 - **Editable-key isolation:** typing inside an input, textarea, select or contenteditable surface no longer emits generic gameplay feedback.
 - **Bounded timer replacement:** the eight pooled burst nodes and repeatedly animated semantic/control elements replace their previous cleanup timers instead of accumulating stale timers during rapid typing, tapping or scoring.
+- **Independent class ownership:** overlapping feedback kinds on the same stage or text element now clean up independently. A later mastery/warning/failure event cannot invalidate the cleanup of an earlier strong/success class and leave stale visual state behind.
 - **Browser certification:** the P17 browser matrix now checks keyboard acknowledgement, editable-input isolation, interactive-control separation and static-control semantic isolation in both full-motion desktop and reduced-motion mobile sessions.
 
 These changes remain presentation-only: no scoring, collision, timing, input action, difficulty or mastery rule is altered.

@@ -178,6 +178,28 @@ const runGame = async (page, profile, gameId) => {
     });
     assert(!semanticControlIsolation.mastery, 'static control label emitted semantic mastery feedback');
 
+    const overlappingClasses = await page.evaluate(async ({ reduced }) => {
+      const stage = document.querySelector('.game-shell main > div');
+      if (!stage) return { initial: false, midpoint: false, final: false };
+
+      window.dispatchEvent(new CustomEvent('arcade:p17-feedback', { detail: { kind: 'strong' } }));
+      window.dispatchEvent(new CustomEvent('arcade:p17-feedback', { detail: { kind: 'mastery' } }));
+      const initial = stage.classList.contains('p17-stage-strong') && stage.classList.contains('p17-stage-mastery');
+
+      await new Promise((resolve) => setTimeout(resolve, reduced ? 150 : 300));
+      const midpoint = reduced
+        ? !stage.classList.contains('p17-stage-strong') && !stage.classList.contains('p17-stage-mastery')
+        : !stage.classList.contains('p17-stage-strong') && stage.classList.contains('p17-stage-mastery');
+
+      if (!reduced) await new Promise((resolve) => setTimeout(resolve, 180));
+      const final = !stage.classList.contains('p17-stage-strong') && !stage.classList.contains('p17-stage-mastery');
+      return { initial, midpoint, final };
+    }, { reduced: profile.reducedMotion === 'reduce' });
+    assert(
+      overlappingClasses.initial && overlappingClasses.midpoint && overlappingClasses.final,
+      'overlapping feedback classes do not clean up independently',
+    );
+
     const masteryState = await page.evaluate(() => {
       window.dispatchEvent(new CustomEvent('arcade:p17-feedback', { detail: { kind: 'mastery' } }));
       return {
