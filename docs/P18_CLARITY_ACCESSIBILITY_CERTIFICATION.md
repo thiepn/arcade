@@ -132,6 +132,7 @@ A current-source audit after the P17 event-ownership hardening found accessibili
 - focus restoration to the gameplay region after Resume/Play Again instead of the Pause toolbar control;
 - native stateful ARIA semantics on Pause, Sound, Haptics, and Fullscreen controls, with shortcut ownership matching the actual shell behavior;
 - fullscreen accessible-name refresh on browser/native fullscreen changes;
+- result discovery anchored to the stable Play Again action, so both ordinary and NEW HIGH SCORE/AP-PB result variants receive the same dialog semantics and coaching;
 - first-run hint dismissal only from genuine active gameplay input, not paused overlays, toolbar controls, editable fields, modifiers, repeats, or IME composition.
 
 These changes remain teaching/accessibility infrastructure only. They do not alter scoring, collision, timing, balance, game rules, mastery economics, P15 grades, or the P16/P17 gameplay contracts.
