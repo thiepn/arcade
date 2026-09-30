@@ -105,9 +105,15 @@ const findPauseOverlay = (shell: HTMLElement) => {
 };
 
 const findResultOverlay = (shell: HTMLElement) => {
+  // The action ID is stable across normal and new-high-score results, whereas
+  // the visible high-score badge contains nested AP-PB text and is not an
+  // exact text node. Anchor result discovery to the actual result action.
+  const playAgain = shell.querySelector<HTMLElement>('#btn-play-again');
+  if (playAgain) return playAgain.closest<HTMLElement>('.absolute.inset-0');
+
   const marker = Array.from(shell.querySelectorAll('span, div')).find((node) => {
     const text = normalise(node.textContent ?? '');
-    return text === 'SESSION COMPLETE' || text === 'NEW HIGH SCORE!';
+    return text === 'SESSION COMPLETE' || text.startsWith('NEW HIGH SCORE!');
   });
   return marker?.closest<HTMLElement>('.absolute.inset-0') ?? null;
 };
