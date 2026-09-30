@@ -23,6 +23,14 @@
 
 ## Unreleased
 
+### P19 arcade cohesion / cross-game UX hardening — 2026-09-30
+- Implement the home-screen **M** shortcut that the Sound control already advertised, and expose `aria-keyshortcuts="M"` so home and in-game sound controls share one action contract.
+- Make **BACK TO ARCADE** the authored Pause copy instead of rewriting **EXIT TO ARCADE** after render.
+- Derive shell sound wording from semantic `aria-pressed` state rather than Lucide SVG classes, keeping the cohesion layer independent of icon implementation details.
+- Make stacked app-modal suppression ownership-tracked and reversible so P19 restores pre-existing `aria-hidden`/`inert` state instead of blindly deleting it.
+- Harmonize P18/P19 control names so shortcut metadata lives in `aria-keyshortcuts`, while accessible names stay identical across home/game surfaces.
+- Update P19's P18 dependency contract for the high-score-safe Play Again result detector and extend browser certification around exact sound semantics, Resume focus continuity, and modal-stack restoration.
+
 ### P18 clarity / teaching / accessibility hardening — 2026-09-30
 - Make pause/result dialogs genuinely modal by reversibly inerting toolbar and gameplay sibling subtrees, and redirect programmatic focus escape back into the active dialog.
 - Restore focus to the gameplay region after Resume/Play Again so keyboard games do not accidentally re-activate the Pause toolbar control on their next Space/Enter input.
