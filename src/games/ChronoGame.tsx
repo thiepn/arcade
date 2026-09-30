@@ -843,8 +843,6 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
           type="button"
           aria-label="Rotate left"
           aria-pressed={leftActive}
-          aria-label="Rotate right"
-          aria-pressed={rightActive}
           onMouseDown={() => {
             if (isPausedRef.current || !gameStateRef.current.isAlive) return;
             gameStateRef.current.playerTurnDir = -1;
@@ -877,6 +875,8 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
 
         <button
           type="button"
+          aria-label="Rotate right"
+          aria-pressed={rightActive}
           onMouseDown={() => {
             if (isPausedRef.current || !gameStateRef.current.isAlive) return;
             gameStateRef.current.playerTurnDir = 1;
