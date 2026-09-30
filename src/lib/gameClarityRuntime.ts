@@ -18,6 +18,8 @@ interface ShellState {
   hintDismissed: boolean;
   activeDialog: HTMLElement | null;
   dialogCleanup: (() => void) | null;
+  dialogIsolation: Array<{ element: HTMLElement; inert: boolean }>;
+  stageTabIndexAdded: boolean;
   onPointerDown: (event: PointerEvent) => void;
   onKeyDown: (event: KeyboardEvent) => void;
 }
@@ -38,11 +40,11 @@ const getProfile = (shell: HTMLElement) => {
 const setAccessibleControlNames = (state: ShellState) => {
   const { shell } = state;
   const pauseVisible = Boolean(shell.querySelector('[data-p18-dialog="pause"]'));
+  const resultVisible = Boolean(shell.querySelector('[data-p18-dialog="result"]'));
   const labels: Array<[string, string, string?]> = [
-    ['game-back-btn', 'Back to Arcade', 'Escape'],
+    ['game-back-btn', 'Back to Arcade', resultVisible ? 'Escape' : undefined],
     ['game-restart-btn', 'Restart game', 'R'],
-    ['game-pause-btn', pauseVisible ? 'Resume game' : 'Pause game', 'Escape'],
-    ['game-sound-btn', 'Toggle sound', 'M'],
+    ['game-pause-btn', pauseVisible ? 'Resume game' : 'Pause game', resultVisible ? undefined : 'Escape'],
   ];
 
   for (const [id, label, shortcut] of labels) {
@@ -50,20 +52,32 @@ const setAccessibleControlNames = (state: ShellState) => {
     if (!button) continue;
     button.setAttribute('aria-label', shortcut ? `${label} (${shortcut})` : label);
     if (shortcut) button.setAttribute('aria-keyshortcuts', shortcut);
+    else button.removeAttribute('aria-keyshortcuts');
+  }
+
+  const pause = shell.querySelector<HTMLElement>('#game-pause-btn');
+  if (pause) pause.setAttribute('aria-pressed', pauseVisible ? 'true' : 'false');
+
+  const sound = shell.querySelector<HTMLElement>('#game-sound-btn');
+  if (sound) {
+    const enabled = sound.getAttribute('aria-pressed') === 'true';
+    sound.setAttribute('aria-label', enabled ? 'Mute sound (M)' : 'Unmute sound (M)');
+    sound.setAttribute('aria-keyshortcuts', 'M');
   }
 
   const fullscreen = shell.querySelector<HTMLElement>('#game-fullscreen-btn');
   if (fullscreen) {
-    const exiting = Boolean(document.fullscreenElement);
+    const fullscreenElement = document.fullscreenElement;
+    const exiting = Boolean(fullscreenElement && (fullscreenElement === shell || shell.contains(fullscreenElement)));
     fullscreen.setAttribute('aria-label', exiting ? 'Exit fullscreen' : 'Enter fullscreen');
     fullscreen.setAttribute('aria-keyshortcuts', 'Alt+Enter');
+    fullscreen.setAttribute('aria-pressed', exiting ? 'true' : 'false');
   }
 
   const haptics = shell.querySelector<HTMLElement>('#game-haptics-btn');
   if (haptics) {
-    const title = normalise(haptics.getAttribute('title') ?? '');
-    const label = title.includes('OFF') ? 'Enable haptic feedback' : title.includes('ON') ? 'Disable haptic feedback' : 'Toggle haptic feedback';
-    haptics.setAttribute('aria-label', label);
+    const enabled = haptics.getAttribute('aria-pressed') === 'true';
+    haptics.setAttribute('aria-label', enabled ? 'Disable haptic feedback' : 'Enable haptic feedback');
   }
 };
 
@@ -202,35 +216,67 @@ const decorateResult = (state: ShellState, overlay: HTMLElement) => {
   else dialog.appendChild(guidance);
 };
 
+const releaseDialogIsolation = (state: ShellState) => {
+  for (const record of state.dialogIsolation.splice(0).reverse()) {
+    record.element.inert = record.inert;
+  }
+};
+
+const applyDialogIsolation = (state: ShellState, dialog: HTMLElement) => {
+  releaseDialogIsolation(state);
+  let current: HTMLElement | null = dialog;
+  while (current && current !== state.shell) {
+    const parent = current.parentElement;
+    if (!parent) break;
+    for (const sibling of Array.from(parent.children)) {
+      if (!(sibling instanceof HTMLElement) || sibling === current) continue;
+      state.dialogIsolation.push({ element: sibling, inert: sibling.inert });
+      sibling.inert = true;
+    }
+    current = parent;
+  }
+};
+
 const setupDialogFocus = (state: ShellState, dialog: HTMLElement | null) => {
   if (state.activeDialog === dialog) return;
   state.dialogCleanup?.();
   state.dialogCleanup = null;
   state.activeDialog = dialog;
+
   if (!dialog) {
-    const pauseButton = state.shell.querySelector<HTMLElement>('#game-pause-btn');
-    if (pauseButton && state.shell.isConnected) pauseButton.focus({ preventScroll: true });
+    const frame = requestAnimationFrame(() => {
+      if (state.shell.isConnected && state.stage.isConnected) state.stage.focus({ preventScroll: true });
+    });
+    state.dialogCleanup = () => cancelAnimationFrame(frame);
     return;
   }
 
-  const frame = requestAnimationFrame(() => {
+  applyDialogIsolation(state, dialog);
+  if (!dialog.hasAttribute('tabindex')) dialog.setAttribute('tabindex', '-1');
+
+  const visibleFocusable = () => Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((element) => {
+    const rect = element.getBoundingClientRect();
+    return !element.hidden && !element.inert && element.getAttribute('aria-hidden') !== 'true' && rect.width > 0 && rect.height > 0;
+  });
+  const focusPreferred = () => {
     // Result screens explicitly advertise Space as Play Again. Make that action
-    // the initial focus owner so native Space/Enter activation matches the UI,
-    // while Tab can still move to leaderboard/upload controls normally.
+    // the initial focus owner so native Space/Enter activation matches the UI.
     const preferred = dialog.dataset.p18Dialog === 'result'
       ? dialog.querySelector<HTMLElement>('#btn-play-again')
       : null;
-    const first = preferred ?? dialog.querySelector<HTMLElement>(FOCUSABLE) ?? dialog;
-    if (!dialog.hasAttribute('tabindex')) dialog.setAttribute('tabindex', '-1');
-    first.focus({ preventScroll: true });
-  });
+    const target = preferred && !preferred.inert ? preferred : visibleFocusable()[0] ?? dialog;
+    target.focus({ preventScroll: true });
+  };
 
+  const frame = requestAnimationFrame(focusPreferred);
+  const onFocusIn = (event: FocusEvent) => {
+    const target = event.target instanceof Node ? event.target : null;
+    if (target && dialog.contains(target)) return;
+    focusPreferred();
+  };
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key !== 'Tab') return;
-    const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((element) => {
-      const rect = element.getBoundingClientRect();
-      return !element.hidden && element.getAttribute('aria-hidden') !== 'true' && rect.width > 0 && rect.height > 0;
-    });
+    const focusable = visibleFocusable();
     if (!focusable.length) {
       event.preventDefault();
       dialog.focus({ preventScroll: true });
@@ -238,7 +284,10 @@ const setupDialogFocus = (state: ShellState, dialog: HTMLElement | null) => {
     }
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
+    if (!dialog.contains(document.activeElement)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus({ preventScroll: true });
+    } else if (event.shiftKey && document.activeElement === first) {
       event.preventDefault();
       last.focus({ preventScroll: true });
     } else if (!event.shiftKey && document.activeElement === last) {
@@ -247,10 +296,13 @@ const setupDialogFocus = (state: ShellState, dialog: HTMLElement | null) => {
     }
   };
 
+  state.shell.addEventListener('focusin', onFocusIn, true);
   dialog.addEventListener('keydown', onKeyDown);
   state.dialogCleanup = () => {
     cancelAnimationFrame(frame);
+    state.shell.removeEventListener('focusin', onFocusIn, true);
     dialog.removeEventListener('keydown', onKeyDown);
+    releaseDialogIsolation(state);
   };
 };
 
@@ -268,6 +320,14 @@ const markHintSeen = (id: string) => {
   try {
     window.localStorage.setItem(hintStorageKey(id), '1');
   } catch {}
+};
+
+const isGameplayActive = (state: ShellState) =>
+  state.stage.closest('main')?.getAttribute('data-gameplay-active') === 'true';
+
+const isInteractiveTarget = (target: EventTarget | null) => {
+  const element = target instanceof Element ? target : null;
+  return Boolean(element?.closest('button, a[href], input, textarea, select, [role="button"], [contenteditable="true"], [contenteditable=""]'));
 };
 
 const removeHint = (state: ShellState) => {
@@ -323,9 +383,16 @@ const decorateShell = (shell: HTMLElement) => {
   state.hintDismissed = hintAlreadySeen(profile.id);
   state.activeDialog = null;
   state.dialogCleanup = null;
-  state.onPointerDown = () => removeHint(state);
+  state.dialogIsolation = [];
+  state.stageTabIndexAdded = !stage.hasAttribute('tabindex');
+  if (state.stageTabIndexAdded) stage.setAttribute('tabindex', '-1');
+  state.onPointerDown = (event) => {
+    if (!isGameplayActive(state) || isInteractiveTarget(event.target)) return;
+    removeHint(state);
+  };
   state.onKeyDown = (event) => {
-    if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
+    if (!isGameplayActive(state) || isInteractiveTarget(event.target)) return;
+    if (event.metaKey || event.ctrlKey || event.altKey || event.repeat || event.isComposing) return;
     if (['Tab', 'Escape', 'r', 'R', 'm', 'M'].includes(event.key)) return;
     removeHint(state);
   };
@@ -349,6 +416,8 @@ const cleanupShell = (shell: HTMLElement) => {
   state.stage.removeAttribute('data-p18-stage');
   state.stage.removeAttribute('role');
   state.stage.removeAttribute('aria-label');
+  if (state.stageTabIndexAdded) state.stage.removeAttribute('tabindex');
+  releaseDialogIsolation(state);
   shell.removeAttribute('data-p18-game');
   shell.removeAttribute('data-p18-clarity');
   shellStates.delete(shell);
@@ -361,17 +430,24 @@ const discover = () => {
   }
 };
 
+const handleFullscreenChange = () => {
+  discover();
+  for (const state of shellStates.values()) {
+    if (state.shell.isConnected) refreshShell(state);
+  }
+};
+
 export const installGameClarityRuntime = () => {
   if (installed || typeof window === 'undefined' || typeof document === 'undefined') return teardownGlobal ?? (() => {});
   installed = true;
   documentObserver = new MutationObserver(discover);
   documentObserver.observe(document.body, { childList: true, subtree: true });
-  document.addEventListener('fullscreenchange', discover);
+  document.addEventListener('fullscreenchange', handleFullscreenChange);
   discover();
 
   teardownGlobal = () => {
     documentObserver?.disconnect();
-    document.removeEventListener('fullscreenchange', discover);
+    document.removeEventListener('fullscreenchange', handleFullscreenChange);
     for (const shell of Array.from(shellStates.keys())) cleanupShell(shell);
     documentObserver = null;
     teardownGlobal = null;
