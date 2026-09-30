@@ -263,6 +263,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
             title="Toggle Sound (M)"
             aria-label={soundEnabled ? 'Mute sound' : 'Unmute sound'}
+            aria-keyshortcuts="M"
             aria-pressed={soundEnabled}
           >
             {soundEnabled ? (
