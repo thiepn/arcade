@@ -89,6 +89,49 @@ const assertCandidateMarker = async (page, id) => {
   }
 };
 
+const assertFlagshipControlSemantics = async (page, id, phase = 'before') => {
+  if (id === 'gravity') {
+    const flip = page.getByRole('button', { name: /Set gravity field/i });
+    assert(await flip.getAttribute('aria-keyshortcuts') === 'G', 'Gravity flip control does not expose G');
+    assert(['true', 'false'].includes(await flip.getAttribute('aria-pressed')), 'Gravity flip control does not expose state');
+    const recall = page.getByRole('button', { name: /Re-aim probe/i }).first();
+    assert(await recall.getAttribute('aria-keyshortcuts') === 'Q', 'Gravity recall control does not expose Q');
+    if (phase === 'after') assert(await flip.getAttribute('aria-pressed') === 'true', 'Gravity G input did not flip the semantic polarity state');
+  } else if (id === 'chain') {
+    const plasma = page.getByRole('button', { name: /Select Plasma Blast/i });
+    const tesla = page.getByRole('button', { name: /Select Tesla Arc/i });
+    assert(Boolean(await page.getByRole('group', { name: 'Detonator tool' }).count()), 'Chain tool selector is not a named control group');
+    if (phase === 'before') {
+      assert(await plasma.getAttribute('aria-pressed') === 'true' && await tesla.getAttribute('aria-pressed') === 'false', 'Chain initial tool state is not semantically exposed');
+    } else {
+      assert(await plasma.getAttribute('aria-pressed') === 'false' && await tesla.getAttribute('aria-pressed') === 'true', 'Chain tool selection did not update semantic state');
+    }
+  } else if (id === 'merge') {
+    const hammer = page.getByRole('button', { name: /Hammer:/i });
+    assert(['true', 'false'].includes(await hammer.getAttribute('aria-pressed')), 'Merge hammer state is not semantically exposed');
+    assert(await page.getByRole('button', { name: /Drop tile in column 1/i }).count() === 1, 'Merge board columns are not keyboard-addressable controls');
+  } else if (id === 'drift') {
+    const nitro = page.getByRole('button', { name: /Nitro boost/i });
+    assert(await nitro.getAttribute('aria-keyshortcuts') === 'Space', 'Cyber Drift Nitro does not expose Space');
+    const left = page.getByRole('button', { name: 'Steer left' });
+    const right = page.getByRole('button', { name: 'Steer right' });
+    assert(['true', 'false'].includes(await left.getAttribute('aria-pressed')) && ['true', 'false'].includes(await right.getAttribute('aria-pressed')), 'Cyber Drift steering state is not semantically exposed');
+    if (phase === 'after') {
+      assert(await left.getAttribute('aria-pressed') === 'false' && await right.getAttribute('aria-pressed') === 'false', 'Cyber Drift blur cleanup left steering active');
+    }
+  } else if (id === 'dodge') {
+    const dash = page.getByRole('button', { name: /Warp Dash/i });
+    assert(await dash.getAttribute('aria-keyshortcuts') === 'Space', 'Dodge Warp Dash does not expose Space');
+    const label = await dash.getAttribute('aria-label') || '';
+    if (phase === 'before') assert(/2 charges remaining/i.test(label), `Dodge initial dash state is wrong: ${label}`);
+    else assert(/1 charge remaining/i.test(label), `Dodge keyboard dash did not consume exactly one charge: ${label}`);
+  } else if (id === 'blade') {
+    const phrase = page.locator('[data-p20-blade-phrase]');
+    const label = await phrase.getAttribute('aria-label') || '';
+    assert(/Blade phrase CLEAN CUTS, step 1 of 3/i.test(label), `Laser Blade phrase semantics invalid: ${label}`);
+  }
+};
+
 const exerciseCandidateInput = async (page, id) => {
   if (id === 'gravity') {
     await page.keyboard.press('g');
@@ -102,18 +145,17 @@ const exerciseCandidateInput = async (page, id) => {
     await page.keyboard.press('2');
     await page.waitForTimeout(80);
   } else if (id === 'drift') {
-    const nitro = page.getByRole('button', { name: /NITRO BOOST/i });
+    const nitro = page.getByRole('button', { name: /Nitro boost/i });
     if (await nitro.isEnabled()) await nitro.click();
-    const left = page.getByRole('button', { name: /STEER/i }).first();
-    const box = await left.boundingBox();
-    if (box) {
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-      await page.mouse.down();
-      await page.waitForTimeout(60);
-      await page.mouse.up();
-    }
+    await page.keyboard.down('ArrowLeft');
+    await page.waitForFunction(() => document.querySelector('button[aria-label="Steer left"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 1000 });
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+    await page.waitForFunction(() => document.querySelector('button[aria-label="Steer left"]')?.getAttribute('aria-pressed') === 'false', null, { timeout: 1000 });
+    await page.keyboard.up('ArrowLeft');
   } else if (id === 'dodge') {
-    await page.getByRole('button', { name: /WARP DASH/i }).click();
+    await page.keyboard.press('Space');
+    await page.waitForFunction(() => /1 charge remaining/i.test(document.querySelector('button[aria-keyshortcuts="Space"][aria-label^="Warp Dash"]')?.getAttribute('aria-label') || ''), null, { timeout: 1000 });
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')));
     await page.waitForTimeout(60);
   } else if (id === 'blade') {
     const canvas = page.locator('#laser-blade-container canvas');
@@ -132,6 +174,7 @@ const runCandidate = async (page, profile, id) => {
   try {
     await launch(page, id);
     await assertCandidateMarker(page, id);
+    await assertFlagshipControlSemantics(page, id, 'before');
 
     const shellState = await page.evaluate(() => {
       const shell = document.querySelector('.game-shell');
@@ -154,6 +197,7 @@ const runCandidate = async (page, profile, id) => {
     await exerciseCandidateInput(page, id);
     await page.waitForTimeout(80);
     await assertCandidateMarker(page, id);
+    await assertFlagshipControlSemantics(page, id, 'after');
 
     await page.locator('#game-pause-btn').click();
     await page.waitForFunction(() => Boolean(document.querySelector('[data-p18-dialog="pause"][data-p19-dialog="pause"]')), null, { timeout: 3000 });
@@ -164,6 +208,10 @@ const runCandidate = async (page, profile, id) => {
     const pauseText = await page.locator('[data-p19-dialog="pause"]').innerText();
     assert(pauseText.includes('OBJECTIVE') && pauseText.includes('BACK TO ARCADE'), `${id} pause lost P18/P19 teaching/navigation`);
     await page.locator('[data-p19-dialog="pause"]').getByRole('button', { name: /^RESUME \(ESC\)$/i }).click();
+    await page.waitForFunction(() => {
+      const stage = document.querySelector('[data-p18-stage]');
+      return Boolean(stage && document.activeElement === stage);
+    }, null, { timeout: 1500 });
 
     await page.locator('#game-restart-btn').click();
     await page.waitForTimeout(100);
