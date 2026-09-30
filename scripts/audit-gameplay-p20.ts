@@ -103,11 +103,17 @@ for (const marker of ['getGravityFlightContract', 'isGravityFlightContractComple
   assert(gravity.includes(marker), `Gravity promotion evidence missing ${marker}`);
 }
 assert(gravity.includes('if (lvl > 5)'), 'Gravity no longer retains its five-sector authored run');
+assert(gravity.includes('aria-pressed={gravityInverted}') && gravity.includes('aria-keyshortcuts="G"'), 'Gravity polarity control does not expose flagship state/shortcut semantics');
+assert(gravity.includes('aria-pressed={isSlowMo}') && gravity.includes('aria-keyshortcuts="Shift"'), 'Gravity slow-motion control does not expose flagship state/shortcut semantics');
+assert(gravity.includes('aria-label="Re-aim probe"') && gravity.includes('aria-keyshortcuts="Q"'), 'Gravity recall control does not expose Q semantics');
+assert(gravity.includes('aria-keyshortcuts="Space"'), 'Gravity boost control does not expose Space semantics');
 
 // Chain: three distinct tools, staged cascades, and visible Resonance remain intact.
 for (const marker of ['PLASMA DETONATOR', 'TESLA ARC CHAIN', 'CRYO GRAVITY VORTEX', 'RESONANCE', 'toolPurpose', 'advanceChainResonance', 'state.chargesLeft = 3']) {
   assert(chain.includes(marker), `Chain promotion evidence missing ${marker}`);
 }
+assert(chain.includes('role="group" aria-label="Detonator tool"'), 'Chain mastery selector is not exposed as one named control group');
+for (const tool of ['plasma', 'tesla', 'cryo']) assert(chain.includes(`aria-pressed={selectedTool === '${tool}'}`), `Chain ${tool} selection does not expose semantic state`);
 
 // Merge: deterministic resolver, three-tile queue, contract and feedback hierarchy remain intact.
 for (const marker of ['findNextMergeDecision', 'tileQueue', 'CONTRACT', 'haptics.combo()', 'sounds.playCombo(mergeStreak)', 'isMergeContractComplete']) {
@@ -119,11 +125,19 @@ assert(!merge.includes('setInterval('), 'Merge introduced forced timer pressure'
 for (const marker of ['DRIFT_FIXED_STEP_SEC', 'st.spawnTimer > 48', 'st.maxSpeed * 1.55', 'STYLE ROUTE', 'skidmarks', 'speedlines', 'playDriftSkid', 'playNitroRoar']) {
   assert(drift.includes(marker), `Cyber Drift promotion evidence missing ${marker}`);
 }
+assert(drift.includes('releaseSteeringInput') && drift.includes("window.addEventListener('blur', releaseSteeringInput)") && drift.includes("window.removeEventListener('blur', releaseSteeringInput)"), 'Cyber Drift can retain held steering after focus loss');
+assert(drift.includes('aria-label="Steer left"') && drift.includes('aria-pressed={steerLeft}'), 'Cyber Drift left steering state is not semantically exposed');
+assert(drift.includes('aria-label="Steer right"') && drift.includes('aria-pressed={steerRight}'), 'Cyber Drift right steering state is not semantically exposed');
+assert(drift.includes('aria-keyshortcuts="Space"') && drift.includes('Nitro boost, ${Math.round(nitroEnergy)} percent energy'), 'Cyber Drift Nitro state/shortcut semantics are missing');
 
 // Dodge: bounded dash, warning→active laser and active Phase Cut mastery remain intact.
 for (const marker of ['state.dashTimer = 260', "type: 'laser_warning'", 'laserTimer: 1200', "h.type = 'laser_active'", 'isDodgePhaseCut', 'registerPhaseCut', 'ghostTrail']) {
   assert(dodge.includes(marker), `Dodge promotion evidence missing ${marker}`);
 }
+assert(dodge.includes('const soundEnabledRef = useRef(soundEnabled);') && dodge.includes('if (soundEnabledRef.current) sounds.playWarp();'), 'Dodge keyboard Dash can use stale sound state');
+assert(dodge.includes('releaseDirectionalInput') && dodge.includes("window.addEventListener('blur', releaseDirectionalInput)") && dodge.includes("window.removeEventListener('blur', releaseDirectionalInput)"), 'Dodge can retain held movement after focus loss');
+assert(dodge.includes('aria-keyshortcuts="Space"') && dodge.includes('disabled={dashAvailable <= 0}'), 'Dodge Warp Dash lacks flagship shortcut/disabled semantics');
+assert(dodge.includes('Warp Dash, ${dashAvailable} charge${dashAvailable === 1 ?'), 'Dodge Warp Dash accessible charge state is missing');
 
 // Laser Blade: P20 authored composition must be real source behavior, not scorecard prose.
 assert(BLADE_WAVE_PHRASES.length === 7, `Laser Blade expected 7 authored phrases, found ${BLADE_WAVE_PHRASES.length}`);
@@ -143,6 +157,7 @@ for (const id of ['red-zone','mixed-mastery','neon-finale']) {
 for (const marker of ['getBladeWavePhrase', 'getBladeWaveCount', 'pickBladeSpawnType', 'data-p20-blade-phrase', 'PHRASE —', 'STEP {wavePhraseStep}/3']) {
   assert(blade.includes(marker), `Laser Blade P20 source missing ${marker}`);
 }
+assert(blade.includes('role="group"') && blade.includes('Blade phrase ${wavePhraseLabel}, step ${wavePhraseStep} of 3'), 'Laser Blade authored phrase state is not exposed semantically');
 assert(blade.includes('createBladeLaunchTrajectory'), 'Laser Blade P20 replaced P16-certified trajectory model');
 assert(blade.includes('resolveBladePrecisionSlice'), 'Laser Blade P20 replaced Razor precision mastery');
 assert(bladeTrajectory.includes('BLADE_SIMULATION_HZ = 60'), 'Laser Blade 60 Hz trajectory contract changed');
@@ -196,6 +211,7 @@ for (const profile of ["name: 'desktop'", "name: 'mobile'", "name: 'small-mobile
 for (const marker of ['FLIGHT CONTRACT', 'RESONANCE', 'CONTRACT', 'STYLE ROUTE', 'WARP DASH', 'data-p20-blade-phrase']) {
   assert(browserAudit.includes(marker), `P20 browser audit missing candidate-specific marker ${marker}`);
 }
+for (const marker of ['assertFlagshipControlSemantics','Gravity G input did not flip the semantic polarity state','Chain tool selection did not update semantic state','Cyber Drift blur cleanup left steering active','Dodge keyboard dash did not consume exactly one charge','Laser Blade phrase semantics invalid','document.activeElement === stage']) assert(browserAudit.includes(marker), `P20 browser audit missing flagship hardening check: ${marker}`);
 
 if (errors.length) {
   console.error('P20 NEAR-S PROMOTION CERTIFICATION — FAIL');
