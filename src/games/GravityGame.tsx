@@ -1152,6 +1152,9 @@ export const GravityGame: React.FC<GameComponentProps> = ({
               : 'bg-[#18181B]/90 border-[#27272A] text-cyan-300 hover:text-white'
           }`}
           title="Flip gravitational polarity (Attract <-> Repel)"
+          aria-label={gravityInverted ? 'Set gravity field to attract' : 'Set gravity field to repel'}
+          aria-pressed={gravityInverted}
+          aria-keyshortcuts="G"
         >
           <ArrowLeftRight className="w-3.5 h-3.5" /> FLIP GRAVITY [G]
         </button>
@@ -1161,6 +1164,9 @@ export const GravityGame: React.FC<GameComponentProps> = ({
           <button
             type="button"
             onClick={() => setIsSlowMo(!isSlowMo)}
+            aria-label={isSlowMo ? 'Disable slow motion' : 'Enable slow motion'}
+            aria-pressed={isSlowMo}
+            aria-keyshortcuts="Shift"
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-mono-arcade text-xs transition-colors cursor-pointer backdrop-blur-md ${
               isSlowMo
                 ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 animate-pulse'
@@ -1174,6 +1180,8 @@ export const GravityGame: React.FC<GameComponentProps> = ({
         <button
           type="button"
           onClick={handleRecallProbe}
+          aria-label="Re-aim probe"
+          aria-keyshortcuts="Q"
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#18181B] hover:bg-[#27272A] active:bg-[#3F3F46] text-[#A1A1AA] hover:text-white border border-[#27272A] font-mono-arcade text-xs transition-colors cursor-pointer backdrop-blur-md"
         >
           <RotateCcw className="w-3.5 h-3.5" /> RE-AIM [Q]
@@ -1197,6 +1205,8 @@ export const GravityGame: React.FC<GameComponentProps> = ({
             type="button"
             onClick={handleForwardBoost}
             disabled={boostsRemaining <= 0}
+            aria-label={`Forward boost, ${boostsRemaining} remaining`}
+            aria-keyshortcuts="Space"
             className={`flex-1 py-2.5 rounded-xl font-mono-arcade text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 backdrop-blur-md ${
               boostsRemaining > 0
                 ? 'bg-cyan-600/80 hover:bg-cyan-500 active:scale-95 text-white border-cyan-400/40 shadow-lg shadow-cyan-950/50'
