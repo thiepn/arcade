@@ -144,3 +144,16 @@ A later independent phase must re-score games against the unchanged 55/60 S-rank
 **P17 source/runtime certification: PASS when `quality:gameplay-p17`, `quality:browser-p17`, P0–P16 regression gates, TypeScript, root/Pages builds and the existing 32-game browser matrix all pass.**
 
 The implementation covers all 32 games and deliberately changes presentation infrastructure rather than gameplay rules. Physical-device subjective feel remains a release acceptance activity, not something CI can honestly certify.
+
+
+## 2026-09-30 hardening addendum
+
+The 32-game feel profiles, eight-node visual pool, P15 grades and P16 balance envelopes remain unchanged. Current-source review found several shared-runtime quality gaps rather than per-game balance defects:
+
+- **Control-label semantic isolation:** text mutations inside interactive controls are no longer classified as gameplay mastery/warning/failure events. Static labels such as HOLD or BURST therefore cannot manufacture semantic feedback merely because a control mounted or changed.
+- **Active-play ownership:** GameShell now exposes an explicit active-play state. Generic pointer/keyboard acknowledgement fires only after the engine is ready and while the run is neither paused, obscured nor on the result screen.
+- **Editable-key isolation:** typing inside an input, textarea, select or contenteditable surface no longer emits generic gameplay feedback.
+- **Bounded timer replacement:** the eight pooled burst nodes and repeatedly animated semantic/control elements replace their previous cleanup timers instead of accumulating stale timers during rapid typing, tapping or scoring.
+- **Browser certification:** the P17 browser matrix now checks keyboard acknowledgement, editable-input isolation, interactive-control separation and static-control semantic isolation in both full-motion desktop and reduced-motion mobile sessions.
+
+These changes remain presentation-only: no scoring, collision, timing, input action, difficulty or mastery rule is altered.

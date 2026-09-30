@@ -595,6 +595,7 @@ export const GameShell: React.FC<GameShellProps> = ({
       <main
         ref={gameStageRef}
         data-game-engine-ready={engineReadyState ? 'true' : 'false'}
+        data-gameplay-active={engineReadyState && !isPaused && !obscured && !gameOverData ? 'true' : 'false'}
         data-game-session-key={gameSessionKey}
         className={`relative flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden transition-all duration-150 ${
           isFullscreen

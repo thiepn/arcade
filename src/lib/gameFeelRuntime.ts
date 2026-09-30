@@ -42,6 +42,8 @@ interface ShellState {
   lastBest: number | null;
   semanticCooldowns: Map<P17FeedbackKind, number>;
   timers: Set<number>;
+  nodeTimers: Map<HTMLElement, number>;
+  classTimers: WeakMap<HTMLElement, Map<string, number>>;
 }
 
 interface P17FeedbackDetail {
@@ -82,12 +84,19 @@ const readHeaderMetric = (shell: HTMLElement, label: 'SCORE' | 'BEST') => {
   return candidates[0] ?? null;
 };
 
-const scheduleShellTimer = (state: ShellState, callback: () => void, durationMs: number) => {
+const scheduleShellTimer = (state: ShellState, callback: () => void, durationMs: number): number => {
   const timer = window.setTimeout(() => {
     state.timers.delete(timer);
     callback();
   }, durationMs);
   state.timers.add(timer);
+  return timer;
+};
+
+const cancelShellTimer = (state: ShellState, timer: number | undefined) => {
+  if (timer === undefined) return;
+  window.clearTimeout(timer);
+  state.timers.delete(timer);
 };
 
 const restartClass = (
@@ -101,9 +110,18 @@ const restartClass = (
   element.classList.remove(className);
   void element.offsetWidth;
   element.classList.add(className);
-  scheduleShellTimer(state, () => {
+
+  let elementTimers = state.classTimers.get(element);
+  if (!elementTimers) {
+    elementTimers = new Map();
+    state.classTimers.set(element, elementTimers);
+  }
+  cancelShellTimer(state, elementTimers.get(className));
+  const timer = scheduleShellTimer(state, () => {
     if (element.dataset.p17Sequence === sequence) element.classList.remove(className);
+    if (elementTimers?.get(className) === timer) elementTimers.delete(className);
   }, durationMs);
+  elementTimers.set(className, timer);
 };
 
 const emitBurst = (
@@ -135,9 +153,12 @@ const emitBurst = (
   node.classList.add('is-active');
 
   const lifetime = isReducedMotion() ? 120 : kind === 'mastery' || kind === 'transition' ? 440 : 260;
-  scheduleShellTimer(state, () => {
+  cancelShellTimer(state, state.nodeTimers.get(node));
+  const nodeTimer = scheduleShellTimer(state, () => {
     if (node.dataset.p17Sequence === sequence) node.classList.remove('is-active');
+    if (state.nodeTimers.get(node) === nodeTimer) state.nodeTimers.delete(node);
   }, lifetime);
+  state.nodeTimers.set(node, nodeTimer);
 
   if (kind === 'mastery') restartClass(state, state.stage, 'p17-stage-mastery', lifetime);
   if (kind === 'failure') restartClass(state, state.stage, 'p17-stage-failure', lifetime);
@@ -158,26 +179,37 @@ const classifySemanticText = (raw: string): P17FeedbackKind | null => {
   return null;
 };
 
+const isGameplayActive = (state: ShellState) =>
+  state.stage.closest('main')?.getAttribute('data-gameplay-active') === 'true';
+
+const isEditableTarget = (target: EventTarget | null) => {
+  const element = target instanceof Element ? target : null;
+  return Boolean(element?.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""]'));
+};
+
+const isInteractiveControl = (element: Element | null) =>
+  Boolean(element?.closest('button, a[href], input, textarea, select, [role="button"]'));
+
 const scanSemanticMutation = (state: ShellState, mutation: MutationRecord) => {
+  if (!isGameplayActive(state)) return;
   const candidates: Node[] = [];
   if (mutation.type === 'characterData') candidates.push(mutation.target);
   for (const node of Array.from(mutation.addedNodes)) candidates.push(node);
 
   for (const node of candidates) {
     if (!state.stage.contains(node)) continue;
+    const anchor = node instanceof HTMLElement ? node : node.parentElement;
+    if (!anchor || !state.stage.contains(anchor)) continue;
+    if (isInteractiveControl(anchor) || anchor.closest('.p17-feedback-layer')) continue;
+
     let text = '';
     if (node.nodeType === Node.TEXT_NODE) text = node.textContent ?? '';
-    else if (node instanceof HTMLElement) {
-      if (node.matches('button, input, textarea, select')) continue;
-      text = node.textContent ?? '';
-    }
+    else if (node instanceof HTMLElement) text = node.textContent ?? '';
+
     const kind = classifySemanticText(text);
     if (!kind) continue;
     if (!emitBurst(state, kind)) continue;
-    const anchor = node instanceof HTMLElement ? node : node.parentElement;
-    if (anchor && state.stage.contains(anchor)) {
-      restartClass(state, anchor, `p17-semantic-${kind}`, kind === 'mastery' ? 420 : 260);
-    }
+    restartClass(state, anchor, `p17-semantic-${kind}`, kind === 'mastery' ? 420 : 260);
   }
 };
 
@@ -243,6 +275,8 @@ const decorateShell = (shell: HTMLElement) => {
   state.lastBest = readHeaderMetric(shell, 'BEST');
   state.semanticCooldowns = new Map();
   state.timers = new Set();
+  state.nodeTimers = new Map();
+  state.classTimers = new WeakMap();
   state.observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) scanSemanticMutation(state, mutation);
     scanScore(state);
@@ -258,6 +292,7 @@ const cleanupShell = (shell: HTMLElement) => {
   state.observer.disconnect();
   for (const timer of state.timers) window.clearTimeout(timer);
   state.timers.clear();
+  state.nodeTimers.clear();
   state.layer.remove();
   shell.removeAttribute('data-p17-game');
   shell.removeAttribute('data-p17-feel');
@@ -281,16 +316,28 @@ const onPointerDown = (event: PointerEvent) => {
   if (!state) return;
   const element = event.target instanceof Element ? event.target : null;
   const control = element?.closest('button, [role="button"]') as HTMLElement | null;
-  if (control) restartClass(state, control, 'p17-control-ack', 140);
-  if (element && state.stage.contains(element)) emitBurst(state, 'input', event.clientX, event.clientY);
+  if (control) {
+    restartClass(state, control, 'p17-control-ack', 140);
+    return;
+  }
+  if (isGameplayActive(state) && element && state.stage.contains(element)) {
+    emitBurst(state, 'input', event.clientX, event.clientY);
+  }
 };
 
 const onKeyDown = (event: KeyboardEvent) => {
-  if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (
+    event.repeat ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.altKey ||
+    event.isComposing ||
+    isEditableTarget(event.target)
+  ) return;
   const shell = document.querySelector('.game-shell') as HTMLElement | null;
   if (!shell) return;
   const state = shellStates.get(shell);
-  if (!state) return;
+  if (!state || !isGameplayActive(state)) return;
   emitBurst(state, 'input');
 };
 

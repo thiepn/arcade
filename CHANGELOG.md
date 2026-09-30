@@ -23,6 +23,13 @@
 
 ## Unreleased
 
+### P17 game-feel runtime hardening — 2026-09-30
+- Stop P17's semantic MutationObserver from treating text inside interactive controls as gameplay mastery/warning/failure feedback, preventing static HOLD/BURST-style labels from generating false effects.
+- Add an explicit GameShell active-play marker and restrict generic pointer/keyboard feedback to engine-ready, unpaused, unobscured live play; editable text input is ignored.
+- Keep gameplay buttons responsive through bounded control acknowledgement without also emitting a generic playfield burst.
+- Replace stale timers when pooled burst nodes or semantic/control classes are retriggered, keeping rapid typing/tapping feedback bounded beyond the existing eight-node DOM pool.
+- Extend the P17 browser matrix to certify keyboard acknowledgement, editable-input isolation, control/playfield separation and static-control semantic isolation on desktop/full-motion and touch-mobile/reduced-motion profiles.
+
 ### P16 difficulty/balance hardening — 2026-09-30
 - Guard Laser Rope random direction reversals with the same speed-aware geometric warning floor used for mode changes, preventing an immediate reverse crossing after the beam has just passed the player.
 - Make Orb Cannon current/next chamber colors board-aware and reconcile them after every resolved shot, so eliminated colors cannot consume shots against the ceiling-drop clock.

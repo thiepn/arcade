@@ -31,6 +31,11 @@ const runGame = async (page, profile, gameId) => {
     const shell = page.locator('.game-shell');
     await shell.waitFor({ state: 'visible', timeout: 8000 });
     await page.waitForFunction((id) => document.querySelector('.game-shell')?.getAttribute('data-p17-game') === id, gameId, { timeout: 4000 });
+    await page.waitForFunction(() => {
+      const main = document.querySelector('.game-shell main');
+      return main?.getAttribute('data-game-engine-ready') === 'true' &&
+        main?.getAttribute('data-gameplay-active') === 'true';
+    }, null, { timeout: 4000 });
 
     const initial = await page.evaluate(({ id, expectedMotion }) => {
       const shell = document.querySelector('.game-shell');
@@ -49,6 +54,7 @@ const runGame = async (page, profile, gameId) => {
         motion: document.documentElement.getAttribute('data-p17-motion'),
         expectedMotion,
         expectedId: id,
+        gameplayActive: shell?.querySelector('main')?.getAttribute('data-gameplay-active'),
       };
     }, { id: gameId, expectedMotion: profile.reducedMotion === 'reduce' ? 'reduced' : 'full' });
 
@@ -59,6 +65,7 @@ const runGame = async (page, profile, gameId) => {
     assert(initial.pointerEvents === 'none', 'feedback layer intercepts pointer input');
     assert(initial.layerWidth > 100 && initial.layerHeight > 100, 'feedback layer collapsed');
     assert(initial.motion === initial.expectedMotion, `motion preference mismatch: ${initial.motion}`);
+    assert(initial.gameplayActive === 'true', 'P17 shell was not marked as active gameplay');
 
     const box = await page.locator('.game-shell main').boundingBox();
     assert(box, 'game stage missing');
@@ -93,6 +100,83 @@ const runGame = async (page, profile, gameId) => {
       pointerType: profile.isMobile ? 'touch' : 'mouse',
     });
     assert(inputState.active, 'pointer input did not receive immediate P17 acknowledgement');
+
+    await page.waitForTimeout(profile.reducedMotion === 'reduce' ? 150 : 300);
+    const keyboardState = await page.evaluate(() => {
+      const target = document.querySelector('.game-shell main > div') || document.querySelector('.game-shell main');
+      if (!target) return { active: false };
+      target.dispatchEvent(new KeyboardEvent('keydown', {
+        bubbles: true,
+        cancelable: true,
+        key: 'x',
+        code: 'KeyX',
+      }));
+      return {
+        active: Boolean(document.querySelector('.p17-feedback-burst.is-active[data-p17-kind="input"]')),
+      };
+    });
+    assert(keyboardState.active, 'keyboard input did not receive immediate P17 acknowledgement');
+
+    await page.waitForTimeout(profile.reducedMotion === 'reduce' ? 150 : 300);
+    const editableIsolation = await page.evaluate(async () => {
+      const stage = document.querySelector('.game-shell main > div') || document.querySelector('.game-shell main');
+      if (!stage) return { leaked: true };
+      const input = document.createElement('input');
+      stage.appendChild(input);
+      input.dispatchEvent(new KeyboardEvent('keydown', {
+        bubbles: true,
+        cancelable: true,
+        key: 'x',
+        code: 'KeyX',
+      }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const leaked = Boolean(document.querySelector('.p17-feedback-burst.is-active[data-p17-kind="input"]'));
+      input.remove();
+      return { leaked };
+    });
+    assert(!editableIsolation.leaked, 'editable input leaked P17 gameplay acknowledgement');
+
+    await page.waitForTimeout(profile.reducedMotion === 'reduce' ? 150 : 300);
+    const controlIsolation = await page.evaluate(async () => {
+      const stage = document.querySelector('.game-shell main > div') || document.querySelector('.game-shell main');
+      if (!stage) return { inputBurst: true, controlAck: false };
+      const button = document.createElement('button');
+      button.type = 'button';
+      stage.appendChild(button);
+      button.dispatchEvent(new PointerEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+        pointerId: 23,
+        pointerType: 'mouse',
+        isPrimary: true,
+        buttons: 1,
+      }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const result = {
+        inputBurst: Boolean(document.querySelector('.p17-feedback-burst.is-active[data-p17-kind="input"]')),
+        controlAck: button.classList.contains('p17-control-ack'),
+      };
+      button.remove();
+      return result;
+    });
+    assert(controlIsolation.controlAck, 'interactive control did not receive bounded control acknowledgement');
+    assert(!controlIsolation.inputBurst, 'interactive control emitted a gameplay input burst');
+
+    await page.waitForTimeout(profile.reducedMotion === 'reduce' ? 150 : 300);
+    const semanticControlIsolation = await page.evaluate(async () => {
+      const stage = document.querySelector('.game-shell main > div') || document.querySelector('.game-shell main');
+      if (!stage) return { mastery: true };
+      const button = document.createElement('button');
+      button.type = 'button';
+      stage.appendChild(button);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      button.appendChild(document.createTextNode('BURST'));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      const mastery = Boolean(document.querySelector('.p17-feedback-burst.is-active[data-p17-kind="mastery"]'));
+      button.remove();
+      return { mastery };
+    });
+    assert(!semanticControlIsolation.mastery, 'static control label emitted semantic mastery feedback');
 
     const masteryState = await page.evaluate(() => {
       window.dispatchEvent(new CustomEvent('arcade:p17-feedback', { detail: { kind: 'mastery' } }));

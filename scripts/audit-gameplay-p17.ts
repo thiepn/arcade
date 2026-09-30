@@ -23,6 +23,7 @@ const p16 = read('docs/P16_BALANCE_CERTIFICATION.md');
 const runtime = read('src/lib/gameFeelRuntime.ts');
 const css = read('src/p17-game-feel.css');
 const main = read('src/main.tsx');
+const shell = read('src/components/GameShell.tsx');
 const motionPreferences = read('src/lib/motionPreferences.ts');
 const haptics = read('src/lib/haptics.ts');
 const sound = read('src/lib/sound.ts');
@@ -114,6 +115,14 @@ assert(runtime.includes('timers: Set<number>;'), 'P17 shell state does not own a
 assert(runtime.includes('state.timers.add(timer);'), 'P17 runtime does not register shell animation timers');
 assert(runtime.includes('for (const timer of state.timers) window.clearTimeout(timer);'), 'P17 cleanup does not cancel shell animation timers');
 assert(runtime.includes('state.timers.clear();'), 'P17 cleanup does not clear timer ownership');
+assert(runtime.includes('nodeTimers: Map<HTMLElement, number>;'), 'P17 feedback nodes do not own replaceable timers');
+assert(runtime.includes('classTimers: WeakMap<HTMLElement, Map<string, number>>;'), 'P17 repeated semantic/control classes do not own replaceable timers');
+assert(runtime.includes('cancelShellTimer(state, state.nodeTimers.get(node));'), 'P17 reused feedback nodes can accumulate stale animation timers');
+assert(runtime.includes('cancelShellTimer(state, elementTimers.get(className));'), 'P17 repeated semantic/control classes can accumulate stale animation timers');
+assert(runtime.includes("if (isInteractiveControl(anchor) || anchor.closest('.p17-feedback-layer')) continue;"), 'P17 semantic scanner can misclassify static interactive control labels as gameplay events');
+assert(runtime.includes('isEditableTarget(event.target)'), 'P17 keyboard acknowledgement can react to editable text input');
+assert(runtime.includes('if (!state || !isGameplayActive(state)) return;'), 'P17 keyboard acknowledgement can fire while gameplay is suspended');
+assert(shell.includes("data-gameplay-active={engineReadyState && !isPaused && !obscured && !gameOverData ? 'true' : 'false'}"), 'GameShell does not expose authoritative active-play state to P17');
 assert(runtime.includes('state.layer.remove();'), 'P17 runtime does not remove its feedback layer during cleanup');
 assert(runtime.includes('state.observer.disconnect();'), 'P17 runtime does not disconnect per-shell MutationObserver');
 assert(runtime.includes('pruneDetachedShells();'), 'P17 runtime does not prune exited game shells');
@@ -187,6 +196,10 @@ assert(browserAudit.includes("name: 'desktop-full'"), 'P17 browser audit missing
 assert(browserAudit.includes("name: 'mobile-reduced'"), 'P17 browser audit missing reduced-motion mobile profile');
 assert(browserAudit.includes("reducedMotion: 'reduce'"), 'P17 browser audit does not request reduced motion');
 assert(browserAudit.includes('burstCount === 8'), 'P17 browser audit does not certify bounded feedback pool');
+assert(browserAudit.includes("keyboard input did not receive immediate P17 acknowledgement"), 'P17 browser audit does not certify keyboard input acknowledgement');
+assert(browserAudit.includes("editable input leaked P17 gameplay acknowledgement"), 'P17 browser audit does not certify editable-input isolation');
+assert(browserAudit.includes("interactive control emitted a gameplay input burst"), 'P17 browser audit does not certify control-vs-gameplay feedback separation');
+assert(browserAudit.includes("static control label emitted semantic mastery feedback"), 'P17 browser audit does not certify static-control semantic isolation');
 assert(browserAudit.includes('exit leaked P17 shell/layer'), 'P17 browser audit does not certify exit cleanup');
 
 // Permanent gate wiring.
