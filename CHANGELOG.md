@@ -28,6 +28,7 @@
 - Make Orb Cannon current/next chamber colors board-aware and reconcile them after every resolved shot, so eliminated colors cannot consume shots against the ceiling-drop clock.
 - Replace stale P16 literal checks with executable current-envelope assertions for Stack, Aero, Dodge, Laser Rope, Pulse, Tower, Cyber Crosser and Orb Cannon; later P25 safety tightening remains valid as long as it stays inside the original P16 envelope.
 - Add a P16 hardening addendum documenting the current safer Aero envelope and the two corrected fairness gaps.
+- Correct the strengthened P16 audit to use its local boolean assertion helper for array comparisons; no gameplay or envelope value changed.
 
 ### P15 historical-audit hardening — 2026-09-30
 - Keep the original P15 roster document immutable instead of rescoring it after later gameplay hardening; P20–P24 depend on P15 as historical provenance.

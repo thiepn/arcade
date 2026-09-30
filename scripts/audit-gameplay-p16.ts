@@ -182,14 +182,16 @@ assert(getRoadCrossLaneSpeed(0, 0) >= 62, 'Cyber Crosser opening lane speed fell
 assert(getRoadCrossLaneSpeed(31, 0.999999) < 133.01, 'Cyber Crosser late lane speed escaped the certified ceiling');
 assert(roadCross.includes('getRoadCrossLaneSpeed('), 'Cyber Crosser runtime bypasses the district speed helper');
 
-assert.deepEqual([0, 1, 2, 10].map(getBubbleDropCadence), [6, 6, 5, 5], 'Orb Cannon ceiling-drop cadence changed');
+assert(
+  [0, 1, 2, 10].map(getBubbleDropCadence).join(',') === '6,6,5,5',
+  'Orb Cannon ceiling-drop cadence changed',
+);
 const orbPaletteGrid = [
   [{ color: 'cyan' }, null, { color: 'gold' }],
   [null, { color: 'cyan' }, null],
 ];
-assert.deepEqual(
-  getOrbCannonActivePalette(orbPaletteGrid, ['cyan', 'pink', 'gold']),
-  ['cyan', 'gold'],
+assert(
+  getOrbCannonActivePalette(orbPaletteGrid, ['cyan', 'pink', 'gold']).join(',') === 'cyan,gold',
   'Orb Cannon active palette still includes eliminated colors',
 );
 assert(
