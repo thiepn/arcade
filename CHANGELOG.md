@@ -28,6 +28,7 @@
 - Restore focus to the gameplay region after Resume/Play Again so keyboard games do not accidentally re-activate the Pause toolbar control on their next Space/Enter input.
 - Add native stateful ARIA semantics for Pause, Sound, Haptics, Fullscreen, Restart, and Back controls; keep Escape shortcut ownership aligned with the actual pause/result state.
 - Refresh fullscreen accessible names on native/browser fullscreen changes instead of leaving stale labels on an already-decorated shell.
+- Anchor result discovery to the stable Play Again action so new-high-score badges with nested AP-PB text cannot skip P18 dialog semantics or result coaching.
 - Restrict first-run hint dismissal to genuine active gameplay input, excluding paused/result controls, editable targets, modifiers, repeats, and IME composition.
 - Extend the permanent P18 browser/source gates to certify modal background isolation, forced focus containment, gameplay focus restoration, stateful control semantics, fullscreen-label refresh, and cleanup.
 
