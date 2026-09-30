@@ -54,6 +54,8 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
 
   const initialDifficulty: DifficultyLevel = initialModeId==='EASY'||initialModeId==='HARD'?initialModeId:'MEDIUM';
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>(initialDifficulty);
@@ -117,7 +119,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
       color: '#FACC15',
       life: 1.0,
     });
-    if (soundEnabled) sounds.playPowerUp();
+    if (soundEnabledRef.current) sounds.playPowerUp();
   };
 
   const updatePointerTarget = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -793,6 +795,9 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
         type="button"
         onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); triggerPowerPlay(); }}
         disabled={hudState.powerMeter < AIR_HOCKEY_POWER_MAX || hudState.powerPlayTime > 0}
+        aria-label={hudState.powerPlayTime > 0 ? 'Power Play active' : `Power Play, ${hudState.powerMeter} percent charged`}
+        aria-pressed={hudState.powerPlayTime > 0}
+        aria-keyshortcuts="Space F"
         className={`absolute bottom-14 left-1/2 z-20 -translate-x-1/2 rounded-xl border px-4 py-2 font-mono text-[10px] font-black transition-all ${
           hudState.powerPlayTime > 0
             ? 'border-amber-300 bg-amber-400/25 text-amber-100'
@@ -805,7 +810,7 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
       </button>
 
       {/* Difficulty Selection Pills at Bottom */}
-      <div className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 flex max-w-[calc(100%-12px)] items-center gap-1 sm:gap-1.5 p-1 bg-zinc-900/90 border border-zinc-800 rounded-2xl backdrop-blur-md z-20 pointer-events-auto shadow-2xl">
+      <div role="group" aria-label="Difficulty" className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 flex max-w-[calc(100%-12px)] items-center gap-1 sm:gap-1.5 p-1 bg-zinc-900/90 border border-zinc-800 rounded-2xl backdrop-blur-md z-20 pointer-events-auto shadow-2xl">
         {(['EASY', 'MEDIUM', 'HARD'] as DifficultyLevel[]).map((lvl) => {
           const cfg = DIFFICULTY_CONFIG[lvl];
           const isSelected = selectedDifficulty === lvl;
@@ -814,6 +819,8 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
               key={lvl}
               type="button"
               onClick={() => changeDifficulty(lvl)}
+              aria-label={`Difficulty ${cfg.label}`}
+              aria-pressed={isSelected}
               className={`min-w-0 px-2 sm:px-3 py-1.5 rounded-xl font-mono text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
                 isSelected
                   ? 'bg-zinc-800 text-white shadow-md border border-zinc-600'
