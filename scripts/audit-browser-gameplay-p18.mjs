@@ -67,7 +67,10 @@ const runGame = async (page, profile, gameId) => {
         ready: shell?.getAttribute('data-p18-clarity'),
         stageLabel: stage?.getAttribute('aria-label') || '',
         stageRole: stage?.getAttribute('role') || '',
+        stageTabIndex: stage?.getAttribute('tabindex') || '',
         labels,
+        pausePressed: document.getElementById('game-pause-btn')?.getAttribute('aria-pressed') || '',
+        soundPressed: document.getElementById('game-sound-btn')?.getAttribute('aria-pressed') || '',
         shellOverflowX: shell ? shell.scrollWidth - shell.clientWidth : 999,
         hintCount: document.querySelectorAll(`[data-p18-first-run-hint="${id}"]`).length,
         hintPointerEvents: (() => {
@@ -79,7 +82,10 @@ const runGame = async (page, profile, gameId) => {
 
     assert(initial.id === gameId && initial.ready === 'ready', `P18 shell identity/readiness mismatch ${initial.id}/${initial.ready}`);
     assert(initial.stageRole === 'region' && initial.stageLabel.toLowerCase().includes('gameplay area'), 'P18 gameplay region lacks objective semantics');
+    assert(initial.stageTabIndex === '-1', 'P18 gameplay region is not programmatically focusable for modal focus restoration');
     assert(initial.labels.every((item) => item.label.length >= 6), `accessible shell labels missing: ${JSON.stringify(initial.labels)}`);
+    assert(initial.pausePressed === 'false', 'pause control does not expose its initial toggle state');
+    assert(initial.soundPressed === 'true' || initial.soundPressed === 'false', 'sound control does not expose its toggle state');
     assert(initial.shellOverflowX <= 2, `P18 shell has horizontal overflow: ${initial.shellOverflowX}px`);
     if (profile.isMobile) {
       for (const item of initial.labels.filter((entry) => entry.id !== 'game-back-btn')) {
@@ -132,6 +138,10 @@ const runGame = async (page, profile, gameId) => {
         legacyHidden: Boolean(dialog?.querySelector('[data-p18-legacy-instructions="true"][hidden]')),
         activeInside: Boolean(active && dialog?.contains(active)),
         buttonCount: buttons.length,
+        toolbarInert: Boolean(document.querySelector('.arcade-game-toolbar')?.inert),
+        underlayInert: Boolean(dialog?.parentElement && Array.from(dialog.parentElement.children)
+          .filter((child) => child !== dialog && child instanceof HTMLElement)
+          .every((child) => child.inert)),
         overflowX: dialog ? dialog.scrollWidth - dialog.clientWidth : 999,
         inViewport: Boolean(rect && rect.left >= -1 && rect.top >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1),
       };
@@ -144,6 +154,7 @@ const runGame = async (page, profile, gameId) => {
     assert(pause.watch.length >= 12, 'pause teaching panel lacks danger explanation');
     assert(pause.legacyHidden, 'legacy instruction paragraph remains duplicated beside structured teaching');
     assert(pause.activeInside && pause.buttonCount >= 3, 'pause modal focus is not contained/initialized');
+    assert(pause.toolbarInert && pause.underlayInert, 'modal background isolation did not inert the toolbar and gameplay underlay');
     assert(pause.overflowX <= 2, `pause dialog has horizontal overflow: ${pause.overflowX}px`);
     assert(pause.inViewport, 'pause dialog extends outside the viewport');
 
@@ -154,14 +165,40 @@ const runGame = async (page, profile, gameId) => {
     });
     assert(tabInside, 'Tab escaped the pause dialog');
 
+    const forcedEscape = await page.evaluate(() => {
+      const dialog = document.querySelector('[data-p18-dialog="pause"]');
+      const back = document.getElementById('game-back-btn');
+      back?.focus({ preventScroll: true });
+      return {
+        backInert: Boolean(back?.inert),
+        activeInside: Boolean(dialog && document.activeElement && dialog.contains(document.activeElement)),
+      };
+    });
+    assert(forcedEscape.backInert && forcedEscape.activeInside, 'programmatic focus escaped the modal isolation boundary');
+
     const pauseDialog = page.locator('[data-p18-dialog="pause"]');
     await pauseDialog.getByRole('button', { name: /^RESUME \(ESC\)$/i }).click();
     await page.waitForFunction(() => !document.querySelector('[data-p18-dialog="pause"]'), null, { timeout: 2000 });
     await page.waitForFunction(() => {
       const stage = document.querySelector('[data-p18-stage]');
       const active = document.activeElement;
-      return Boolean(stage && active && stage.contains(active));
+      return Boolean(stage && active === stage);
     }, null, { timeout: 1500 });
+
+    const resumed = await page.evaluate(() => ({
+      toolbarInert: Boolean(document.querySelector('.arcade-game-toolbar')?.inert),
+      pausePressed: document.getElementById('game-pause-btn')?.getAttribute('aria-pressed') || '',
+    }));
+    assert(!resumed.toolbarInert && resumed.pausePressed === 'false', 'resume did not release modal isolation/state semantics');
+
+    const fullscreenRefresh = await page.evaluate(() => {
+      const button = document.getElementById('game-fullscreen-btn');
+      if (!button) return '';
+      button.setAttribute('aria-label', 'stale fullscreen label');
+      document.dispatchEvent(new Event('fullscreenchange'));
+      return button.getAttribute('aria-label') || '';
+    });
+    assert(fullscreenRefresh === 'Enter fullscreen', `fullscreen accessibility label did not refresh: ${fullscreenRefresh}`);
 
     await page.locator('#game-restart-btn').click();
     await page.waitForTimeout(100);
