@@ -103,8 +103,8 @@ for (const marker of ['getGravityFlightContract', 'isGravityFlightContractComple
   assert(gravity.includes(marker), `Gravity promotion evidence missing ${marker}`);
 }
 assert(gravity.includes('if (lvl > 5)'), 'Gravity no longer retains its five-sector authored run');
-assert(gravity.includes('aria-pressed={gravityInverted}') && gravity.includes('aria-keyshortcuts="G"'), 'Gravity polarity control does not expose flagship state/shortcut semantics');
-assert(gravity.includes('aria-pressed={isSlowMo}') && gravity.includes('aria-keyshortcuts="Shift"'), 'Gravity slow-motion control does not expose flagship state/shortcut semantics');
+assert(gravity.includes('aria-label="Repel gravity"') && gravity.includes('aria-pressed={gravityInverted}') && gravity.includes('aria-keyshortcuts="G"'), 'Gravity polarity control does not expose stable flagship state/shortcut semantics');
+assert(gravity.includes('aria-label="Slow motion"') && gravity.includes('aria-pressed={isSlowMo}') && gravity.includes('aria-keyshortcuts="Shift"'), 'Gravity slow-motion control does not expose stable flagship state/shortcut semantics');
 assert(gravity.includes('aria-label="Re-aim probe"') && gravity.includes('aria-keyshortcuts="Q"'), 'Gravity recall control does not expose Q semantics');
 assert(gravity.includes('aria-keyshortcuts="Space"'), 'Gravity boost control does not expose Space semantics');
 
