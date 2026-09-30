@@ -1177,6 +1177,8 @@ export const DriftGame: React.FC<GameComponentProps> = ({
             onPointerUp={handleSteerEnd}
             onPointerCancel={handleSteerEnd}
             onPointerLeave={handleSteerEnd}
+            aria-label="Steer left"
+            aria-pressed={steerLeft}
             className={`w-14 sm:w-16 h-12 sm:h-14 rounded-xl border font-mono-arcade text-[10px] sm:text-base font-bold flex items-center justify-center select-none transition-all active:scale-95 cursor-pointer ${
               steerLeft
                 ? 'bg-rose-500 text-white border-rose-400 shadow-lg shadow-rose-500/40'
@@ -1191,6 +1193,8 @@ export const DriftGame: React.FC<GameComponentProps> = ({
             onPointerUp={handleSteerEnd}
             onPointerCancel={handleSteerEnd}
             onPointerLeave={handleSteerEnd}
+            aria-label="Steer right"
+            aria-pressed={steerRight}
             className={`w-14 sm:w-16 h-12 sm:h-14 rounded-xl border font-mono-arcade text-[10px] sm:text-base font-bold flex items-center justify-center select-none transition-all active:scale-95 cursor-pointer ${
               steerRight
                 ? 'bg-rose-500 text-white border-rose-400 shadow-lg shadow-rose-500/40'
