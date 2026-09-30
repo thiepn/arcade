@@ -362,6 +362,10 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
       setRightActive(false);
     };
 
+    const releaseOwnedInput = () => {
+      handlePointerUp();
+    };
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     canvas.addEventListener('mousedown', handlePointerDown);
@@ -370,6 +374,8 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
     canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
     window.addEventListener('touchmove', handlePointerMove, { passive: false });
     window.addEventListener('touchend', handlePointerUp);
+    window.addEventListener('touchcancel', releaseOwnedInput);
+    window.addEventListener('blur', releaseOwnedInput);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
@@ -380,6 +386,8 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
       canvas.removeEventListener('touchstart', handlePointerDown);
       window.removeEventListener('touchmove', handlePointerMove);
       window.removeEventListener('touchend', handlePointerUp);
+      window.removeEventListener('touchcancel', releaseOwnedInput);
+      window.removeEventListener('blur', releaseOwnedInput);
     };
   }, [triggerEmp, triggerFocus]);
 
@@ -802,6 +810,8 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
           <button
             type="button"
             onClick={triggerEmp}
+            aria-label="EMP Blast"
+            aria-keyshortcuts="Space E"
             className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-mono-arcade text-xs font-bold shadow-lg shadow-purple-900/50 flex items-center gap-1.5 pointer-events-auto cursor-pointer animate-pulse"
           >
             <Radio className="w-3.5 h-3.5" /> EMP BLAST [SPACE]
@@ -813,6 +823,9 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
         type="button"
         onClick={triggerFocus}
         disabled={focusCharges <= 0 || focusArmed}
+        aria-label={`Focus Wager, ${focusCharges} charge${focusCharges === 1 ? '' : 's'} remaining`}
+        aria-pressed={focusArmed}
+        aria-keyshortcuts="F Shift"
         className={`absolute bottom-20 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-xl border font-mono-arcade text-[10px] font-black pointer-events-auto transition-all ${
           focusArmed
             ? 'bg-amber-500/30 border-amber-400 text-amber-200 animate-pulse'
@@ -828,6 +841,10 @@ export const ChronoGame: React.FC<GameComponentProps> = ({
       <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between gap-3 z-10 pointer-events-auto">
         <button
           type="button"
+          aria-label="Rotate left"
+          aria-pressed={leftActive}
+          aria-label="Rotate right"
+          aria-pressed={rightActive}
           onMouseDown={() => {
             if (isPausedRef.current || !gameStateRef.current.isAlive) return;
             gameStateRef.current.playerTurnDir = -1;
