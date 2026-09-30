@@ -153,7 +153,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
         color, size: 2.8, life: 0, maxLife: 18,
       });
     }
-    if (soundEnabled) sounds.playSuccess();
+    if (soundEnabledRef.current) sounds.playSuccess();
   };
 
   const setSafeTimeout = useSafeTimeout();
