@@ -3,6 +3,7 @@
 let installed = false;
 let observer: MutationObserver | null = null;
 let teardownGlobal: (() => void) | null = null;
+const stackSuppressionState = new Map<HTMLElement, { ariaHidden: string | null; inert: boolean }>();
 
 const normalise = (value: string) => value.replace(/\s+/g, ' ').trim().toUpperCase();
 
@@ -71,6 +72,34 @@ const decorateRecoveryStates = () => {
   }
 };
 
+const suppressStackedDialog = (dialog: HTMLElement) => {
+  if (!stackSuppressionState.has(dialog)) {
+    stackSuppressionState.set(dialog, {
+      ariaHidden: dialog.getAttribute('aria-hidden'),
+      inert: dialog.inert,
+    });
+  }
+  dialog.classList.add('p19-stack-hidden');
+  dialog.dataset.p19StackSuppressed = 'true';
+  dialog.setAttribute('aria-hidden', 'true');
+  dialog.inert = true;
+};
+
+const releaseStackedDialog = (dialog: HTMLElement) => {
+  const previous = stackSuppressionState.get(dialog);
+  if (!previous) {
+    dialog.classList.remove('p19-stack-hidden');
+    delete dialog.dataset.p19StackSuppressed;
+    return;
+  }
+  if (previous.ariaHidden === null) dialog.removeAttribute('aria-hidden');
+  else dialog.setAttribute('aria-hidden', previous.ariaHidden);
+  dialog.inert = previous.inert;
+  dialog.classList.remove('p19-stack-hidden');
+  delete dialog.dataset.p19StackSuppressed;
+  stackSuppressionState.delete(dialog);
+};
+
 const decorateAppModals = () => {
   const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'));
   for (const dialog of dialogs) {
@@ -102,22 +131,15 @@ const decorateAppModals = () => {
       .sort((a, b) => a.z - b.z || a.index - b.index);
     const top = ranked[ranked.length - 1]?.dialog;
     for (const { dialog } of ranked) {
-      const hidden = dialog !== top;
-      dialog.classList.toggle('p19-stack-hidden', hidden);
-      if (hidden) {
-        dialog.setAttribute('aria-hidden', 'true');
-        dialog.setAttribute('inert', '');
-      } else {
-        dialog.removeAttribute('aria-hidden');
-        dialog.removeAttribute('inert');
-      }
+      if (dialog !== top) suppressStackedDialog(dialog);
+      else releaseStackedDialog(dialog);
     }
   } else {
-    for (const dialog of appDialogs) {
-      dialog.classList.remove('p19-stack-hidden');
-      dialog.removeAttribute('aria-hidden');
-      dialog.removeAttribute('inert');
-    }
+    for (const dialog of appDialogs) releaseStackedDialog(dialog);
+  }
+
+  for (const dialog of Array.from(stackSuppressionState.keys())) {
+    if (!dialog.isConnected) stackSuppressionState.delete(dialog);
   }
 };
 
@@ -137,16 +159,16 @@ const decorateShell = () => {
     add(shell.querySelector(`#${id}`), 'p19-icon-button');
   }
 
-  // Keep the global sound setting semantically identical between the home header
-  // and every game shell. The visible Lucide icon is the canonical state source.
-  // P18 may independently decorate the same button from its legacy title text, so
-  // P19 watches aria-label changes and restores the state-aware product label.
+  // Keep the global sound setting semantically identical between home and games.
+  // React/P18 expose the state authoritatively through aria-pressed; P19 normalizes
+  // only the product wording and never infers state from a particular icon library.
   const soundButton = shell.querySelector<HTMLButtonElement>('#game-sound-btn');
   if (soundButton) {
-    const iconClass = soundButton.querySelector('svg')?.getAttribute('class') ?? '';
-    const soundEnabled = iconClass.includes('lucide-volume-2') && !iconClass.includes('lucide-volume-x');
-    setAttributeIfChanged(soundButton, 'aria-label', soundEnabled ? 'Mute sound' : 'Unmute sound');
-    setAttributeIfChanged(soundButton, 'aria-pressed', String(soundEnabled));
+    const pressed = soundButton.getAttribute('aria-pressed');
+    if (pressed === 'true' || pressed === 'false') {
+      setAttributeIfChanged(soundButton, 'aria-label', pressed === 'true' ? 'Mute sound' : 'Unmute sound');
+      setAttributeIfChanged(soundButton, 'aria-keyshortcuts', 'M');
+    }
   }
 
   const stage = shell.querySelector('main');
@@ -165,11 +187,7 @@ const decorateShell = () => {
       const label = normalise(button.textContent ?? '');
       if (label.includes('RESUME')) add(button, 'p19-action-primary');
       else if (label.includes('RESTART')) add(button, 'p19-action-secondary');
-      else if (label.includes('EXIT TO ARCADE')) {
-        button.textContent = 'BACK TO ARCADE';
-        setAttributeIfChanged(button, 'aria-label', 'Back to Arcade');
-        add(button, 'p19-action-tertiary');
-      } else if (label.includes('BACK TO ARCADE')) {
+      else if (label.includes('BACK TO ARCADE')) {
         setAttributeIfChanged(button, 'aria-label', 'Back to Arcade');
         add(button, 'p19-action-tertiary');
       }
@@ -217,6 +235,10 @@ export const installArcadeCohesionRuntime = () => {
   teardownGlobal = () => {
     observer?.disconnect();
     observer = null;
+    for (const dialog of Array.from(stackSuppressionState.keys())) {
+      if (dialog.isConnected) releaseStackedDialog(dialog);
+      else stackSuppressionState.delete(dialog);
+    }
     delete document.documentElement.dataset.p19Cohesion;
     installed = false;
     teardownGlobal = null;
