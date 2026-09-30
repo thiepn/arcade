@@ -140,6 +140,7 @@ const decorateAppModals = () => {
 
   for (const dialog of Array.from(stackSuppressionState.keys())) {
     if (!dialog.isConnected) stackSuppressionState.delete(dialog);
+    else if (!appDialogs.includes(dialog)) releaseStackedDialog(dialog);
   }
 };
 
@@ -229,7 +230,7 @@ export const installArcadeCohesionRuntime = () => {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ['aria-label'],
+    attributeFilter: ['aria-label', 'role', 'aria-modal'],
   });
 
   teardownGlobal = () => {
