@@ -361,6 +361,13 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
       }
     };
 
+    const cancelDrawing = () => {
+      if (!isDrawingRef.current) return;
+      isDrawingRef.current = false;
+      gameStateRef.current.linePoints = [];
+      setInkPercent(100);
+    };
+
     canvas.addEventListener('mousedown', handlePointerDown);
     window.addEventListener('mousemove', handlePointerMove);
     window.addEventListener('mouseup', handlePointerUp);
@@ -368,6 +375,8 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
     canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
     window.addEventListener('touchmove', handlePointerMove, { passive: false });
     window.addEventListener('touchend', handlePointerUp);
+    window.addEventListener('touchcancel', cancelDrawing);
+    window.addEventListener('blur', cancelDrawing);
 
     return () => {
       canvas.removeEventListener('mousedown', handlePointerDown);
@@ -376,6 +385,8 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
       canvas.removeEventListener('touchstart', handlePointerDown);
       window.removeEventListener('touchmove', handlePointerMove);
       window.removeEventListener('touchend', handlePointerUp);
+      window.removeEventListener('touchcancel', cancelDrawing);
+      window.removeEventListener('blur', cancelDrawing);
     };
   }, [soundEnabled]);
 
@@ -821,7 +832,7 @@ export const OneLineGame: React.FC<GameComponentProps> = ({
       </div>
 
       <div className="oneline-mastery absolute top-14 left-4 pointer-events-none z-10">
-        <div className="rounded-lg border border-emerald-400/25 bg-zinc-950/80 px-2.5 py-1.5 font-mono-arcade text-[9px] text-emerald-200 backdrop-blur-md">
+        <div role="group" aria-label={`Master Route ${masteryGoal.label}, ${masteryGoal.minStars} stars and ${masteryGoal.minInkRemainingPercent} percent ink`} className="rounded-lg border border-emerald-400/25 bg-zinc-950/80 px-2.5 py-1.5 font-mono-arcade text-[9px] text-emerald-200 backdrop-blur-md">
           <span className="font-black">MASTER ROUTE • {masteryGoal.label}</span>
           <span className="ml-2 text-zinc-400">{masteryGoal.minStars}★ + {masteryGoal.minInkRemainingPercent}% INK</span>
           {masteryStreak > 0 && <span className="ml-2 text-amber-300">CHAIN x{masteryStreak}</span>}
