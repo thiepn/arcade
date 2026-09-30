@@ -27,7 +27,7 @@
 - Implement the home-screen **M** shortcut that the Sound control already advertised, and expose `aria-keyshortcuts="M"` so home and in-game sound controls share one action contract.
 - Make **BACK TO ARCADE** the authored Pause copy instead of rewriting **EXIT TO ARCADE** after render.
 - Derive shell sound wording from semantic `aria-pressed` state rather than Lucide SVG classes, keeping the cohesion layer independent of icon implementation details.
-- Make stacked app-modal suppression ownership-tracked and reversible so P19 restores pre-existing `aria-hidden`/`inert` state instead of blindly deleting it.
+- Make stacked app-modal suppression ownership-tracked and reversible so P19 restores pre-existing `aria-hidden`/`inert` state instead of blindly deleting it, including when a connected surface stops being modal.
 - Harmonize P18/P19 control names so shortcut metadata lives in `aria-keyshortcuts`, while accessible names stay identical across home/game surfaces.
 - Update P19's P18 dependency contract for the high-score-safe Play Again result detector and extend browser certification around exact sound semantics, Resume focus continuity, and modal-stack restoration.
 
