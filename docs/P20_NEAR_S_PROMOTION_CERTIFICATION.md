@@ -245,7 +245,7 @@ The hardening pass therefore adds product-quality safeguards without changing di
 - **Chain:** the three tactical tools are one named control group and expose the selected tool through `aria-pressed`. Browser certification switches Plasma → Tesla and verifies the state transition.
 - **Merge:** the existing Hammer state and keyboard-addressable board columns are now part of the P20 browser contract rather than incidental implementation details.
 - **Cyber Drift:** held steering is forcibly released on window blur so alt-tab/focus loss cannot leave the car steering indefinitely. Steering and Nitro expose state/shortcut semantics, and the browser gate reproduces the held-key → blur recovery path.
-- **Dodge:** Dash now reads the current sound setting through a live ref, fixing the keyboard listener's stale initial `soundEnabled` closure. Directional input is also cleared on blur. Warp Dash exposes its Space binding, remaining charges and exhausted disabled state. Browser certification proves keyboard Dash consumes exactly one charge.
+- **Dodge:** Dash and Phase Cut success audio now read the current sound setting through a live ref, fixing the keyboard listener's stale initial `soundEnabled` closure and keeping mastery feedback consistent after mid-run sound toggles. Directional input is also cleared on blur. Warp Dash exposes its Space binding, remaining charges and exhausted disabled state. Browser certification proves keyboard Dash consumes exactly one charge.
 - **Laser Blade:** the authored phrase/step is now exposed as a named semantic group in addition to the visual HUD.
 - **Shared continuity:** every promoted candidate must still restore focus to the P18 gameplay region after Resume.
 
