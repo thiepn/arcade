@@ -79,7 +79,7 @@ All game cards retain the same information hierarchy: category and session lengt
 
 ## Modal contract
 
-App-level modal dialogs receive the same overlay, panel, header and close-control treatment. Existing `useModalFocus` behavior remains in place. The P19 runtime defensively prevents multiple simultaneously rendered app-level modal dialogs from exposing multiple interactive focus surfaces: only the topmost dialog remains interactive.
+App-level modal dialogs receive the same overlay, panel, header and close-control treatment. Existing `useModalFocus` behavior remains in place. The P19 runtime defensively prevents multiple simultaneously rendered app-level modal dialogs from exposing multiple interactive focus surfaces: only the topmost dialog remains interactive. Suppression is ownership-tracked and reversible: when the upper dialog disappears, P19 restores the lower dialog's prior `aria-hidden` and `inert` state rather than blindly deleting attributes owned by another layer.
 
 Game pause/result dialogs remain owned by P18 semantics and gain only the P19 visual/action hierarchy.
 
@@ -103,7 +103,7 @@ Suspense loading surfaces remain lightweight, status-labelled and layout-stable.
 
 ## Settings cohesion
 
-Sound and haptic preferences remain stored in the existing global stats/preferences object and are synchronized with the shared sound/haptic engines. P19 does not create per-game duplicates. Fullscreen remains shell-owned and must not reset the active game. P17/P18 muted-audio, haptic-independent and reduced-motion guarantees remain authoritative.
+Sound and haptic preferences remain stored in the existing global stats/preferences object and are synchronized with the shared sound/haptic engines. P19 does not create per-game duplicates. The **M** shortcut now performs the same global sound toggle on the arcade home and inside every game, and both surfaces expose the same stateful accessible name, `aria-pressed` value, and `aria-keyshortcuts="M"` contract. Fullscreen remains shell-owned and must not reset the active game. P17/P18 muted-audio, haptic-independent and reduced-motion guarantees remain authoritative.
 
 ## Responsive contract
 
@@ -117,7 +117,7 @@ The production application uses an in-app active-game state rather than URL-per-
 
 ## Accessibility continuity
 
-P18 remains the primary gameplay-teaching and modal-focus certification. P19 adds product-level consistency: a native brand button, canonical focus styling, modal-stack protection, shared control geometry and preserved accessible shell names. P19 does not claim that realtime visual games are fully screen-reader playable and does not claim complete WCAG conformance.
+P18 remains the primary gameplay-teaching and modal-focus certification. P19 adds product-level consistency: a native brand button, canonical focus styling, reversible modal-stack protection, shared control geometry, preserved gameplay focus restoration, and identical control names/state semantics between home and game surfaces. Keyboard shortcut information is carried by `aria-keyshortcuts` rather than being inconsistently baked into accessible names. P19 does not claim that realtime visual games are fully screen-reader playable and does not claim complete WCAG conformance.
 
 ## Reduced-motion continuity
 
@@ -188,6 +188,19 @@ P19 does not regrade the roster. The historical P15 distribution remains:
 - **C/D/F:** 0
 
 Individual S-rank promotion begins in later phases.
+
+## 2026-09-30 hardening addendum
+
+A current-source audit after the P18 accessibility hardening found four product-cohesion gaps:
+
+- the home Sound button advertised **M** while the home keyboard layer implemented only Search/Escape;
+- Pause shipped **EXIT TO ARCADE** and depended on the P19 MutationObserver to rewrite it after render;
+- P19 inferred shell sound state from Lucide SVG class names instead of the semantic `aria-pressed` state already owned by React/P18;
+- modal-stack cleanup removed `aria-hidden`/`inert` unconditionally, which could erase pre-existing state owned by another layer.
+
+The hardening pass makes those contracts source-authored and reversible. It also updates P19's P18 dependency assertion to the stable Play Again/high-score-safe result detector introduced by the P18 hardening pass. Browser certification now verifies the home **M** shortcut, exact home/game sound semantics, P18 gameplay-focus restoration after Resume, and reversible stacked-modal ownership.
+
+No gameplay simulation, scoring, balance, roster grades, card content hierarchy, or game-specific visual identity changes in this addendum.
 
 ## Exit decision
 
