@@ -10,7 +10,10 @@ import {
   getLaserRopeRedlineReward,
   getLaserRopeRedlineSpeed,
 } from '../lib/laserRopeRedline';
-import { canApplyLaserRopeModeChange } from '../lib/laserRopeBalance';
+import {
+  canApplyLaserRopeDirectionChange,
+  canApplyLaserRopeModeChange,
+} from '../lib/laserRopeBalance';
 import {
   advanceLaserRopeChoreography,
   createLaserRopeChoreographyState,
@@ -220,10 +223,27 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
 
         state.speedChangeTimer -= dt;
         if (state.speedChangeTimer <= 0) {
-          state.speedChangeTimer = Math.random() * 3.5 + 3.0;
-          if (Math.random() < 0.4 && state.jumpStreak > 4) {
+          const wantsDirectionChange = Math.random() < 0.4 && state.jumpStreak > 4;
+          const reversalBaseSpeed = state.isFeverActive ? state.sweepSpeed * 0.75 : state.sweepSpeed;
+          const reversalSpeed = getLaserRopeRedlineSpeed(reversalBaseSpeed, state.redlineActive);
+          if (
+            wantsDirectionChange &&
+            canApplyLaserRopeDirectionChange(
+              state.sweepAngle,
+              state.direction,
+              reversalSpeed,
+              state.beamsCount,
+              getLaserRopeWarningFloor(reversalSpeed),
+            )
+          ) {
             state.direction *= -1;
+            state.speedChangeTimer = Math.random() * 3.5 + 3.0;
             state.popups.push({ id: state.nextId++, x: centerX, y: groundY - 140, text: '⚡ DIRECTION REVERSED!', color: '#F43F5E', life: 1.0 });
+          } else if (wantsDirectionChange) {
+            // A reversal is a new threat direction too; retry only after it has a readable warning window.
+            state.speedChangeTimer = 0.08;
+          } else {
+            state.speedChangeTimer = Math.random() * 3.5 + 3.0;
           }
           state.speedTarget = Math.min(5.4, 2.2 + state.jumpStreak * 0.1);
         }

@@ -108,6 +108,30 @@ export const getPinballRescueImpulse = (lowSpeedSeconds: number): number =>
 export const getBubbleDropCadence = (ceilingDrops: number): number =>
   ceilingDrops < 2 ? 6 : 5;
 
+export interface OrbCannonPaletteCell {
+  color: string;
+}
+
+export const getOrbCannonActivePalette = (
+  grid: readonly (readonly (OrbCannonPaletteCell | null)[])[],
+  fallbackColors: readonly string[],
+): string[] => {
+  const active = fallbackColors.filter((color) =>
+    grid.some((row) => row.some((cell) => cell?.color === color)),
+  );
+  return active.length > 0 ? active : [...fallbackColors];
+};
+
+export const drawOrbCannonActiveColor = (
+  grid: readonly (readonly (OrbCannonPaletteCell | null)[])[],
+  fallbackColors: readonly string[],
+  randomValue: number,
+): string => {
+  const palette = getOrbCannonActivePalette(grid, fallbackColors);
+  if (palette.length === 0) return '';
+  return palette[Math.floor(clamp(randomValue, 0, 0.999999) * palette.length)] ?? palette[0];
+};
+
 export const getBreakoutMinimumSpecials = (round: number): number =>
   Math.min(4, 2 + Math.floor(Math.max(1, round) / 4));
 

@@ -10,7 +10,11 @@ import {
   getOrbSalvoResolutionBonus,
   shouldEarnOrbBurst,
 } from '../lib/orbCannonMastery';
-import { getBubbleDropCadence } from '../lib/gamePolishBalance';
+import {
+  drawOrbCannonActiveColor,
+  getBubbleDropCadence,
+  getOrbCannonActivePalette,
+} from '../lib/gamePolishBalance';
 
 const COLORS = ['#38BDF8', '#EC4899', '#10B981', '#FACC15', '#A855F7'];
 const BUBBLE_RADIUS = 16;
@@ -93,6 +97,17 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
     height: 500,
   });
 
+  const reconcileChamberColors = () => {
+    const state = gameStateRef.current;
+    const activePalette = getOrbCannonActivePalette(state.grid, COLORS);
+    if (!activePalette.includes(state.currentBubbleColor)) {
+      state.currentBubbleColor = drawOrbCannonActiveColor(state.grid, COLORS, Math.random());
+    }
+    if (!activePalette.includes(state.nextBubbleColor)) {
+      state.nextBubbleColor = drawOrbCannonActiveColor(state.grid, COLORS, Math.random());
+    }
+  };
+
   // Calculate hex position
   const getBubbleCenter = (r: number, c: number, boardOffsetX: number, boardOffsetY: number) => {
     const isOddRow = r % 2 === 1;
@@ -143,7 +158,7 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
     state.hasSwappedThisTurn = false;
 
     state.currentBubbleColor = state.nextBubbleColor;
-    state.nextBubbleColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+    state.nextBubbleColor = drawOrbCannonActiveColor(state.grid, COLORS, Math.random());
 
     if (soundEnabled) sounds.playBubbleShoot();
   };
@@ -232,6 +247,8 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
         return null;
       })
     );
+    state.currentBubbleColor = drawOrbCannonActiveColor(state.grid, COLORS, Math.random());
+    state.nextBubbleColor = drawOrbCannonActiveColor(state.grid, COLORS, Math.random());
   }, []);
 
   useGameLoop({
@@ -486,6 +503,9 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
               state.grid.unshift(newRow);
               state.grid.pop();
             }
+
+            // Remove chamber colors that no longer exist on the resolved board.
+            reconcileChamberColors();
 
             // Game Over Check
             for (let c = 0; c < GRID_COLS; c++) {

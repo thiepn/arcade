@@ -100,3 +100,15 @@ Their existing permanent gates already certify the most failure-sensitive invari
 - No game is normalized to another game's session length.
 - The roster retains short reflex games, longer puzzle games, finite authored gauntlets and endless score attacks.
 - P17 should now focus on feedback hierarchy and input/game feel rather than adding new mechanics.
+
+
+## 2026-09-30 hardening addendum
+
+P16 remains the authoritative roster-wide pacing/fairness contract, but later P25 tuning made several envelopes safer than the original September 1 snapshot. The permanent P16 gate now executes the current helper functions instead of relying on stale literals. In particular, Aero's current base curve caps at 270 px/s with a 96 px minimum gap while remaining inside P16's original ≤280 / ≥90 safety envelope.
+
+Two current-source fairness gaps were also corrected:
+
+- **Laser Rope direction reversal:** P16 originally phase-guarded LOW/HIGH/DUAL mode changes but not the independent random direction reversal. A reversal immediately after a bottom crossing could send the beam back through the player before the warning floor elapsed. Reversals now use the same speed-aware geometric warning requirement as mode changes and retry after 80 ms when unsafe.
+- **Orb Cannon chamber palette:** loaded/next orbs could use a color that no longer existed anywhere on the resolved board, forcing strategically dead shots while still consuming the ceiling-drop economy. Chamber colors are now drawn from the active board palette and reconciled after every shot resolution/ceiling drop. An empty board falls back to the canonical five-color palette.
+
+The strengthened gate also executes current Stack, Dodge, Tower, Cyber Crosser, Pulse and Orb Cannon balance helpers, ensuring later polish may tighten safety but cannot silently exceed P16's original ceilings/floors.

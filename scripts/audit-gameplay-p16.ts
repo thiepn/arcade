@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import {
   LASER_ROPE_MODE_MIN_WARNING_SEC,
+  canApplyLaserRopeDirectionChange,
   canApplyLaserRopeModeChange,
+  getLaserRopeDirectionChangeWarningSec,
   getLaserRopeModeWarningSec,
 } from '../src/lib/laserRopeBalance';
 import { LASER_ROPE_REDLINE_SPEED_MULTIPLIER } from '../src/lib/laserRopeRedline';
@@ -9,6 +11,19 @@ import { AERO_FLOW_SPEED_MULTIPLIER } from '../src/lib/aeroMastery';
 import { REACTION_ROUNDS } from '../src/lib/reactionGameplay';
 import { REACTION_OVERTIME_ROUNDS } from '../src/lib/reactionOvertime';
 import { TYPE_RUSH_WAVES } from '../src/lib/typeRushProgression';
+import {
+  drawOrbCannonActiveColor,
+  getBubbleDropCadence,
+  getDodgeSpawnDelayMs,
+  getFlappyAeroGap,
+  getFlappyAeroScrollSpeed,
+  getLaserRopeWarningFloor,
+  getOrbCannonActivePalette,
+  getPulseComboBpmBoost,
+  getRoadCrossLaneSpeed,
+  getStackTravelSpeed,
+  getTowerPlatformGap,
+} from '../src/lib/gamePolishBalance';
 
 const read = (path: string) => readFileSync(path, 'utf8');
 const errors: string[] = [];
@@ -24,6 +39,10 @@ const stack = read('src/games/StackGame.tsx');
 const aero = read('src/games/FlappyAeroGame.tsx');
 const pulse = read('src/games/PulseGame.tsx');
 const drift = read('src/games/DriftGame.tsx');
+const dodge = read('src/games/DodgeGame.tsx');
+const tower = read('src/games/TowerGame.tsx');
+const roadCross = read('src/games/RoadCrossGame.tsx');
+const orb = read('src/games/BubbleBusterGame.tsx');
 const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
 const ci = read('.github/workflows/ci.yml');
 const release = read('scripts/audit-release-32.ts');
@@ -62,12 +81,17 @@ for (const heading of [
 // Stack: physical progression only, capped and independent from mastery score.
 assert(stack.includes('getStackTravelSpeed('), 'Stack viewport-normalized physical speed ramp marker changed');
 assert(!stack.includes('state.score * 0.08'), 'Stack speed regressed to score-driven progression');
+assert(getStackTravelSpeed(1, 1) === 3.5, 'Stack opening travel speed changed');
+assert(getStackTravelSpeed(10_000, 1) <= 8, 'Stack late physical speed escaped the certified +4.5 cap');
 
 // Aero: bounded base pressure. Optional Flow may intentionally exceed the base envelope.
 assert(aero.includes('getFlappyAeroScrollSpeed(state.gatesCleared)'), 'Aero base speed envelope changed');
 assert(aero.includes('getFlappyAeroGap(state.gatesCleared)'), 'Aero minimum gate gap envelope changed');
 assert(aero.includes('Math.random() * 40 + 200'), 'Aero gate-spacing floor changed');
-assert(200 / 280 >= 0.7, 'Aero base generated-anchor interval fell below 0.7 s');
+assert(getFlappyAeroScrollSpeed(0) === 175, 'Aero opening scroll speed changed');
+assert(getFlappyAeroScrollSpeed(10_000) <= 280, 'Aero base scroll speed escaped the P16 ceiling');
+assert(getFlappyAeroGap(10_000) >= 90, 'Aero minimum gate gap fell below the P16 floor');
+assert(200 / getFlappyAeroScrollSpeed(10_000) >= 0.7, 'Aero base generated-anchor interval fell below 0.7 s');
 assert(AERO_FLOW_SPEED_MULTIPLIER > 1 && AERO_FLOW_SPEED_MULTIPLIER <= 1.2, 'Aero Flow risk multiplier escaped the certified bound');
 
 // Laser Rope: retain late speed, but mode vocabulary may not change immediately before a crossing.
@@ -79,7 +103,35 @@ const unsafeAngle = Math.PI / 2 - 0.1;
 assert(getLaserRopeModeWarningSec(safeAngle, 1, ropeMaxRiskSpeed, 2) >= LASER_ROPE_MODE_MIN_WARNING_SEC, 'Laser Rope dual-mode safe transition window is unreachable at max Redline speed');
 assert(canApplyLaserRopeModeChange(safeAngle, 1, ropeMaxRiskSpeed, 2), 'Laser Rope safe dual transition is rejected');
 assert(!canApplyLaserRopeModeChange(unsafeAngle, 1, ropeMaxRiskSpeed, 1), 'Laser Rope near-crossing mode transition is not blocked');
+const reversalUnsafeAngle = Math.PI / 2 + 0.1;
+const reversalSafeAngle = Math.PI / 2 - 1.5;
+assert(
+  getLaserRopeDirectionChangeWarningSec(reversalSafeAngle, 1, ropeMaxRiskSpeed, 1) >=
+    getLaserRopeWarningFloor(ropeMaxRiskSpeed),
+  'Laser Rope safe direction-reversal window is unreachable at max Redline speed',
+);
+assert(
+  canApplyLaserRopeDirectionChange(
+    reversalSafeAngle,
+    1,
+    ropeMaxRiskSpeed,
+    1,
+    getLaserRopeWarningFloor(ropeMaxRiskSpeed),
+  ),
+  'Laser Rope safe direction reversal is rejected',
+);
+assert(
+  !canApplyLaserRopeDirectionChange(
+    reversalUnsafeAngle,
+    1,
+    ropeMaxRiskSpeed,
+    1,
+    getLaserRopeWarningFloor(ropeMaxRiskSpeed),
+  ),
+  'Laser Rope near-crossing direction reversal is not blocked',
+);
 assert(rope.includes('canApplyLaserRopeModeChange('), 'Laser Rope source does not guard mode transitions by beam phase');
+assert(rope.includes('canApplyLaserRopeDirectionChange('), 'Laser Rope source does not guard direction reversals by beam phase');
 assert(rope.includes('state.modeChangeTimer = 0.08;'), 'Laser Rope source does not retry deferred unsafe mode changes');
 assert(rope.includes('Math.min(5.4, 2.2 + state.jumpStreak * 0.1)'), 'Laser Rope late sweep-speed cap changed');
 
@@ -115,6 +167,39 @@ assert(drift.includes('maxSpeed: 9.2'), 'Drift max speed changed');
 assert(drift.includes('st.maxSpeed * 1.55'), 'Drift Nitro speed multiplier changed');
 assert(drift.includes('state.boostTimer = 1.8') || drift.includes('st.boostTimer = 1.8'), 'Drift Nitro duration marker changed');
 assert(drift.includes('if (st.spawnTimer > 48)'), 'Drift event spawn cadence changed');
+
+// P16 priority siblings: certify the current post-P25 helpers rather than historical literals.
+assert(getDodgeSpawnDelayMs(0, 0) >= 1000, 'Dodge opening spawn cadence became too dense');
+assert(getDodgeSpawnDelayMs(120, 0) >= 450, 'Dodge late spawn cadence escaped the certified floor');
+assert(getDodgeSpawnDelayMs(120, 8) > getDodgeSpawnDelayMs(120, 2), 'Dodge density relief no longer reacts to crowded hazard state');
+assert(dodge.includes('getDodgeSpawnDelayMs(state.gameTime, state.hazards.length)'), 'Dodge runtime bypasses the certified density-aware spawner');
+
+assert(getTowerPlatformGap(0, 0) === 46, 'Tower minimum platform gap changed');
+assert(getTowerPlatformGap(10_000, 0.999999) <= 89.01, 'Tower late platform gap escaped the certified ceiling');
+assert(tower.includes('getTowerPlatformGap('), 'Tower runtime bypasses the certified platform-gap helper');
+
+assert(getRoadCrossLaneSpeed(0, 0) >= 62, 'Cyber Crosser opening lane speed fell outside the certified range');
+assert(getRoadCrossLaneSpeed(31, 0.999999) < 133.01, 'Cyber Crosser late lane speed escaped the certified ceiling');
+assert(roadCross.includes('getRoadCrossLaneSpeed('), 'Cyber Crosser runtime bypasses the district speed helper');
+
+assert.deepEqual([0, 1, 2, 10].map(getBubbleDropCadence), [6, 6, 5, 5], 'Orb Cannon ceiling-drop cadence changed');
+const orbPaletteGrid = [
+  [{ color: 'cyan' }, null, { color: 'gold' }],
+  [null, { color: 'cyan' }, null],
+];
+assert.deepEqual(
+  getOrbCannonActivePalette(orbPaletteGrid, ['cyan', 'pink', 'gold']),
+  ['cyan', 'gold'],
+  'Orb Cannon active palette still includes eliminated colors',
+);
+assert(
+  drawOrbCannonActiveColor(orbPaletteGrid, ['cyan', 'pink', 'gold'], 0.75) === 'gold',
+  'Orb Cannon active-color draw does not use the board palette',
+);
+assert(orb.includes('reconcileChamberColors();'), 'Orb Cannon does not purge eliminated colors from loaded/next chambers');
+assert(orb.includes('drawOrbCannonActiveColor(state.grid, COLORS, Math.random())'), 'Orb Cannon next chamber still draws from eliminated colors');
+
+assert(getPulseComboBpmBoost(10_000) <= 30, 'Pulse combo BPM contribution escaped its bounded ceiling');
 
 assert(pkg.scripts?.['quality:gameplay-p16'] === 'bun scripts/audit-gameplay-p16.ts', 'package.json is missing the permanent P16 command');
 assert(ci.includes('bun run quality:gameplay-p15\n      - run: bun run quality:gameplay-p16'), 'CI must run P16 immediately after P15');

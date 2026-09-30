@@ -47,3 +47,31 @@ export const canApplyLaserRopeModeChange = (
     sweepSpeedRadSec,
     candidateBeamsCount,
   ) >= minimumWarningSec;
+
+
+export const getLaserRopeDirectionChangeWarningSec = (
+  sweepAngle: number,
+  currentDirection: number,
+  sweepSpeedRadSec: number,
+  currentBeamsCount: number,
+): number =>
+  getLaserRopeModeWarningSec(
+    sweepAngle,
+    -currentDirection,
+    sweepSpeedRadSec,
+    currentBeamsCount,
+  );
+
+export const canApplyLaserRopeDirectionChange = (
+  sweepAngle: number,
+  currentDirection: number,
+  sweepSpeedRadSec: number,
+  currentBeamsCount: number,
+  minimumWarningSec = LASER_ROPE_MODE_MIN_WARNING_SEC,
+): boolean =>
+  getLaserRopeDirectionChangeWarningSec(
+    sweepAngle,
+    currentDirection,
+    sweepSpeedRadSec,
+    currentBeamsCount,
+  ) >= minimumWarningSec;
