@@ -23,6 +23,14 @@
 
 ## Unreleased
 
+### P20 near-S promotion / flagship-quality hardening — 2026-09-30
+- Keep the original six P20 S-promotion scorecards frozen; improve current evidence instead of inflating ratings.
+- Fix Dodge keyboard Dash so it follows the live Sound setting rather than the listener's mount-time `soundEnabled` value, and clear held directional input on window blur.
+- Clear Cyber Drift held steering on window blur so focus loss cannot leave persistent steering input.
+- Expose Gravity polarity/slow-mo/Recall/Boost, Chain tool selection, Drift steering/Nitro, Dodge Dash charges, and Laser Blade phrase state through explicit semantic control state.
+- Strengthen the permanent P20 browser gate to exercise real mastery-state transitions, held-input blur recovery, Dodge keyboard Dash charge consumption, and P18 gameplay-focus restoration after Resume.
+- Preserve all P16 balance envelopes, P17 feel hierarchy, P18 teaching/accessibility contracts, P19 cohesion, scoring, and game-specific identities.
+
 ### P19 arcade cohesion / cross-game UX hardening — 2026-09-30
 - Implement the home-screen **M** shortcut that the Sound control already advertised, and expose `aria-keyshortcuts="M"` so home and in-game sound controls share one action contract.
 - Make **BACK TO ARCADE** the authored Pause copy instead of rewriting **EXIT TO ARCADE** after render.
