@@ -202,21 +202,30 @@ export default function App() {
     }
   }, [stats.theme]);
 
-  // Global key bindings: '/' to search, 'Esc' to close search/modals
+  // Global home shortcuts stay aligned with the same product actions shown in the header.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (activeGameId || statsModalOpen || overallLeaderboardOpen || profileOpen) return;
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      const editing = Boolean(target?.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""]'));
 
-      if (e.key === '/' && !(e.target instanceof HTMLInputElement)) {
+      if (e.key === '/' && !editing) {
         e.preventDefault();
         setSearchOpen(true);
+      } else if ((e.key === 'm' || e.key === 'M') && !editing && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat) {
+        e.preventDefault();
+        sounds.playPop();
+        const newSound = !stats.soundEnabled;
+        const updated = updateSoundPreference(newSound);
+        sounds.setMuted(!newSound);
+        setStats(updated);
       } else if (e.key === 'Escape') {
         if (searchOpen) setSearchOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeGameId, searchOpen, statsModalOpen, overallLeaderboardOpen, profileOpen]);
+  }, [activeGameId, searchOpen, stats.soundEnabled, statsModalOpen, overallLeaderboardOpen, profileOpen]);
 
   // Launch a game
   const handleLaunchGame = useCallback((gameId: string) => {
