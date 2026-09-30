@@ -744,6 +744,8 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onPointerLeave={handlePointerUp}
       className="relative w-full h-full min-h-0 flex flex-col items-center justify-center bg-[#050508] select-none overflow-hidden touch-none"
     >
       {/* Top HUD Display */}
@@ -775,6 +777,9 @@ export const PacMazeGame: React.FC<GameComponentProps> = ({
               type="button"
               onClick={triggerHuntRush}
               disabled={!hudState.huntReady}
+              aria-label={hudState.huntActive ? 'Hunt Rush active' : 'Activate Hunt Rush'}
+              aria-pressed={hudState.huntActive}
+              aria-keyshortcuts="F Shift"
               className={`pointer-events-auto px-2.5 py-1 rounded-xl border font-mono text-[10px] font-black ${
                 hudState.huntActive
                   ? 'bg-rose-500/30 border-rose-400 text-rose-200 animate-pulse'
