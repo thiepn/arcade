@@ -984,7 +984,7 @@ export const ChainGame: React.FC<GameComponentProps> = ({
       </div>
 
       {/* Tactical Detonator Selector with Distinct Purpose Descriptions */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2 bg-[#18181B]/95 border border-[#27272A] p-1 sm:p-1.5 rounded-2xl shadow-2xl z-20">
+      <div role="group" aria-label="Detonator tool" className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2 bg-[#18181B]/95 border border-[#27272A] p-1 sm:p-1.5 rounded-2xl shadow-2xl z-20">
         <button
           type="button"
           onClick={() => selectWeapon('plasma')}
