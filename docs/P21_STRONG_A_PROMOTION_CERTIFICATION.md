@@ -1,6 +1,8 @@
 # P21 — Strong-A Promotion Certification
 
-Baseline: `3a6b2f19bd71f7a7a8947b7de3da9fc9b3d553ff` (production-certified P20)
+Baseline: `3a6b2f19bd71f7a7a8947b7de3da9fc9b3d553ff` (original P21 promotion baseline)
+
+Current hardening baseline: `46a240f44e02ea0dec811795afe335dc9944fd54` (2026-09-30 hardened P20)
 
 ## Purpose
 
@@ -260,6 +262,24 @@ Manual promotion acceptance remains required editorial evidence for:
 - comparative credibility beside the existing S cohort.
 
 P21 documentation records those questions rather than pretending CI can answer them.
+
+## 2026-09-30 distinctive-depth hardening addendum
+
+The original six P21 promotion scorecards remain frozen. A current-source audit found that the promotion systems themselves were intact, but several games still had input-ownership and mastery-state weaknesses that were below the standard expected from the promoted cohort.
+
+The hardening pass closes those gaps without changing score formulas, difficulty envelopes, progression schedules or P21 totals:
+
+- **Breakout Mini:** keyboard input now ignores suspended/dead states, and held paddle/laser input is cleared on window blur and touch cancellation so Pause/focus loss cannot leak movement into resumed play.
+- **Neon Puck Smash:** keyboard-triggered Power Play now reads the live Sound preference instead of the mount-time closure. Difficulty is exposed as one named control group with selected state, and Power Play exposes charge/active state plus Space/F shortcuts.
+- **Gravity Tower Jumper:** held horizontal movement is released on window blur and pointer cancellation. Apex Drive now exposes active state and its F/Shift shortcuts.
+- **Cyber Pac-Runner:** interrupted swipe ownership is cancelled on pointer cancel/leave. Hunt Rush now exposes active state and its F/Shift shortcut.
+- **One Line:** a drawing stroke interrupted by blur/touch cancellation is cancelled atomically: drawing ownership ends, partial line geometry is discarded and ink returns to 100%. The current Master Route objective is exposed semantically.
+- **Chrono Wave:** held/direct rotation is released on blur/touch cancellation; EMP, Focus Wager and left/right rotation now expose shortcuts and active/held state.
+- **Shared continuity:** the P21 browser matrix now verifies P18 gameplay-focus restoration after Resume in addition to the candidate-specific state transitions above.
+
+The browser gate now tests Puck MASTER selection, One Line interrupted-stroke cancellation, and Chrono held-rotation recovery as executable state changes rather than accepting static labels as evidence of distinctive depth.
+
+No category receives an additional point from this hardening pass. P21 remains **17 S / 8 A / 7 B** and P15/P20 historical ledgers remain unchanged.
 
 ## Regression / release contract
 
