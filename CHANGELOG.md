@@ -29,6 +29,7 @@
 - Keep gameplay buttons responsive through bounded control acknowledgement without also emitting a generic playfield burst.
 - Replace stale timers when pooled burst nodes or semantic/control classes are retriggered, keeping rapid typing/tapping feedback bounded beyond the existing eight-node DOM pool.
 - Remove the shared cross-kind sequence token from semantic/stage class cleanup; each feedback class now owns its own timer so overlapping strong/mastery/warning/failure effects cannot leave stale classes behind.
+- Scope the P17 static-control browser probe to the synthetic control's own semantic class instead of any global mastery burst, avoiding false failures when a live game such as Orbital Slingshot legitimately emits mastery during the probe window.
 - Extend the P17 browser matrix to certify keyboard acknowledgement, editable-input isolation, control/playfield separation and static-control semantic isolation on desktop/full-motion and touch-mobile/reduced-motion profiles.
 
 ### P16 difficulty/balance hardening — 2026-09-30

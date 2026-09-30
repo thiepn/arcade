@@ -202,6 +202,7 @@ assert(browserAudit.includes("keyboard input did not receive immediate P17 ackno
 assert(browserAudit.includes("editable input leaked P17 gameplay acknowledgement"), 'P17 browser audit does not certify editable-input isolation');
 assert(browserAudit.includes("interactive control emitted a gameplay input burst"), 'P17 browser audit does not certify control-vs-gameplay feedback separation');
 assert(browserAudit.includes("static control label emitted semantic mastery feedback"), 'P17 browser audit does not certify static-control semantic isolation');
+assert(browserAudit.includes("button.classList.contains('p17-semantic-mastery')"), 'P17 static-control browser probe is not locally scoped to the synthetic control');
 assert(browserAudit.includes("overlapping feedback classes do not clean up independently"), 'P17 browser audit does not certify independent overlapping class cleanup');
 assert(browserAudit.includes('exit leaked P17 shell/layer'), 'P17 browser audit does not certify exit cleanup');
 

@@ -165,18 +165,18 @@ const runGame = async (page, profile, gameId) => {
     await page.waitForTimeout(profile.reducedMotion === 'reduce' ? 150 : 300);
     const semanticControlIsolation = await page.evaluate(async () => {
       const stage = document.querySelector('.game-shell main > div') || document.querySelector('.game-shell main');
-      if (!stage) return { mastery: true };
+      if (!stage) return { decorated: true };
       const button = document.createElement('button');
       button.type = 'button';
       stage.appendChild(button);
       await new Promise((resolve) => setTimeout(resolve, 0));
       button.appendChild(document.createTextNode('BURST'));
       await new Promise((resolve) => setTimeout(resolve, 20));
-      const mastery = Boolean(document.querySelector('.p17-feedback-burst.is-active[data-p17-kind="mastery"]'));
+      const decorated = button.classList.contains('p17-semantic-mastery');
       button.remove();
-      return { mastery };
+      return { decorated };
     });
-    assert(!semanticControlIsolation.mastery, 'static control label emitted semantic mastery feedback');
+    assert(!semanticControlIsolation.decorated, 'static control label emitted semantic mastery feedback');
 
     const overlappingClasses = await page.evaluate(async ({ reduced }) => {
       const stage = document.querySelector('.game-shell main > div');
