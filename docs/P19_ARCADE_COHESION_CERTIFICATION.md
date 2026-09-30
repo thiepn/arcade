@@ -79,7 +79,7 @@ All game cards retain the same information hierarchy: category and session lengt
 
 ## Modal contract
 
-App-level modal dialogs receive the same overlay, panel, header and close-control treatment. Existing `useModalFocus` behavior remains in place. The P19 runtime defensively prevents multiple simultaneously rendered app-level modal dialogs from exposing multiple interactive focus surfaces: only the topmost dialog remains interactive. Suppression is ownership-tracked and reversible: when the upper dialog disappears, P19 restores the lower dialog's prior `aria-hidden` and `inert` state rather than blindly deleting attributes owned by another layer.
+App-level modal dialogs receive the same overlay, panel, header and close-control treatment. Existing `useModalFocus` behavior remains in place. The P19 runtime defensively prevents multiple simultaneously rendered app-level modal dialogs from exposing multiple interactive focus surfaces: only the topmost dialog remains interactive. Suppression is ownership-tracked and reversible: when the upper dialog disappears—or a connected lower surface stops being an `aria-modal="true"` dialog—P19 restores the lower dialog's prior `aria-hidden` and `inert` state rather than blindly deleting attributes owned by another layer.
 
 Game pause/result dialogs remain owned by P18 semantics and gain only the P19 visual/action hierarchy.
 
