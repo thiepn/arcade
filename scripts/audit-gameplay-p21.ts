@@ -159,6 +159,8 @@ assert(towerSource.includes('aria-pressed={hudState.apexActive}') && towerSource
 assert(PAC_LEVEL_PROTOCOLS.length === 6, 'Pac must expose six authored level protocols');
 assert(new Set(PAC_LEVEL_PROTOCOLS.map((protocol) => protocol.id)).size === 6, 'Pac level protocols are not unique');
 assert(getPacLevelProtocol(1).label === 'ORIENTATION' && getPacLevelProtocol(6).label === 'ENDURANCE' && getPacLevelProtocol(7).label === 'ORIENTATION', 'Pac protocol cycle changed');
+assert(pacSource.includes('onPointerCancel={handlePointerUp}') && pacSource.includes('onPointerLeave={handlePointerUp}'), 'Pac swipe ownership is not cancelled when the pointer interaction is interrupted');
+assert(pacSource.includes("aria-label={hudState.huntActive ? 'Hunt Rush active' : 'Activate Hunt Rush'}") && pacSource.includes('aria-keyshortcuts="F Shift"'), 'Pac Hunt state/shortcut semantics are missing');
 for (let level = 1; level <= 24; level++) {
   assert(getPacFrightenedDuration(level) >= 4.5, `Pac level ${level} broke frightened-time floor`);
   assert(getPacGhostSpeed(level, false) <= 5.6, `Pac level ${level} broke normal ghost-speed cap`);
@@ -174,6 +176,9 @@ assert(getOneLineMasteryGoal(4).label === 'STAR ROUTE' && getOneLineMasteryGoal(
 assert(getOneLineMasteryTier(1) === 1 && getOneLineMasteryTier(4) === 2 && getOneLineMasteryTier(10) === 4, 'One Line mastery tier calculation changed');
 for (let level = 1; level <= 30; level++) assert(getOneLineMasteryGoal(level).minInkRemainingPercent <= 40, `One Line level ${level} exceeded optional ink target cap`);
 assert(getOneLineMasteryReward(10, 2) > getOneLineMasteryReward(1, 2), 'One Line later mastery tiers do not increase reward');
+assert(oneLineSource.includes('cancelDrawing') && oneLineSource.includes('gameStateRef.current.linePoints = []') && oneLineSource.includes('setInkPercent(100)'), 'One Line interrupted strokes are not cancelled atomically');
+assert(oneLineSource.includes("window.addEventListener('touchcancel', cancelDrawing)") && oneLineSource.includes("window.addEventListener('blur', cancelDrawing)"), 'One Line drawing ownership is not released on cancel/focus loss');
+assert(oneLineSource.includes('role="group"') && oneLineSource.includes('Master Route ${masteryGoal.label}'), 'One Line mastery state is not semantically exposed');
 
 // Chrono: phrase grammar is bounded entirely inside the old reachability vocabulary.
 assert(CHRONO_GAP_PHRASES.length === 4, 'Chrono must expose four gap phrase families');
@@ -186,6 +191,11 @@ const random = () => {
   seed = (seed * 1664525 + 1013904223) >>> 0;
   return seed / 0x100000000;
 };
+assert(chronoSource.includes('releaseOwnedInput') && chronoSource.includes("window.addEventListener('blur', releaseOwnedInput)") && chronoSource.includes("window.addEventListener('touchcancel', releaseOwnedInput)"), 'Chrono can retain held/direct rotation after ownership loss');
+assert(chronoSource.includes('aria-label="EMP Blast"') && chronoSource.includes('aria-keyshortcuts="Space E"'), 'Chrono EMP shortcut semantics are missing');
+assert(chronoSource.includes('aria-pressed={focusArmed}') && chronoSource.includes('aria-keyshortcuts="F Shift"'), 'Chrono Focus state/shortcut semantics are missing');
+assert(chronoSource.includes('aria-label="Rotate left"') && chronoSource.includes('aria-pressed={leftActive}') && chronoSource.includes('aria-label="Rotate right"') && chronoSource.includes('aria-pressed={rightActive}'), 'Chrono rotation held state is not semantically exposed');
+
 for (const stage of [1, 2, 3, 4]) {
   let currentFrame = 0;
   let lastImpactFrame = 0;
@@ -265,6 +275,7 @@ assert(existsSync(join(root, 'scripts', 'p21-promotion-scorecards.ts')), 'P21 sc
 
 for (const id of cohort) assert(browserAudit.includes(`'${id}'`), `P21 browser audit missing ${id}`);
 for (const profile of ["name: 'desktop'", "name: 'mobile'", "name: 'small-mobile'"]) assert(browserAudit.includes(profile), `P21 browser audit missing ${profile}`);
+for (const marker of ['assertFlagshipDepthSemantics','Puck MASTER selection did not update semantic state','One Line blur-cancel accidentally launched an interrupted stroke','Chrono blur cleanup left rotation active','document.activeElement === stage']) assert(browserAudit.includes(marker), `P21 browser audit missing distinctive-depth hardening check: ${marker}`);
 
 if (errors.length) {
   console.error('P21 STRONG-A PROMOTION CERTIFICATION — FAIL');
