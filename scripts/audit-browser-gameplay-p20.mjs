@@ -91,7 +91,7 @@ const assertCandidateMarker = async (page, id) => {
 
 const assertFlagshipControlSemantics = async (page, id, phase = 'before') => {
   if (id === 'gravity') {
-    const flip = page.getByRole('button', { name: /Set gravity field/i });
+    const flip = page.getByRole('button', { name: 'Repel gravity' });
     assert(await flip.getAttribute('aria-keyshortcuts') === 'G', 'Gravity flip control does not expose G');
     assert(['true', 'false'].includes(await flip.getAttribute('aria-pressed')), 'Gravity flip control does not expose state');
     const recall = page.getByRole('button', { name: /Re-aim probe/i }).first();
