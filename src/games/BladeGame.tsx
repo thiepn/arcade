@@ -951,6 +951,8 @@ export const BladeGame: React.FC<GameComponentProps> = ({
 
       <div
         data-p20-blade-phrase={wavePhraseLabel}
+        role="group"
+        aria-label={`Blade phrase ${wavePhraseLabel}, step ${wavePhraseStep} of 3`}
         className="absolute top-12 left-1/2 -translate-x-1/2 z-10 max-w-[calc(100%-1rem)] px-3 py-1 rounded-full bg-black/70 border border-amber-400/30 font-mono-arcade text-[9px] sm:text-[10px] text-amber-100 whitespace-nowrap pointer-events-none"
       >
         <span className="font-black text-amber-300">PHRASE — {wavePhraseLabel}</span>
