@@ -115,6 +115,7 @@ assert(runtime.includes("overlay.setAttribute('aria-modal', 'true')"), 'P18 over
 assert(runtime.includes("data-p18-clarity-panel" ) || runtime.includes('p18ClarityPanel'), 'P18 runtime does not create structured teaching content');
 assert(runtime.includes('ESSENTIAL') && runtime.includes('SECONDARY') && runtime.includes('WATCH FOR'), 'P18 teaching hierarchy is incomplete');
 assert(runtime.includes('FAILURE RULE') && runtime.includes('NEXT TRY'), 'P18 result guidance is incomplete');
+assert(runtime.includes("querySelector<HTMLElement>('#btn-play-again')") && runtime.includes("text.startsWith('NEW HIGH SCORE!')"), 'P18 result discovery is not robust across normal/high-score result variants');
 assert(runtime.includes('localStorage') && runtime.includes('p18-hint'), 'P18 first-run hints are not persistence-bounded');
 assert(runtime.includes("pointerdown") && runtime.includes('removeHint(state)'), 'P18 hints do not dismiss naturally on interaction');
 assert(runtime.includes("event.key !== 'Tab'") || runtime.includes("event.key !== 'Tab'"), 'P18 dialog focus trap is missing');
@@ -195,6 +196,9 @@ assert(browserAudit.includes('modal background isolation'), 'P18 browser audit d
 assert(browserAudit.includes('programmatic focus escaped'), 'P18 browser audit does not certify forced focus containment');
 assert(browserAudit.includes('fullscreen accessibility label did not refresh'), 'P18 browser audit does not certify fullscreen semantic refresh');
 assert(browserAudit.includes('resume did not release modal isolation/state semantics'), 'P18 browser audit does not certify modal cleanup after resume');
+assert(browserAudit.includes('result surface lacks modal accessible semantics'), 'P18 browser audit does not certify the shared result dialog');
+assert(browserAudit.includes('result surface lacks failure/next-try guidance'), 'P18 browser audit does not certify result coaching');
+assert(browserAudit.includes('result surface does not initially focus Play Again'), 'P18 browser audit does not certify result initial focus');
 assert(browserAudit.includes('exit leaked P18'), 'P18 browser audit does not certify exit cleanup');
 
 assert(pkg.scripts?.['quality:gameplay-p18'] === 'bun scripts/audit-gameplay-p18.ts', 'package.json missing permanent P18 source audit');
