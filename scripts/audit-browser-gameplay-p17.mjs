@@ -183,16 +183,16 @@ const runGame = async (page, profile, gameId) => {
       if (!stage) return { initial: false, midpoint: false, final: false };
 
       window.dispatchEvent(new CustomEvent('arcade:p17-feedback', { detail: { kind: 'strong' } }));
-      window.dispatchEvent(new CustomEvent('arcade:p17-feedback', { detail: { kind: 'mastery' } }));
-      const initial = stage.classList.contains('p17-stage-strong') && stage.classList.contains('p17-stage-mastery');
+      window.dispatchEvent(new CustomEvent('arcade:p17-feedback', { detail: { kind: 'transition' } }));
+      const initial = stage.classList.contains('p17-stage-strong') && stage.classList.contains('p17-stage-transition');
 
       await new Promise((resolve) => setTimeout(resolve, reduced ? 150 : 300));
       const midpoint = reduced
-        ? !stage.classList.contains('p17-stage-strong') && !stage.classList.contains('p17-stage-mastery')
-        : !stage.classList.contains('p17-stage-strong') && stage.classList.contains('p17-stage-mastery');
+        ? !stage.classList.contains('p17-stage-strong') && !stage.classList.contains('p17-stage-transition')
+        : !stage.classList.contains('p17-stage-strong') && stage.classList.contains('p17-stage-transition');
 
       if (!reduced) await new Promise((resolve) => setTimeout(resolve, 180));
-      const final = !stage.classList.contains('p17-stage-strong') && !stage.classList.contains('p17-stage-mastery');
+      const final = !stage.classList.contains('p17-stage-strong') && !stage.classList.contains('p17-stage-transition');
       return { initial, midpoint, final };
     }, { reduced: profile.reducedMotion === 'reduce' });
     assert(
