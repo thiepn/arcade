@@ -301,6 +301,18 @@ const certifyModalStackOwnership = async (page) => {
     return lower?.dataset.p19StackSuppressed === 'true' && lower.inert && lower.getAttribute('aria-hidden') === 'true' && !upper?.inert;
   }, null, { timeout: 1500 });
 
+  await page.evaluate(() => document.getElementById('p19-stack-lower')?.setAttribute('aria-modal', 'false'));
+  await page.waitForFunction(() => {
+    const lower = document.getElementById('p19-stack-lower');
+    return Boolean(lower && !lower.inert && lower.getAttribute('aria-hidden') === 'false' && !lower.dataset.p19StackSuppressed);
+  }, null, { timeout: 1500 });
+
+  await page.evaluate(() => document.getElementById('p19-stack-lower')?.setAttribute('aria-modal', 'true'));
+  await page.waitForFunction(() => {
+    const lower = document.getElementById('p19-stack-lower');
+    return lower?.dataset.p19StackSuppressed === 'true' && lower.inert && lower.getAttribute('aria-hidden') === 'true';
+  }, null, { timeout: 1500 });
+
   await page.evaluate(() => document.getElementById('p19-stack-upper')?.remove());
   await page.waitForFunction(() => {
     const lower = document.getElementById('p19-stack-lower');
