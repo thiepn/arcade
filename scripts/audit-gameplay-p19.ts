@@ -64,6 +64,8 @@ assert(runtime.includes('stackSuppressionState = new Map<HTMLElement'), 'P19 mod
 assert(runtime.includes('dialog.inert = true;'), 'P19 modal-stack protection does not inert lower dialogs');
 assert(runtime.includes("dialog.setAttribute('aria-hidden', 'true')"), 'P19 modal-stack protection does not hide lower dialogs from accessibility APIs');
 assert(runtime.includes('dialog.inert = previous.inert;') && runtime.includes('previous.ariaHidden'), 'P19 modal-stack protection does not restore pre-existing accessibility state');
+assert(runtime.includes('else if (!appDialogs.includes(dialog)) releaseStackedDialog(dialog);'), 'P19 modal-stack ownership is not released when a connected dialog leaves the modal set');
+assert(runtime.includes("attributeFilter: ['aria-label', 'role', 'aria-modal']"), 'P19 cohesion runtime does not observe modal identity changes');
 assert(runtime.includes('new MutationObserver(decorate)'), 'P19 cohesion runtime does not discover lazy/shared surfaces');
 assert(runtime.includes('observer?.disconnect();'), 'P19 cohesion runtime lacks observer cleanup');
 
@@ -208,6 +210,7 @@ assert(browserAudit.includes('home M shortcut did not toggle sound'), 'P19 brows
 assert(browserAudit.includes('settings persistence did not reach Orbit exactly'), 'P19 browser audit does not require exact home/game sound semantics');
 assert(browserAudit.includes('modal stack ownership'), 'P19 browser audit does not certify reversible app-modal stack ownership');
 assert(browserAudit.includes('p19StackSuppressed'), 'P19 browser audit does not inspect the P19-owned modal suppression marker');
+assert(browserAudit.includes("setAttribute('aria-modal', 'false')"), 'P19 browser audit does not certify ownership release when a dialog stops being modal');
 assert(browserAudit.includes("document.activeElement === stage"), 'P19 browser audit does not preserve P18 gameplay focus restoration after Resume');
 assert(browserAudit.includes('orientation recovery'), 'P19 browser audit does not certify viewport/orientation recovery');
 assert(browserAudit.includes('exit leaked P19'), 'P19 browser audit does not certify P19 cleanup');
