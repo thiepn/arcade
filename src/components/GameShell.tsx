@@ -451,6 +451,8 @@ export const GameShell: React.FC<GameShellProps> = ({
           <button
             type="button"
             id="game-back-btn"
+            aria-label="Back to Arcade"
+            aria-keyshortcuts={gameOverData ? 'Escape' : undefined}
             onClick={(e) => {
               e.stopPropagation();
               sounds.playClick();
@@ -512,6 +514,8 @@ export const GameShell: React.FC<GameShellProps> = ({
             <button
               type="button"
               id="game-haptics-btn"
+              aria-label={hapticsEnabled ? 'Disable haptic feedback' : 'Enable haptic feedback'}
+              aria-pressed={hapticsEnabled}
               onClick={(e) => {
                 e.stopPropagation();
                 haptics.click();
@@ -531,6 +535,9 @@ export const GameShell: React.FC<GameShellProps> = ({
           <button
             type="button"
             id="game-fullscreen-btn"
+            aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            aria-keyshortcuts="Alt+Enter"
+            aria-pressed={isFullscreen}
             onClick={(e) => {
               e.stopPropagation();
               toggleFullscreen();
@@ -548,6 +555,8 @@ export const GameShell: React.FC<GameShellProps> = ({
           <button
             type="button"
             id="game-restart-btn"
+            aria-label="Restart game"
+            aria-keyshortcuts="R"
             onClick={(e) => {
               e.stopPropagation();
               handleRestart();
@@ -561,6 +570,9 @@ export const GameShell: React.FC<GameShellProps> = ({
           <button
             type="button"
             id="game-pause-btn"
+            aria-label={isPaused ? 'Resume game' : 'Pause game'}
+            aria-keyshortcuts={gameOverData ? undefined : 'Escape'}
+            aria-pressed={isPaused}
             onClick={(e) => {
               e.stopPropagation();
               togglePause();
@@ -574,6 +586,9 @@ export const GameShell: React.FC<GameShellProps> = ({
           <button
             type="button"
             id="game-sound-btn"
+            aria-label={soundEnabled ? 'Mute sound' : 'Unmute sound'}
+            aria-keyshortcuts="M"
+            aria-pressed={soundEnabled}
             onClick={(e) => {
               e.stopPropagation();
               haptics.light();
