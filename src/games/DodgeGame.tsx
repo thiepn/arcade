@@ -69,6 +69,8 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
 
   const [dashAvailable, setDashAvailable] = useState(2);
   const [phaseCutChain, setPhaseCutChain] = useState(0);
@@ -115,7 +117,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
     state.phaseCutEligible = true;
     state.isDashing = true;
     state.dashTimer = 260; // 260ms i-frames
-    if (soundEnabled) sounds.playWarp();
+    if (soundEnabledRef.current) sounds.playWarp();
 
     // Dash particle burst
     for (let i = 0; i < 16; i++) {
@@ -217,12 +219,20 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
       if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') state.keys.down = false;
     };
 
+    const releaseDirectionalInput = () => {
+      state.keys.left = false;
+      state.keys.right = false;
+      state.keys.up = false;
+      state.keys.down = false;
+    };
+
     canvas.addEventListener('mousedown', handlePointerMove);
     window.addEventListener('mousemove', handlePointerMove);
     canvas.addEventListener('touchstart', handlePointerMove, { passive: false });
     window.addEventListener('touchmove', handlePointerMove, { passive: false });
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', releaseDirectionalInput);
 
     return () => {
       canvas.removeEventListener('mousedown', handlePointerMove);
@@ -231,6 +241,7 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
       window.removeEventListener('touchmove', handlePointerMove);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', releaseDirectionalInput);
     };
   }, []);
 
@@ -819,7 +830,10 @@ export const DodgeGame: React.FC<GameComponentProps> = ({
       <button
         type="button"
         onClick={() => triggerDash()}
-        className="absolute top-4 right-4 flex items-center gap-2 bg-[#18181B]/90 hover:bg-[#27272A] border border-[#27272A] px-3.5 py-1.5 rounded-xl font-mono-arcade text-xs cursor-pointer transition-colors"
+        disabled={dashAvailable <= 0}
+        aria-label={`Warp Dash, ${dashAvailable} charge${dashAvailable === 1 ? '' : 's'} remaining`}
+        aria-keyshortcuts="Space"
+        className="absolute top-4 right-4 flex items-center gap-2 bg-[#18181B]/90 hover:bg-[#27272A] border border-[#27272A] px-3.5 py-1.5 rounded-xl font-mono-arcade text-xs cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span className="text-[#71717A] text-[10px]">WARP DASH</span>
         <div className="flex items-center gap-1">
