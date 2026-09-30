@@ -74,6 +74,9 @@ const certifyHome = async (page, profile) => {
       libraryTag: document.getElementById('library-section')?.tagName || '',
       filterControls: Boolean(document.getElementById('library-controls')),
       overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      soundLabel: document.getElementById('sound-toggle-btn')?.getAttribute('aria-label') || '',
+      soundPressed: document.getElementById('sound-toggle-btn')?.getAttribute('aria-pressed') || '',
+      soundShortcut: document.getElementById('sound-toggle-btn')?.getAttribute('aria-keyshortcuts') || '',
     };
   });
 
@@ -82,6 +85,7 @@ const certifyHome = async (page, profile) => {
   assert(result.libraryLandmarks === 1 && result.libraryTag === 'MAIN' && result.filterControls, `home library landmark is not unique/semantic: ${JSON.stringify(result)}`);
   assert(result.grid && result.cards.length === 32, `home card contract expected 32 canonical cards, found ${result.cards.length}`);
   assert(result.cards.every((card) => card.id && card.play === 1 && card.favorite === 1 && card.title.length > 0 && card.height >= 190), 'home card contract has incomplete/inconsistent card structure');
+  assert(['Mute sound', 'Unmute sound'].includes(result.soundLabel) && ['true', 'false'].includes(result.soundPressed) && result.soundShortcut === 'M', 'home sound action/shortcut semantics are not canonical');
   assert(result.overflowX <= 2, `home has horizontal overflow: ${result.overflowX}px`);
 
   await page.locator('#brand-logo-btn').focus();
@@ -131,6 +135,8 @@ const runGame = async (page, profile, gameId) => {
             exists: Boolean(element),
             canonical: Boolean(element?.classList.contains(controlId === 'game-back-btn' ? 'p19-nav-button' : 'p19-icon-button')),
             label: element?.getAttribute('aria-label') || '',
+            pressed: element?.getAttribute('aria-pressed') || '',
+            shortcut: element?.getAttribute('aria-keyshortcuts') || '',
             width: rect?.width || 0,
             height: rect?.height || 0,
           };
@@ -150,6 +156,10 @@ const runGame = async (page, profile, gameId) => {
     assert(shellState.identity === gameId && shellState.canonical === 'canonical', `P19 shell identity mismatch ${shellState.identity}/${shellState.canonical}`);
     assert(shellState.title.length > 0 && shellState.toolbar && shellState.stage, 'canonical shell/title/toolbar/stage contract missing');
     assert(shellState.controls.every((control) => control.exists && control.canonical && control.label.length >= 6), `canonical toolbar path missing: ${JSON.stringify(shellState.controls)}`);
+    const soundControl = shellState.controls.find((control) => control.id === 'game-sound-btn');
+    const pauseControl = shellState.controls.find((control) => control.id === 'game-pause-btn');
+    assert(Boolean(soundControl && ['Mute sound', 'Unmute sound'].includes(soundControl.label) && ['true', 'false'].includes(soundControl.pressed) && soundControl.shortcut === 'M'), `game sound action/shortcut semantics are not canonical: ${JSON.stringify(soundControl)}`);
+    assert(Boolean(pauseControl && pauseControl.shortcut === 'Escape' && pauseControl.pressed === 'false'), `game pause action/shortcut semantics are not canonical: ${JSON.stringify(pauseControl)}`);
     assert(shellState.overflowX <= 2, `shell has horizontal overflow: ${shellState.overflowX}px`);
     if (profile.hasTouch) {
       assert(shellState.controls.every((control) => control.width >= 40 && control.height >= 40), `touch toolbar target below floor: ${JSON.stringify(shellState.controls)}`);
@@ -182,6 +192,10 @@ const runGame = async (page, profile, gameId) => {
 
     await page.locator('[data-p19-dialog="pause"]').getByRole('button', { name: /^RESUME \(ESC\)$/i }).click();
     await page.waitForFunction(() => !document.querySelector('[data-p19-dialog="pause"]'), null, { timeout: 2000 });
+    await page.waitForFunction(() => {
+      const stage = document.querySelector('[data-p18-stage]');
+      return Boolean(stage && document.activeElement === stage);
+    }, null, { timeout: 1500 });
 
     await page.locator('#game-restart-btn').click();
     await page.waitForTimeout(80);
@@ -222,27 +236,78 @@ const runGame = async (page, profile, gameId) => {
 };
 
 const certifySettingsPersistence = async (page) => {
-  // settings persistence: global sound state must survive home → Game A → home → Game B.
+  // settings persistence + shortcut cohesion: M must mean the same global sound action
+  // on the home screen and inside every game shell.
   await waitForHome(page);
   const homeSound = page.locator('#sound-toggle-btn');
   const initialLabel = await homeSound.getAttribute('aria-label');
-  await homeSound.click();
+  const initialPressed = await homeSound.getAttribute('aria-pressed');
+  assert(await homeSound.getAttribute('aria-keyshortcuts') === 'M', 'settings persistence home sound shortcut is not exposed as M');
+
+  await page.keyboard.press('m');
   const toggledLabel = await homeSound.getAttribute('aria-label');
-  assert(initialLabel !== toggledLabel, 'settings persistence precondition: home sound state did not toggle');
+  const toggledPressed = await homeSound.getAttribute('aria-pressed');
+  assert(initialLabel !== toggledLabel && initialPressed !== toggledPressed, 'settings persistence precondition: home M shortcut did not toggle sound');
 
   await launch(page, 'orbit');
-  const orbitLabel = await page.locator('#game-sound-btn').getAttribute('aria-label');
-  assert(Boolean(orbitLabel && toggledLabel && orbitLabel.toLowerCase().startsWith(toggledLabel.split(' ')[0].toLowerCase())), `settings persistence did not reach Orbit: home=${toggledLabel} shell=${orbitLabel}`);
+  const orbitSound = page.locator('#game-sound-btn');
+  const orbitLabel = await orbitSound.getAttribute('aria-label');
+  const orbitPressed = await orbitSound.getAttribute('aria-pressed');
+  assert(orbitLabel === toggledLabel && orbitPressed === toggledPressed, `settings persistence did not reach Orbit exactly: home=${toggledLabel}/${toggledPressed} shell=${orbitLabel}/${orbitPressed}`);
   await exitToHome(page);
-  assert(await homeSound.getAttribute('aria-label') === toggledLabel, 'settings persistence lost after first game exit');
+  assert(await homeSound.getAttribute('aria-label') === toggledLabel && await homeSound.getAttribute('aria-pressed') === toggledPressed, 'settings persistence lost after first game exit');
 
   await launch(page, 'stack');
-  const stackLabel = await page.locator('#game-sound-btn').getAttribute('aria-label');
-  assert(stackLabel === orbitLabel, `settings persistence differs across games: Orbit=${orbitLabel} Stack=${stackLabel}`);
+  const stackSound = page.locator('#game-sound-btn');
+  const stackLabel = await stackSound.getAttribute('aria-label');
+  const stackPressed = await stackSound.getAttribute('aria-pressed');
+  assert(stackLabel === orbitLabel && stackPressed === orbitPressed, `settings persistence differs across games: Orbit=${orbitLabel}/${orbitPressed} Stack=${stackLabel}/${stackPressed}`);
   await exitToHome(page);
 
-  await homeSound.click();
-  assert(await homeSound.getAttribute('aria-label') === initialLabel, 'settings persistence cleanup could not restore initial sound state');
+  await page.keyboard.press('M');
+  assert(await homeSound.getAttribute('aria-label') === initialLabel && await homeSound.getAttribute('aria-pressed') === initialPressed, 'settings persistence cleanup could not restore initial sound state through M');
+};
+
+const certifyModalStackOwnership = async (page) => {
+  // modal stack ownership: P19 may temporarily suppress lower app dialogs, but
+  // must restore the exact state that existed before P19 took ownership.
+  await waitForHome(page);
+  await page.evaluate(() => {
+    const host = document.createElement('div');
+    host.id = 'p19-stack-probe';
+
+    const lower = document.createElement('div');
+    lower.id = 'p19-stack-lower';
+    lower.setAttribute('role', 'dialog');
+    lower.setAttribute('aria-modal', 'true');
+    lower.setAttribute('aria-hidden', 'false');
+    lower.style.zIndex = '100';
+    lower.innerHTML = '<div><h2>Lower dialog</h2><button type="button">Lower action</button></div>';
+
+    const upper = document.createElement('div');
+    upper.id = 'p19-stack-upper';
+    upper.setAttribute('role', 'dialog');
+    upper.setAttribute('aria-modal', 'true');
+    upper.style.zIndex = '200';
+    upper.innerHTML = '<div><h2>Upper dialog</h2><button type="button">Upper action</button></div>';
+
+    host.append(lower, upper);
+    document.body.appendChild(host);
+  });
+
+  await page.waitForFunction(() => {
+    const lower = document.getElementById('p19-stack-lower');
+    const upper = document.getElementById('p19-stack-upper');
+    return lower?.dataset.p19StackSuppressed === 'true' && lower.inert && lower.getAttribute('aria-hidden') === 'true' && !upper?.inert;
+  }, null, { timeout: 1500 });
+
+  await page.evaluate(() => document.getElementById('p19-stack-upper')?.remove());
+  await page.waitForFunction(() => {
+    const lower = document.getElementById('p19-stack-lower');
+    return Boolean(lower && !lower.inert && lower.getAttribute('aria-hidden') === 'false' && !lower.dataset.p19StackSuppressed);
+  }, null, { timeout: 1500 });
+
+  await page.evaluate(() => document.getElementById('p19-stack-probe')?.remove());
 };
 
 const certifyNavigationStress = async (page) => {
@@ -281,6 +346,7 @@ try {
     try {
       await certifyHome(page, profile);
       await certifySettingsPersistence(page);
+      await certifyModalStackOwnership(page);
       await certifyNavigationStress(page);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
