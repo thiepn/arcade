@@ -19,6 +19,7 @@ const registry = read('src/data/games.ts');
 const runtime = read('src/lib/gameClarityRuntime.ts');
 const css = read('src/p18-clarity-accessibility.css');
 const main = read('src/main.tsx');
+const shell = read('src/components/GameShell.tsx');
 const report = read('docs/P18_CLARITY_ACCESSIBILITY_CERTIFICATION.md');
 const terminology = read('docs/P18_TERMINOLOGY_REGISTRY.md');
 const p15 = read('docs/P15_ROSTER_AUDIT.md');
@@ -117,6 +118,13 @@ assert(runtime.includes('FAILURE RULE') && runtime.includes('NEXT TRY'), 'P18 re
 assert(runtime.includes('localStorage') && runtime.includes('p18-hint'), 'P18 first-run hints are not persistence-bounded');
 assert(runtime.includes("pointerdown") && runtime.includes('removeHint(state)'), 'P18 hints do not dismiss naturally on interaction');
 assert(runtime.includes("event.key !== 'Tab'") || runtime.includes("event.key !== 'Tab'"), 'P18 dialog focus trap is missing');
+assert(runtime.includes('dialogIsolation: Array<{ element: HTMLElement; inert: boolean }>;'), 'P18 modal runtime does not track reversible background isolation');
+assert(runtime.includes('sibling.inert = true;'), 'P18 modal runtime does not inert background toolbar/gameplay siblings');
+assert(runtime.includes("state.shell.addEventListener('focusin', onFocusIn, true);"), 'P18 modal runtime does not guard programmatic focus escape');
+assert(runtime.includes("state.stage.focus({ preventScroll: true });"), 'P18 modal close does not restore keyboard focus to gameplay');
+assert(runtime.includes("stage.setAttribute('tabindex', '-1')"), 'P18 gameplay stage is not programmatically focusable');
+assert(runtime.includes('isGameplayActive(state)') && runtime.includes('isInteractiveTarget(event.target)'), 'P18 first-run hints are not scoped to genuine live gameplay input');
+assert(runtime.includes("document.addEventListener('fullscreenchange', handleFullscreenChange);"), 'P18 fullscreen semantics are not refreshed on fullscreen changes');
 assert(runtime.includes('state.observer.disconnect();'), 'P18 runtime does not disconnect per-shell MutationObserver');
 assert(runtime.includes("window.removeEventListener('keydown'"), 'P18 runtime does not clean up key listeners');
 
@@ -124,6 +132,10 @@ for (const id of ['game-back-btn','game-restart-btn','game-pause-btn','game-soun
   assert(runtime.includes(id), `P18 accessible-name map missing ${id}`);
 }
 assert(runtime.includes("setAttribute('aria-label'"), 'P18 runtime does not assign accessible names');
+assert(shell.includes('aria-label={isPaused ? \'Resume game\' : \'Pause game\'}') && shell.includes('aria-pressed={isPaused}'), 'GameShell pause control lacks native stateful semantics');
+assert(shell.includes("aria-label={soundEnabled ? 'Mute sound' : 'Unmute sound'}") && shell.includes('aria-pressed={soundEnabled}'), 'GameShell sound control lacks native stateful semantics');
+assert(shell.includes("aria-keyshortcuts="Alt+Enter"") && shell.includes('aria-pressed={isFullscreen}'), 'GameShell fullscreen control lacks native shortcut/state semantics');
+assert(shell.includes("aria-keyshortcuts="R""), 'GameShell restart control lacks its native shortcut semantic');
 assert(css.includes(':focus-visible'), 'P18 visible keyboard-focus treatment is missing');
 assert(css.includes('min-height: 44px'), 'P18 coarse-pointer action targets do not approach 44px');
 assert(css.includes('min-width: 42px') && css.includes('min-height: 42px'), 'P18 shell touch-target floor is missing');
@@ -179,6 +191,10 @@ assert(browserAudit.includes("name: 'small-mobile'"), 'P18 browser audit missing
 assert(browserAudit.includes("reducedMotion: 'reduce'"), 'P18 browser audit lacks reduced-motion coverage');
 assert(browserAudit.includes('accessible shell labels'), 'P18 browser audit does not certify accessible shell labels');
 assert(browserAudit.includes('pause teaching panel'), 'P18 browser audit does not certify structured pause teaching');
+assert(browserAudit.includes('modal background isolation'), 'P18 browser audit does not certify inert modal background isolation');
+assert(browserAudit.includes('programmatic focus escaped'), 'P18 browser audit does not certify forced focus containment');
+assert(browserAudit.includes('fullscreen accessibility label did not refresh'), 'P18 browser audit does not certify fullscreen semantic refresh');
+assert(browserAudit.includes('resume did not release modal isolation/state semantics'), 'P18 browser audit does not certify modal cleanup after resume');
 assert(browserAudit.includes('exit leaked P18'), 'P18 browser audit does not certify exit cleanup');
 
 assert(pkg.scripts?.['quality:gameplay-p18'] === 'bun scripts/audit-gameplay-p18.ts', 'package.json missing permanent P18 source audit');
