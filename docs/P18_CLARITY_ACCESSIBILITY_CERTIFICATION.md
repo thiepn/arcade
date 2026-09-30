@@ -70,7 +70,7 @@ The priority color-sensitive cases are deliberately redundant: Reaction uses HOL
 
 P18 adds explicit accessible names to the shell's Back, Restart, Pause/Resume, Sound, Fullscreen, and Haptics controls. Coarse-pointer shell targets receive a 42px floor while pause/result actions retain a 44px minimum. The smaller shell floor is intentional to avoid making the 320px toolbar unusable while still approaching common mobile target guidance.
 
-Pause and result overlays are promoted to modal dialog semantics with labelled headings, initial focus, bounded Tab trapping, and cleanup. Closing Pause restores focus to the Pause control. Gameplay-owned keyboard bindings remain untouched.
+Pause and result overlays are promoted to modal dialog semantics with labelled headings, initial focus, bounded Tab trapping, and cleanup. While either modal is open, toolbar/gameplay sibling subtrees are made inert and forced focus escape is redirected into the active dialog. Closing Pause or restarting from Results restores focus to the programmatically focusable gameplay region so Space/Enter cannot accidentally re-activate a toolbar control. Gameplay-owned keyboard bindings remain untouched.
 
 The game shell already scopes `touch-action: none` and `overscroll-behavior: none` to the active stage; P18 does not disable browser zoom globally.
 
@@ -122,6 +122,19 @@ P18 preserves the P15 historical distribution:
 - **C/D/F: 0**
 
 P18 produces clarity/accessibility evidence for later promotion phases; it does not award ranks.
+
+## 2026-09-30 hardening addendum
+
+A current-source audit after the P17 event-ownership hardening found accessibility weaknesses in P18's original DOM-decoration layer rather than game-specific teaching defects. The hardening pass now permanently requires:
+
+- real modal isolation via reversible `inert` sibling ownership, not only `aria-modal`;
+- focus containment even after programmatic focus attempts outside the active pause/result dialog;
+- focus restoration to the gameplay region after Resume/Play Again instead of the Pause toolbar control;
+- native stateful ARIA semantics on Pause, Sound, Haptics, and Fullscreen controls, with shortcut ownership matching the actual shell behavior;
+- fullscreen accessible-name refresh on browser/native fullscreen changes;
+- first-run hint dismissal only from genuine active gameplay input, not paused overlays, toolbar controls, editable fields, modifiers, repeats, or IME composition.
+
+These changes remain teaching/accessibility infrastructure only. They do not alter scoring, collision, timing, balance, game rules, mastery economics, P15 grades, or the P16/P17 gameplay contracts.
 
 ## Exit decision
 
