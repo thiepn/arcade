@@ -172,6 +172,7 @@ for (const marker of [
   '## Point-change ledger',
   '## Automated certification boundary',
   '## Manual promotion acceptance',
+  '## 2026-09-30 flagship hardening addendum',
   '**PROMOTE TO S — 56/60.**',
   '**PROMOTE TO S — 55/60.**',
   '- **S: 11**',
@@ -179,6 +180,9 @@ for (const marker of [
   '- **B: 7**',
   'Automation cannot prove “fun”, “beautiful”, “addictive”, or the subjective truth of S rank.',
 ]) assert(report.includes(marker), `P20 report missing ${marker}`);
+assert(report.includes('The original six promotion scores remain frozen.'), 'P20 hardening does not explicitly freeze the promotion scorecards');
+assert(report.includes("keyboard listener's stale initial `soundEnabled` closure"), 'P20 hardening does not document the Dodge stale-sound fix');
+assert(report.includes('held steering is forcibly released on window blur'), 'P20 hardening does not document Drift focus-loss recovery');
 assert((report.match(/\*\*PROMOTE TO S/g) ?? []).length === 6, 'P20 report must contain six explicit PROMOTE TO S decisions');
 
 // Explicit non-goals: no replay/playback or retention platform introduced in the P20 application delta.
