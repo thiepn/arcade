@@ -73,21 +73,23 @@ const exerciseIncumbent = async (page, id) => {
     await page.keyboard.press('Space');
     await page.waitForFunction(() => document.querySelector('button[aria-label^="Nova EMP,"]')?.getAttribute('aria-label')?.includes('1 bomb remaining'), null, { timeout: 1000 });
   } else if (id === 'astroblaster') {
-    const expected = {
-      '#astro-turn-left': 'A ArrowLeft',
-      '#astro-turn-right': 'D ArrowRight',
-      '#astro-warp': 'Shift S ArrowDown',
-      '#astro-thrust': 'W ArrowUp',
-      '#astro-fire': 'Space',
-    };
-    for (const [selector, shortcut] of Object.entries(expected)) {
-      assert(await page.locator(selector).getAttribute('aria-keyshortcuts') === shortcut, `Astro shortcut mismatch for ${selector}`);
-    }
-    await page.locator('#game-pause-btn').click();
-    await page.waitForFunction(() => Boolean(document.querySelector('[data-p19-dialog="pause"]')), null, { timeout: 2000 });
-    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', bubbles: true })));
-    await page.locator('[data-p19-dialog="pause"]').getByRole('button', { name: /^RESUME \(ESC\)$/i }).click();
-    await page.waitForFunction(() => document.activeElement === document.querySelector('[data-p18-stage]'), null, { timeout: 1500 });
+    await page.locator('[data-replacement-game="hex-capture"]').waitFor({ state: 'visible', timeout: 3000 });
+    const capture = page.getByRole('button', { name: 'Arm capture route' });
+    assert(await capture.getAttribute('aria-keyshortcuts') === 'Space', 'Hex Capture arm control does not expose Space');
+    assert(await capture.getAttribute('aria-pressed') === 'false', 'Hex Capture should begin with capture disarmed');
+    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', repeat: true, bubbles: true })));
+    await page.waitForTimeout(40);
+    assert(await capture.getAttribute('aria-pressed') === 'false', 'Hex Capture repeated Space toggled capture state');
+    await page.keyboard.press('Space');
+    await page.waitForFunction(() => document.querySelector('button[aria-label="Arm capture route"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 1000 });
+    const left = page.getByRole('button', { name: 'Move left' });
+    assert(await left.getAttribute('aria-keyshortcuts') === 'A ArrowLeft', 'Hex Capture left control shortcut contract missing');
+    assert(await left.getAttribute('aria-pressed') === 'false', 'Hex Capture left control should begin released');
+    await page.keyboard.down('ArrowLeft');
+    await page.waitForFunction(() => document.querySelector('button[aria-label="Move left"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 1000 });
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+    await page.waitForFunction(() => document.querySelector('button[aria-label="Move left"]')?.getAttribute('aria-pressed') === 'false', null, { timeout: 1000 });
+    await page.keyboard.up('ArrowLeft');
   } else if (id === 'blockdrop') {
     const hold = page.locator('button[aria-label="Hold or swap piece"]');
     assert(await hold.getAttribute('aria-keyshortcuts') === 'C Shift', 'Block Drop Hold shortcut contract missing');
@@ -135,12 +137,10 @@ const runCandidate = async (page, profile, id) => {
 
     await exerciseIncumbent(page, id);
 
-    if (id !== 'astroblaster') {
-      await page.locator('#game-pause-btn').click();
-      await page.waitForFunction(() => Boolean(document.querySelector('[data-p18-dialog="pause"][data-p19-dialog="pause"]')), null, { timeout: 2500 });
-      await page.locator('[data-p19-dialog="pause"]').getByRole('button', { name: /^RESUME \(ESC\)$/i }).click();
-      await page.waitForFunction(() => document.activeElement === document.querySelector('[data-p18-stage]'), null, { timeout: 1500 });
-    }
+    await page.locator('#game-pause-btn').click();
+    await page.waitForFunction(() => Boolean(document.querySelector('[data-p18-dialog="pause"][data-p19-dialog="pause"]')), null, { timeout: 2500 });
+    await page.locator('[data-p19-dialog="pause"]').getByRole('button', { name: /^RESUME \(ESC\)$/i }).click();
+    await page.waitForFunction(() => document.activeElement === document.querySelector('[data-p18-stage]'), null, { timeout: 1500 });
 
     await page.locator('#game-restart-btn').click();
     await page.waitForTimeout(180);
@@ -208,5 +208,5 @@ if (failures.length) {
 }
 
 console.log('\nP24 P15-INCUMBENT BROWSER SENTINEL — PASS');
-console.log('15/15 P15-incumbent/profile sessions certified across Neon Pinball, Galaxy Vanguard, Astro Blaster 360, Cyber Block Drop and Neon Rhythm Tapper.');
+console.log('15/15 incumbent-slot/profile sessions certified across Neon Pinball, Galaxy Vanguard, the astroblaster compatibility slot (Hex Capture in production), Cyber Block Drop and Neon Rhythm Tapper.');
 console.log('Focus-loss ownership, discrete high-value actions, shortcut semantics, pause/resume focus, restart cleanup and responsive containment are covered.');
