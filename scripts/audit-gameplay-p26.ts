@@ -96,6 +96,9 @@ assert(!vector.includes('>FLIGHT CONTRACT</span>'), 'Vector Golf restored a hidd
 
 // Replacement native-score compatibility with the already-deployed compatibility-slot policy.
 assert.deepEqual([...VECTOR_HOLE_PARS], [3, 4, 4, 5, 5, 5]);
+for (let index = 0; index < VECTOR_HOLE_PARS.length; index++) {
+  assert(vector.includes(`par: VECTOR_HOLE_PARS[${index}]`), `Vector hole ${index + 1} escaped the certified par table`);
+}
 assert.equal(VECTOR_MAX_BANK_REWARD_EVENTS, 3);
 assert.equal(VECTOR_STROKE_LIMIT_OVER_PAR, 5);
 assert.equal(getVectorTheoreticalMaxScore(), 32_820);
@@ -113,6 +116,8 @@ assert.notEqual(
 );
 
 assert.equal(HEX_GOAL_PERCENT, 72);
+assert(hex.includes('const COLS = 30;') && hex.includes('const ROWS = 20;'), 'Hex grid dimensions escaped the certified 504-cell interior');
+assert(!hex.includes('st.lives +=') && !hex.includes('st.lives++'), 'Hex introduced a life-earning path outside the certified win-bonus bound');
 assert.equal(HEX_STEP_MS, 82);
 assert.equal(HEX_START_LIVES, 3);
 assert.equal(HEX_SECOND_HUNTER_PERCENT, 34);
@@ -251,6 +256,13 @@ const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, strin
 assert(pkg.scripts?.['quality:gameplay-p26'] === 'bun scripts/audit-gameplay-p26.ts', 'package.json is missing quality:gameplay-p26');
 assert(pkg.scripts?.['quality:browser-p26'] === 'bun scripts/audit-browser-gameplay-p26.mjs', 'package.json is missing quality:browser-p26');
 assert(pkg.scripts?.['quality:production-p26'] === 'bun scripts/audit-production-p26.mjs', 'package.json is missing quality:production-p26');
+
+const mobileAudit = read('scripts/audit-mobile-runtime.ts');
+assert(
+  mobileAudit.includes(".concat('VectorGolf.tsx', 'HexCapture.tsx')") &&
+  mobileAudit.includes("file !== 'GravityGame.tsx' && file !== 'AstroBlasterGame.tsx'"),
+  'shared mobile runtime audit is not production-replacement aware',
+);
 
 const ci = read('.github/workflows/ci.yml');
 assert(ci.includes('bun run quality:gameplay-p26'), 'CI does not enforce the P26 long-run/source gate');
