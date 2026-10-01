@@ -2,6 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { useLogicalCanvas } from '../hooks/useLogicalCanvas';
+import {
+  VECTOR_HOLE_PARS,
+  VECTOR_STROKE_LIMIT_OVER_PAR,
+  getVectorHoleScore,
+} from '../lib/replacementGameBalance';
 
 const W = 900;
 const H = 560;
@@ -23,12 +28,12 @@ type Hole = {
 };
 
 const HOLES: Hole[] = [
-  { start: { x: 90, y: 455 }, cup: { x: 808, y: 106 }, par: 3, walls: [{ x: 360, y: 205, w: 38, h: 280 }], bumpers: [{ x: 585, y: 350, r: 27 }], movers: [], stars: [{ x: 252, y: 390 }, { x: 540, y: 170 }, { x: 710, y: 128 }] },
-  { start: { x: 110, y: 120 }, cup: { x: 792, y: 435 }, par: 4, walls: [{ x: 258, y: 82, w: 38, h: 300 }, { x: 558, y: 178, w: 38, h: 300 }], bumpers: [{ x: 430, y: 275, r: 30 }], movers: [{ from: { x: 665, y: 130 }, to: { x: 770, y: 245 }, r: 20, speed: 1.1 }], stars: [{ x: 190, y: 220 }, { x: 430, y: 438 }, { x: 700, y: 330 }] },
-  { start: { x: 82, y: 290 }, cup: { x: 815, y: 286 }, par: 4, walls: [{ x: 250, y: 95, w: 36, h: 300 }, { x: 615, y: 165, w: 36, h: 300 }], bumpers: [{ x: 445, y: 150, r: 30 }, { x: 445, y: 415, r: 30 }], movers: [], stars: [{ x: 178, y: 182 }, { x: 445, y: 285 }, { x: 715, y: 390 }] },
-  { start: { x: 118, y: 458 }, cup: { x: 770, y: 88 }, par: 5, walls: [{ x: 212, y: 300, w: 330, h: 34 }, { x: 540, y: 130, w: 34, h: 204 }], bumpers: [{ x: 350, y: 155, r: 25 }], movers: [{ from: { x: 650, y: 375 }, to: { x: 765, y: 275 }, r: 23, speed: 1.45, phase: 0.4 }], stars: [{ x: 170, y: 360 }, { x: 410, y: 260 }, { x: 680, y: 190 }] },
-  { start: { x: 88, y: 94 }, cup: { x: 812, y: 462 }, par: 5, walls: [{ x: 190, y: 170, w: 440, h: 34 }, { x: 310, y: 355, w: 420, h: 34 }], bumpers: [{ x: 745, y: 180, r: 26 }, { x: 205, y: 405, r: 26 }], movers: [], stars: [{ x: 160, y: 128 }, { x: 680, y: 285 }, { x: 755, y: 430 }] },
-  { start: { x: 92, y: 470 }, cup: { x: 805, y: 88 }, par: 5, walls: [{ x: 250, y: 100, w: 34, h: 300 }, { x: 505, y: 170, w: 34, h: 300 }], bumpers: [{ x: 390, y: 110, r: 23 }, { x: 665, y: 430, r: 23 }], movers: [{ from: { x: 365, y: 300 }, to: { x: 700, y: 250 }, r: 24, speed: 1.2 }], stars: [{ x: 170, y: 415 }, { x: 390, y: 215 }, { x: 700, y: 150 }] },
+  { start: { x: 90, y: 455 }, cup: { x: 808, y: 106 }, par: VECTOR_HOLE_PARS[0], walls: [{ x: 360, y: 205, w: 38, h: 280 }], bumpers: [{ x: 585, y: 350, r: 27 }], movers: [], stars: [{ x: 252, y: 390 }, { x: 540, y: 170 }, { x: 710, y: 128 }] },
+  { start: { x: 110, y: 120 }, cup: { x: 792, y: 435 }, par: VECTOR_HOLE_PARS[1], walls: [{ x: 258, y: 82, w: 38, h: 300 }, { x: 558, y: 178, w: 38, h: 300 }], bumpers: [{ x: 430, y: 275, r: 30 }], movers: [{ from: { x: 665, y: 130 }, to: { x: 770, y: 245 }, r: 20, speed: 1.1 }], stars: [{ x: 190, y: 220 }, { x: 430, y: 438 }, { x: 700, y: 330 }] },
+  { start: { x: 82, y: 290 }, cup: { x: 815, y: 286 }, par: VECTOR_HOLE_PARS[2], walls: [{ x: 250, y: 95, w: 36, h: 300 }, { x: 615, y: 165, w: 36, h: 300 }], bumpers: [{ x: 445, y: 150, r: 30 }, { x: 445, y: 415, r: 30 }], movers: [], stars: [{ x: 178, y: 182 }, { x: 445, y: 285 }, { x: 715, y: 390 }] },
+  { start: { x: 118, y: 458 }, cup: { x: 770, y: 88 }, par: VECTOR_HOLE_PARS[3], walls: [{ x: 212, y: 300, w: 330, h: 34 }, { x: 540, y: 130, w: 34, h: 204 }], bumpers: [{ x: 350, y: 155, r: 25 }], movers: [{ from: { x: 650, y: 375 }, to: { x: 765, y: 275 }, r: 23, speed: 1.45, phase: 0.4 }], stars: [{ x: 170, y: 360 }, { x: 410, y: 260 }, { x: 680, y: 190 }] },
+  { start: { x: 88, y: 94 }, cup: { x: 812, y: 462 }, par: VECTOR_HOLE_PARS[4], walls: [{ x: 190, y: 170, w: 440, h: 34 }, { x: 310, y: 355, w: 420, h: 34 }], bumpers: [{ x: 745, y: 180, r: 26 }, { x: 205, y: 405, r: 26 }], movers: [], stars: [{ x: 160, y: 128 }, { x: 680, y: 285 }, { x: 755, y: 430 }] },
+  { start: { x: 92, y: 470 }, cup: { x: 805, y: 88 }, par: VECTOR_HOLE_PARS[5], walls: [{ x: 250, y: 100, w: 34, h: 300 }, { x: 505, y: 170, w: 34, h: 300 }], bumpers: [{ x: 390, y: 110, r: 23 }, { x: 665, y: 430, r: 23 }], movers: [{ from: { x: 365, y: 300 }, to: { x: 700, y: 250 }, r: 24, speed: 1.2 }], stars: [{ x: 170, y: 415 }, { x: 390, y: 215 }, { x: 700, y: 150 }] },
 ];
 
 type Ball = Point & { vx: number; vy: number };
@@ -319,7 +324,13 @@ export const VectorGolf: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
               ball.vy = 0;
               const stars = st.starMask.toString(2).split('1').length - 1;
               const underPar = Math.max(-2, hole.par - st.strokes);
-              const holeScore = Math.max(350, 2500 + underPar * 450 - Math.max(0, st.strokes - hole.par) * 280 - Math.floor(st.holeElapsed * 4)) + stars * 400 + Math.min(5, st.banksThisHole) * 90;
+              const holeScore = getVectorHoleScore(
+                hole.par,
+                st.strokes,
+                st.holeElapsed,
+                stars,
+                st.banksThisHole,
+              );
               st.totalScore += holeScore;
               onScoreUpdate(st.totalScore);
               st.transitionAt = now + 720;
@@ -332,7 +343,7 @@ export const VectorGolf: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
               ball.vy = 0;
             }
 
-            if (st.strokes > hole.par + 5 && stopped(ball)) {
+            if (st.strokes > hole.par + VECTOR_STROKE_LIMIT_OVER_PAR && stopped(ball)) {
               st.totalScore += 180;
               onScoreUpdate(st.totalScore);
               st.transitionAt = now + 520;
