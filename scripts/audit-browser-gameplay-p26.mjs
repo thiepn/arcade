@@ -3,6 +3,7 @@ import { chromium } from '@playwright/test';
 const BASE_URL = process.env.P26_BASE_URL || 'http://127.0.0.1:4173';
 const CHROME_PATH = process.env.P26_CHROME_PATH || undefined;
 const QUICK = process.env.P26_QUICK === '1';
+const LOCAL_RUN = /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::|\/)/i.test(BASE_URL);
 const MAX_CANVAS_PIXELS = 8_388_608;
 
 const allGameIds = [
@@ -57,7 +58,8 @@ const collectErrors = (page) => {
   const onConsole = (message) => {
     if (message.type() !== 'error') return;
     const value = message.text();
-    if (/Failed to load resource|ERR_CONNECTION|favicon|leaderboard/i.test(value)) return;
+    if (/favicon/i.test(value)) return;
+    if (LOCAL_RUN && /Failed to load resource|ERR_CONNECTION|leaderboard/i.test(value)) return;
     consoleErrors.push(value);
   };
   page.on('pageerror', onPageError);
