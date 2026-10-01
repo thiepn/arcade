@@ -1,6 +1,8 @@
 # P22 — Mid-A Promotion Certification
 
-Production baseline: `62d27842d1cc6f05a23169cad5d693328ac802a8` (P21 production-certified main).
+Production baseline: `62d27842d1cc6f05a23169cad5d693328ac802a8` (original P22 promotion baseline).
+
+Current hardening baseline: `24c261becae605390ebcebbeb2ec535c36f2c41f` (2026-09-30 hardened P21).
 
 ## Purpose
 
@@ -170,6 +172,26 @@ The intended manual acceptance checklist for each candidate is:
 10. editorial comparison against the existing S cohort.
 
 Machine certification must not be represented as a physical-device human playtest. Any human/device reservation discovered later should remain documented rather than hidden behind the numeric score.
+
+## 2026-10-01 identity-preserving depth hardening
+
+The original eight P22 promotion scorecards remain frozen. The current-source re-audit found that the authored depth systems themselves remained intact, but several input and state-ownership details could undermine the claim that those systems reliably represent the player's actual decisions.
+
+The hardening pass fixes those problems without changing difficulty, scoring formulas, progression schedules, resource economies, survival legality or the P22 **25 S / 0 A / 7 B** distribution:
+
+- **Cyber Crosser:** P22 no longer infers route movement from captured keyboard/click/pointer intent. `canAcceptRoadCrossMove` is now a pure legality gate, the game emits the direction only after bounds/no-op checks and a committed move, and the P22 run-state consumes that authoritative direction from the gameplay event. Rejected, repeated, paused, cancelled or otherwise non-committed input cannot advance a District Route.
+- **Orbit:** keyboard/pointer lane and reversal actions now read the live Sound preference instead of the mount-time closure.
+- **Neon Rail Shift:** Shift/Phase/Surge input uses live Sound state and treats keyboard actions as discrete rather than repeatedly retriggering while a key is held. Phase and Surge expose their keyboard bindings; Surge exposes active state.
+- **Orbital Slingshot:** launch keys ignore repeat/modifier input, and the launch control exposes Space/Enter/Arrow Up.
+- **Orb Cannon:** Burst, Swap and Shoot use the live Sound preference. Swap exposes Q; Burst exposes F/Shift, charge count and armed state.
+- **Memory Matrix:** held-key repeat can no longer repeatedly toggle Overclock, consume replay actions or submit repeated memory nodes. Overclock and Replay expose their keyboard bindings, and Overclock exposes armed state.
+- **Knife Target:** keyboard throws are discrete, throw audio follows the live Sound preference, and the aiming canvas now carries an explicit input description.
+- **Cyber Serpent:** the mobile D-pad now exposes directional names and the equivalent keyboard shortcuts.
+- **Shared continuity:** the P22 browser matrix now verifies P18 gameplay-focus restoration after Resume and executable mastery-state transitions rather than relying on visible copy alone.
+
+The strengthened browser gate also proves that a repeated Matrix **O** key does not toggle Overclock and that repeated/rejected Crosser input does not mutate the P22 District Route HUD.
+
+No rating point is awarded for these corrections. They make the existing P22 promotion evidence trustworthy.
 
 ## Regression boundary
 
