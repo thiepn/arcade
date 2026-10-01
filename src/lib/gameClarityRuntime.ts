@@ -9,6 +9,8 @@ const FOCUSABLE = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
+const GAMEPLAY_TEXT_ENTRY = 'input[type="text"], input:not([type]), textarea, [contenteditable="true"], [contenteditable=""]';
+
 interface ShellState {
   shell: HTMLElement;
   stage: HTMLElement;
@@ -254,7 +256,14 @@ const setupDialogFocus = (state: ShellState, dialog: HTMLElement | null) => {
     let attempts = 0;
     const restoreStageFocus = () => {
       if (!state.shell.isConnected || !state.stage.isConnected) return;
-      state.stage.focus({ preventScroll: true });
+      const textEntry = state.stage.querySelector<HTMLElement>(GAMEPLAY_TEXT_ENTRY);
+      const focusTarget =
+        textEntry &&
+        !textEntry.hasAttribute('disabled') &&
+        !textEntry.closest('[inert], [aria-hidden="true"]')
+          ? textEntry
+          : state.stage;
+      focusTarget.focus({ preventScroll: true });
       attempts++;
       if (attempts < 4) {
         frame = requestAnimationFrame(restoreStageFocus);
