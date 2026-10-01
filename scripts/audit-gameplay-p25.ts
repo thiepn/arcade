@@ -66,6 +66,8 @@ const hockeyPace = Array.from({ length: 81 }, (_, index) => getAirHockeyOpeningP
 assert(approx(hockeyPace[0], 0.84) && approx(getAirHockeyOpeningPace(8), 1));
 assert(nonDecreasing(hockeyPace) && hockeyPace.every((value) => value >= 0.84 && value <= 1));
 
+// Archived compatibility-slot envelope: Astro Blaster is retired from production,
+ // but its historical P25 source remains deterministic for provenance.
 const asteroidCounts = Array.from({ length: 100 }, (_, index) => getAstroLargeAsteroidCount(index + 1));
 assert(nonDecreasing(asteroidCounts) && asteroidCounts[0] === 4 && asteroidCounts.every((value) => value <= 9));
 assert.deepEqual([1, 4, 8, 20].map(getAstroLargeAsteroidCount), [4, 7, 9, 9]);
@@ -257,6 +259,8 @@ const chronoStageSpeeds = [1, 2, 3, 4].map((stage) => getChronoDesiredWallSpeed(
 assert(nonDecreasing(chronoStageSpeeds));
 assert(approx(getChronoDesiredWallSpeed(4, 99), (1.35 + 3 * 0.22) * 2.15));
 
+// Archived compatibility-slot envelope: Gravity is retired from production,
+ // but its historical fixed-step source remains regression-protected.
 assert.equal(GRAVITY_MAX_STEPS_PER_FRAME, 3);
 assert(approx(GRAVITY_MAX_FRAME_SEC, 0.05));
 for (const accumulator of [0, GRAVITY_FIXED_STEP_SEC * 0.25, GRAVITY_FIXED_STEP_SEC * 0.999]) {
@@ -291,7 +295,13 @@ assert(PERFECT_STOP_ROUNDS.every((round) =>
 
 const integrationChecks: readonly [string, readonly string[]][] = [
   ['src/games/AirHockeyGame.tsx', ['diffConfig.aiSpeed * getAirHockeyOpeningPace(60 - state.timeLeft) * table.motionScale']],
-  ['src/games/AstroBlasterGame.tsx', ['const numLarge = getAstroLargeAsteroidCount(lvl);']],
+  ['src/games/HexCapture.tsx', [
+    'data-replacement-game="hex-capture"',
+    'const GOAL = 72;',
+    'const STEP_MS = 82;',
+    'Math.min(6, st.chain)',
+    'const dt = Math.min(0.033',
+  ]],
   ['src/games/BladeGame.tsx', ['state.spawnInterval = getBladeSpawnIntervalFrames(state.waveCount);']],
   ['src/games/BlockDropGame.tsx', ['state.dropInterval = getBlockDropInterval(state.level);']],
   ['src/games/BreakoutGame.tsx', ['const minimumSpecials = getBreakoutMinimumSpecials(round);']],
@@ -301,7 +311,13 @@ const integrationChecks: readonly [string, readonly string[]][] = [
   ['src/games/DodgeGame.tsx', ['const spawnDelay = getDodgeSpawnDelayMs(state.gameTime, state.hazards.length);']],
   ['src/games/DriftGame.tsx', ['proposedKind === st.lastSpawnKind', "proposedKind === 'hazard' || proposedKind === 'rival'"]],
   ['src/games/FlappyAeroGame.tsx', ['const gapHeight = getFlappyAeroGap(state.gatesCleared);', 'const baseScrollSpeed = getFlappyAeroScrollSpeed(state.gatesCleared);']],
-  ['src/games/GravityGame.tsx', ['const batch = getGravityPhysicsStepBatch(state.physicsAccumulator, dt);']],
+  ['src/games/VectorGolf.tsx', [
+    'data-replacement-game="vector-golf"',
+    'const HOLES: Hole[] = [',
+    'const dt = Math.min(0.033',
+    'st.strokes > hole.par + 5',
+    'Math.max(350, 2500 + underPar * 450',
+  ]],
   ['src/games/KnifeTargetGame.tsx', ['const config = getKnifeStageConfig(stageNum);', 'const stageConfig = getKnifeStageConfig(state.stage);']],
   ['src/games/LaserRopeGame.tsx', ['getLaserRopeWarningFloor(']],
   ['src/games/MatrixGame.tsx', ['state.round % 3 === 0 && !state.overclockActive', 'setReplaysLeft((current) => Math.min(2, current + 1))']],
@@ -324,6 +340,20 @@ const integrationChecks: readonly [string, readonly string[]][] = [
   ['src/games/VanguardGame.tsx', ['const bossMaxHp = getVanguardBossHp(state.wave);', "getVanguardEnemySpeed('swarmer', state.wave)", "getVanguardEnemySpeed('heavy', state.wave)"]],
 ];
 assert.equal(integrationChecks.length, 32);
+
+const replacementRuntime = read('src/lib/replacementGames.tsx');
+const vite = read('vite.config.ts');
+for (const token of [
+  "game.id === 'gravity'",
+  "import('../games/VectorGolf')",
+  "game.id === 'astroblaster'",
+  "import('../games/HexCapture')",
+]) assert(replacementRuntime.includes(token), `production replacement mapping missing: ${token}`);
+for (const token of [
+  "'../games/GravityGame': path.resolve(import.meta.dirname, 'src/games/VectorGolf.tsx')",
+  "'../games/AstroBlasterGame': path.resolve(import.meta.dirname, 'src/games/HexCapture.tsx')",
+]) assert(vite.includes(token), `production bundle alias missing: ${token}`);
+
 for (const [file, tokens] of integrationChecks) {
   const source = read(file);
   for (const token of tokens) assert(source.includes(token), `${file}: P25 live integration missing ${token}`);
@@ -374,6 +404,7 @@ for (const marker of [
   'The original P25 balance envelopes remain frozen.',
   'No raw scoring formula or P24 scorecard is changed by this hardening pass.',
   'Laser Blade cadence now follows authored wave count',
+  'Vector Golf and Hex Capture replace the retired Gravity/Astro engines in the current live-integration ledger.',
   '32 live integration paths',
 ]) assert(p25Doc.includes(marker), `P25 documentation missing current hardening evidence: ${marker}`);
 
