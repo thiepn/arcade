@@ -361,7 +361,7 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
   // Keyboard shortcut bindings
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isPausedRef.current || !gameStateRef.current.isAlive) return;
+      if (isPausedRef.current || !gameStateRef.current.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
 
       const key = e.key.toUpperCase();
       const keyMap: Record<string, number> = {
@@ -433,6 +433,9 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
           <button
             type="button"
             onClick={toggleOverclock}
+            aria-label="Overclock next round"
+            aria-pressed={overclockArmed}
+            aria-keyshortcuts="O"
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono-arcade text-[10px] border transition-all cursor-pointer backdrop-blur-md ${
               overclockArmed
                 ? 'bg-fuchsia-500/20 text-fuchsia-200 border-fuchsia-400/45'
@@ -446,6 +449,8 @@ export const MatrixGame: React.FC<GameComponentProps> = ({
             type="button"
             onClick={handleReplayPattern}
             disabled={overclockActive || replaysLeft <= 0 || isShowingSequence}
+            aria-label={`Replay pattern, ${replaysLeft} remaining`}
+            aria-keyshortcuts="R"
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono-arcade text-xs border transition-all cursor-pointer backdrop-blur-md ${
               !overclockActive && replaysLeft > 0 && !isShowingSequence
                 ? 'bg-[#18181B]/90 hover:bg-[#27272A] text-amber-300 border-amber-500/30'
