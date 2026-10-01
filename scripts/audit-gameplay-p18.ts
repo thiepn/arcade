@@ -122,7 +122,12 @@ assert(runtime.includes("event.key !== 'Tab'") || runtime.includes("event.key !=
 assert(runtime.includes('dialogIsolation: Array<{ element: HTMLElement; inert: boolean }>;'), 'P18 modal runtime does not track reversible background isolation');
 assert(runtime.includes('sibling.inert = true;'), 'P18 modal runtime does not inert background toolbar/gameplay siblings');
 assert(runtime.includes("state.shell.addEventListener('focusin', onFocusIn, true);"), 'P18 modal runtime does not guard programmatic focus escape');
-assert(runtime.includes("state.stage.focus({ preventScroll: true });"), 'P18 modal close does not restore keyboard focus to gameplay');
+assert(
+  runtime.includes('GAMEPLAY_TEXT_ENTRY') &&
+  runtime.includes('const focusTarget =') &&
+  runtime.includes('focusTarget.focus({ preventScroll: true });'),
+  'P18 modal close does not restore the preferred gameplay focus owner',
+);
 assert(runtime.includes("stage.setAttribute('tabindex', '-1')"), 'P18 gameplay stage is not programmatically focusable');
 assert(runtime.includes('isGameplayActive(state)') && runtime.includes('isInteractiveTarget(event.target)'), 'P18 first-run hints are not scoped to genuine live gameplay input');
 assert(runtime.includes("document.addEventListener('fullscreenchange', handleFullscreenChange);"), 'P18 fullscreen semantics are not refreshed on fullscreen changes');
@@ -194,6 +199,7 @@ assert(browserAudit.includes('accessible shell labels'), 'P18 browser audit does
 assert(browserAudit.includes('pause teaching panel'), 'P18 browser audit does not certify structured pause teaching');
 assert(browserAudit.includes('modal background isolation'), 'P18 browser audit does not certify inert modal background isolation');
 assert(browserAudit.includes('programmatic focus escaped'), 'P18 browser audit does not certify forced focus containment');
+assert(browserAudit.includes("back?.closest('[inert]')"), 'P18 browser audit does not certify inherited inert background isolation');
 assert(browserAudit.includes('fullscreen accessibility label did not refresh'), 'P18 browser audit does not certify fullscreen semantic refresh');
 assert(browserAudit.includes('resume did not release modal isolation/state semantics'), 'P18 browser audit does not certify modal cleanup after resume');
 assert(browserAudit.includes('result surface lacks modal accessible semantics'), 'P18 browser audit does not certify the shared result dialog');
