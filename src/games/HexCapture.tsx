@@ -318,7 +318,10 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
   }, [isPaused, moveStep, toggleCapture]);
 
   useEffect(() => {
-    if (isPaused) heldDir.current = null;
+    if (isPaused) {
+      heldDir.current = null;
+      setHeldDirection(null);
+    }
   }, [isPaused]);
 
   useEffect(() => {
