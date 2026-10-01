@@ -23,6 +23,16 @@
 
 ## Unreleased
 
+### P25 deep game polish / all-game balance hardening — 2026-10-01
+- Preserve the original P25 balance envelopes and the P24 32 S / 0 A / 0 B score ledger; no raw scoring formula is changed.
+- Replace the marker-oriented P25 audit with broad progression-domain checks plus 32 explicit live integration paths.
+- Tie Laser Blade spawn cadence to authored wave count instead of raw score so precision/combo/multi-cut bonuses cannot secretly accelerate difficulty; retain the bounded 65→50 frame cadence.
+- Align Gravity's explicit catch-up cap with the real 50 ms / 60 Hz integrator bound: 3 steps instead of an unreachable nominal 6.
+- Certify Type Rush using its real four wave multipliers, all five Vanguard enemy speed caps, all Crosser district traffic bands, repeated Knife/Pac progression cycles, full Final Chaos parameters and coupled Neon Rail pressure.
+- Prove Reaction's third identical choice cue is broken across the RNG range and Merge preserves the complete 2/2/4/4/8/16 bag on repeated refills.
+- Permanently forbid key pre-P25 formulas such as score-driven Snake speed, uncapped Vanguard boss HP, old Crosser traffic RNG and old Type Rush linear speed.
+- Make P25 documentation and the shared balance module permanent release32 requirements, while preserving all hardened P20–P24 contracts.
+
 ### P24 definitive 32/32 S-rank certification hardening — 2026-10-01
 - Keep the definitive P24 composition ledger frozen at 32 S / 0 A / 0 B; no new rating points are awarded.
 - Harden the five original P15 S incumbents, the only provenance group without a later promotion-specific hardening pass.
