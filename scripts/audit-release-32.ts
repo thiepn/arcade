@@ -111,6 +111,7 @@ const phaseFiles = [
   ['docs/P22_MID_A_PROMOTION_CERTIFICATION.md','P22 certification document'],['scripts/p22-promotion-scorecards.ts','P22 promotion scorecard ledger'],['src/lib/p22PromotionRuntime.ts','P22 promotion runtime'],['src/lib/p22PromotionState.ts','P22 promotion run-state processor'],['src/p22-mid-a-promotion.css','P22 promotion stylesheet'],
   ['docs/P23_B_RANK_TRANSFORMATION_CERTIFICATION.md','P23 certification document'],['scripts/p23-promotion-scorecards.ts','P23 transformation scorecard ledger'],['src/lib/p23TransformationRuntime.ts','P23 teaching/control extension runtime'],['src/lib/p23ClarityProfileExtensions.ts','P23 clarity profile extensions'],['src/p23-b-rank-transformation.css','P23 transformation stylesheet'],
   ['docs/P24_DEFINITIVE_32_S_CERTIFICATION.md','P24 definitive certification document'],['scripts/p24-definitive-scorecards.ts','P24 definitive scorecard ledger'],
+  ['docs/P25_DEEP_GAME_POLISH.md','P25 deep gameplay polish certification'],['src/lib/gamePolishBalance.ts','P25 shared balance envelope module'],
 ] as const;
 for (const [path, label] of phaseFiles) assert(existsSync(join(root, path)), `${label} is missing`);
 
