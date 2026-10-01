@@ -44,6 +44,8 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
 
   const [hudState, setHudState] = useRenderPublishedState({
     score: 0,
@@ -113,7 +115,7 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
     state.flyingBladeProgress = 0;
     state.isThrowing = true;
     state.knivesRemaining--;
-    if (soundEnabled) sounds.playKnifeThrow();
+    if (soundEnabledRef.current) sounds.playKnifeThrow();
   };
 
   const updateAimFromPointer = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -155,7 +157,7 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
   // aimed the target, the deterministic default is the bottom-center impact.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isPausedRef.current || !gameStateRef.current.isAlive) return;
+      if (isPausedRef.current || !gameStateRef.current.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
       if (
         e.code === 'Space' ||
         e.code === 'ArrowUp' ||
@@ -746,7 +748,11 @@ export const KnifeTargetGame: React.FC<GameComponentProps> = ({
         </div>
       </div>
 
-      <canvas ref={canvasRef} className="w-full h-full min-h-0 block" />
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full min-h-0 block"
+        aria-label="Knife target aiming area. Tap or click to throw; Space, Enter, W, or Arrow Up throws at the current aim."
+      />
 
       <div className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none z-10 px-2">
         <div className="px-3 py-1 rounded-full bg-[#121215]/85 border border-[#27272A] text-[9px] sm:text-[10px] text-[#A1A1AA] font-mono backdrop-blur-md text-center">
