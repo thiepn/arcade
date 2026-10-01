@@ -124,7 +124,7 @@ jobs:
       - run: bun run worker:check
       - run: bun run build
       - run: P26_EXPECT_BASE=/ bun run quality:production-p26
-      - name: Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23 / P24 / P26
+      - name: Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23 / P24
         shell: bash
         run: |
           set -euo pipefail
@@ -162,13 +162,53 @@ jobs:
           P22_CHROME_PATH="$chrome" bun run quality:browser-p22
           P23_CHROME_PATH="$chrome" bun run quality:browser-p23
           P24_CHROME_PATH="$chrome" bun run quality:browser-p24
-          P26_CHROME_PATH="$chrome" bun run quality:browser-p26
       - run: MA3_EXPECT_BASE=/ bun run quality:ma3
       - run: MA4_EXPECT_BASE=/ bun run quality:ma4
       - run: bun run build:pages
       - run: P26_EXPECT_BASE=/arcade/ bun run quality:production-p26
       - run: MA3_EXPECT_BASE=/arcade/ bun run quality:ma3
       - run: MA4_EXPECT_BASE=/arcade/ bun run quality:ma4
+
+  p26-production-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: P26_EXPECT_BASE=/ bun run quality:production-p26
+      - name: P26 high-DPR production gameplay matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          bunx vite preview --host 127.0.0.1 --port 4173 > /tmp/p26-preview.log 2>&1 &
+          preview_pid=$!
+          cleanup() {
+            kill "$preview_pid" 2>/dev/null || true
+            wait "$preview_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null 2>&1; then
+              break
+            fi
+            if ! kill -0 "$preview_pid" 2>/dev/null; then
+              cat /tmp/p26-preview.log
+              exit 1
+            fi
+            sleep 1
+          done
+          chrome="$(command -v google-chrome || command -v google-chrome-stable || true)"
+          if [ -z "$chrome" ]; then
+            echo 'Chrome executable not found on runner'
+            exit 1
+          fi
+          P26_CHROME_PATH="$chrome" bun run quality:browser-p26
 
   responsive-ui:
     runs-on: ubuntu-latest
