@@ -354,7 +354,10 @@ export const processP22GameplayEvent = (
     }
     case 'roadcross': {
       if (detail.kind === 'road-move-accepted') {
-        applyP22RoadMove(state, context.roadDirection ?? null);
+        const direction = detail.label === 'left' || detail.label === 'right' || detail.label === 'forward' || detail.label === 'backward'
+          ? detail.label
+          : context.roadDirection ?? null;
+        applyP22RoadMove(state, direction);
       } else if (detail.kind === 'road-district-start') {
         const oldRoute = currentRoadRoute(state);
         state.roadPendingBonus = state.roadRouteComplete && oldRoute ? oldRoute.reward : 0;
