@@ -352,6 +352,7 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
   // Keyboard input listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isPausedRef.current || !gameStateRef.current.isAlive || e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
         e.preventDefault();
       }
@@ -364,7 +365,7 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
         keys.shoot = true;
         fireBullet();
       }
-      if (e.key === 'Shift' || e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') {
+      if (!e.repeat && (e.key === 'Shift' || e.key === 's' || e.key === 'S' || e.key === 'ArrowDown')) {
         triggerHyperspace();
       }
     };
@@ -377,11 +378,21 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
       if (e.key === ' ' || e.code === 'Space') keys.shoot = false;
     };
 
+    const releaseKeyboardInput = () => {
+      const keys = gameStateRef.current.keys;
+      keys.left = false;
+      keys.right = false;
+      keys.thrust = false;
+      keys.shoot = false;
+    };
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', releaseKeyboardInput);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', releaseKeyboardInput);
     };
   }, [fireBullet, triggerHyperspace]);
 
@@ -1152,6 +1163,7 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
             }}
             className="w-13 h-13 rounded-2xl bg-zinc-900/90 border border-cyan-500/40 text-cyan-400 flex items-center justify-center active:scale-95 active:bg-cyan-500/20 backdrop-blur-md"
             aria-label="Turn Left"
+            aria-keyshortcuts="A ArrowLeft"
           >
             <RotateCcw className="w-6 h-6" />
           </button>
@@ -1169,6 +1181,7 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
             }}
             className="w-13 h-13 rounded-2xl bg-zinc-900/90 border border-cyan-500/40 text-cyan-400 flex items-center justify-center active:scale-95 active:bg-cyan-500/20 backdrop-blur-md"
             aria-label="Turn Right"
+            aria-keyshortcuts="D ArrowRight"
           >
             <RotateCw className="w-6 h-6" />
           </button>
@@ -1181,6 +1194,7 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
             onClick={triggerHyperspace}
             className="w-12 h-12 rounded-2xl bg-purple-950/80 border border-purple-500/40 text-purple-400 flex items-center justify-center active:scale-95 active:bg-purple-500/20 backdrop-blur-md"
             aria-label="Hyperspace Warp"
+            aria-keyshortcuts="Shift S ArrowDown"
           >
             <Radio className="w-5 h-5" />
           </button>
@@ -1198,6 +1212,7 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
             }}
             className="w-13 h-13 rounded-2xl bg-amber-950/80 border border-amber-500/40 text-amber-400 flex items-center justify-center active:scale-95 active:bg-amber-500/20 backdrop-blur-md font-mono text-xs font-bold"
             aria-label="Thrust"
+            aria-keyshortcuts="W ArrowUp"
           >
             <Rocket className="w-6 h-6" />
           </button>
@@ -1207,6 +1222,7 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
             onPointerDown={fireBullet}
             className="w-14 h-14 rounded-2xl bg-cyan-600 border border-cyan-300 text-white flex items-center justify-center active:scale-95 active:bg-cyan-500 shadow-lg shadow-cyan-500/30 font-mono text-xs font-bold"
             aria-label="Fire Plasma"
+            aria-keyshortcuts="Space"
           >
             <Crosshair className="w-7 h-7" />
           </button>
