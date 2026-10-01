@@ -178,6 +178,14 @@ const runGame = async (page, profile, gameId) => {
     });
     assert(!semanticControlIsolation.decorated, 'static control label emitted semantic mastery feedback');
 
+    await page.locator('#game-pause-btn').click();
+    await page.waitForFunction(
+      () => Boolean(document.querySelector('[data-p18-dialog="pause"]')),
+      null,
+      { timeout: 2500 },
+    );
+    await page.waitForTimeout(profile.reducedMotion === 'reduce' ? 160 : 480);
+
     const overlappingClasses = await page.evaluate(async ({ reduced }) => {
       const stage = document.querySelector('.game-shell main > div');
       if (!stage) return { initial: false, midpoint: false, final: false };
@@ -198,6 +206,16 @@ const runGame = async (page, profile, gameId) => {
     assert(
       overlappingClasses.initial && overlappingClasses.midpoint && overlappingClasses.final,
       'overlapping feedback classes do not clean up independently',
+    );
+
+    await page.locator('[data-p18-dialog="pause"]')
+      .getByRole('button', { name: /^RESUME \(ESC\)$/i })
+      .click();
+    await page.waitForFunction(
+      () => !document.querySelector('[data-p18-dialog="pause"]')
+        && document.querySelector('.game-shell main')?.getAttribute('data-gameplay-active') === 'true',
+      null,
+      { timeout: 2500 },
     );
 
     const masteryState = await page.evaluate(() => {
