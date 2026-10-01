@@ -145,6 +145,11 @@ assert(AIR_HOCKEY_PLAYER_MAX_SPEED === 1050 && AIR_HOCKEY_MAX_PUCK_SPEED === 680
 assert(AIR_HOCKEY_DIFFICULTY_CONFIG.EASY.reactionMs === 165 && AIR_HOCKEY_DIFFICULTY_CONFIG.MEDIUM.reactionMs === 105 && AIR_HOCKEY_DIFFICULTY_CONFIG.HARD.reactionMs === 70, 'Puck AI reaction bounds changed');
 assert(puckSource.includes('const soundEnabledRef = useRef(soundEnabled);') && puckSource.includes('if (soundEnabledRef.current) sounds.playPowerUp();'), 'Puck keyboard Power Play can use stale sound state');
 assert(puckSource.includes('role="group" aria-label="Difficulty"'), 'Puck difficulty choices are not exposed as one named control group');
+assert(
+  puckSource.includes("target?.closest('button, input, select, textarea, [role=\"button\"]')") &&
+  puckSource.includes("if (target?.closest('button, input, select, textarea, [role=\"button\"]')) return;"),
+  'Puck arena pointer capture can swallow embedded difficulty/Power controls',
+);
 assert(puckSource.includes('aria-pressed={isSelected}') && puckSource.includes('aria-keyshortcuts="Space F"'), 'Puck selected difficulty/Power Play shortcuts are not semantically exposed');
 
 // Tower: five precision centers create a score-only route completion; prior Apex economy is frozen.
