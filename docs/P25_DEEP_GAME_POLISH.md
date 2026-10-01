@@ -1,5 +1,9 @@
 # P25 — Deep Gameplay Polish & Balance Pass
 
+Original P25 merge: `85de2cb0bbba539cea8a37134ef50c46f3d3434d`.
+
+Current hardening baseline: `f89652e8de521c9add62b258b9ffa008cb5735d8` (2026-10-01 definitive hardened P24).
+
 P25 is a full-roster gameplay-quality pass over all 32 Micro Arcade games. It intentionally preserves the existing raw scoring formulas and leaderboard scale. The changes target difficulty shape, fairness, avoidable RNG streaks, late-run runaway pressure, device parity, recovery behavior, and first-minute readability.
 
 ## Product rules
@@ -48,8 +52,30 @@ P25 is a full-roster gameplay-quality pass over all 32 Micro Arcade games. It in
 | Neon Puck Smash | Ramps AI movement from 84% to 100% over the opening eight seconds, preserving selected difficulty after the opening read. |
 | Neon Rail Shift | Couples speed and spawn pressure to the same smooth 90-second curve, avoiding two mismatched linear ramps. |
 
+## 2026-10-01 all-game balance hardening addendum
+
+The original P25 balance decisions remain frozen. The current-source audit found that the actual gameplay integrations were still present, but the permanent P25 test mostly checked isolated sample values and whether a marker string existed somewhere in a file. That was too weak for an all-game balance certification.
+
+The hardening pass therefore strengthens **evidence**, not difficulty:
+
+- all continuous P25 curves are now sampled across their real progression domain for monotonicity and hard bounds;
+- Type Rush is checked with the actual BOOT/SURGE/OVERCLOCK/REDLINE multipliers rather than only a `1.0x` synthetic multiplier;
+- Vanguard certifies all five ordinary enemy kinds plus diminishing boss growth;
+- Cyber Crosser certifies the four explicit district traffic-speed bands;
+- Neon Rail proves speed and spawn pressure remain coupled to the same normalized curve;
+- Knife Target and Cyber Pac-Runner are checked across repeated progression cycles instead of only at one extreme level;
+- Perfect Stop now locks the complete Final Chaos pressure/window contract, not just speed and reversal timing;
+- Reaction proves any third identical LEFT/RIGHT cue is forcibly broken across the RNG range;
+- Merge proves the complete `2/2/4/4/8/16` multiset on repeated bag refills;
+- all **32 live integration paths** are checked in the actual game source so an imported-but-unused helper can no longer satisfy P25;
+- pre-P25 formulas for score-driven Snake speed, uncapped Vanguard boss HP, wide Crosser traffic RNG, old Type Rush linear speed and other key failure modes are explicitly forbidden.
+
+The audit also found one certification mismatch in Gravity. `GRAVITY_MAX_STEPS_PER_FRAME` was set to `6`, but the pre-existing 50 ms frame clamp and 60 Hz fixed step can request at most three steps from a valid accumulator. The explicit cap is now `3`, matching the real integrator bound. This does **not** make Gravity harder or easier; it makes the stated catch-up contract truthful and permanently testable.
+
+No raw scoring formula or P24 scorecard is changed by this hardening pass. The definitive roster remains **32 S / 0 A / 0 B**, and P25 remains a non-scoring balance/fairness layer.
+
 ## Regression contract
 
-`quality:gameplay-p25` certifies all 32 implementation markers and the quantitative envelopes above. Existing P0–P24, game-specific physics/input tests, full browser gameplay tests, responsive Chrome/Firefox/WebKit geometry tests, PWA/offline tests, leaderboard/backend tests, and Pages build checks remain required.
+`quality:gameplay-p25` certifies all 32 live integration paths, broad quantitative envelopes, anti-regression formulas, specialist progression modules, and the hardened P24 baseline. Existing P0–P24, game-specific physics/input tests, full browser gameplay tests, responsive Chrome/Firefox/WebKit geometry tests, PWA/offline tests, leaderboard/backend tests, and Pages build checks remain required.
 
 P25 does not claim that subjective fun can be fully automated. It does establish that the intended balance changes are bounded, all 32 games participate, score formulas are not altered by the shared P25 balance module, and the full existing regression suite still gates release.
