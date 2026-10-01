@@ -54,6 +54,8 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
 
   const [hudState, setHudState] = useRenderPublishedState({
     score: 0,
@@ -121,7 +123,7 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
     if (isPausedRef.current || !state.isAlive || !canArmOrbBurst(state.burstCharges, state.burstArmed, Boolean(state.flyingBubble))) return;
     state.burstCharges--;
     state.burstArmed = true;
-    if (soundEnabled) sounds.playPowerUp();
+    if (soundEnabledRef.current) sounds.playPowerUp();
   };
 
   const swapChamber = () => {
@@ -131,7 +133,7 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
     state.currentBubbleColor = state.nextBubbleColor;
     state.nextBubbleColor = current;
     state.hasSwappedThisTurn = true;
-    if (soundEnabled) sounds.playTick();
+    if (soundEnabledRef.current) sounds.playTick();
   };
 
   // Shoot Action toward specified angle or current cannon angle
@@ -160,7 +162,7 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
     state.currentBubbleColor = state.nextBubbleColor;
     state.nextBubbleColor = drawOrbCannonActiveColor(state.grid, COLORS, Math.random());
 
-    if (soundEnabled) sounds.playBubbleShoot();
+    if (soundEnabledRef.current) sounds.playBubbleShoot();
   };
 
   // Aim helper from viewport coordinates
@@ -735,6 +737,8 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
           onPointerDown={(e) => e.stopPropagation()}
           onClick={swapChamber}
           disabled={!hudState.canSwap}
+          aria-label="Swap orb chamber"
+          aria-keyshortcuts="Q"
           className="rounded-xl border border-zinc-600 bg-[#18181B]/90 px-3 py-1.5 font-mono text-[10px] font-black text-zinc-200 disabled:opacity-35"
         >
           SWAP [Q]
@@ -744,6 +748,9 @@ export const BubbleBusterGame: React.FC<GameComponentProps> = ({
           onPointerDown={(e) => e.stopPropagation()}
           onClick={armBurst}
           disabled={!hudState.canBurst}
+          aria-label={`Orb Burst, ${hudState.burstCharges} charge${hudState.burstCharges === 1 ? '' : 's'} remaining`}
+          aria-pressed={hudState.burstArmed}
+          aria-keyshortcuts="F Shift"
           className="rounded-xl border border-pink-400/50 bg-[#18181B]/90 px-3 py-1.5 font-mono text-[10px] font-black text-pink-300 disabled:opacity-35"
         >
           {hudState.burstArmed ? 'BURST ARMED' : `BURST ${hudState.burstCharges}/2 [F]`}
