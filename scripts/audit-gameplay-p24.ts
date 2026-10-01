@@ -107,7 +107,12 @@ assert(blockDrop.includes('const soundEnabledRef = useRef(soundEnabled);') && bl
 assert(rhythm.includes('aria-label={`Rhythm lane ${label}`}') && rhythm.includes('aria-pressed={isPressed}') && rhythm.includes("window.addEventListener('blur', clearHeldLanes)"), 'P24 Rhythm lane state/focus-loss semantics are missing');
 
 const p25Audit = read('scripts/audit-gameplay-p25.ts');
-assert(p25Audit.includes('assert.equal(Object.keys(coverage).length, 32);') && p25Audit.includes('Leaderboard comparability is intentional: no P25 helper awards points.'), 'Current post-P24 deep-polish layer is not explicitly 32-game/non-scoring');
+assert(
+  p25Audit.includes('assert.equal(integrationChecks.length, 32);') &&
+  p25Audit.includes('const balanceSources = [') &&
+  p25Audit.includes('without changing raw score formulas or the P24 score ledger'),
+  'Current post-P24 deep-polish layer is not explicitly 32-game/non-scoring',
+);
 
 const registry = read('src/data/games.ts');
 const registryIds = [...registry.matchAll(/^\s{4}id:\s*'([a-z0-9-]+)',/gm)].map((match) => match[1]);
