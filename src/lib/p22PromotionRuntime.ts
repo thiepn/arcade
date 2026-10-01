@@ -8,7 +8,6 @@ import { P22_TEACHING } from './p22PromotionStructures';
 import {
   createP22RunState,
   processP22GameplayEvent,
-  type P22RoadDirection,
   type P22RunState,
 } from './p22PromotionState';
 
@@ -30,8 +29,6 @@ let teardownGlobal: (() => void) | null = null;
 let state: P22RunState | null = null;
 let sessionToken: Element | null = null;
 let hud: HTMLElement | null = null;
-let pendingRoadDirection: P22RoadDirection | null = null;
-let roadPointerStart: { x: number; y: number } | null = null;
 
 const normalise = (value: string) => value.replace(/\s+/g, ' ').trim().toUpperCase();
 const shell = () => document.querySelector<HTMLElement>('.game-shell');
@@ -58,8 +55,6 @@ const reset = (gameId: P22GameId, token: Element | null) => {
   clearHud();
   state = createP22RunState(gameId);
   sessionToken = token;
-  pendingRoadDirection = null;
-  roadPointerStart = null;
 };
 
 const ensureHud = (element: HTMLElement) => {
@@ -149,9 +144,7 @@ const onGameplayEvent = (event: Event) => {
   if (!element || !state) return;
   const bonus = processP22GameplayEvent(state, detail, {
     firewallStage: readFirewallStage(element),
-    roadDirection: detail.kind === 'road-move-accepted' ? pendingRoadDirection : null,
   });
-  if (detail.kind === 'road-move-accepted') pendingRoadDirection = null;
   detail.bonus = bonus;
   if (bonus > 0) emitP17GameFeel('mastery');
   syncHud(element);
@@ -186,65 +179,6 @@ const scan = () => {
   }
 };
 
-const onKeyCapture = (event: KeyboardEvent) => {
-  if (state?.gameId !== 'roadcross' || event.repeat) return;
-  if (event.code === 'ArrowLeft' || event.code === 'KeyA') pendingRoadDirection = 'left';
-  else if (event.code === 'ArrowRight' || event.code === 'KeyD') pendingRoadDirection = 'right';
-  else if (event.code === 'ArrowUp' || event.code === 'KeyW' || event.code === 'Space') pendingRoadDirection = 'forward';
-  else if (event.code === 'ArrowDown' || event.code === 'KeyS') pendingRoadDirection = 'backward';
-};
-
-const onClickCapture = (event: MouseEvent) => {
-  if (state?.gameId !== 'roadcross') return;
-  const target = event.target instanceof Element ? event.target.closest('button') : null;
-  const label = normalise(target?.getAttribute('aria-label') ?? '');
-  if (label.includes('MOVE LEFT')) pendingRoadDirection = 'left';
-  else if (label.includes('MOVE RIGHT')) pendingRoadDirection = 'right';
-  else if (label.includes('MOVE FORWARD')) pendingRoadDirection = 'forward';
-  else if (label.includes('MOVE BACKWARD')) pendingRoadDirection = 'backward';
-};
-
-const inferTapDirection = (event: PointerEvent): P22RoadDirection | null => {
-  if (!state || state.gameId !== 'roadcross') return null;
-  const container = document.querySelector<HTMLElement>('#road-cross-container');
-  if (!container) return null;
-  const rect = container.getBoundingClientRect();
-  const available = Math.max(1, rect.width - 16);
-  const scale = Math.min(1, available / (9 * 46));
-  const offsetX = (rect.width - 9 * 46 * scale) / 2;
-  const playerX = offsetX + (state.roadCol * 46 + 23) * scale;
-  const localX = event.clientX - rect.left;
-  const localY = event.clientY - rect.top;
-  if (localY > rect.height * 0.75 && Math.abs(localX - playerX) < 40) return 'backward';
-  if (localX < playerX - 35) return 'left';
-  if (localX > playerX + 35) return 'right';
-  return 'forward';
-};
-
-const onPointerDownCapture = (event: PointerEvent) => {
-  if (state?.gameId !== 'roadcross') return;
-  const target = event.target instanceof Element ? event.target : null;
-  if (!target?.closest('#road-cross-container') || target.closest('button')) return;
-  roadPointerStart = { x: event.clientX, y: event.clientY };
-};
-
-const onPointerUpCapture = (event: PointerEvent) => {
-  if (state?.gameId !== 'roadcross') return;
-  const target = event.target instanceof Element ? event.target : null;
-  if (!target?.closest('#road-cross-container') || target.closest('button')) return;
-  const start = roadPointerStart;
-  roadPointerStart = null;
-  if (!start) {
-    pendingRoadDirection = inferTapDirection(event);
-    return;
-  }
-  const dx = event.clientX - start.x;
-  const dy = event.clientY - start.y;
-  if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) pendingRoadDirection = inferTapDirection(event);
-  else if (Math.abs(dx) > Math.abs(dy)) pendingRoadDirection = dx > 0 ? 'right' : 'left';
-  else pendingRoadDirection = dy < 0 ? 'forward' : 'backward';
-};
-
 const onMutation = (mutations: MutationRecord[]) => {
   const onlyP22 = mutations.every((mutation) => {
     const target = mutation.target instanceof Element ? mutation.target : mutation.target.parentElement;
@@ -257,26 +191,16 @@ export const installP22PromotionRuntime = () => {
   if (installed || typeof window === 'undefined' || typeof document === 'undefined') return teardownGlobal ?? (() => {});
   installed = true;
   window.addEventListener(P22_GAMEPLAY_EVENT, onGameplayEvent as EventListener);
-  document.addEventListener('keydown', onKeyCapture, true);
-  document.addEventListener('click', onClickCapture, true);
-  document.addEventListener('pointerdown', onPointerDownCapture, true);
-  document.addEventListener('pointerup', onPointerUpCapture, true);
   observer = new MutationObserver(onMutation);
   observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   scan();
   teardownGlobal = () => {
     window.removeEventListener(P22_GAMEPLAY_EVENT, onGameplayEvent as EventListener);
-    document.removeEventListener('keydown', onKeyCapture, true);
-    document.removeEventListener('click', onClickCapture, true);
-    document.removeEventListener('pointerdown', onPointerDownCapture, true);
-    document.removeEventListener('pointerup', onPointerUpCapture, true);
     observer?.disconnect();
     observer = null;
     clearHud();
     state = null;
     sessionToken = null;
-    pendingRoadDirection = null;
-    roadPointerStart = null;
     document.documentElement.removeAttribute('data-p22-promotion');
     teardownGlobal = null;
     installed = false;
