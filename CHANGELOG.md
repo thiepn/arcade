@@ -36,6 +36,7 @@
 - Keep physical handset/tablet signoff as an explicit manual boundary rather than mislabeling browser emulation as real hardware evidence.
 - Make Vector Golf's Aim Guide and Hex Capture's Capture action retain a 48px physical CSS height even under the legacy ≥640px game-button min-size reset.
 - Retry gameplay-stage focus for a bounded four animation frames after modal close so P18/P19 inert-release ordering cannot strand keyboard focus under high-DPR device profiles.
+- Isolate both the P3–P24 legacy browser regression chain and the P26 high-DPR matrix from the build job so mandatory browser evidence no longer consumes the Pages/artifact job's timeout budget.
 - Preserve compatibility ids, score version, AP anchors, policy id and historical P15-P24 ledgers.
 
 ### P25 deep game polish / all-game balance hardening — 2026-10-01
