@@ -237,6 +237,7 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
         else if (result && roundIndex < maxRounds - 1) handleNextRound();
       }}
       onKeyDown={(event) => {
+        if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
         if (event.code === 'Space' || event.code === 'Enter') {
           event.preventDefault();
           if (isRunning) handleStop();
@@ -244,6 +245,8 @@ export const PerfectStopGame: React.FC<GameComponentProps> = ({
         }
       }}
       tabIndex={0}
+      aria-label={isRunning ? 'Stop marker' : result && roundIndex < maxRounds - 1 ? 'Advance to next sector' : 'Perfect Stop playfield'}
+      aria-keyshortcuts="Space Enter"
     >
       <div className="w-full flex items-start justify-between gap-2 pointer-events-none">
         <div className="flex flex-col gap-1.5">
