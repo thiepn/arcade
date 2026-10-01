@@ -469,7 +469,7 @@ export const VectorGolf: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
             aria-label="Aim guide"
             aria-pressed={hud.guide}
             aria-keyshortcuts="G"
-            className="min-h-9 rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-2 py-1 font-bold text-cyan-100"
+            className="min-h-12 min-w-12 rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-3 py-2 font-bold text-cyan-100"
           >
             GUIDE {hud.guide ? 'ON' : 'OFF'}
           </button>
