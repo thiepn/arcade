@@ -119,7 +119,18 @@ const exerciseCandidateInput = async (page, id) => {
     await page.keyboard.up('ArrowRight');
     await page.waitForTimeout(40);
   } else if (id === 'airhockey') {
+    const previousSession = await page.locator('.game-shell main').getAttribute('data-game-session-key');
     await puckMasterControl(page).click();
+    await page.waitForFunction((sessionKey) => {
+      const stage = document.querySelector('.game-shell main');
+      return stage?.getAttribute('data-game-session-key') !== sessionKey
+        && stage?.getAttribute('data-game-engine-ready') === 'true';
+    }, previousSession, { timeout: 4000 });
+    await page.waitForFunction(
+      () => document.querySelector('button[aria-label="Difficulty MASTER"]')?.getAttribute('aria-pressed') === 'true',
+      null,
+      { timeout: 2500 },
+    );
     await page.keyboard.press('ArrowLeft');
     await page.waitForTimeout(80);
     await waitForShellText(page, ['MASTER', 'POWER'], 'Puck difficulty/power state disappeared after input');
