@@ -77,6 +77,8 @@ export const StackGame: React.FC<GameComponentProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
   const setSafeTimeout = useSafeTimeout();
   const [focusHud, setFocusHud] = useState({ charges: STACK_FOCUS_START_CHARGES, armed: false, chain: 0 });
   const [blueprintHud, setBlueprintHud] = useState(() => getBlueprintHud(createStackBlueprintState()));
@@ -119,7 +121,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
     state.focusCharges--;
     state.focusArmed = true;
     publishFocusHud();
-    if (soundEnabled) sounds.playPowerUp();
+    if (soundEnabledRef.current) sounds.playPowerUp();
   };
 
   const getHue = (index: number) => (index * 24 + 190) % 360;
@@ -155,7 +157,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
         maxLife: 58,
       });
       haptics.combo();
-      if (soundEnabled) sounds.playSuccess();
+      if (soundEnabledRef.current) sounds.playSuccess();
     } else if (result.progressed) {
       state.floatingTexts.push({
         x: state.currentX + overlapWidth / 2,
@@ -239,7 +241,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
       });
 
       if (state.perfectStreak >= 3) haptics.combo(); else haptics.score();
-      if (soundEnabled) sounds.playScore();
+      if (soundEnabledRef.current) sounds.playScore();
 
       state.blocks.push({
         x: state.currentX,
@@ -281,7 +283,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
         rotation: 0,
         vRot: (Math.random() - 0.5) * 0.15,
       });
-      if (soundEnabled) sounds.playGameOver();
+      if (soundEnabledRef.current) sounds.playGameOver();
       setSafeTimeout(() => onGameOver(state.score), 700);
       return;
     }
@@ -309,7 +311,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
     state.score += 1;
     onScoreUpdate(state.score);
     haptics.light();
-    if (soundEnabled) sounds.playPop();
+    if (soundEnabledRef.current) sounds.playPop();
 
     state.blocks.push({
       x: state.currentX,
@@ -358,7 +360,7 @@ export const StackGame: React.FC<GameComponentProps> = ({
       placeBlock();
     };
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isPausedRef.current || !gameStateRef.current.isAlive || e.altKey || e.ctrlKey || e.metaKey) return;
+      if (isPausedRef.current || !gameStateRef.current.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyF') {
         e.preventDefault();
         armFocus();
@@ -551,6 +553,9 @@ export const StackGame: React.FC<GameComponentProps> = ({
         type="button"
         onClick={armFocus}
         disabled={focusHud.charges <= 0 || focusHud.armed}
+        aria-label={`Focus, ${focusHud.charges} charge${focusHud.charges === 1 ? '' : 's'} remaining`}
+        aria-pressed={focusHud.armed}
+        aria-keyshortcuts="F Shift"
         className={`absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-xl border px-4 py-2 font-mono text-[10px] font-black transition-all ${focusHud.armed ? 'border-amber-300 bg-amber-400/25 text-amber-200' : focusHud.charges > 0 ? 'border-cyan-400/50 bg-zinc-950/85 text-cyan-200 hover:bg-cyan-500/15' : 'cursor-not-allowed border-zinc-800 bg-zinc-950/70 text-zinc-600'}`}
       >
         {focusHud.armed ? 'FOCUS ARMED • 2PX WINDOW' : `ARM FOCUS [F/SHIFT] • ${focusHud.charges} CHARGE${focusHud.charges === 1 ? '' : 'S'}`}
