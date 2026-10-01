@@ -1,6 +1,8 @@
 # P23 — B-Rank Transformation Certification
 
-Baseline: `f9bb9efe26994bb821a10e7908ae794fd09f9059` (production-certified P22).
+Baseline: `f9bb9efe26994bb821a10e7908ae794fd09f9059` (original P23 transformation baseline).
+
+Current hardening baseline: `69be0b72870d7a0f82709be5e60e937226d3083e` (2026-10-01 hardened P22).
 
 ## Purpose
 
@@ -142,6 +144,25 @@ P23 introduces no replay recorder/player, ghost run, run history, playback timel
 - P23 current scorecards: **32 S / 0 A / 0 B**
 
 This means all 32 current scorecards are at the S threshold; it is **not** the definitive roster-wide certification.
+
+## 2026-10-01 B-rank transformation hardening
+
+The original seven P23 promotion scorecards remain frozen. The current-source re-audit confirms the seven identity transformations are still present, but it found several input/control weaknesses that could make the transformed depth easier to exploit, skip, or misunderstand than the scorecards imply.
+
+This hardening pass fixes those weaknesses without changing P23 scoring, timing windows, progression schedules, transformation grammars, resource economies or the **32 S / 0 A / 0 B** post-P23 score state:
+
+- **Type Rush:** repeated physical keydown, modifier shortcuts and IME composition events no longer count as typing progress. Holding one letter cannot farm a target.
+- **Perfect Stop:** Space/Enter is now a discrete action. A held Space/Enter can no longer stop a round and then auto-advance the result screen on key repeat. The timing surface exposes its active Space/Enter contract.
+- **Reaction:** keyboard input ignores pause, repeat, modifier and composition contamination. SPEED versus CONTROL selection is now represented by two actual semantic buttons on the safe RESULT screen while preserving the existing half-screen pointer choice.
+- **Pulse:** Groove Path selection, Sync Wager and beat input ignore key repeat. Left/right path controls expose their keyboard bindings, and Sync Wager exposes charge/armed state plus F/Shift.
+- **Laser Rope Reflex:** jump, slide and Redline now read the live Sound preference. Redline exposes charge/active state and F/Shift; Jump and Slide expose their keyboard equivalents.
+- **Aero Pulse:** flap, Flow and downstream run feedback now read the live Sound preference. Flow Boost exposes charge/active state and F/Shift.
+- **Stack:** placement, Focus and blueprint feedback now read the live Sound preference. Focus and placement input reject repeat/modifier/composition contamination; Focus exposes charge/armed state plus F/Shift.
+- **Shared continuity:** the 21-session P23 browser matrix now verifies P18 gameplay-focus restoration after Resume and checks actual transformation state changes rather than accepting static transformation labels.
+
+The browser gate now additionally proves that held-letter repeat cannot advance Type Rush, repeated Space cannot prematurely stop Perfect Stop, repeated Pulse path input cannot alter the queued path, repeated F cannot arm Stack Focus, and real F input activates Laser Redline and Aero Flow.
+
+No category receives another rating point from this hardening pass. The historical P15 ledger and original P23 transformation evidence remain unchanged.
 
 ## P24 boundary
 
