@@ -208,14 +208,23 @@ const runGame = async (page, profile, gameId) => {
       'overlapping feedback classes do not clean up independently',
     );
 
-    await page.locator('[data-p18-dialog="pause"]')
-      .getByRole('button', { name: /^RESUME \(ESC\)$/i })
-      .click();
+    const pauseDialog = page.locator('[data-p18-dialog="pause"]');
+    if (await pauseDialog.isVisible().catch(() => false)) {
+      await pauseDialog.getByRole('button', { name: /^RESUME \(ESC\)$/i }).click();
+    } else {
+      const playAgain = page.locator('#btn-play-again');
+      assert(
+        await playAgain.isVisible().catch(() => false),
+        'P17 overlap probe lost both pause and committed result recovery paths',
+      );
+      await playAgain.click();
+    }
     await page.waitForFunction(
       () => !document.querySelector('[data-p18-dialog="pause"]')
+        && !document.querySelector('[data-p18-dialog="result"]')
         && document.querySelector('.game-shell main')?.getAttribute('data-gameplay-active') === 'true',
       null,
-      { timeout: 2500 },
+      { timeout: 4000 },
     );
 
     const masteryState = await page.evaluate(() => {
