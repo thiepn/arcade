@@ -129,7 +129,6 @@ export const BladeGame: React.FC<GameComponentProps> = ({
     spawnTimer: 0,
     spawnInterval: 65,
     waveCount: 0,
-    difficultyTier: 1,
     activePhraseId: '',
     nextId: 1,
     width: 420,
@@ -560,7 +559,6 @@ export const BladeGame: React.FC<GameComponentProps> = ({
     state.bladeTrail = [];
     state.spawnTimer = 20;
     state.waveCount = 0;
-    state.difficultyTier = 1;
     state.activePhraseId = '';
     state.physicsAccumulator = 0;
     setWavePhraseLabel('CLEAN CUTS');
@@ -643,11 +641,9 @@ export const BladeGame: React.FC<GameComponentProps> = ({
           state.waveCount++;
           spawnWave(w, h);
 
-          // Progressive Difficulty curve remains score-bounded; P20 phrases
-          // structure composition without accelerating the certified cadence.
-          state.difficultyTier =
-            state.score > 12000 ? 4 : state.score > 6000 ? 3 : state.score > 2000 ? 2 : 1;
-          state.spawnInterval = getBladeSpawnIntervalFrames(state.score);
+          // P25 cadence follows physical authored-wave progress, not raw score.
+          // Precision/combo bonuses therefore cannot secretly accelerate spawn pressure.
+          state.spawnInterval = getBladeSpawnIntervalFrames(state.waveCount);
         }
 
         // Update Flying Targets
