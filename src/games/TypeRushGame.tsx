@@ -238,7 +238,16 @@ export const TypeRushGame: React.FC<GameComponentProps> = ({
     const handleWindowKeyDown = (event: KeyboardEvent) => {
       // When gameplay is suspended or finished, leave letter keys untouched so
       // GameShell shortcuts such as R restart and N/L post-run actions still work.
-      if (isPausedRef.current || !gameStateRef.current.isAlive || event.key === 'Tab') return;
+      if (
+        isPausedRef.current ||
+        !gameStateRef.current.isAlive ||
+        event.key === 'Tab' ||
+        event.repeat ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.isComposing
+      ) return;
       if (event.key.length === 1 && /[a-zA-Z]/.test(event.key)) {
         event.preventDefault();
         handleKeyInput(event.key);
