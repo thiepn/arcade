@@ -212,10 +212,10 @@ assert(existsSync(join(root, 'src', 'lib', 'bladeWavePhrases.ts')), 'Laser Blade
 
 for (const id of cohort) assert(browserAudit.includes(`'${id}'`), `P20 browser audit missing ${id}`);
 for (const profile of ["name: 'desktop'", "name: 'mobile'", "name: 'small-mobile'"]) assert(browserAudit.includes(profile), `P20 browser audit missing ${profile}`);
-for (const marker of ['FLIGHT CONTRACT', 'RESONANCE', 'CONTRACT', 'STYLE ROUTE', 'WARP DASH', 'data-p20-blade-phrase']) {
+for (const marker of ['data-replacement-game="vector-golf"', 'RESONANCE', 'CONTRACT', 'STYLE ROUTE', 'WARP DASH', 'data-p20-blade-phrase']) {
   assert(browserAudit.includes(marker), `P20 browser audit missing candidate-specific marker ${marker}`);
 }
-for (const marker of ['assertFlagshipControlSemantics','Gravity G input did not flip the semantic polarity state','Chain tool selection did not update semantic state','Cyber Drift blur cleanup left steering active','Dodge keyboard dash did not consume exactly one charge','Laser Blade phrase semantics invalid','document.activeElement === stage']) assert(browserAudit.includes(marker), `P20 browser audit missing flagship hardening check: ${marker}`);
+for (const marker of ['assertFlagshipControlSemantics','Vector Golf G input did not toggle the semantic guide state','Chain tool selection did not update semantic state','Cyber Drift blur cleanup left steering active','Dodge keyboard dash did not consume exactly one charge','Laser Blade phrase semantics invalid','document.activeElement === stage']) assert(browserAudit.includes(marker), `P20 browser audit missing flagship hardening check: ${marker}`);
 
 if (errors.length) {
   console.error('P20 NEAR-S PROMOTION CERTIFICATION — FAIL');
