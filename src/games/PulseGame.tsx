@@ -360,7 +360,7 @@ export const PulseGame: React.FC<GameComponentProps> = ({
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isPausedRef.current || !gameStateRef.current.isAlive || e.altKey || e.ctrlKey || e.metaKey) return;
+      if (isPausedRef.current || !gameStateRef.current.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
         e.preventDefault();
         queuePathChoice('LEFT');
@@ -564,14 +564,17 @@ export const PulseGame: React.FC<GameComponentProps> = ({
       )}
 
       <div className="absolute bottom-24 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2">
-        <button type="button" onClick={() => queuePathChoice('LEFT')} className="rounded-lg border border-sky-400/35 bg-zinc-950/85 px-3 py-1.5 font-mono-arcade text-[9px] font-black text-sky-200">A / ← PATH</button>
-        <button type="button" onClick={() => queuePathChoice('RIGHT')} className="rounded-lg border border-violet-400/35 bg-zinc-950/85 px-3 py-1.5 font-mono-arcade text-[9px] font-black text-violet-200">D / → PATH</button>
+        <button type="button" onClick={() => queuePathChoice('LEFT')} aria-label="Queue left Groove Path" aria-keyshortcuts="A ArrowLeft" className="rounded-lg border border-sky-400/35 bg-zinc-950/85 px-3 py-1.5 font-mono-arcade text-[9px] font-black text-sky-200">A / ← PATH</button>
+        <button type="button" onClick={() => queuePathChoice('RIGHT')} aria-label="Queue right Groove Path" aria-keyshortcuts="D ArrowRight" className="rounded-lg border border-violet-400/35 bg-zinc-950/85 px-3 py-1.5 font-mono-arcade text-[9px] font-black text-violet-200">D / → PATH</button>
       </div>
 
       <button
         type="button"
         onClick={armSyncWager}
         disabled={wagerHud.charges <= 0 || wagerHud.armed}
+        aria-label={`Sync Wager, ${wagerHud.charges} charge${wagerHud.charges === 1 ? '' : 's'} remaining`}
+        aria-pressed={wagerHud.armed}
+        aria-keyshortcuts="F Shift"
         className={`absolute bottom-12 left-1/2 z-20 -translate-x-1/2 rounded-xl border px-3.5 py-2 font-mono-arcade text-[10px] font-black transition-all ${wagerHud.armed ? 'border-fuchsia-300 bg-fuchsia-500/20 text-fuchsia-200' : wagerHud.charges > 0 ? 'border-amber-400/45 bg-zinc-950/85 text-amber-200 hover:bg-amber-500/15' : 'cursor-not-allowed border-zinc-800 bg-zinc-950/70 text-zinc-600'}`}
       >
         {wagerHud.armed ? `SYNC WAGER ARMED • ±${PULSE_WAGER_WINDOW_PX}px${wagerHud.streak > 0 ? ` • x${wagerHud.streak}` : ''}` : `ARM SYNC WAGER [F/SHIFT] • ${wagerHud.charges}/${PULSE_WAGER_MAX_CHARGES}`}
