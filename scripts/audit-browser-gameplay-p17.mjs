@@ -186,7 +186,7 @@ const runGame = async (page, profile, gameId) => {
       window.dispatchEvent(new CustomEvent('arcade:p17-feedback', { detail: { kind: 'transition' } }));
       const initial = stage.classList.contains('p17-stage-strong') && stage.classList.contains('p17-stage-transition');
 
-      await new Promise((resolve) => setTimeout(resolve, reduced ? 150 : 300));
+      await new Promise((resolve) => setTimeout(resolve, reduced ? 240 : 300));
       const midpoint = reduced
         ? !stage.classList.contains('p17-stage-strong') && !stage.classList.contains('p17-stage-transition')
         : !stage.classList.contains('p17-stage-strong') && stage.classList.contains('p17-stage-transition');
@@ -226,8 +226,19 @@ const runGame = async (page, profile, gameId) => {
     });
     assert(overflow.x <= 2 && overflow.y <= 2, `P17 feedback created shell overflow ${overflow.x}/${overflow.y}`);
 
-    await page.locator('#game-restart-btn').click();
-    await page.waitForTimeout(80);
+    const playAgain = page.locator('#btn-play-again');
+    if (await playAgain.isVisible().catch(() => false)) {
+      await playAgain.click();
+      await page.waitForFunction(
+        (id) => !document.querySelector('[data-p18-dialog="result"]')
+          && document.querySelector('.game-shell')?.getAttribute('data-p17-game') === id,
+        gameId,
+        { timeout: 4000 },
+      );
+    } else {
+      await page.locator('#game-restart-btn').click();
+    }
+    await page.waitForTimeout(100);
     const afterRestart = await page.evaluate(() => ({
       layers: document.querySelectorAll('.p17-feedback-layer').length,
       nodes: document.querySelectorAll('.p17-feedback-layer .p17-feedback-burst').length,
