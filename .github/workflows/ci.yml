@@ -78,6 +78,7 @@ jobs:
       - run: bun run quality:gameplay-p23
       - run: bun run quality:gameplay-p24
       - run: bun run quality:gameplay-p25
+      - run: bun run quality:gameplay-p26
       - run: bun run quality:lifecycle
       - run: bun run quality:mobile
       - run: bun run quality:rope
@@ -122,7 +123,8 @@ jobs:
       - run: bun run quality:rc-contracts
       - run: bun run worker:check
       - run: bun run build
-      - name: Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23 / P24
+      - run: P26_EXPECT_BASE=/ bun run quality:production-p26
+      - name: Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23 / P24 / P26
         shell: bash
         run: |
           set -euo pipefail
@@ -160,9 +162,11 @@ jobs:
           P22_CHROME_PATH="$chrome" bun run quality:browser-p22
           P23_CHROME_PATH="$chrome" bun run quality:browser-p23
           P24_CHROME_PATH="$chrome" bun run quality:browser-p24
+          P26_CHROME_PATH="$chrome" bun run quality:browser-p26
       - run: MA3_EXPECT_BASE=/ bun run quality:ma3
       - run: MA4_EXPECT_BASE=/ bun run quality:ma4
       - run: bun run build:pages
+      - run: P26_EXPECT_BASE=/arcade/ bun run quality:production-p26
       - run: MA3_EXPECT_BASE=/arcade/ bun run quality:ma3
       - run: MA4_EXPECT_BASE=/arcade/ bun run quality:ma4
 
