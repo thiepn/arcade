@@ -23,6 +23,19 @@
 
 ## Unreleased
 
+### P26 real-device readiness / long-run balance / production certification — 2026-10-01
+- Make certification production-resolved: the `gravity` slot ships Vector Golf and the `astroblaster` slot ships Hex Capture; retired Gravity/Astro sources remain historical regression material rather than being mistaken for shipped engines.
+- Replace Vector Golf's hidden historical FLIGHT CONTRACT test marker with a real semantic Aim Guide control and release interrupted drag ownership on blur/backgrounding.
+- Expose Hex Capture directional held state/shortcuts, repeat-safe capture semantics and pause/focus cleanup.
+- Bound Vector Golf's six-hole native maximum at 32,820, below the deployed gravity-slot 33,000 hard ceiling, without changing AP anchors or policy id.
+- Replace Hex Capture's closure-farming economy with bounded per-new-cell chain scoring; conservative whole-board maximum is 64,016, below the reused 65,000 mastery anchor.
+- Update P20/P24 browser evidence and P24 static incumbent evidence to exercise the actual production replacement engines.
+- Make P25's 32 live paths production-resolved while retaining retired Gravity/Astro envelopes only as historical provenance checks.
+- Add P26 long-horizon balance/policy certification, high-DPR landscape/portrait/tablet browser profiles, replacement lifecycle stress, and exact built-artifact provenance checks.
+- Certify root and Pages build artifacts before deployment and run a P26 quick smoke against the deployed Pages URL after successful CI.
+- Keep physical handset/tablet signoff as an explicit manual boundary rather than mislabeling browser emulation as real hardware evidence.
+- Preserve compatibility ids, score version, AP anchors, policy id and historical P15-P24 ledgers.
+
 ### P25 deep game polish / all-game balance hardening — 2026-10-01
 - Preserve the original P25 balance envelopes and the P24 32 S / 0 A / 0 B score ledger; no raw scoring formula is changed.
 - Replace the marker-oriented P25 audit with broad progression-domain checks plus 32 explicit live integration paths.
