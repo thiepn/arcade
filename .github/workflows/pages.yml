@@ -78,6 +78,7 @@ jobs:
       - run: bun run build:pages
         env:
           VITE_LEADERBOARD_API_URL: https://hycegznamzjhwinegaai.supabase.co/functions/v1/micro-arcade-leaderboards
+      - run: P26_EXPECT_BASE=/arcade/ bun run quality:production-p26
       - run: MA3_EXPECT_BASE=/arcade/ bun run quality:ma3
       - run: MA4_EXPECT_BASE=/arcade/ bun run quality:ma4
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
@@ -118,6 +119,8 @@ jobs:
           HEADER_BASE_URL: ${{ needs.deploy.outputs.page_url }}
           HEADER_EXPECT_LIVE_LEADERBOARD: '1'
           P3_QUICK: '1'
+          P26_BASE_URL: ${{ needs.deploy.outputs.page_url }}
+          P26_QUICK: '1'
         run: |
           set -euo pipefail
           chrome="$(command -v google-chrome || command -v google-chrome-stable || true)"
@@ -127,3 +130,4 @@ jobs:
           fi
           HEADER_CHROME_PATH="$chrome" bun scripts/audit-responsive-header.mjs
           P3_CHROME_PATH="$chrome" bun run quality:browser-p3
+          P26_CHROME_PATH="$chrome" bun run quality:browser-p26
