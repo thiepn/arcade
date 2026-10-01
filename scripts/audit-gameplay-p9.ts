@@ -90,8 +90,9 @@ assert(getStackTravelSpeed(10, 1) > getStackTravelSpeed(1, 1), 'Stack movement s
 assert(getStackTravelSpeed(10, 1.7) > getStackTravelSpeed(10, 0.85), 'Stack movement speed no longer preserves viewport scaling');
 assert(!stack.includes('state.score * 0.08'), 'Stack Focus bonus score still accelerates the base movement-speed curve');
 assert(
-  stack.includes('if (isPausedRef.current || !gameStateRef.current.isAlive || e.altKey || e.ctrlKey || e.metaKey) return;'),
-  'Stack gameplay listener can consume shell shortcuts while paused/dead or intercept Alt+Enter',
+  stack.includes('isPausedRef.current || !gameStateRef.current.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey || e.isComposing') &&
+    stack.includes("window.addEventListener('keydown', handleKeyDown)"),
+  'Stack gameplay listener can consume shell shortcuts while paused/dead or accept repeated/modified/composition input',
 );
 assert(
   stack.includes('if (isPausedRef.current || !gameStateRef.current.isAlive) return;'),
@@ -103,8 +104,9 @@ for (const token of ['isPulseWagerHit', 'syncWagerCharges', 'syncWagerArmed', 's
 }
 assert(pulse.includes('if (absDiff <= 8)') && pulse.includes('else if (absDiff <= 18)') && pulse.includes('else if (absDiff <= 28)'), 'Pulse base PERFECT/GREAT/GOOD judgement windows changed');
 assert(
-  pulse.includes('if (isPausedRef.current || !gameStateRef.current.isAlive || e.altKey || e.ctrlKey || e.metaKey) return;'),
-  'Pulse gameplay listener can consume shell shortcuts while paused/dead or intercept Alt+Enter',
+  pulse.includes('isPausedRef.current || !gameStateRef.current.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey || e.isComposing') &&
+    pulse.includes("window.addEventListener('keydown', handleKeyDown)"),
+  'Pulse gameplay listener can consume shell shortcuts while paused/dead or accept repeated/modified/composition input',
 );
 assert(
   pulse.includes('if (isPausedRef.current || !gameStateRef.current.isAlive) return;'),
