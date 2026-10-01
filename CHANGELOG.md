@@ -23,6 +23,18 @@
 
 ## Unreleased
 
+### P24 definitive 32/32 S-rank certification hardening — 2026-10-01
+- Keep the definitive P24 composition ledger frozen at 32 S / 0 A / 0 B; no new rating points are awarded.
+- Harden the five original P15 S incumbents, the only provenance group without a later promotion-specific hardening pass.
+- Clear Pinball held flippers on focus loss and expose semantic flipper state/shortcuts.
+- Prevent Vanguard held-key Nova repeats, clear held keyboard movement on blur and expose Nova bomb/shortcut state.
+- Prevent Astro keyboard state mutation while paused/dead, reject repeated Hyperspace activation, clear keyboard/touch ownership on interruption and expose mobile shortcut parity.
+- Make Block Drop read live Sound state for keyboard/game-loop actions and expose keyboard shortcuts on touch controls.
+- Expose Rhythm lane pressed state and keyboard shortcut parity while preserving its existing blur cleanup.
+- Add a 15-session P24 P15-incumbent browser sentinel on top of the canonical 96-session all-roster P19 rerun.
+- Require the hardened P20–P23 evidence baselines and current 32-game non-scoring deep-polish continuity in the definitive P24 source gate.
+- Preserve immutable P15 history, exact P20–P23 final scorecards, the 55/60 S threshold and all no-replay/no-metagame boundaries.
+
 ### P23 B-rank transformation / full S-rank roster hardening — 2026-10-01
 - Keep all seven original P23 transformation scorecards frozen; strengthen current behavioral evidence rather than inflating ratings.
 - Prevent Type Rush held-letter repeat, modifier shortcuts and IME composition from counting as typing progress.
