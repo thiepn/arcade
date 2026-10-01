@@ -147,6 +147,8 @@ assert(vector.includes('getVectorHoleScore(') && vector.includes('VECTOR_STROKE_
 assert(hex.includes('getHexClosureBonus(claimed, st.chain)') && hex.includes('getHexWinBonus(st.lives)'), 'Hex Capture is not using the P26 balance contract');
 assert(hex.includes('aria-keyshortcuts="Space"') && hex.includes('aria-pressed={heldDirection'), 'Hex Capture production controls are not semantically stateful');
 assert(vector.includes('aria-label="Aim guide"') && vector.includes('aria-keyshortcuts="G"'), 'Vector Golf guide control is not semantically stateful');
+assert(vector.includes('min-h-12 min-w-12') && vector.includes('aria-label="Aim guide"'), 'Vector Golf guide target is not locked to a touch-safe minimum');
+assert(hex.includes('min-h-12 min-w-12') && hex.includes('aria-label="Arm capture route"'), 'Hex Capture action target is not locked to a touch-safe minimum');
 assert(vector.includes("window.addEventListener('blur', clearDrag)") && vector.includes("document.addEventListener('visibilitychange', onVisibility)"), 'Vector Golf interrupted drag ownership is not released');
 assert(hex.includes("window.addEventListener('blur', clearHeld)") && hex.includes("document.addEventListener('visibilitychange', visibility)"), 'Hex Capture interrupted held movement is not released');
 
