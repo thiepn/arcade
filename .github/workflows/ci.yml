@@ -124,6 +124,25 @@ jobs:
       - run: bun run worker:check
       - run: bun run build
       - run: P26_EXPECT_BASE=/ bun run quality:production-p26
+      - run: MA3_EXPECT_BASE=/ bun run quality:ma3
+      - run: MA4_EXPECT_BASE=/ bun run quality:ma4
+      - run: bun run build:pages
+      - run: P26_EXPECT_BASE=/arcade/ bun run quality:production-p26
+      - run: MA3_EXPECT_BASE=/arcade/ bun run quality:ma3
+      - run: MA4_EXPECT_BASE=/arcade/ bun run quality:ma4
+
+  legacy-browser-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bun run build
       - name: Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23 / P24
         shell: bash
         run: |
@@ -162,12 +181,6 @@ jobs:
           P22_CHROME_PATH="$chrome" bun run quality:browser-p22
           P23_CHROME_PATH="$chrome" bun run quality:browser-p23
           P24_CHROME_PATH="$chrome" bun run quality:browser-p24
-      - run: MA3_EXPECT_BASE=/ bun run quality:ma3
-      - run: MA4_EXPECT_BASE=/ bun run quality:ma4
-      - run: bun run build:pages
-      - run: P26_EXPECT_BASE=/arcade/ bun run quality:production-p26
-      - run: MA3_EXPECT_BASE=/arcade/ bun run quality:ma3
-      - run: MA4_EXPECT_BASE=/arcade/ bun run quality:ma4
 
   p26-production-browser:
     runs-on: ubuntu-latest
