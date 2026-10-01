@@ -1161,6 +1161,9 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
             onPointerLeave={() => {
               gameStateRef.current.keys.left = false;
             }}
+            onPointerCancel={() => {
+              gameStateRef.current.keys.left = false;
+            }}
             className="w-13 h-13 rounded-2xl bg-zinc-900/90 border border-cyan-500/40 text-cyan-400 flex items-center justify-center active:scale-95 active:bg-cyan-500/20 backdrop-blur-md"
             aria-label="Turn Left"
             aria-keyshortcuts="A ArrowLeft"
@@ -1177,6 +1180,9 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
               gameStateRef.current.keys.right = false;
             }}
             onPointerLeave={() => {
+              gameStateRef.current.keys.right = false;
+            }}
+            onPointerCancel={() => {
               gameStateRef.current.keys.right = false;
             }}
             className="w-13 h-13 rounded-2xl bg-zinc-900/90 border border-cyan-500/40 text-cyan-400 flex items-center justify-center active:scale-95 active:bg-cyan-500/20 backdrop-blur-md"
@@ -1208,6 +1214,9 @@ export const AstroBlasterGame: React.FC<GameComponentProps> = ({
               gameStateRef.current.keys.thrust = false;
             }}
             onPointerLeave={() => {
+              gameStateRef.current.keys.thrust = false;
+            }}
+            onPointerCancel={() => {
               gameStateRef.current.keys.thrust = false;
             }}
             className="w-13 h-13 rounded-2xl bg-amber-950/80 border border-amber-500/40 text-amber-400 flex items-center justify-center active:scale-95 active:bg-amber-500/20 backdrop-blur-md font-mono text-xs font-bold"
