@@ -110,8 +110,12 @@ for (const token of ['isNeonRailMasteryMilestone', 'triggerSurge', 'surgeCharges
 }
 assert(rail.includes('NEON_RAIL_MAX_SURGE_CHARGES'), 'Neon Rail Surge charges are not bounded');
 assert(
-  rail.includes('if (isPausedRef.current || !gameStateRef.current.isAlive) return;'),
-  'Neon Rail keyboard listener blocks post-run shell controls',
+  rail.includes('isPausedRef.current || !gameStateRef.current.isAlive ||') &&
+    rail.includes('event.repeat ||') &&
+    rail.includes('event.altKey ||') &&
+    rail.includes('event.ctrlKey ||') &&
+    rail.includes('event.metaKey'),
+  'Neon Rail keyboard listener blocks post-run shell controls or captures modified/repeated input',
 );
 assert(rail.includes('Shift: Surge'), 'Neon Rail desktop controls do not teach how to spend earned Surge');
 
