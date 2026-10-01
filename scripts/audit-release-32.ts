@@ -116,7 +116,13 @@ const phaseFiles = [
 ] as const;
 for (const [path, label] of phaseFiles) assert(existsSync(join(root, path)), `${label} is missing`);
 
-assert(ci.includes('legacy-browser-regression:') && ci.includes('Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23 / P24'), 'legacy browser regression chain is not isolated and enforced through P24');
+assert(
+  ci.includes('legacy-browser-regression:') &&
+  ci.includes('phase: [p3, p17, p18, p19, p20, p21, p22, p23, p24]') &&
+  ci.includes('Browser gameplay certification — ${{ matrix.phase }}') &&
+  ci.includes('p24) P24_CHROME_PATH="$chrome" bun run quality:browser-p24 ;;'),
+  'legacy browser regression phases are not independently enforced through P24',
+);
 assert(ci.includes('p26-production-browser:') && ci.includes('P26 high-DPR production gameplay matrix') && ci.includes('P26_CHROME_PATH="$chrome" bun run quality:browser-p26'), 'P26 browser certification is not isolated into its production job');
 
 if (errors.length) {
