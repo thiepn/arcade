@@ -104,6 +104,42 @@ const assertCandidateMarker = async (page, id) => {
   }
 };
 
+const assertIdentityControlSemantics = async (page, id, phase = 'before') => {
+  if (id === 'snake') {
+    for (const [label, shortcut] of [['Steer up','ArrowUp W'],['Steer left','ArrowLeft A'],['Steer down','ArrowDown S'],['Steer right','ArrowRight D']]) {
+      const control = page.locator(`button[aria-label="${label}"]`);
+      assert(await control.count() === 1, `Cyber Serpent missing ${label} control semantics`);
+      assert(await control.getAttribute('aria-keyshortcuts') === shortcut, `Cyber Serpent ${label} shortcut mismatch`);
+    }
+  } else if (id === 'neonrail') {
+    const phase = page.locator('button[aria-label="Activate phase shield"]');
+    const surge = page.locator('button[aria-label="Activate score surge"]');
+    assert(await phase.getAttribute('aria-keyshortcuts') === 'Space', 'Neon Rail Phase does not expose Space');
+    assert(await surge.getAttribute('aria-keyshortcuts') === 'Shift', 'Neon Rail Surge does not expose Shift');
+    assert(['true','false'].includes(await surge.getAttribute('aria-pressed')), 'Neon Rail Surge does not expose active state');
+  } else if (id === 'slingshot') {
+    const launch = page.getByRole('button', { name: /Release orbit|Launch perfect slingshot/i });
+    assert(await launch.getAttribute('aria-keyshortcuts') === 'Space Enter ArrowUp', 'Slingshot launch shortcuts are not exposed');
+  } else if (id === 'bubblebuster') {
+    const swap = page.getByRole('button', { name: 'Swap orb chamber' });
+    const burst = page.getByRole('button', { name: /Orb Burst/i });
+    assert(await swap.getAttribute('aria-keyshortcuts') === 'Q', 'Orb Cannon Swap does not expose Q');
+    assert(await burst.getAttribute('aria-keyshortcuts') === 'F Shift', 'Orb Cannon Burst does not expose F/Shift');
+    assert(['true','false'].includes(await burst.getAttribute('aria-pressed')), 'Orb Cannon Burst does not expose armed state');
+  } else if (id === 'matrix') {
+    const overclock = page.getByRole('button', { name: 'Overclock next round' });
+    assert(await overclock.getAttribute('aria-keyshortcuts') === 'O', 'Matrix Overclock does not expose O');
+    assert(['true','false'].includes(await overclock.getAttribute('aria-pressed')), 'Matrix Overclock does not expose armed state');
+    if (phase === 'after') assert(await overclock.getAttribute('aria-pressed') === 'true', 'Matrix O input did not arm semantic Overclock state');
+  } else if (id === 'knifetarget') {
+    const canvas = page.locator('#knife-target-container canvas');
+    assert((await canvas.getAttribute('aria-label') || '').includes('Knife target aiming area'), 'Knife Target playfield lacks input semantics');
+  } else if (id === 'roadcross') {
+    const forward = page.getByRole('button', { name: 'Move Forward 1 Block' });
+    assert(await forward.getAttribute('aria-keyshortcuts') === 'ArrowUp W Space', 'Crosser Forward shortcut metadata is missing');
+  }
+};
+
 const exerciseCandidateInput = async (page, id) => {
   if (id === 'snake') {
     await page.keyboard.press('ArrowRight');
@@ -136,23 +172,24 @@ const exerciseCandidateInput = async (page, id) => {
     const after = await hud.getAttribute('data-p22-step');
     assert(before !== after && String(after).includes('COMBO 1+'), `Orb Cannon committed SWAP did not advance CHAMBER READ to its COMBO 1+ resolve step: ${after}`);
   } else if (id === 'matrix') {
-    // Wait for the actual lazy-loaded Matrix game control rather than allowing
-    // the P22 HUD's protocol/Overclock copy to serve as a readiness signal.
-    const overclock = page.locator('.game-shell button[title^="Next round:"]');
+    const overclock = page.getByRole('button', { name: 'Overclock next round' });
     await overclock.waitFor({ state: 'visible', timeout: 5000 });
-    assert(await overclock.count() === 1, 'Memory Matrix did not expose exactly one existing Overclock control');
     assert(await overclock.isEnabled(), 'Memory Matrix Overclock control was unexpectedly disabled');
-    // Matrix owns this shortcut through KeyboardEvent.key, not KeyboardEvent.code.
+    assert(await overclock.getAttribute('aria-pressed') === 'false', 'Matrix Overclock should begin unarmed');
+    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'o', code: 'KeyO', repeat: true, bubbles: true })));
+    assert(await overclock.getAttribute('aria-pressed') === 'false', 'Matrix repeated O key toggled Overclock');
     await page.keyboard.press('o');
-    await page.waitForFunction(() => {
-      const control = document.querySelector('.game-shell button[title^="Next round:"]');
-      return control?.textContent?.includes('OVERCLOCK ARMED') ?? false;
-    }, null, { timeout: 1200 });
-    await waitForShellText(page, ['OVERCLOCK ARMED'], 'Matrix O key-value input did not arm existing Overclock decision');
+    await page.waitForFunction(() => document.querySelector('button[aria-label="Overclock next round"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 1200 });
+    await waitForShellText(page, ['OVERCLOCK ARMED'], 'Matrix O key input did not arm existing Overclock decision');
   } else if (id === 'knifetarget') {
     await page.keyboard.press('Space');
     await page.waitForTimeout(100);
   } else if (id === 'roadcross') {
+    const hud = page.locator('[data-p22-promotion="roadcross"]');
+    const before = await hud.getAttribute('data-p22-step');
+    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', code: 'ArrowLeft', repeat: true, bubbles: true })));
+    await page.waitForTimeout(40);
+    assert(await hud.getAttribute('data-p22-step') === before, 'Crosser repeated/rejected input mutated P22 District Route state');
     for (const key of ['ArrowLeft', 'ArrowLeft', 'ArrowUp', 'ArrowUp']) {
       await page.keyboard.press(key);
       await page.waitForTimeout(180);
@@ -167,6 +204,7 @@ const runCandidate = async (page, profile, id) => {
   try {
     await launch(page, id);
     await assertCandidateMarker(page, id);
+    await assertIdentityControlSemantics(page, id, 'before');
 
     const shellState = await page.evaluate(() => {
       const shell = document.querySelector('.game-shell');
@@ -189,6 +227,7 @@ const runCandidate = async (page, profile, id) => {
 
     await exerciseCandidateInput(page, id);
     await assertCandidateMarker(page, id);
+    await assertIdentityControlSemantics(page, id, 'after');
 
     await page.locator('#game-pause-btn').click();
     await page.waitForFunction(() => Boolean(document.querySelector('[data-p18-dialog="pause"][data-p19-dialog="pause"]')), null, { timeout: 3000 });
@@ -201,6 +240,10 @@ const runCandidate = async (page, profile, id) => {
     assert(pauseText.includes('OBJECTIVE') && pauseText.includes('BACK TO ARCADE'), `${id} pause lost P18/P19 teaching/navigation`);
     assert(pauseText.includes(expectedTitles[id]), `${id} pause is missing P22 mastery teaching`);
     await page.locator('[data-p19-dialog="pause"]').getByRole('button', { name: /^RESUME \(ESC\)$/i }).click();
+    await page.waitForFunction(() => {
+      const stage = document.querySelector('[data-p18-stage]');
+      return Boolean(stage && document.activeElement === stage);
+    }, null, { timeout: 1500 });
 
     await page.locator('#game-restart-btn').click();
     await page.waitForTimeout(180);
