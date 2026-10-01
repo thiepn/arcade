@@ -78,6 +78,8 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
 
   const gameStateRef = useRef({
     playerAngle: 0,
@@ -124,7 +126,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
     state.currentLane = (state.currentLane + 1) % 3;
     state.targetRadius = state.baseRadii[state.currentLane];
     state.warpEffect = 1;
-    if (soundEnabled) sounds.playWarp();
+    if (soundEnabledRef.current) sounds.playWarp();
   };
 
   const jumpPrevLane = () => {
@@ -134,7 +136,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
     state.currentLane = (state.currentLane - 1 + 3) % 3;
     state.targetRadius = state.baseRadii[state.currentLane];
     state.warpEffect = 1;
-    if (soundEnabled) sounds.playWarp();
+    if (soundEnabledRef.current) sounds.playWarp();
   };
 
   const reverseDirection = () => {
@@ -142,7 +144,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
     if (!state.isAlive || isPausedRef.current) return;
 
     state.direction *= -1;
-    if (soundEnabled) sounds.playPop();
+    if (soundEnabledRef.current) sounds.playPop();
   };
 
   const pulseOrbit = () => {
@@ -153,7 +155,7 @@ export const OrbitGame: React.FC<GameComponentProps> = ({
     state.targetRadius = state.baseRadii[state.currentLane];
     state.direction *= -1;
     state.warpEffect = 1;
-    if (soundEnabled) sounds.playWarp();
+    if (soundEnabledRef.current) sounds.playWarp();
   };
 
   const setSafeTimeout = useSafeTimeout();
