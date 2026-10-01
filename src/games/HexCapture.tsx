@@ -491,7 +491,7 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
           <button type="button" aria-label="Move right" aria-pressed={heldDirection === 'right'} aria-keyshortcuts="D ArrowRight" onPointerDown={() => pressDir('right')} onPointerUp={() => releaseDir('right')} onPointerCancel={() => releaseDir('right')} className="h-9 w-10 rounded-lg border border-violet-400/25 bg-violet-500/10 text-sm text-violet-100 active:bg-violet-500/30">▶</button>
         </div>
         <div className="flex justify-end">
-          <button type="button" onClick={toggleCapture} aria-pressed={hud.armed} aria-label="Arm capture route" aria-keyshortcuts="Space" className={`min-h-10 rounded-xl border px-3 py-2 text-[10px] font-mono-arcade font-bold sm:text-xs ${hud.armed ? 'border-amber-300 bg-amber-400/20 text-amber-100' : 'border-cyan-300/30 bg-cyan-400/10 text-cyan-100'}`}>
+          <button type="button" onClick={toggleCapture} aria-pressed={hud.armed} aria-label="Arm capture route" aria-keyshortcuts="Space" className={`min-h-12 min-w-12 rounded-xl border px-3 py-2 text-[10px] font-mono-arcade font-bold sm:text-xs ${hud.armed ? 'border-amber-300 bg-amber-400/20 text-amber-100' : 'border-cyan-300/30 bg-cyan-400/10 text-cyan-100'}`}>
             {hud.armed ? 'CAPTURE ARMED' : 'CAPTURE'}
           </button>
         </div>
