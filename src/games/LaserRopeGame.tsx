@@ -48,6 +48,8 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
 
   const [hudState, setHudState] = useRenderPublishedState({
     score: 0,
@@ -105,7 +107,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
       state.playerVY = state.jumpCount === 0 ? 560 : 480;
       state.jumpCount++;
       state.isGrounded = false;
-      if (soundEnabled) sounds.playJump();
+      if (soundEnabledRef.current) sounds.playJump();
       for (let i = 0; i < 8; i++) {
         state.particles.push({
           x: (Math.random() - 0.5) * 30,
@@ -127,7 +129,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
     if (state.isGrounded) {
       state.isSliding = true;
       state.slideTimer = 0.65;
-      if (soundEnabled) sounds.playDriftSkid();
+      if (soundEnabledRef.current) sounds.playDriftSkid();
       for (let i = 0; i < 6; i++) {
         state.particles.push({
           x: (Math.random() - 0.5) * 25,
@@ -153,7 +155,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
     state.redlineCharges--;
     state.redlineActive = true;
     state.redlineTimer = LASER_ROPE_REDLINE_DURATION_SEC;
-    if (soundEnabled) sounds.playFeverMode();
+    if (soundEnabledRef.current) sounds.playFeverMode();
   };
 
   useEffect(() => {
@@ -325,7 +327,7 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
               const finalPts = orbPts * (state.isFeverActive ? 2 : 1) * state.multiplier;
               state.score += finalPts;
               onScoreUpdate(state.score);
-              if (soundEnabled) sounds.playScore();
+              if (soundEnabledRef.current) sounds.playScore();
               state.popups.push({ id: state.nextId++, x: centerX + orb.x, y: groundY - orb.y - 20, text, color, life: 0.8 });
               for (let i = 0; i < 8; i++) {
                 state.particles.push({ x: orb.x, y: -orb.y, vx: (Math.random() - 0.5) * 100, vy: (Math.random() - 0.5) * 100, life: 0.35, maxLife: 0.35, color, size: 3 });
@@ -390,24 +392,24 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
                 if (choreography.progressed) state.modeChangeTimer = 0;
                 if (choreography.completed) {
                   state.popups.push({ id: state.nextId++, x: centerX, y: groundY - 185, text: `CHOREOGRAPHY +${choreography.bonus}`, color: '#67E8F9', life: 1.2 });
-                  if (soundEnabled) sounds.playSuccess();
+                  if (soundEnabledRef.current) sounds.playSuccess();
                 }
               }
 
               state.score += earnedPts;
               onScoreUpdate(state.score);
-              if (soundEnabled) sounds.playScore();
+              if (soundEnabledRef.current) sounds.playScore();
               state.popups.push({ id: state.nextId++, x: centerX, y: groundY - state.playerY - 25, text: `${evasionText} +${earnedPts} base`, color: '#34D399', life: 0.8 });
               for (let i = 0; i < 10; i++) {
                 state.particles.push({ x: (Math.random() - 0.5) * 40, y: -state.playerY, vx: (Math.random() - 0.5) * 140, vy: (Math.random() - 0.5) * 140, life: 0.4, maxLife: 0.4, color: '#34D399', size: 3 });
               }
             } else if (state.hasShield) {
               state.hasShield = false;
-              if (soundEnabled) sounds.playShockwave();
+              if (soundEnabledRef.current) sounds.playShockwave();
               state.popups.push({ id: state.nextId++, x: centerX, y: groundY - state.playerY - 30, text: 'SHIELD DEFLECTED!', color: '#A855F7', life: 1.0 });
             } else {
               state.isAlive = false;
-              if (soundEnabled) sounds.playExplosion();
+              if (soundEnabledRef.current) sounds.playExplosion();
               for (let i = 0; i < 20; i++) {
                 state.particles.push({ x: (Math.random() - 0.5) * 20, y: -state.playerY, vx: (Math.random() - 0.5) * 200, vy: (Math.random() - 0.5) * 200, life: 0.6, maxLife: 0.6, color: '#EF4444', size: 4 });
               }
@@ -555,16 +557,18 @@ export const LaserRopeGame: React.FC<GameComponentProps> = ({
         onClick={(event) => { event.stopPropagation(); triggerRedline(); }}
         disabled={hudState.redlineCharges <= 0 || hudState.redlineActive}
         className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-xl bg-rose-500/20 border border-rose-400/60 text-rose-200 font-mono text-[10px] font-black disabled:opacity-45 pointer-events-auto"
-        aria-label="Activate Redline"
+        aria-label={`Redline, ${hudState.redlineCharges} charge${hudState.redlineCharges === 1 ? '' : 's'} remaining`}
+        aria-pressed={hudState.redlineActive}
+        aria-keyshortcuts="F Shift"
       >
         {hudState.redlineActive ? `REDLINE ${hudState.redlinePercent}%` : `REDLINE (${hudState.redlineCharges}) · F/SHIFT`}
       </button>
 
       <div className="absolute bottom-2.5 left-2.5 right-2.5 sm:bottom-3 sm:left-4 sm:right-4 flex items-center justify-between gap-2 pointer-events-auto z-10">
-        <button type="button" onClick={(event) => { event.stopPropagation(); triggerSlide(); }} className="h-12 min-w-0 flex-1 sm:flex-none sm:px-6 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-purple-500/50 text-purple-300 font-black flex items-center justify-center gap-1.5 active:scale-95 shadow-lg cursor-pointer" aria-label="Slide / Duck">
+        <button type="button" onClick={(event) => { event.stopPropagation(); triggerSlide(); }} className="h-12 min-w-0 flex-1 sm:flex-none sm:px-6 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-purple-500/50 text-purple-300 font-black flex items-center justify-center gap-1.5 active:scale-95 shadow-lg cursor-pointer" aria-label="Slide / Duck" aria-keyshortcuts="ArrowDown S">
           <ArrowDown className="w-5 h-5" /><span className="font-mono text-xs font-black">SLIDE / DUCK</span>
         </button>
-        <button type="button" onClick={(event) => { event.stopPropagation(); triggerJump(); }} className="h-12 min-w-0 flex-1 sm:flex-none sm:px-7 rounded-xl bg-pink-500 hover:bg-pink-400 text-white font-black flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-pink-500/30 cursor-pointer" aria-label="Jump / Double Jump">
+        <button type="button" onClick={(event) => { event.stopPropagation(); triggerJump(); }} className="h-12 min-w-0 flex-1 sm:flex-none sm:px-7 rounded-xl bg-pink-500 hover:bg-pink-400 text-white font-black flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-pink-500/30 cursor-pointer" aria-label="Jump / Double Jump" aria-keyshortcuts="Space ArrowUp W">
           <ArrowUp className="w-5 h-5" /><span className="font-mono text-xs font-black">JUMP</span>
         </button>
       </div>
