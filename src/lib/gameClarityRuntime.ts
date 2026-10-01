@@ -250,9 +250,17 @@ const setupDialogFocus = (state: ShellState, dialog: HTMLElement | null) => {
   state.activeDialog = dialog;
 
   if (!dialog) {
-    const frame = requestAnimationFrame(() => {
-      if (state.shell.isConnected && state.stage.isConnected) state.stage.focus({ preventScroll: true });
-    });
+    let frame = 0;
+    let attempts = 0;
+    const restoreStageFocus = () => {
+      if (!state.shell.isConnected || !state.stage.isConnected) return;
+      state.stage.focus({ preventScroll: true });
+      attempts++;
+      if (document.activeElement !== state.stage && attempts < 4) {
+        frame = requestAnimationFrame(restoreStageFocus);
+      }
+    };
+    frame = requestAnimationFrame(restoreStageFocus);
     state.dialogCleanup = () => cancelAnimationFrame(frame);
     return;
   }
