@@ -68,7 +68,8 @@ The hardening pass strengthens the evidence and corrects that one progression-dr
 - Perfect Stop now locks the complete Final Chaos pressure/window contract, not just speed and reversal timing;
 - Reaction proves any third identical LEFT/RIGHT cue is forcibly broken across the RNG range;
 - Merge proves the complete `2/2/4/4/8/16` multiset on repeated bag refills;
-- all **32 live integration paths** are checked in the actual game source so an imported-but-unused helper can no longer satisfy P25;
+- all **32 live integration paths** are checked in the actual production-resolved game source so an imported-but-unused helper can no longer satisfy P25;
+- Vector Golf and Hex Capture replace the retired Gravity/Astro engines in the current live-integration ledger; the historical Gravity/Astro P25 envelopes remain source-provenance checks only and are not presented as shipped gameplay;
 - pre-P25 formulas for score-driven Snake speed, uncapped Vanguard boss HP, wide Crosser traffic RNG, old Type Rush linear speed and other key failure modes are explicitly forbidden.
 
 The audit also found one certification mismatch in Gravity. `GRAVITY_MAX_STEPS_PER_FRAME` was set to `6`, but the pre-existing 50 ms frame clamp and 60 Hz fixed step can request at most three steps from a valid accumulator. The explicit cap is now `3`, matching the real integrator bound. This does **not** make Gravity harder or easier; it makes the stated catch-up contract truthful and permanently testable.
