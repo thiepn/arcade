@@ -187,6 +187,18 @@ export const VectorGolf: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
   }, [isPaused]);
 
   useEffect(() => {
+    const clearDrag = () => { stateRef.current.dragging = false; };
+    const onVisibility = () => { if (document.hidden) clearDrag(); };
+    window.addEventListener('blur', clearDrag);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearDrag();
+      window.removeEventListener('blur', clearDrag);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.repeat || isPaused || isInteractiveTarget(event.target)) return;
       const st = stateRef.current;
