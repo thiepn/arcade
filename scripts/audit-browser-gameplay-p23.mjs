@@ -154,9 +154,25 @@ const exercise = async (page, id) => {
     await gameRoot.click({ position: { x: 12, y: 12 } });
     await gameRoot.getByText(/^(PERFECT|GREAT|GOOD|MISS)\s*•\s*\+/).waitFor({ state: 'visible', timeout: 2500 });
     await gameRoot.getByText(/^TAP FOR\s+/).waitFor({ state: 'visible', timeout: 2500 });
+    const sectorBeforeRepeat = (await gameRoot.getByText(/^SECTOR\s+/).innerText()).trim();
+    await gameRoot.evaluate((root) => root.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', repeat: true, bubbles: true })));
+    await page.waitForTimeout(30);
+    assert((await gameRoot.getByText(/^SECTOR\s+/).innerText()).trim() === sectorBeforeRepeat, 'Perfect Stop repeated Space auto-advanced the result screen');
   } else if (id === 'reaction') {
     await page.keyboard.press('Space');
     await page.getByText('FALSE START', { exact: true }).waitFor({ state: 'visible', timeout: 2500 });
+    await page.keyboard.press('Space');
+    await page.getByText('WAIT FOR THE SIGNAL', { exact: true }).waitFor({ state: 'visible', timeout: 2500 });
+    await page.keyboard.press('Space');
+    await page.getByText('FALSE START', { exact: true }).waitFor({ state: 'visible', timeout: 2500 });
+    const circuitGroup = page.getByRole('group', { name: 'Choose Reaction Circuit' });
+    await circuitGroup.waitFor({ state: 'visible', timeout: 2500 });
+    const speedChoice = page.getByRole('button', { name: 'Choose Speed Circuit' });
+    const controlChoice = page.getByRole('button', { name: 'Choose Control Circuit' });
+    assert(await speedChoice.getAttribute('aria-keyshortcuts') === 'ArrowLeft A 1', 'Reaction Speed Circuit shortcut metadata is missing');
+    assert(await controlChoice.getAttribute('aria-keyshortcuts') === 'ArrowRight D 2', 'Reaction Control Circuit shortcut metadata is missing');
+    await speedChoice.click();
+    await page.waitForFunction(() => document.querySelector('[data-p23-transform="REACTION CIRCUIT"]')?.textContent?.includes('SPEED CIRCUIT 1/3'), null, { timeout: 1200 });
   } else if (id === 'pulse') {
     await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight', repeat: true, bubbles: true })));
     await page.waitForTimeout(30);
