@@ -197,6 +197,11 @@ assert(browserAudit.includes("name: 'small-mobile'"), 'P18 browser audit missing
 assert(browserAudit.includes("reducedMotion: 'reduce'"), 'P18 browser audit lacks reduced-motion coverage');
 assert(browserAudit.includes('accessible shell labels'), 'P18 browser audit does not certify accessible shell labels');
 assert(browserAudit.includes('pause teaching panel'), 'P18 browser audit does not certify structured pause teaching');
+assert(
+  browserAudit.includes("getAttribute('data-gameplay-active') === 'true'") &&
+  browserAudit.includes('first-run hint intercepts gameplay input'),
+  'P18 first-run hint probe does not wait for genuine live gameplay ownership',
+);
 assert(browserAudit.includes('modal background isolation'), 'P18 browser audit does not certify inert modal background isolation');
 assert(browserAudit.includes('programmatic focus escaped'), 'P18 browser audit does not certify forced focus containment');
 assert(browserAudit.includes("back?.closest('[inert]')"), 'P18 browser audit does not certify inherited inert background isolation');
