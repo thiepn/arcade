@@ -366,7 +366,7 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat) return;
+      if (isPausedRef.current || event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;
 
       if (mode === 'RESULT') {
         if (circuitChoicePending) {
@@ -528,9 +528,23 @@ export const ReactionGame: React.FC<GameComponentProps> = ({
             {roundIndex === REACTION_ROUNDS.length - 1 && overtimeUnlocked && <div className="px-4 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono-arcade text-xs font-black">OVERTIME UNLOCKED</div>}
 
             {circuitChoicePending ? (
-              <div className="mt-2 grid grid-cols-2 gap-2 w-full max-w-sm">
-                <div className="px-4 py-2 rounded-xl bg-sky-500/10 border border-sky-400/30 text-sky-200 font-mono-arcade text-xs">← / A • SPEED CIRCUIT</div>
-                <div className="px-4 py-2 rounded-xl bg-violet-500/10 border border-violet-400/30 text-violet-200 font-mono-arcade text-xs">D / → • CONTROL CIRCUIT</div>
+              <div role="group" aria-label="Choose Reaction Circuit" className="mt-2 grid grid-cols-2 gap-2 w-full max-w-sm pointer-events-auto">
+                <button
+                  type="button"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => { event.stopPropagation(); chooseCircuitAndContinue('SPEED'); }}
+                  aria-label="Choose Speed Circuit"
+                  aria-keyshortcuts="ArrowLeft A 1"
+                  className="px-4 py-2 rounded-xl bg-sky-500/10 border border-sky-400/30 text-sky-200 font-mono-arcade text-xs"
+                >← / A • SPEED CIRCUIT</button>
+                <button
+                  type="button"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => { event.stopPropagation(); chooseCircuitAndContinue('CONTROL'); }}
+                  aria-label="Choose Control Circuit"
+                  aria-keyshortcuts="ArrowRight D 2"
+                  className="px-4 py-2 rounded-xl bg-violet-500/10 border border-violet-400/30 text-violet-200 font-mono-arcade text-xs"
+                >D / → • CONTROL CIRCUIT</button>
               </div>
             ) : (
               <div className="mt-2 px-5 py-2 rounded-xl bg-[#18181B] border border-[#27272A] font-mono-arcade text-xs text-[#A1A1AA] flex items-center gap-2">
