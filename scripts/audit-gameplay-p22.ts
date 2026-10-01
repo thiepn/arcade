@@ -56,6 +56,7 @@ for (const record of P22_PROMOTIONS) {
 }
 
 const p15 = read('docs/P15_ROSTER_AUDIT.md');
+const report = read('docs/P22_MID_A_PROMOTION_CERTIFICATION.md');
 for (const token of [
   '| 18 | Cyber Serpent | A | 8 | 9 | 9 | 9 | 7 | 8 | 50 |','| 19 | Orbit | A | 8 | 9 | 9 | 8 | 8 | 8 | 50 |','| 20 | Neon Rail Shift | A | 8 | 9 | 9 | 8 | 8 | 8 | 50 |','| 21 | Orbital Slingshot | A | 8 | 8 | 9 | 9 | 8 | 8 | 50 |',
   '| 22 | Orb Cannon | A | 8 | 9 | 8 | 8 | 8 | 8 | 49 |','| 23 | Memory Matrix | A | 8 | 9 | 9 | 8 | 7 | 8 | 49 |','| 24 | Knife Target | A | 8 | 8 | 9 | 8 | 8 | 8 | 49 |','| 25 | Cyber Crosser | A | 8 | 8 | 9 | 8 | 8 | 8 | 49 |','- **S:** 5','- **A:** 20','- **B:** 7',
@@ -158,6 +159,13 @@ const pkg = read('package.json'); const ci = read('.github/workflows/ci.yml'); c
 assert(pkg.includes('"quality:gameplay-p22"') && pkg.includes('"quality:browser-p22"'), 'package.json missing P22 quality scripts');
 assert(ci.includes('quality:gameplay-p22') && ci.includes('quality:browser-p22'), 'CI missing P22 gates');
 assert(release.includes('P22') || release.includes('p22'), 'release32 not extended through P22');
+for (const marker of [
+  '## 2026-10-01 identity-preserving depth hardening',
+  'The original eight P22 promotion scorecards remain frozen.',
+  'P22 no longer infers route movement from captured keyboard/click/pointer intent.',
+  'repeated Matrix **O** key does not toggle Overclock',
+  'No rating point is awarded for these corrections.',
+]) assert(report.includes(marker), `P22 report missing hardening evidence: ${marker}`);
 
 const browserAudit = read('scripts/audit-browser-gameplay-p22.mjs');
 for (const marker of [
