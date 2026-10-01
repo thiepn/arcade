@@ -34,6 +34,8 @@
 - Add P26 long-horizon balance/policy certification, high-DPR landscape/portrait/tablet browser profiles, replacement lifecycle stress, and exact built-artifact provenance checks.
 - Certify root and Pages build artifacts before deployment and run a P26 quick smoke against the deployed Pages URL after successful CI.
 - Keep physical handset/tablet signoff as an explicit manual boundary rather than mislabeling browser emulation as real hardware evidence.
+- Make Vector Golf's Aim Guide and Hex Capture's Capture action retain a 48px physical CSS height even under the legacy ≥640px game-button min-size reset.
+- Retry gameplay-stage focus for a bounded four animation frames after modal close so P18/P19 inert-release ordering cannot strand keyboard focus under high-DPR device profiles.
 - Preserve compatibility ids, score version, AP anchors, policy id and historical P15-P24 ledgers.
 
 ### P25 deep game polish / all-game balance hardening — 2026-10-01
