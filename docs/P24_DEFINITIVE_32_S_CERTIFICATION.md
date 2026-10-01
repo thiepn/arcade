@@ -1,10 +1,12 @@
 # P24 — Definitive 32/32 S-Rank Certification
 
-Baseline: `994bcab64950c452bd887ed42fcef5486fe0665b` (production-certified P23 main).
+Baseline: `994bcab64950c452bd887ed42fcef5486fe0665b` (original P24 certification baseline).
+
+Current hardening baseline: `72adc8101ff0db19c2927ed56e2896adcb434139` (2026-10-01 hardened P23).
 
 ## Purpose
 
-P24 is the final **certification-only** phase of the P15→P24 quality program. It does not add mechanics, modes, content, progression, replay infrastructure, retention systems, scoring changes, Worker/API/D1 behavior, dependencies, or presentation runtime. Its job is narrower and stricter: prove that the exact post-P23 32-game roster can be represented by one internally consistent current score ledger in which every game clears the unchanged P15 S threshold, while every phase that earned those scores remains permanently enforced.
+P24 remains the final **certification-only** scoring phase of the P15→P24 quality program: it awards no new rating points and adds no mechanics, modes, content, progression, replay infrastructure, retention systems, scoring changes, Worker/API/D1 behavior, dependencies, or presentation runtime. During the current-source re-audit, however, certification blockers were found in input ownership and control semantics for several of the five games that were already S in P15. Those defects are corrected as pre-certification hardening; they do not alter the rubric or score ledger. P24's job remains to prove that the current 32-game roster is represented by one internally consistent ledger in which every game clears the unchanged P15 S threshold and every phase that earned those scores remains permanently enforced.
 
 The definitive current target is **32 S / 0 A / 0 B**.
 
@@ -94,14 +96,16 @@ The 32 records partition exactly into:
 - current distribution is exactly 32 S;
 - historical P15 distribution remains 5 S / 20 A / 7 B;
 - permanent package/CI wiring for P24;
-- continued presence of P20–P23 promotion certifications;
-- P24 documentation and browser-gate boundaries.
+- continued presence of the hardened P20–P23 promotion certifications;
+- explicit source contracts for the five original P15 S incumbents;
+- current non-scoring 32-game deep-polish continuity;
+- P24 documentation, incumbent sentinel and browser-gate boundaries.
 
 A failure in any source promotion ledger invalidates P24 rather than being papered over locally.
 
 ## Browser certification
 
-`quality:browser-p24` deliberately reruns the mature P19 whole-product browser contract instead of forking a second all-roster harness. The candidate-specific P20, P21, P22 and P23 browser gates remain separate permanent prerequisites.
+`quality:browser-p24` reruns the mature P19 whole-product browser contract for all 32 games and then runs a P24-native sentinel for the five original P15 S incumbents. The candidate-specific P20, P21, P22 and P23 browser gates remain separate permanent prerequisites, so every provenance group has current browser evidence.
 
 The canonical P24 rerun covers:
 
@@ -109,7 +113,7 @@ The canonical P24 rerun covers:
 - mobile 390×844, touch + reduced motion;
 - small mobile 320×568, touch + reduced motion.
 
-That is **96 game/profile sessions** across all 32 games, plus whole-arcade home/library checks, settings persistence, navigation stress, canonical shell controls, pause/focus behavior, restart/exit cleanup, responsive containment and runtime/console cleanliness.
+That is **96 game/profile sessions** across all 32 games, plus **15 P15-incumbent/profile sentinel sessions** across Neon Pinball, Galaxy Vanguard, Astro Blaster 360, Cyber Block Drop and Neon Rhythm Tapper. The combined P24 gate also retains whole-arcade home/library checks, settings persistence, navigation stress, canonical shell controls, pause/focus behavior, restart/exit cleanup, responsive containment and runtime/console cleanliness.
 
 The permanent browser chain becomes:
 
@@ -140,9 +144,25 @@ P24 is valid only while all prior contracts remain green. CI therefore continues
 
 `quality:release32` is extended through P24 so the definitive certification remains a permanent release requirement.
 
+## 2026-10-01 definitive current-source hardening
+
+The original P24 ledger remains frozen. The current-source audit found certification blockers in the only provenance group without a later promotion-specific hardening pass: the five games that were already S in P15.
+
+- **Neon Pinball:** keyboard flippers now ignore paused/modifier/composition input, release on window blur, and expose left/right pressed state plus A/D/Arrow/Space shortcuts.
+- **Galaxy Vanguard:** a held Nova key can no longer spend multiple bombs through key repeat; keyboard movement state is released on blur; Nova exposes remaining bombs and Space/E/B.
+- **Astro Blaster 360:** keyboard control cannot mutate steering/thrust while paused or dead, Hyperspace rejects held-key repeat, held input clears on blur, touch steering/thrust clears on pointer cancellation, and the mobile controls expose their keyboard equivalents.
+- **Cyber Block Drop:** keyboard/game-loop audio now follows the live Sound preference rather than a mount-time value; mobile controls expose their keyboard equivalents.
+- **Neon Rhythm Tapper:** its already-correct blur cleanup is now surfaced through explicit lane pressed state and lane shortcut metadata.
+
+The dedicated P24 incumbent browser sentinel proves Pinball blur recovery, Vanguard repeat-safe Nova use, Block Drop repeat-safe Hold, Rhythm lane blur recovery, canonical pause/resume focus and clean restart behavior across desktop, mobile and small-mobile profiles.
+
+The current repository also contains the later 32-game deep-polish source layer. P24 treats that layer as non-scoring evidence only: its audit must continue to cover all 32 games and explicitly preserve leaderboard score comparability.
+
+No scorecard receives another point from this hardening pass. The definitive ledger remains **32 S / 0 A / 0 B**.
+
 ## Deliberate non-changes
 
-P24 changes no file under `src/` and introduces no new game runtime. It adds no:
+P24 hardening changes only incumbent input ownership, live-setting reads and control semantics. It introduces no new game runtime or scoring system. It adds no:
 
 - replay recorder/player or ghost run;
 - run-history platform;
@@ -154,7 +174,7 @@ P24 changes no file under `src/` and introduces no new game runtime. It adds no:
 - dependency;
 - scoring rule, physics rule, timing constant or difficulty envelope.
 
-The exact P23 production implementation is what P24 certifies.
+The current implementation—hardened P20–P23 evidence, the five repaired P15 incumbents, and the non-scoring deep-polish layer—is what the refreshed P24 gates certify.
 
 ## Manual review boundary
 
