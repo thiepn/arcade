@@ -319,9 +319,10 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isPausedRef.current || !gameStateRef.current.isAlive) return;
+      if (isPausedRef.current || !gameStateRef.current.isAlive || e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
       gameStateRef.current.keysPressed[e.key] = true;
-      if (e.key === ' ' || e.key === 'e' || e.key === 'E' || e.key === 'b' || e.key === 'B') {
+      if (!e.repeat && (e.key === ' ' || e.key === 'e' || e.key === 'E' || e.key === 'b' || e.key === 'B')) {
+        e.preventDefault();
         triggerBomb();
       }
     };
@@ -330,16 +331,22 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
       gameStateRef.current.keysPressed[e.key] = false;
     };
 
+    const releaseKeyboardInput = () => {
+      gameStateRef.current.keysPressed = {};
+    };
+
     window.addEventListener('mousemove', handlePointerMove);
     window.addEventListener('touchmove', handlePointerMove, { passive: false });
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', releaseKeyboardInput);
 
     return () => {
       window.removeEventListener('mousemove', handlePointerMove);
       window.removeEventListener('touchmove', handlePointerMove);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', releaseKeyboardInput);
     };
   }, [triggerBomb]);
 
@@ -1024,6 +1031,8 @@ export const VanguardGame: React.FC<GameComponentProps> = ({
           type="button"
           onClick={triggerBomb}
           disabled={bombs <= 0 || isPaused}
+          aria-label={`Nova EMP, ${bombs} bomb${bombs === 1 ? '' : 's'} remaining`}
+          aria-keyshortcuts="Space E B"
           className={`px-5 py-3 rounded-xl font-mono-arcade text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 select-none backdrop-blur-md ${
             bombs > 0 && !isPaused
               ? 'bg-cyan-600/90 hover:bg-cyan-500 text-white border-cyan-400 shadow-lg shadow-cyan-500/40 active:scale-95'
