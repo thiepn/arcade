@@ -23,6 +23,17 @@
 
 ## Unreleased
 
+### P23 B-rank transformation / full S-rank roster hardening — 2026-10-01
+- Keep all seven original P23 transformation scorecards frozen; strengthen current behavioral evidence rather than inflating ratings.
+- Prevent Type Rush held-letter repeat, modifier shortcuts and IME composition from counting as typing progress.
+- Make Perfect Stop Space/Enter discrete so a held key cannot stop a sector and immediately auto-advance its result.
+- Harden Reaction circuit input and expose SPEED/CONTROL as actual semantic result-screen controls.
+- Reject held-key retriggers for Pulse Groove Path/Sync Wager and Stack Focus/placement decisions.
+- Make Laser Rope, Aero Pulse and Stack keyboard-owned actions follow the live Sound preference rather than mount-time state.
+- Expose Pulse path/Wager, Laser Redline/Jump/Slide, Aero Flow and Stack Focus through explicit shortcut and active-state semantics.
+- Strengthen P23 browser certification around repeat rejection, real transformation-state changes and P18 Resume focus restoration.
+- Preserve P16–P22 fairness, timing and identity contracts and the original post-P23 32 S / 0 A / 0 B score state.
+
 ### P22 mid-A promotion / identity-preserving depth hardening — 2026-10-01
 - Keep all eight P22 S-promotion scorecards frozen; harden the underlying state/input evidence instead of inflating ratings.
 - Replace Cyber Crosser's inferred global key/click/pointer route tracking with authoritative direction events emitted only after a move is actually committed.
