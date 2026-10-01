@@ -58,8 +58,13 @@ assert(typeRush.includes('previous.typedIndex = 0'), 'Type Rush target switching
 assert(typeRush.includes('getTypeRushTargetBonus(target.y, target.type, wave.index)'), 'Type Rush scoring does not use risk/urgency bonus');
 assert(typeRush.includes('getTypeRushDirective(gameStateRef.current.waveIndex)'), 'Type Rush does not surface wave directives');
 assert(
-  typeRush.includes("isPausedRef.current || !gameStateRef.current.isAlive || event.key === 'Tab'"),
-  'Type Rush global typing handler steals shell shortcuts while paused or after game over',
+  typeRush.includes('isPausedRef.current ||') &&
+    typeRush.includes('!gameStateRef.current.isAlive ||') &&
+    typeRush.includes("event.key === 'Tab' ||") &&
+    typeRush.includes('event.repeat ||') &&
+    typeRush.includes('event.ctrlKey ||') &&
+    typeRush.includes('event.metaKey ||'),
+  'Type Rush global typing handler steals shell shortcuts while paused, after game over, or during modified/repeated input',
 );
 assert(
   typeRush.includes("if (isPausedRef.current || !state.isAlive) return;"),
