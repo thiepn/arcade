@@ -263,12 +263,19 @@ const runGame = async (page, profile, gameId, keys) => {
     // survival games can otherwise end naturally during the input/RAF smoke,
     // which should not be misclassified as a broken pause control.
     await page.locator('#game-pause-btn').click();
+    const pauseDialog = page.locator('[data-p18-dialog="pause"]');
     await page.getByText('GAME PAUSED', { exact: true }).waitFor({ state: 'visible', timeout: 2500 });
     const pauseText = await page.locator('.game-shell').innerText();
     assert(/how to play/i.test(pauseText), 'pause modal lacks How To Play guidance');
     const instructions = await page.getByText(/how to play/i).first().locator('..').innerText().catch(() => '');
     assert(instructions.length >= 20, 'How To Play guidance is empty or too short');
-    await page.locator('#game-pause-btn').click();
+    await pauseDialog.getByRole('button', { name: /^RESUME \(ESC\)$/i }).click();
+    await page.waitForFunction(
+      () => document.getElementById('game-pause-btn')?.getAttribute('aria-pressed') === 'false'
+        && !document.querySelector('[data-p18-dialog="pause"]'),
+      null,
+      { timeout: 2500 },
+    );
     await page.waitForTimeout(80);
 
     // From this point onward, long-task accounting is gameplay-only.
