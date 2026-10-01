@@ -135,6 +135,8 @@ export const AirHockeyGame: React.FC<GameComponentProps> = ({
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (isPausedRef.current || !gameStateRef.current.isAlive) return;
+    const target = e.target instanceof Element ? e.target : null;
+    if (target?.closest('button, input, select, textarea, [role="button"]')) return;
     e.preventDefault();
     e.currentTarget.setPointerCapture?.(e.pointerId);
     updatePointerTarget(e);
