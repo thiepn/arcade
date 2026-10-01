@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+  BLADE_CADENCE_FULL_PRESSURE_WAVES,
   chooseBalancedReactionChoice,
   drawMergeTileFromBag,
   getAirHockeyOpeningPace,
@@ -71,10 +72,14 @@ const asteroidCounts = Array.from({ length: 100 }, (_, index) => getAstroLargeAs
 assert(nonDecreasing(asteroidCounts) && asteroidCounts[0] === 4 && asteroidCounts.every((value) => value <= 9));
 assert.deepEqual([1, 4, 8, 20].map(getAstroLargeAsteroidCount), [4, 7, 9, 9]);
 
-const bladeCadence = Array.from({ length: 121 }, (_, index) => getBladeSpawnIntervalFrames(index * 100));
+assert.equal(BLADE_CADENCE_FULL_PRESSURE_WAVES, 24);
+const bladeCadence = Array.from(
+  { length: BLADE_CADENCE_FULL_PRESSURE_WAVES * 2 + 1 },
+  (_, waveCount) => getBladeSpawnIntervalFrames(waveCount),
+);
 assert(nonIncreasing(bladeCadence) && bladeCadence.every((value) => value >= 50 && value <= 65));
 assert.equal(getBladeSpawnIntervalFrames(0), 65);
-assert.equal(getBladeSpawnIntervalFrames(12000), 50);
+assert.equal(getBladeSpawnIntervalFrames(BLADE_CADENCE_FULL_PRESSURE_WAVES), 50);
 assert.equal(getBladeSpawnIntervalFrames(100000), 50);
 
 const blockDropIntervals = Array.from({ length: 60 }, (_, index) => getBlockDropInterval(index + 1));
@@ -289,7 +294,7 @@ assert(PERFECT_STOP_ROUNDS.every((round) =>
 const integrationChecks: readonly [string, readonly string[]][] = [
   ['src/games/AirHockeyGame.tsx', ['diffConfig.aiSpeed * getAirHockeyOpeningPace(60 - state.timeLeft) * table.motionScale']],
   ['src/games/AstroBlasterGame.tsx', ['const numLarge = getAstroLargeAsteroidCount(lvl);']],
-  ['src/games/BladeGame.tsx', ['state.spawnInterval = getBladeSpawnIntervalFrames(state.score);']],
+  ['src/games/BladeGame.tsx', ['state.spawnInterval = getBladeSpawnIntervalFrames(state.waveCount);']],
   ['src/games/BlockDropGame.tsx', ['state.dropInterval = getBlockDropInterval(state.level);']],
   ['src/games/BreakoutGame.tsx', ['const minimumSpecials = getBreakoutMinimumSpecials(round);']],
   ['src/games/BubbleBusterGame.tsx', ['state.shotsUntilDrop = getBubbleDropCadence(state.ceilingDrops);']],
@@ -334,6 +339,7 @@ const legacyFormulaGuards: readonly [string, string][] = [
   ['src/games/VanguardGame.tsx', '40 + state.wave * 20'],
   ['src/games/StackGame.tsx', '3.5 * clamp(state.viewportWidth / 500'],
   ['src/games/BladeGame.tsx', 'state.spawnInterval = 48'],
+  ['src/games/BladeGame.tsx', 'getBladeSpawnIntervalFrames(state.score)'],
 ];
 for (const [file, token] of legacyFormulaGuards) {
   assert(!read(file).includes(token), `${file}: legacy pre-P25 pressure formula returned: ${token}`);
@@ -369,6 +375,7 @@ for (const marker of [
   '## 2026-10-01 all-game balance hardening addendum',
   'The original P25 balance decisions remain frozen.',
   'No raw scoring formula or P24 scorecard is changed by this hardening pass.',
+  'Laser Blade cadence now follows authored wave count',
   '32 live integration paths',
 ]) assert(p25Doc.includes(marker), `P25 documentation missing current hardening evidence: ${marker}`);
 
