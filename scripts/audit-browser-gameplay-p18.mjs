@@ -118,7 +118,10 @@ const runGame = async (page, profile, gameId) => {
 
     await page.locator('#game-pause-btn').click();
     await page.waitForFunction(() => Boolean(document.querySelector('[data-p18-dialog="pause"] [data-p18-clarity-panel="true"]')), null, { timeout: 3000 });
-    await page.waitForTimeout(60);
+    await page.waitForFunction(() => {
+      const dialog = document.querySelector('[data-p18-dialog="pause"]');
+      return Boolean(dialog && document.activeElement && dialog.contains(document.activeElement));
+    }, null, { timeout: 1500 });
 
     // pause teaching panel
     const pause = await page.evaluate(() => {
@@ -170,7 +173,7 @@ const runGame = async (page, profile, gameId) => {
       const back = document.getElementById('game-back-btn');
       back?.focus({ preventScroll: true });
       return {
-        backInert: Boolean(back?.inert),
+        backInert: Boolean(back?.inert || back?.closest('[inert]')),
         activeInside: Boolean(dialog && document.activeElement && dialog.contains(document.activeElement)),
       };
     });
@@ -181,8 +184,9 @@ const runGame = async (page, profile, gameId) => {
     await page.waitForFunction(() => !document.querySelector('[data-p18-dialog="pause"]'), null, { timeout: 2000 });
     await page.waitForFunction(() => {
       const stage = document.querySelector('[data-p18-stage]');
-      const active = document.activeElement;
-      return Boolean(stage && active === stage);
+      const textEntry = stage?.querySelector('input[type="text"], input:not([type]), textarea, [contenteditable="true"], [contenteditable=""]');
+      const preferred = textEntry ?? stage;
+      return Boolean(preferred && document.activeElement === preferred);
     }, null, { timeout: 1500 });
 
     const resumed = await page.evaluate(() => ({
@@ -249,9 +253,11 @@ const runGame = async (page, profile, gameId) => {
     await page.evaluate(() => document.querySelector('[data-p18-synthetic-result="true"]')?.remove());
     await page.waitForFunction(() => {
       const stage = document.querySelector('[data-p18-stage]');
+      const textEntry = stage?.querySelector('input[type="text"], input:not([type]), textarea, [contenteditable="true"], [contenteditable=""]');
+      const preferred = textEntry ?? stage;
       return !document.querySelector('[data-p18-dialog="result"]') &&
         !document.querySelector('.arcade-game-toolbar')?.inert &&
-        document.activeElement === stage;
+        Boolean(preferred && document.activeElement === preferred);
     }, null, { timeout: 1500 });
 
     assert(pageErrors.length === 0, `page errors: ${pageErrors.join(' | ')}`);
