@@ -211,7 +211,11 @@ assert(browserAudit.includes('settings persistence did not reach Orbit exactly')
 assert(browserAudit.includes('modal stack ownership'), 'P19 browser audit does not certify reversible app-modal stack ownership');
 assert(browserAudit.includes('p19StackSuppressed'), 'P19 browser audit does not inspect the P19-owned modal suppression marker');
 assert(browserAudit.includes("setAttribute('aria-modal', 'false')"), 'P19 browser audit does not certify ownership release when a dialog stops being modal');
-assert(browserAudit.includes("document.activeElement === stage"), 'P19 browser audit does not preserve P18 gameplay focus restoration after Resume');
+assert(
+  browserAudit.includes("const preferred = textEntry ?? stage") &&
+  browserAudit.includes("document.activeElement === preferred"),
+  'P19 browser audit does not preserve preferred gameplay focus restoration after Resume',
+);
 assert(browserAudit.includes('orientation recovery'), 'P19 browser audit does not certify viewport/orientation recovery');
 assert(browserAudit.includes('exit leaked P19'), 'P19 browser audit does not certify P19 cleanup');
 assert(browserAudit.includes("locator('main#library-section')"), 'P19 browser audit does not bind to the canonical library main landmark');
