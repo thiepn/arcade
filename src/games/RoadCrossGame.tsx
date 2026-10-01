@@ -47,6 +47,8 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
   const setSafeTimeout = useSafeTimeout();
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -110,7 +112,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
     state.jumpProgress = 0;
     noteRoadCrossAcceptedMove(dCol, dRow);
 
-    if (soundEnabled) sounds.playHop();
+    if (soundEnabledRef.current) sounds.playHop();
 
     if (dRow > 0) {
       state.combo++;
@@ -139,7 +141,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
             color: '#34D399',
             life: 1.4,
           });
-          if (soundEnabled) sounds.playSuccess();
+          if (soundEnabledRef.current) sounds.playSuccess();
         }
 
         onScoreUpdate(state.score);
@@ -150,6 +152,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
   // Keyboard controls: Arrow keys and WASD
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isPausedRef.current || !gameStateRef.current.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') {
         e.preventDefault();
         triggerMove(0, 1); // 1 block forward
@@ -716,6 +719,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
             }}
             className="w-13 h-12 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700 text-white flex items-center justify-center active:scale-95 shadow-lg cursor-pointer"
             aria-label="Move Left"
+            aria-keyshortcuts="ArrowLeft A"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -727,6 +731,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
             }}
             className="w-13 h-12 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700 text-white flex items-center justify-center active:scale-95 shadow-lg cursor-pointer"
             aria-label="Move Right"
+            aria-keyshortcuts="ArrowRight D"
           >
             <ArrowRight className="w-5 h-5" />
           </button>
@@ -742,6 +747,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
             }}
             className="w-12 h-12 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 flex items-center justify-center active:scale-95 shadow-lg cursor-pointer"
             aria-label="Move Backward"
+            aria-keyshortcuts="ArrowDown S"
           >
             <ArrowDown className="w-5 h-5" />
           </button>
@@ -753,6 +759,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
             }}
             className="px-5 h-12 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black flex items-center justify-center gap-1 active:scale-95 shadow-lg shadow-emerald-500/30 cursor-pointer"
             aria-label="Move Forward 1 Block"
+            aria-keyshortcuts="ArrowUp W Space"
           >
             <ArrowUp className="w-5 h-5" />
             <span className="font-mono text-xs font-black">FORWARD</span>
