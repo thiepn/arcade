@@ -695,6 +695,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
           onClick={() => moveHorizontal(-1)}
           className="h-11 min-w-0 rounded-lg bg-zinc-900/92 border border-zinc-700 text-white flex items-center justify-center active:scale-95 shadow-md"
           aria-label="Move left"
+          aria-keyshortcuts="ArrowLeft A"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -703,6 +704,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
           onClick={() => moveHorizontal(1)}
           className="h-11 min-w-0 rounded-lg bg-zinc-900/92 border border-zinc-700 text-white flex items-center justify-center active:scale-95 shadow-md"
           aria-label="Move right"
+          aria-keyshortcuts="ArrowRight D"
         >
           <ArrowRight className="w-4 h-4" />
         </button>
@@ -711,6 +713,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
           onClick={softDrop}
           className="h-11 min-w-0 rounded-lg bg-zinc-900/92 border border-zinc-700 text-white flex items-center justify-center active:scale-95 shadow-md"
           aria-label="Soft drop"
+          aria-keyshortcuts="ArrowDown S"
         >
           <ArrowDown className="w-4 h-4" />
         </button>
@@ -720,6 +723,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
           disabled={!hudState.canHold}
           className="h-11 min-w-0 rounded-lg border border-amber-400/40 bg-amber-400/10 text-amber-200 flex flex-col items-center justify-center active:scale-95 shadow-md disabled:opacity-35 disabled:active:scale-100"
           aria-label="Hold or swap piece"
+          aria-keyshortcuts="C Shift"
         >
           <span className="font-mono-arcade text-[7px] font-black">HOLD</span>
           <span className="mt-0.5 text-[6px] text-amber-300/55">C</span>
@@ -729,6 +733,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
           onClick={rotatePiece}
           className="h-11 min-w-0 rounded-lg bg-cyan-600 text-white font-bold flex items-center justify-center active:scale-95 shadow-md shadow-cyan-500/20"
           aria-label="Rotate piece"
+          aria-keyshortcuts="ArrowUp W"
         >
           <RotateCw className="w-4 h-4" />
         </button>
@@ -737,6 +742,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
           onClick={hardDrop}
           className="h-11 min-w-0 rounded-lg bg-pink-600 text-white font-bold flex items-center justify-center active:scale-95 shadow-md shadow-pink-500/20"
           aria-label="Hard drop"
+          aria-keyshortcuts="Space"
         >
           <ChevronsDown className="w-4 h-4" />
         </button>
