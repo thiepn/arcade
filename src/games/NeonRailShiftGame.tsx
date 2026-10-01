@@ -69,6 +69,8 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
   const setSafeTimeout = useSafeTimeout();
 
   const [hudState, setHudState] = useState({
@@ -114,7 +116,7 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
     const nextLane = clampNeonRailLane(lane);
     if (nextLane === state.playerLane) return;
     state.playerLane = nextLane;
-    if (soundEnabled) sounds.playWhoosh();
+    if (soundEnabledRef.current) sounds.playWhoosh();
   };
 
   const shiftLane = (direction: -1 | 1) => {
@@ -134,7 +136,7 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
     state.phaseTimer = 0.5;
     state.phaseCooldown = NEON_RAIL_PHASE_COOLDOWN;
     state.screenShake = Math.max(state.screenShake, 3.5);
-    if (soundEnabled) sounds.playShockwave();
+    if (soundEnabledRef.current) sounds.playShockwave();
   };
 
   const triggerSurge = () => {
@@ -150,12 +152,12 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
     state.surgeCharges--;
     state.surgeTimer = NEON_RAIL_SURGE_DURATION;
     state.screenShake = Math.max(state.screenShake, 4);
-    if (soundEnabled) sounds.playFeverMode();
+    if (soundEnabledRef.current) sounds.playFeverMode();
   };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (isPausedRef.current || !gameStateRef.current.isAlive) return;
+      if (isPausedRef.current || !gameStateRef.current.isAlive || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
       if (
         event.code === 'ArrowLeft' ||
         event.code === 'ArrowRight' ||
@@ -167,7 +169,6 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
       ) {
         event.preventDefault();
       }
-      if (event.repeat && event.code === 'Space') return;
       if (event.code === 'ArrowLeft' || event.code === 'KeyA') shiftLane(-1);
       if (event.code === 'ArrowRight' || event.code === 'KeyD') shiftLane(1);
       if (event.code === 'Space') triggerPhase();
@@ -697,6 +698,7 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
           type="button"
           onClick={triggerPhase}
           disabled={hudState.phaseCooldown > 0}
+          aria-keyshortcuts="Space"
           className="flex h-11 flex-col items-center justify-center rounded-xl border border-violet-400/35 bg-violet-500/15 text-violet-200 active:scale-95 disabled:opacity-35 disabled:active:scale-100"
           aria-label="Activate phase shield"
         >
@@ -707,6 +709,8 @@ export const NeonRailShiftGame: React.FC<GameComponentProps> = ({
           type="button"
           onClick={triggerSurge}
           disabled={hudState.surgeCharges <= 0 || hudState.surgeTimer > 0}
+          aria-pressed={hudState.surgeTimer > 0}
+          aria-keyshortcuts="Shift"
           className="flex h-11 flex-col items-center justify-center rounded-xl border border-orange-400/35 bg-orange-500/15 text-orange-200 active:scale-95 disabled:opacity-35 disabled:active:scale-100"
           aria-label="Activate score surge"
         >
