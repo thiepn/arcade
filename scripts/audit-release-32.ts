@@ -116,7 +116,8 @@ const phaseFiles = [
 ] as const;
 for (const [path, label] of phaseFiles) assert(existsSync(join(root, path)), `${label} is missing`);
 
-assert(ci.includes('Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23 / P24 / P26'), 'CI browser chain is not extended through P26');
+assert(ci.includes('Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23 / P24'), 'legacy browser regression chain is missing through P24');
+assert(ci.includes('p26-production-browser:') && ci.includes('P26 high-DPR production gameplay matrix') && ci.includes('P26_CHROME_PATH="$chrome" bun run quality:browser-p26'), 'P26 browser certification is not isolated into its production job');
 
 if (errors.length) {
   console.error('FINAL 32-GAME RELEASE / REGRESSION AUDIT — FAIL');
