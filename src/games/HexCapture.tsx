@@ -2,13 +2,21 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { GameComponentProps } from '../types';
 import { sounds } from '../lib/sound';
 import { useLogicalCanvas } from '../hooks/useLogicalCanvas';
+import {
+  HEX_GOAL_PERCENT,
+  HEX_SECOND_HUNTER_PERCENT,
+  HEX_START_LIVES,
+  HEX_STEP_MS,
+  getHexClosureBonus,
+  getHexWinBonus,
+} from '../lib/replacementGameBalance';
 
 const W = 840;
 const H = 560;
 const COLS = 30;
 const ROWS = 20;
-const GOAL = 72;
-const STEP_MS = 82;
+const GOAL = HEX_GOAL_PERCENT;
+const STEP_MS = HEX_STEP_MS;
 
 type Dir = 'up' | 'down' | 'left' | 'right';
 type Enemy = { x: number; y: number; vx: number; vy: number };
@@ -58,7 +66,7 @@ const initialRuntime = (): Runtime => ({
   safeY: Math.floor(ROWS / 2),
   drawing: false,
   armed: false,
-  lives: 3,
+  lives: HEX_START_LIVES,
   score: 0,
   chain: 0,
   percent: 0,
@@ -82,7 +90,7 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
   const heldDir = useRef<Dir | null>(null);
   const gameOverSent = useRef(false);
   const [message, setMessage] = useState('PRESS SPACE — LEAVE SAFETY — RECONNECT');
-  const [hud, setHud] = useState<Hud>({ lives: 3, score: 0, chain: 0, percent: 0, armed: false, hunters: 1 });
+  const [hud, setHud] = useState<Hud>({ lives: HEX_START_LIVES, score: 0, chain: 0, percent: 0, armed: false, hunters: 1 });
   const [heldDirection, setHeldDirection] = useState<Dir | null>(null);
 
   useLogicalCanvas(canvasRef, W, H);
@@ -98,7 +106,7 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
     heldDir.current = null;
     setHeldDirection(null);
     st.finished = true;
-    if (won) st.score += 8000 + st.lives * 1200;
+    if (won) st.score += getHexWinBonus(st.lives);
     onScoreUpdate(st.score);
     gameOverSent.current = true;
     if (soundEnabled && won) sounds.playSuccess();
@@ -201,8 +209,7 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
     st.chain += 1;
     const totalInterior = (COLS - 2) * (ROWS - 2);
     st.percent = Math.min(100, interiorCount(cells) / totalInterior * 100);
-    const chainBonus = Math.min(6, st.chain) * 420;
-    const closureBonus = claimed * 90 + Math.floor(Math.sqrt(claimed) * 140) + chainBonus;
+    const closureBonus = getHexClosureBonus(claimed, st.chain);
     st.score += closureBonus;
     st.safeX = st.x;
     st.safeY = st.y;
@@ -211,7 +218,7 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
     onScoreUpdate(st.score);
     setMessage(claimed >= 55 ? `MEGA CAPTURE • +${closureBonus}` : `CAPTURE +${claimed} • +${closureBonus}`);
 
-    if (!st.secondSpawned && st.percent >= 34) {
+    if (!st.secondSpawned && st.percent >= HEX_SECOND_HUNTER_PERCENT) {
       st.secondSpawned = true;
       st.enemies.push({ x: COLS * 0.38, y: ROWS * 0.62, vx: -2.8, vy: 3.25 });
       setMessage('SECOND HUNTER ONLINE');
