@@ -67,7 +67,8 @@ const assertCandidateMarker = async (page, id) => {
   // GameShell/P18/P19 can mount before a lazy game chunk has completed rendering.
   // Wait for the actual game-native landmarks instead of sampling immediately.
   if (id === 'gravity') {
-    await waitForShellText(page, ['FLIGHT CONTRACT'], 'Gravity missing FLIGHT CONTRACT promotion landmark');
+    await page.locator('[data-replacement-game="vector-golf"]').waitFor({ state: 'visible', timeout: 5000 });
+    await waitForShellText(page, ['HOLE', 'STROKES', 'POWER'], 'Vector Golf production replacement landmarks are missing');
   } else if (id === 'chain') {
     await waitForShellText(
       page,
@@ -91,12 +92,11 @@ const assertCandidateMarker = async (page, id) => {
 
 const assertFlagshipControlSemantics = async (page, id, phase = 'before') => {
   if (id === 'gravity') {
-    const flip = page.getByRole('button', { name: 'Repel gravity' });
-    assert(await flip.getAttribute('aria-keyshortcuts') === 'G', 'Gravity flip control does not expose G');
-    assert(['true', 'false'].includes(await flip.getAttribute('aria-pressed')), 'Gravity flip control does not expose state');
-    const recall = page.getByRole('button', { name: /Re-aim probe/i }).first();
-    assert(await recall.getAttribute('aria-keyshortcuts') === 'Q', 'Gravity recall control does not expose Q');
-    if (phase === 'after') assert(await flip.getAttribute('aria-pressed') === 'true', 'Gravity G input did not flip the semantic polarity state');
+    const guide = page.getByRole('button', { name: 'Aim guide' });
+    assert(await guide.getAttribute('aria-keyshortcuts') === 'G', 'Vector Golf guide control does not expose G');
+    assert(['true', 'false'].includes(await guide.getAttribute('aria-pressed')), 'Vector Golf guide control does not expose state');
+    if (phase === 'before') assert(await guide.getAttribute('aria-pressed') === 'true', 'Vector Golf guide should begin enabled');
+    else assert(await guide.getAttribute('aria-pressed') === 'false', 'Vector Golf G input did not toggle the semantic guide state');
   } else if (id === 'chain') {
     const plasma = page.getByRole('button', { name: /Select Plasma Blast/i });
     const tesla = page.getByRole('button', { name: /Select Tesla Arc/i });
@@ -280,5 +280,5 @@ if (failures.length) {
 }
 
 console.log('\nP20 BROWSER NEAR-S PROMOTION CERTIFICATION — PASS');
-console.log('18/18 candidate/profile sessions certified across Gravity, Chain, Merge, Cyber Drift, Dodge and Laser Blade.');
+console.log('18/18 candidate/profile sessions certified across the gravity compatibility slot (Vector Golf in production), Chain, Merge, Cyber Drift, Dodge and Laser Blade.');
 console.log('Desktop, reduced-motion mobile and reduced-motion small-mobile promotion paths remain responsive and error-free.');
