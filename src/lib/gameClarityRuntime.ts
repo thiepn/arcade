@@ -256,7 +256,7 @@ const setupDialogFocus = (state: ShellState, dialog: HTMLElement | null) => {
       if (!state.shell.isConnected || !state.stage.isConnected) return;
       state.stage.focus({ preventScroll: true });
       attempts++;
-      if (document.activeElement !== state.stage && attempts < 4) {
+      if (attempts < 4) {
         frame = requestAnimationFrame(restoreStageFocus);
       }
     };
