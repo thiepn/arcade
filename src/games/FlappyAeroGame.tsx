@@ -56,6 +56,8 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
 
   const [hudState, setHudState] = useRenderPublishedState({
     score: 0,
@@ -106,7 +108,7 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
     if (!state.isAlive || isPausedRef.current) return;
     state.vy = -320;
     state.angle = -0.4;
-    if (soundEnabled) sounds.playFlap();
+    if (soundEnabledRef.current) sounds.playFlap();
     for (let i = 0; i < 5; i++) {
       state.particles.push({
         x: state.x - 10,
@@ -125,7 +127,7 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
     if (!canTriggerAeroFlow(state.flowCharges, state.flowTimer, state.isAlive) || isPausedRef.current) return;
     state.flowCharges--;
     state.flowTimer = AERO_FLOW_DURATION_SEC;
-    if (soundEnabled) sounds.playWarp();
+    if (soundEnabledRef.current) sounds.playWarp();
   };
 
   useEffect(() => {
@@ -284,7 +286,7 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
                   color: '#67E8F9',
                   life: 1.0,
                 });
-                if (soundEnabled) sounds.playSuccess();
+                if (soundEnabledRef.current) sounds.playSuccess();
               }
               state.flightLineRoute = null;
               state.flightLineProgress = 0;
@@ -292,7 +294,7 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
 
             state.score += gatePoints;
             onScoreUpdate(state.score);
-            if (soundEnabled) sounds.playScore();
+            if (soundEnabledRef.current) sounds.playScore();
 
             if (state.gatesCleared >= 25) state.multiplier = 4;
             else if (state.gatesCleared >= 15) state.multiplier = 3;
@@ -312,7 +314,7 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
               const grazePoints = getAeroFlowScore(50 * state.multiplier, state.flowTimer > 0);
               state.score += grazePoints;
               onScoreUpdate(state.score);
-              if (soundEnabled) sounds.playWarp();
+              if (soundEnabledRef.current) sounds.playWarp();
               state.popups.push({ id: state.nextId++, x: state.x, y: state.y - 18, text: `GRAZE +${grazePoints} base!`, color: '#FACC15', life: 0.7 });
             }
           }
@@ -327,14 +329,14 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
                 gate.passed = true;
                 state.y = gate.gapY + gate.gapHeight / 2;
                 state.vy = 0;
-                if (soundEnabled) sounds.playShockwave();
+                if (soundEnabledRef.current) sounds.playShockwave();
                 for (let p = 0; p < 12; p++) {
                   state.particles.push({ x: state.x, y: state.y, vx: (Math.random() - 0.5) * 180, vy: (Math.random() - 0.5) * 180, life: 0.5, color: '#34D399', size: Math.random() * 4 + 2 });
                 }
                 state.popups.push({ id: state.nextId++, x: state.x, y: state.y - 20, text: 'SHIELD DEFLECT!', color: '#34D399', life: 1.0 });
               } else {
                 state.isAlive = false;
-                if (soundEnabled) sounds.playExplosion();
+                if (soundEnabledRef.current) sounds.playExplosion();
                 setSafeTimeout(() => onGameOver(state.score), 400);
               }
             }
@@ -346,7 +348,7 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
             if (Math.hypot(state.x - shieldX, state.y - shieldY) < state.radius + 15) {
               gate.hasShield = false;
               state.hasShield = true;
-              if (soundEnabled) sounds.playPowerUp();
+              if (soundEnabledRef.current) sounds.playPowerUp();
               state.popups.push({ id: state.nextId++, x: state.x, y: state.y - 20, text: 'SHIELD ONLINE!', color: '#34D399', life: 0.9 });
             }
           }
@@ -359,7 +361,7 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
             const starPts = getAeroFlowScore(200 * state.multiplier, state.flowTimer > 0);
             state.score += starPts;
             onScoreUpdate(state.score);
-            if (soundEnabled) sounds.playScore();
+            if (soundEnabledRef.current) sounds.playScore();
             for (let i = 0; i < 6; i++) {
               state.particles.push({ x: star.x, y: star.y, vx: (Math.random() - 0.5) * 80, vy: (Math.random() - 0.5) * 80, life: 0.25, color: '#FACC15', size: 2 });
             }
@@ -377,14 +379,14 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
             state.invulnerableTimer = 1.2;
             state.vy = -340;
             state.y = h - state.radius - 10;
-            if (soundEnabled) sounds.playShockwave();
+            if (soundEnabledRef.current) sounds.playShockwave();
             state.popups.push({ id: state.nextId++, x: state.x, y: state.y - 20, text: 'SHIELD BOUNCE!', color: '#34D399', life: 0.9 });
           } else if (state.invulnerableTimer > 0) {
             state.y = h - state.radius - 5;
             state.vy = -200;
           } else {
             state.isAlive = false;
-            if (soundEnabled) sounds.playExplosion();
+            if (soundEnabledRef.current) sounds.playExplosion();
             setSafeTimeout(() => onGameOver(state.score), 400);
           }
         }
@@ -535,6 +537,9 @@ export const FlappyAeroGame: React.FC<GameComponentProps> = ({
         onPointerDown={(event) => event.stopPropagation()}
         onClick={triggerFlowBoost}
         disabled={hudState.flowCharges <= 0 || hudState.flowActive}
+        aria-label={`Flow Boost, ${hudState.flowCharges} charge${hudState.flowCharges === 1 ? '' : 's'} remaining`}
+        aria-pressed={hudState.flowActive}
+        aria-keyshortcuts="F Shift"
         className="absolute bottom-3 right-3 z-20 pointer-events-auto rounded-xl border border-sky-400/40 bg-[#18181B]/90 px-3 py-2 font-mono text-[10px] font-black text-sky-300 disabled:opacity-40"
       >
         {hudState.flowActive ? 'FLOW BOOST ACTIVE' : `FLOW BOOST ${hudState.flowCharges}/2`}
