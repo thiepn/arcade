@@ -126,7 +126,7 @@ P3 → P17 → P18 → P19 → P20 → P21 → P22 → P23 → P24
 P24 is valid only while all prior contracts remain green. CI therefore continues to require:
 
 - all specialist game audits;
-- gameplay audits P0, P1, P2 and P4–P24;
+- gameplay audits P0, P1, P2 and P4–P25, with P25 treated as a current non-scoring deep-polish layer;
 - browser audits P3 and P17–P24;
 - P16 difficulty/fairness envelopes;
 - P17 game-feel hierarchy;
@@ -142,7 +142,7 @@ P24 is valid only while all prior contracts remain green. CI therefore continues
 - Pages build;
 - `/arcade/` MA3/MA4.
 
-`quality:release32` is extended through P24 so the definitive certification remains a permanent release requirement.
+`quality:release32` permanently includes the definitive P24 certification plus the current non-scoring P25 deep-polish gate, so later polish cannot silently invalidate roster comparability.
 
 ## 2026-10-01 definitive current-source hardening
 
