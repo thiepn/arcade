@@ -114,10 +114,39 @@ assert(getRoadCrossDistrictStartRow(0) === 0 && getRoadCrossDistrictStartRow(1) 
 for (const district of ROAD_CROSS_DISTRICTS) { const routes = P22_ROAD_DISTRICT_ROUTES[district.name]; assert(Boolean(routes?.length === 2 && routes.every((route) => route.waypoints.length === 3)), `${district.name} District Routes invalid`); }
 assert(canAcceptRoadCrossMove(1) && !canAcceptRoadCrossMove(0.9), 'Crosser accepted-move gate changed');
 
-const main = read('src/main.tsx'); const runtime = read('src/lib/p22PromotionRuntime.ts'); const css = read('src/p22-mid-a-promotion.css'); const bubbleGame = read('src/games/BubbleBusterGame.tsx');
+const main = read('src/main.tsx');
+const runtime = read('src/lib/p22PromotionRuntime.ts');
+const promotionState = read('src/lib/p22PromotionState.ts');
+const roadSupport = read('src/lib/roadCrossSupport.ts');
+const roadGame = read('src/games/RoadCrossGame.tsx');
+const snakeGame = read('src/games/SnakeGame.tsx');
+const orbitGame = read('src/games/OrbitGame.tsx');
+const railGame = read('src/games/NeonRailShiftGame.tsx');
+const slingshotGame = read('src/games/SlingshotGame.tsx');
+const bubbleGame = read('src/games/BubbleBusterGame.tsx');
+const matrixGame = read('src/games/MatrixGame.tsx');
+const knifeGame = read('src/games/KnifeTargetGame.tsx');
+const css = read('src/p22-mid-a-promotion.css');
 assert(main.includes('installP22PromotionRuntime') && main.includes("import './p22-mid-a-promotion.css'"), 'P22 runtime/style install missing');
 for (const token of ['p22-promotion-hud','p22-pause-extension','emitP17GameFeel']) assert(runtime.includes(token) || css.includes(token), `P22 presentation missing ${token}`);
 assert(bubbleGame.includes('getOrbSalvoResolutionBonus') && bubbleGame.includes('SALVO PLAN'), 'Orb Salvo bonus not integrated into authoritative score feedback');
+
+// Current P22 hardening: mastery state must follow committed gameplay rather than inferred DOM intent.
+assert(roadSupport.includes('export const canAcceptRoadCrossMove = (jumpProgress: number): boolean =>\n  jumpProgress >= 0.999;'), 'Crosser move acceptance still has P22 side effects');
+assert(roadGame.includes('noteRoadCrossAcceptedMove(dCol, dRow);'), 'Crosser does not emit its committed direction authoritatively');
+assert(roadGame.indexOf('if (targetCol === state.col && targetRow === state.row) return;') < roadGame.indexOf('noteRoadCrossAcceptedMove(dCol, dRow);'), 'Crosser emits P22 direction before no-op/bounds rejection');
+assert(promotionState.includes("detail.label === 'left' || detail.label === 'right' || detail.label === 'forward' || detail.label === 'backward'"), 'P22 state does not consume authoritative Crosser direction labels');
+for (const stale of ['pendingRoadDirection','roadPointerStart','onKeyCapture','onClickCapture','onPointerDownCapture','onPointerUpCapture']) assert(!runtime.includes(stale), `P22 runtime still infers Crosser intent through ${stale}`);
+
+// Current P22 hardening: mount-time listeners must read live settings and discrete actions reject key repeat.
+assert(orbitGame.includes('const soundEnabledRef = useRef(soundEnabled);') && orbitGame.includes('if (soundEnabledRef.current) sounds.playWarp();'), 'Orbit control audio can use stale Sound state');
+assert(railGame.includes('const soundEnabledRef = useRef(soundEnabled);') && railGame.includes('event.repeat || event.altKey || event.ctrlKey || event.metaKey'), 'Rail discrete controls lack live Sound/repeat ownership');
+assert(slingshotGame.includes("'key' in e && (e.repeat || e.altKey || e.ctrlKey || e.metaKey)"), 'Slingshot launch can repeat from held/modifier input');
+assert(bubbleGame.includes('const soundEnabledRef = useRef(soundEnabled);') && bubbleGame.includes('aria-pressed={hudState.burstArmed}') && bubbleGame.includes('aria-keyshortcuts="F Shift"'), 'Orb Cannon live audio/Burst state semantics are missing');
+assert(matrixGame.includes('e.repeat || e.altKey || e.ctrlKey || e.metaKey') && matrixGame.includes('aria-pressed={overclockArmed}') && matrixGame.includes('aria-keyshortcuts="O"'), 'Matrix held-key/Overclock semantics are not hardened');
+assert(knifeGame.includes('const soundEnabledRef = useRef(soundEnabled);') && knifeGame.includes('e.repeat || e.altKey || e.ctrlKey || e.metaKey') && knifeGame.includes('Knife target aiming area.'), 'Knife live audio/discrete input semantics are missing');
+assert(roadGame.includes('const soundEnabledRef = useRef(soundEnabled);') && roadGame.includes('e.repeat || e.altKey || e.ctrlKey || e.metaKey') && roadGame.includes('aria-keyshortcuts="ArrowUp W Space"'), 'Crosser live audio/discrete shortcut semantics are missing');
+for (const marker of ['aria-label="Steer up"','aria-label="Steer left"','aria-label="Steer down"','aria-label="Steer right"']) assert(snakeGame.includes(marker), `Serpent D-pad semantics missing ${marker}`);
 
 for (const [path, token] of [['src/lib/gameFeelRuntime.ts','P17_FEEDBACK_EVENT'],['src/lib/gameClarityProfiles.ts','P18_GAME_CLARITY_BY_ID'],['src/lib/arcadeCohesionRuntime.ts','p19'],['scripts/p20-promotion-scorecards.ts','P20_PROMOTIONS'],['scripts/p21-promotion-scorecards.ts','P21_PROMOTIONS']] as const) assert(read(path).includes(token), `P22 continuity missing ${token} in ${path}`);
 
@@ -129,6 +158,15 @@ const pkg = read('package.json'); const ci = read('.github/workflows/ci.yml'); c
 assert(pkg.includes('"quality:gameplay-p22"') && pkg.includes('"quality:browser-p22"'), 'package.json missing P22 quality scripts');
 assert(ci.includes('quality:gameplay-p22') && ci.includes('quality:browser-p22'), 'CI missing P22 gates');
 assert(release.includes('P22') || release.includes('p22'), 'release32 not extended through P22');
+
+const browserAudit = read('scripts/audit-browser-gameplay-p22.mjs');
+for (const marker of [
+  'assertIdentityControlSemantics',
+  'Matrix repeated O key toggled Overclock',
+  'Crosser repeated/rejected input mutated P22 District Route state',
+  'Matrix O input did not arm semantic Overclock state',
+  'document.activeElement === stage',
+]) assert(browserAudit.includes(marker), `P22 browser audit missing identity-depth hardening check: ${marker}`);
 
 if (errors.length) { console.error('P22 MID-A PROMOTION CERTIFICATION — FAIL'); for (const error of errors) console.error(`- ${error}`); process.exit(1); }
 console.log('P22 MID-A PROMOTION CERTIFICATION — PASS');
