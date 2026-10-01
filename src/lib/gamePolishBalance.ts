@@ -17,8 +17,16 @@ export const getAirHockeyOpeningPace = (elapsedSeconds: number): number =>
 export const getAstroLargeAsteroidCount = (level: number): number =>
   Math.min(9, 3 + Math.max(1, Math.floor(level)));
 
-export const getBladeSpawnIntervalFrames = (score: number): number =>
-  Math.round(65 - 15 * smoothstep01(Math.max(0, score) / 12000));
+export const BLADE_CADENCE_FULL_PRESSURE_WAVES = 24;
+
+export const getBladeSpawnIntervalFrames = (waveCount: number): number =>
+  Math.round(
+    65 -
+      15 *
+        smoothstep01(
+          Math.max(0, waveCount) / BLADE_CADENCE_FULL_PRESSURE_WAVES,
+        ),
+  );
 
 const BLOCK_DROP_INTERVALS = [0.8, 0.72, 0.64, 0.56, 0.49, 0.43, 0.37, 0.32, 0.27, 0.23, 0.2, 0.17, 0.15, 0.13, 0.12] as const;
 export const getBlockDropInterval = (level: number): number =>
