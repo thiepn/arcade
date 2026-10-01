@@ -94,8 +94,10 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isPausedRef = useRef(isPaused);
+  const soundEnabledRef = useRef(soundEnabled);
   const setSafeTimeout = useSafeTimeout();
   isPausedRef.current = isPaused;
+  soundEnabledRef.current = soundEnabled;
 
   const [hudState, setHudState] = useState({
     score: 0,
@@ -170,7 +172,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
     const state = gameStateRef.current;
     if (!state.isAlive) return;
     state.isAlive = false;
-    if (soundEnabled) sounds.playExplosion();
+    if (soundEnabledRef.current) sounds.playExplosion();
     setSafeTimeout(() => onGameOver(state.score), 400);
   };
 
@@ -191,7 +193,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
     if (!state.currentPiece || !state.isAlive || isPausedRef.current) return;
     if (!collides(state.currentPiece, dir, 0)) {
       state.currentPiece.x += dir;
-      if (soundEnabled) sounds.playPop();
+      if (soundEnabledRef.current) sounds.playPop();
     }
   };
 
@@ -223,7 +225,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
           state.lockTimer = 0.5;
           state.lockResets++;
         }
-        if (soundEnabled) sounds.playPop();
+        if (soundEnabledRef.current) sounds.playPop();
         return;
       }
     }
@@ -251,7 +253,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
     state.dropTimer = 0;
     state.lockTimer = 0;
     state.lockResets = 0;
-    if (soundEnabled) sounds.playPop();
+    if (soundEnabledRef.current) sounds.playPop();
 
     if (collides(state.currentPiece, 0, 0)) finishGame();
   };
@@ -269,7 +271,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
     state.score += dropDist * 2;
     state.lockTimer = 0;
     lockPiece();
-    if (soundEnabled) sounds.playKnifeStick();
+    if (soundEnabledRef.current) sounds.playKnifeStick();
   };
 
   const softDrop = () => {
@@ -329,7 +331,7 @@ export const BlockDropGame: React.FC<GameComponentProps> = ({
       const pts = [0, 100, 300, 500, 1000][clearedLines] * state.level;
       state.score += pts + lineMastery.masteryBonus;
       onScoreUpdate(state.score);
-      if (soundEnabled) sounds.playLineClear();
+      if (soundEnabledRef.current) sounds.playLineClear();
 
       state.level = Math.floor(state.lines / 10) + 1;
       state.dropInterval = getBlockDropInterval(state.level);
