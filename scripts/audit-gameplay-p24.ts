@@ -97,12 +97,19 @@ for (const [phase, report, marker] of [
 
 const pinball = read('src/games/PinballGame.tsx');
 const vanguard = read('src/games/VanguardGame.tsx');
-const astro = read('src/games/AstroBlasterGame.tsx');
+const hex = read('src/games/HexCapture.tsx');
 const blockDrop = read('src/games/BlockDropGame.tsx');
 const rhythm = read('src/games/RhythmGame.tsx');
 assert(pinball.includes("window.addEventListener('blur', releaseFlippers)") && pinball.includes('aria-pressed={leftFlipperActive}') && pinball.includes('aria-pressed={rightFlipperActive}'), 'P24 Pinball incumbent input ownership/state semantics are missing');
 assert(vanguard.includes("!e.repeat && (e.key === ' '") && vanguard.includes("window.addEventListener('blur', releaseKeyboardInput)") && vanguard.includes('aria-keyshortcuts="Space E B"'), 'P24 Vanguard discrete Nova/blur semantics are missing');
-assert(astro.includes('isPausedRef.current || !gameStateRef.current.isAlive') && astro.includes("!e.repeat && (e.key === 'Shift'") && astro.includes("window.addEventListener('blur', releaseKeyboardInput)") && astro.includes('onPointerCancel={() => {'), 'P24 Astro pause/repeat/focus/pointer ownership is not hardened');
+assert(
+  hex.includes('data-replacement-game="hex-capture"') &&
+  hex.includes("window.addEventListener('blur', clearHeld)") &&
+  hex.includes('aria-keyshortcuts="Space"') &&
+  hex.includes('aria-keyshortcuts="A ArrowLeft"') &&
+  hex.includes("setHeldDirection(null)"),
+  'P24 astroblaster compatibility slot is not hardened through its production Hex Capture engine',
+);
 assert(blockDrop.includes('const soundEnabledRef = useRef(soundEnabled);') && blockDrop.includes('aria-keyshortcuts="C Shift"') && blockDrop.includes('aria-keyshortcuts="Space"'), 'P24 Block Drop live Sound/control semantics are missing');
 assert(rhythm.includes('aria-label={`Rhythm lane ${label}`}') && rhythm.includes('aria-pressed={isPressed}') && rhythm.includes("window.addEventListener('blur', clearHeldLanes)"), 'P24 Rhythm lane state/focus-loss semantics are missing');
 
