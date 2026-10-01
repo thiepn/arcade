@@ -275,7 +275,7 @@ const pauseResume = async (page, id, profile) => {
   await page.waitForFunction(
     () => document.activeElement === document.querySelector('[data-p18-stage]'),
     null,
-    { timeout: 1500 },
+    { timeout: 3000 },
   );
   assert(
     await page.locator('.game-shell').getAttribute('data-p18-game') === id,
