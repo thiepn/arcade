@@ -550,6 +550,7 @@ export const PinballGame: React.FC<GameComponentProps> = ({
     if (!canvas) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isPausedRef.current || !gameStateRef.current.isAlive || event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;
       if (
         event.code === 'ArrowLeft' ||
         event.code === 'ArrowRight' ||
@@ -602,6 +603,11 @@ export const PinballGame: React.FC<GameComponentProps> = ({
       setRightFlipper(false);
     };
 
+    const releaseFlippers = () => {
+      setLeftFlipper(false);
+      setRightFlipper(false);
+    };
+
     const handleTouchStart = (event: TouchEvent) => {
       event.preventDefault();
       updateTouchFlippers(event.touches);
@@ -619,6 +625,7 @@ export const PinballGame: React.FC<GameComponentProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', releaseFlippers);
     canvas.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
@@ -629,6 +636,7 @@ export const PinballGame: React.FC<GameComponentProps> = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', releaseFlippers);
       canvas.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseup', handleMouseUp);
       canvas.removeEventListener('touchstart', handleTouchStart);
@@ -1349,6 +1357,9 @@ export const PinballGame: React.FC<GameComponentProps> = ({
           onPointerUp={() => setLeftFlipper(false)}
           onPointerCancel={() => setLeftFlipper(false)}
           onPointerLeave={() => setLeftFlipper(false)}
+          aria-label="Left flipper"
+          aria-pressed={leftFlipperActive}
+          aria-keyshortcuts="A ArrowLeft Space"
           className={`flex-1 py-3.5 rounded-xl font-mono-arcade text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-2 select-none backdrop-blur-md ${
             leftFlipperActive
               ? 'bg-cyan-500 text-black border-cyan-300 scale-95 shadow-lg shadow-cyan-500/30'
@@ -1367,6 +1378,9 @@ export const PinballGame: React.FC<GameComponentProps> = ({
           onPointerUp={() => setRightFlipper(false)}
           onPointerCancel={() => setRightFlipper(false)}
           onPointerLeave={() => setRightFlipper(false)}
+          aria-label="Right flipper"
+          aria-pressed={rightFlipperActive}
+          aria-keyshortcuts="D ArrowRight Space"
           className={`flex-1 py-3.5 rounded-xl font-mono-arcade text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-2 select-none backdrop-blur-md ${
             rightFlipperActive
               ? 'bg-cyan-500 text-black border-cyan-300 scale-95 shadow-lg shadow-cyan-500/30'
