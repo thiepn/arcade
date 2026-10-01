@@ -39,6 +39,7 @@
 - Isolate both the P3–P24 legacy browser regression chain and the P26 high-DPR matrix from the build job so mandatory browser evidence no longer consumes the Pages/artifact job's timeout budget.
 - Parallelize P3, P17, P18, P19, P20, P21, P22, P23 and P24 into independent mandatory CI matrix jobs after the combined legacy job proved structurally larger than its timeout budget; preserve every phase's full browser scope.
 - Repair historical browser evidence exposed by the parallel matrix: P3 resumes through the modal instead of inert toolbar chrome, P17 handles natural result screens and timer jitter, P18 checks inherited inertness, P21 waits for the authoritative Air Hockey mode remount, and P24 recognizes the matrix CI shape.
+- Finish the matrix-discovered control/test repairs: Air Hockey excludes embedded buttons from arena pointer capture so difficulty changes actually fire; P18 waits for live gameplay before treating input as a valid first-run-hint dismissal; P17 pauses live simulation while measuring synthetic overlapping-feedback timers.
 - Preserve compatibility ids, score version, AP anchors, policy id and historical P15-P24 ledgers.
 
 ### P25 deep game polish / all-game balance hardening — 2026-10-01
