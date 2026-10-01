@@ -117,9 +117,11 @@ assert(registryIds.every((id) => P24_CURRENT_SCORECARDS.some((record) => record.
 const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
 assert(pkg.scripts?.['quality:gameplay-p24'] === 'bun scripts/audit-gameplay-p24.ts', 'package.json is missing the permanent P24 static gate');
 assert(pkg.scripts?.['quality:browser-p24'] === 'bun scripts/audit-browser-gameplay-p24.mjs', 'package.json is missing the permanent P24 browser gate');
+assert(pkg.scripts?.['quality:gameplay-p25'] === 'bun scripts/audit-gameplay-p25.ts', 'current non-scoring deep-polish gate is missing from package.json');
 
 const ci = read('.github/workflows/ci.yml');
 assert(ci.includes('bun run quality:gameplay-p24'), 'CI does not run quality:gameplay-p24');
+assert(ci.includes('bun run quality:gameplay-p25'), 'CI does not enforce the current non-scoring deep-polish layer');
 assert(ci.includes('P24_CHROME_PATH="$chrome" bun run quality:browser-p24'), 'CI does not run the P24 browser gate with the certified Chrome binary');
 assert(ci.includes('Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23 / P24'), 'CI browser chain is not extended through P24');
 
