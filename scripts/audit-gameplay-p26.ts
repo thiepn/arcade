@@ -229,7 +229,7 @@ for (const seconds of horizons) {
 const p24 = read('docs/P24_DEFINITIVE_32_S_CERTIFICATION.md');
 const p25 = read('docs/P25_DEEP_GAME_POLISH.md');
 assert(p24.includes('**32 S / 0 A / 0 B**'), 'P26 lost the historical P24 slot-score ledger');
-assert(p25.includes('Vector Golf and Hex Capture replace the retired Gravity/Astro engines in the current live-integration ledger.'), 'P26 is not based on the production-resolved P25 ledger');
+assert(p25.includes('Vector Golf and Hex Capture replace the retired Gravity/Astro engines in the current live-integration ledger'), 'P26 is not based on the production-resolved P25 ledger');
 
 for (const file of [
   'scripts/audit-browser-gameplay-p26.mjs',
