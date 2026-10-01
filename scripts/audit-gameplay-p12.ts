@@ -61,7 +61,13 @@ assert(rope.includes('getLaserRopeRedlineCharges(state.jumpStreak, state.redline
 assert(rope.includes('getLaserRopeRedlineSpeed(effectiveSpeed, true) - effectiveSpeed'), 'Laser Rope does not increase sweep speed during Redline');
 assert(rope.includes('getLaserRopeRedlineReward'), 'Laser Rope does not apply Redline reward scaling');
 assert(rope.includes('state.sweepAngle += effectiveSpeed * state.direction * dt;'), 'Laser Rope certified baseline sweep update was replaced');
-assert(rope.includes('Activate Redline'), 'Laser Rope lacks a touch-accessible Redline control');
+assert(
+  rope.includes('aria-label={`Redline, ${hudState.redlineCharges} charge') &&
+    rope.includes('aria-pressed={hudState.redlineActive}') &&
+    rope.includes('aria-keyshortcuts="F Shift"') &&
+    rope.includes('onClick={(event) => { event.stopPropagation(); triggerRedline(); }}'),
+  'Laser Rope lacks a touch-accessible, stateful Redline control',
+);
 assert(
   rope.includes('if (isPausedRef.current || !state.isAlive || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;'),
   'Laser Rope gameplay listener can consume shell controls or auto-repeat jump/Redline actions',
