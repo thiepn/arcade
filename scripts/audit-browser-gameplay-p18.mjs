@@ -96,6 +96,11 @@ const runGame = async (page, profile, gameId) => {
     if (hintGames.has(gameId)) {
       assert(initial.hintCount === 1, `expected one selective first-run hint, found ${initial.hintCount}`);
       assert(initial.hintPointerEvents === 'none', 'first-run hint intercepts gameplay input');
+      await page.waitForFunction(
+        () => document.querySelector('.game-shell main')?.getAttribute('data-gameplay-active') === 'true',
+        null,
+        { timeout: 5000 },
+      );
       await page.evaluate(() => {
         const stage = document.querySelector('[data-p18-stage]');
         if (!stage) return;
