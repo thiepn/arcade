@@ -58,8 +58,6 @@ const nonIncreasing = (values: number[]) =>
   values.every((value, index) => index === 0 || value <= values[index - 1] + 1e-9);
 const nonDecreasing = (values: number[]) =>
   values.every((value, index) => index === 0 || value + 1e-9 >= values[index - 1]);
-const occurrences = (source: string, token: string) => source.split(token).length - 1;
-
 // ---------------------------------------------------------------------------
 // Shared quantitative envelopes. P25 is a balance/fairness pass, not a scoring pass.
 // ---------------------------------------------------------------------------
@@ -373,7 +371,7 @@ const p25Doc = read('docs/P25_DEEP_GAME_POLISH.md');
 for (const marker of [
   '# P25 — Deep Gameplay Polish & Balance Pass',
   '## 2026-10-01 all-game balance hardening addendum',
-  'The original P25 balance decisions remain frozen.',
+  'The original P25 balance envelopes remain frozen.',
   'No raw scoring formula or P24 scorecard is changed by this hardening pass.',
   'Laser Blade cadence now follows authored wave count',
   '32 live integration paths',
