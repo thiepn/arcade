@@ -386,6 +386,7 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
   useEffect(() => {
     const handleAction = (e: MouseEvent | TouchEvent | KeyboardEvent) => {
       if (isPausedRef.current || !gameStateRef.current.isAlive) return;
+      if ('key' in e && (e.repeat || e.altKey || e.ctrlKey || e.metaKey)) return;
       if ('key' in e && e.key !== ' ' && e.key !== 'Enter' && e.key !== 'ArrowUp') return;
       if ('key' in e) e.preventDefault();
       if (e.type === 'touchstart') e.preventDefault();
@@ -1129,6 +1130,8 @@ export const SlingshotGame: React.FC<GameComponentProps> = ({
         <button
           type="button"
           onClick={launchProbe}
+          aria-label={isLockedOn ? 'Launch perfect slingshot' : 'Release orbit'}
+          aria-keyshortcuts="Space Enter ArrowUp"
           className={`w-full py-4 rounded-xl font-mono-arcade text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-2 select-none backdrop-blur-md ${
             isLockedOn
               ? 'bg-emerald-600/90 hover:bg-emerald-500 text-white border-emerald-400 shadow-lg shadow-emerald-500/40 active:scale-[0.98]'
