@@ -48,7 +48,10 @@ runGate('scripts/audit-browser-keyboard-controls.mjs', 'P24 keyboard ownership c
 console.log('Running replacement-game keyboard ownership regression checks.');
 runGate('scripts/audit-browser-replacement-controls.mjs', 'P24 replacement keyboard ownership contract');
 
+console.log('Running original-P15-S incumbent browser sentinel.');
+runGate('scripts/audit-browser-p24-incumbents.mjs', 'P24 P15-incumbent sentinel');
+
 console.log('P24 DEFINITIVE 32/32 BROWSER CERTIFICATION — PASS');
-console.log('32 games × 3 canonical profiles = 96 game/profile sessions, plus home, settings-persistence and navigation-stress checks.');
+console.log('32 games × 3 canonical profiles = 96 game/profile sessions, plus 15 P15-incumbent/profile sentinel sessions and home, settings-persistence and navigation-stress checks.');
 console.log('Shared Space-key ownership is certified after restart, pause/resume, toolbar interactions and while Hex Capture remains mounted beneath a result dialog.');
-console.log('P20-P23 candidate-specific browser gates remain separate permanent prerequisites in CI.');
+console.log('P20-P23 candidate-specific browser gates remain separate permanent prerequisites in CI; P24 now directly covers the five original P15 S incumbents as the remaining provenance group.');
