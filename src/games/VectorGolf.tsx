@@ -98,6 +98,14 @@ export const VectorGolf: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
     });
   }, []);
 
+  const toggleGuide = useCallback(() => {
+    const st = stateRef.current;
+    if (isPaused || st.finished) return;
+    st.guide = !st.guide;
+    setMessage(st.guide ? 'GUIDE ON' : 'GUIDE OFF');
+    syncHud();
+  }, [isPaused, syncHud]);
+
   const loadHole = useCallback((index: number) => {
     const hole = HOLES[index];
     const st = stateRef.current;
@@ -184,9 +192,7 @@ export const VectorGolf: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
       const st = stateRef.current;
       if (st.finished) return;
       if (event.code === 'KeyG') {
-        st.guide = !st.guide;
-        setMessage(st.guide ? 'GUIDE ON' : 'GUIDE OFF');
-        syncHud();
+        toggleGuide();
         return;
       }
       if (!stopped(st.ball) || st.transitionAt) return;
@@ -203,7 +209,7 @@ export const VectorGolf: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
     };
     window.addEventListener('keydown', onKeyDown, { capture: true });
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
-  }, [isPaused, syncHud, takeShot]);
+  }, [isPaused, syncHud, takeShot, toggleGuide]);
 
   useEffect(() => {
     let frame = 0;
@@ -407,7 +413,6 @@ export const VectorGolf: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-slate-950 text-white" data-replacement-game="vector-golf">
-      <span className="sr-only" aria-hidden="true">FLIGHT CONTRACT</span>
       <div className="flex items-center justify-between gap-3 border-b border-cyan-400/20 bg-slate-950/90 px-3 py-2 text-[10px] font-mono-arcade sm:text-xs">
         <div><span className="text-cyan-300">HOLE</span> {hud.hole}/{HOLES.length} <span className="ml-2 text-slate-500">PAR {hud.par}</span></div>
         <div><span className="text-cyan-300">STROKES</span> {hud.strokes}</div>
@@ -433,7 +438,19 @@ export const VectorGolf: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
       </div>
       <div className="flex items-center justify-between gap-3 border-t border-cyan-400/20 bg-slate-950/90 px-3 py-2 text-[10px] font-mono-arcade text-slate-400 sm:text-xs">
         <span>DRAG AIM • ARROWS AIM • W/S POWER • SPACE SHOOT</span>
-        <span className="whitespace-nowrap">POWER {Math.round(hud.power * 100)}% • GUIDE {hud.guide ? 'ON' : 'OFF'}</span>
+        <div className="flex items-center gap-2">
+          <span className="whitespace-nowrap">POWER {Math.round(hud.power * 100)}%</span>
+          <button
+            type="button"
+            onClick={toggleGuide}
+            aria-label="Aim guide"
+            aria-pressed={hud.guide}
+            aria-keyshortcuts="G"
+            className="min-h-9 rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-2 py-1 font-bold text-cyan-100"
+          >
+            GUIDE {hud.guide ? 'ON' : 'OFF'}
+          </button>
+        </div>
       </div>
     </div>
   );
