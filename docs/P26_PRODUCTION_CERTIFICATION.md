@@ -130,6 +130,8 @@ The live quick check runs both production replacement slots across landscape, po
 
 A P26 production release is automated-green only when the P26 static gate, production artifact gate, full CI browser gate, Pages predeploy artifact gate and deployed Pages quick smoke all succeed for the same release chain.
 
+To keep that evidence reliable under GitHub-hosted runner limits, the historical browser contracts are not serialized into one timeout-prone process. CI runs P3, P17, P18, P19, P20, P21, P22, P23 and P24 as **nine independent mandatory matrix jobs**. P3 additionally owns the responsive-header, release-candidate browser and storage-recovery prerequisites. P24 still intentionally reruns the canonical P19 whole-roster contract inside its own job. This changes scheduling only; it does not reduce any historical browser coverage.
+
 ## Physical-device manual boundary
 
 No GitHub-hosted browser runner can truthfully certify real handset thermals, OEM WebView/Chrome behavior, iOS Safari/PWA behavior or physical touch/audio latency; physical-device signoff remains a manual boundary.
