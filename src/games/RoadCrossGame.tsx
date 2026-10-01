@@ -4,7 +4,7 @@ import { sounds } from '../lib/sound';
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useGameLoop, useSafeTimeout, useRenderPublishedState } from '../hooks/useGameLoop';
 import { getFrameInvariantBlend } from '../lib/frameRateRuntime';
-import { canAcceptRoadCrossMove, getRoadCrossBoardMetrics } from '../lib/roadCrossSupport';
+import { canAcceptRoadCrossMove, getRoadCrossBoardMetrics, noteRoadCrossAcceptedMove } from '../lib/roadCrossSupport';
 import { ROAD_CROSS_DISTRICT_LENGTH, getRoadCrossCheckpointBonus, getRoadCrossDistrict, getRoadCrossDistrictLevel, getRoadCrossLaneType } from '../lib/roadCrossMastery';
 import { getRoadCrossLaneSpeed } from '../lib/gamePolishBalance';
 
@@ -108,6 +108,7 @@ export const RoadCrossGame: React.FC<GameComponentProps> = ({
     state.col = targetCol;
     state.row = targetRow;
     state.jumpProgress = 0;
+    noteRoadCrossAcceptedMove(dCol, dRow);
 
     if (soundEnabled) sounds.playHop();
 
