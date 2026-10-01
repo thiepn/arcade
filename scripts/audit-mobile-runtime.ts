@@ -12,11 +12,17 @@ const assert = (condition: boolean, message: string) => {
 };
 
 const read = (path: string) => readFileSync(path, 'utf8');
-const gameFiles = readdirSync('src/games')
+const historicalGameFiles = readdirSync('src/games')
   .filter((file) => file.endsWith('Game.tsx'))
   .sort();
+const gameFiles = historicalGameFiles
+  .filter((file) => file !== 'GravityGame.tsx' && file !== 'AstroBlasterGame.tsx')
+  .concat('VectorGolf.tsx', 'HexCapture.tsx')
+  .sort();
 
-assert(gameFiles.length === 32, `expected 32 game modules, found ${gameFiles.length}`);
+assert(gameFiles.length === 32, `expected 32 production-resolved game modules, found ${gameFiles.length}`);
+assert(gameFiles.includes('VectorGolf.tsx') && gameFiles.includes('HexCapture.tsx'), 'replacement engines are missing from the mobile audit');
+assert(!gameFiles.includes('GravityGame.tsx') && !gameFiles.includes('AstroBlasterGame.tsx'), 'retired Gravity/Astro engines leaked into the production mobile audit');
 
 const main = read('src/main.tsx');
 const runtime = read('src/lib/mobileRuntime.ts');
@@ -155,5 +161,5 @@ const roundRectGames = gameFiles.filter((file) =>
   read(join('src/games', file)).includes('.roundRect('),
 );
 console.log(
-  `Mobile runtime audit passed: ${gameFiles.length} games share safe viewport sizing, canvas-memory limits, render-failure recovery, touch/gamepad cursor arbitration, and roundRect compatibility (${roundRectGames.length} game modules currently rely on it).`,
+  `Mobile runtime audit passed: ${gameFiles.length} production-resolved games share safe viewport sizing, canvas-memory limits, render-failure recovery, touch/gamepad cursor arbitration, and roundRect compatibility (${roundRectGames.length} game modules currently rely on it).`,
 );
