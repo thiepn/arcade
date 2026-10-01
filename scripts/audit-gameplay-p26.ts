@@ -150,7 +150,14 @@ assert(hex.includes('aria-keyshortcuts="Space"') && hex.includes('aria-pressed={
 assert(vector.includes('aria-label="Aim guide"') && vector.includes('aria-keyshortcuts="G"'), 'Vector Golf guide control is not semantically stateful');
 assert(vector.includes('h-12 min-w-12') && vector.includes('aria-label="Aim guide"'), 'Vector Golf guide target is not locked to a reset-proof touch-safe height');
 assert(hex.includes('h-12 min-w-12') && hex.includes('aria-label="Arm capture route"'), 'Hex Capture action target is not locked to a reset-proof touch-safe height');
-assert(clarityRuntime.includes('attempts < 4') && clarityRuntime.includes('requestAnimationFrame(restoreStageFocus)'), 'modal-close gameplay focus restoration lacks bounded inert-release retry');
+assert(
+  clarityRuntime.includes('GAMEPLAY_TEXT_ENTRY') &&
+  clarityRuntime.includes('const focusTarget =') &&
+  clarityRuntime.includes('focusTarget.focus({ preventScroll: true });') &&
+  clarityRuntime.includes('attempts < 4') &&
+  clarityRuntime.includes('requestAnimationFrame(restoreStageFocus)'),
+  'modal-close gameplay focus restoration lacks preferred-owner selection and bounded inert-release stabilization',
+);
 assert(vector.includes("window.addEventListener('blur', clearDrag)") && vector.includes("document.addEventListener('visibilitychange', onVisibility)"), 'Vector Golf interrupted drag ownership is not released');
 assert(hex.includes("window.addEventListener('blur', clearHeld)") && hex.includes("document.addEventListener('visibilitychange', visibility)"), 'Hex Capture interrupted held movement is not released');
 
