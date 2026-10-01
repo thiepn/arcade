@@ -132,7 +132,7 @@ A P26 production release is automated-green only when the P26 static gate, produ
 
 ## Physical-device manual boundary
 
-Physical-device signoff remains a manual boundary. No GitHub-hosted browser runner can truthfully certify real handset thermals, OEM WebView/Chrome behavior, iOS Safari/PWA behavior or physical touch/audio latency.
+No GitHub-hosted browser runner can truthfully certify real handset thermals, OEM WebView/Chrome behavior, iOS Safari/PWA behavior or physical touch/audio latency; physical-device signoff remains a manual boundary.
 
 For a release that is explicitly labeled **physical-device certified**, perform at least the following on representative hardware:
 
