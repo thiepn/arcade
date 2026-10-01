@@ -405,7 +405,7 @@ for (const marker of [
   'The original P25 balance envelopes remain frozen.',
   'No raw scoring formula or P24 scorecard is changed by this hardening pass.',
   'Laser Blade cadence now follows authored wave count',
-  'Vector Golf and Hex Capture replace the retired Gravity/Astro engines in the current live-integration ledger.',
+  'Vector Golf and Hex Capture replace the retired Gravity/Astro engines in the current live-integration ledger',
   '32 live integration paths',
 ]) assert(p25Doc.includes(marker), `P25 documentation missing current hardening evidence: ${marker}`);
 
