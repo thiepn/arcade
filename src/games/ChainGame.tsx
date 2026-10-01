@@ -122,7 +122,7 @@ export const ChainGame: React.FC<GameComponentProps> = ({
   const initParticles = useCallback((w: number, h: number, waveNum: number) => {
     // Balanced orb count that doesn't overcrowd the canvas
     const total = Math.min(36, 16 + waveNum * 2);
-    // Required clear percentage climbs with wave: 50% on Wave 1 up to 85% on Wave 8+
+    // Required clear percentage climbs with wave: 50% on Wave 1, capped at the P25-certified 78%.
     const reqPercent = getChainTargetPercent(waveNum);
     const target = Math.max(8, Math.round(total * reqPercent));
 
