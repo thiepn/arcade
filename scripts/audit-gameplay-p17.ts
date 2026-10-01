@@ -204,6 +204,11 @@ assert(browserAudit.includes("interactive control emitted a gameplay input burst
 assert(browserAudit.includes("static control label emitted semantic mastery feedback"), 'P17 browser audit does not certify static-control semantic isolation');
 assert(browserAudit.includes("button.classList.contains('p17-semantic-mastery')"), 'P17 static-control browser probe is not locally scoped to the synthetic control');
 assert(browserAudit.includes("overlapping feedback classes do not clean up independently"), 'P17 browser audit does not certify independent overlapping class cleanup');
+assert(
+  browserAudit.includes("getByRole('button', { name: /^RESUME \\(ESC\\)$/i })") &&
+  browserAudit.includes("document.querySelector('[data-p18-dialog=\"pause\"]')"),
+  'P17 overlap-timer probe is not isolated from live gameplay feedback',
+);
 assert(browserAudit.includes('exit leaked P17 shell/layer'), 'P17 browser audit does not certify exit cleanup');
 
 // Permanent gate wiring.
