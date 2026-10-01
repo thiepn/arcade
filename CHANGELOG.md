@@ -23,6 +23,16 @@
 
 ## Unreleased
 
+### P22 mid-A promotion / identity-preserving depth hardening — 2026-10-01
+- Keep all eight P22 S-promotion scorecards frozen; harden the underlying state/input evidence instead of inflating ratings.
+- Replace Cyber Crosser's inferred global key/click/pointer route tracking with authoritative direction events emitted only after a move is actually committed.
+- Make Crosser's move-acceptance helper pure so rejected/no-op moves cannot mutate P22 District Route state.
+- Fix live Sound ownership in Orbit, Neon Rail Shift, Orb Cannon, Knife Target and Cyber Crosser where mount-time listeners could otherwise use stale audio state.
+- Reject key-repeat/modifier retriggers for discrete Rail, Slingshot, Matrix, Knife and Crosser actions.
+- Expose Serpent steering, Rail Phase/Surge, Slingshot launch, Orb Swap/Burst, Matrix Overclock/Replay, Knife playfield and Crosser directional shortcuts through explicit control semantics.
+- Strengthen P22 browser certification around real control state, repeated Matrix O input, rejected/repeated Crosser input and P18 Resume focus restoration.
+- Preserve all P16–P21 contracts, P22 balance/resource envelopes, score-only mastery boundaries and individual game identities.
+
 ### P21 strong-A promotion / distinctive-depth hardening — 2026-09-30
 - Keep the original six P21 promotion scorecards frozen; strengthen current behavior/evidence instead of inflating ratings.
 - Clear interrupted held input in Breakout, Tower and Chrono on focus/pointer ownership loss, preventing movement from leaking across Pause/alt-tab/cancel paths.
