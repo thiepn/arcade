@@ -724,6 +724,8 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
         <button
           type="button"
           onClick={() => changeDirection(0, -1)}
+          aria-label="Steer up"
+          aria-keyshortcuts="ArrowUp W"
           className="w-11 h-11 rounded-lg bg-[#18181B]/90 border border-zinc-700 text-cyan-400 font-bold active:bg-cyan-500 active:text-black flex items-center justify-center backdrop-blur-md shadow-lg"
         >
           ▲
@@ -732,6 +734,8 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
           <button
             type="button"
             onClick={() => changeDirection(-1, 0)}
+            aria-label="Steer left"
+            aria-keyshortcuts="ArrowLeft A"
             className="w-11 h-11 rounded-lg bg-[#18181B]/90 border border-zinc-700 text-cyan-400 font-bold active:bg-cyan-500 active:text-black flex items-center justify-center backdrop-blur-md shadow-lg"
           >
             ◀
@@ -739,6 +743,8 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
           <button
             type="button"
             onClick={() => changeDirection(0, 1)}
+            aria-label="Steer down"
+            aria-keyshortcuts="ArrowDown S"
             className="w-11 h-11 rounded-lg bg-[#18181B]/90 border border-zinc-700 text-cyan-400 font-bold active:bg-cyan-500 active:text-black flex items-center justify-center backdrop-blur-md shadow-lg"
           >
             ▼
@@ -746,6 +752,8 @@ export const SnakeGame: React.FC<GameComponentProps> = ({
           <button
             type="button"
             onClick={() => changeDirection(1, 0)}
+            aria-label="Steer right"
+            aria-keyshortcuts="ArrowRight D"
             className="w-11 h-11 rounded-lg bg-[#18181B]/90 border border-zinc-700 text-cyan-400 font-bold active:bg-cyan-500 active:text-black flex items-center justify-center backdrop-blur-md shadow-lg"
           >
             ▶
