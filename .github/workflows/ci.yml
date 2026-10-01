@@ -133,7 +133,11 @@ jobs:
 
   legacy-browser-regression:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        phase: [p3, p17, p18, p19, p20, p21, p22, p23, p24]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -143,11 +147,13 @@ jobs:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
       - run: bun run build
-      - name: Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23 / P24
+      - name: Browser gameplay certification — ${{ matrix.phase }}
         shell: bash
+        env:
+          BROWSER_PHASE: ${{ matrix.phase }}
         run: |
           set -euo pipefail
-          bunx vite preview --host 127.0.0.1 --port 4173 > /tmp/p3-preview.log 2>&1 &
+          bunx vite preview --host 127.0.0.1 --port 4173 > "/tmp/${BROWSER_PHASE}-preview.log" 2>&1 &
           preview_pid=$!
           cleanup() {
             kill "$preview_pid" 2>/dev/null || true
@@ -159,7 +165,7 @@ jobs:
               break
             fi
             if ! kill -0 "$preview_pid" 2>/dev/null; then
-              cat /tmp/p3-preview.log
+              cat "/tmp/${BROWSER_PHASE}-preview.log"
               exit 1
             fi
             sleep 1
@@ -169,18 +175,25 @@ jobs:
             echo 'Chrome executable not found on runner'
             exit 1
           fi
-          HEADER_CHROME_PATH="$chrome" bun scripts/audit-responsive-header.mjs
-          RC_CHROME_PATH="$chrome" bun run quality:rc-browser
-          STORAGE_CHROME_PATH="$chrome" bun run quality:storage-browser
-          P3_CHROME_PATH="$chrome" bun run quality:browser-p3
-          P17_CHROME_PATH="$chrome" bun run quality:browser-p17
-          P18_CHROME_PATH="$chrome" bun run quality:browser-p18
-          P19_CHROME_PATH="$chrome" bun run quality:browser-p19
-          P20_CHROME_PATH="$chrome" bun run quality:browser-p20
-          P21_CHROME_PATH="$chrome" bun run quality:browser-p21
-          P22_CHROME_PATH="$chrome" bun run quality:browser-p22
-          P23_CHROME_PATH="$chrome" bun run quality:browser-p23
-          P24_CHROME_PATH="$chrome" bun run quality:browser-p24
+
+          if [ "$BROWSER_PHASE" = "p3" ]; then
+            HEADER_CHROME_PATH="$chrome" bun scripts/audit-responsive-header.mjs
+            RC_CHROME_PATH="$chrome" bun run quality:rc-browser
+            STORAGE_CHROME_PATH="$chrome" bun run quality:storage-browser
+          fi
+
+          case "$BROWSER_PHASE" in
+            p3) P3_CHROME_PATH="$chrome" bun run quality:browser-p3 ;;
+            p17) P17_CHROME_PATH="$chrome" bun run quality:browser-p17 ;;
+            p18) P18_CHROME_PATH="$chrome" bun run quality:browser-p18 ;;
+            p19) P19_CHROME_PATH="$chrome" bun run quality:browser-p19 ;;
+            p20) P20_CHROME_PATH="$chrome" bun run quality:browser-p20 ;;
+            p21) P21_CHROME_PATH="$chrome" bun run quality:browser-p21 ;;
+            p22) P22_CHROME_PATH="$chrome" bun run quality:browser-p22 ;;
+            p23) P23_CHROME_PATH="$chrome" bun run quality:browser-p23 ;;
+            p24) P24_CHROME_PATH="$chrome" bun run quality:browser-p24 ;;
+            *) echo "Unknown browser phase: $BROWSER_PHASE"; exit 1 ;;
+          esac
 
   p26-production-browser:
     runs-on: ubuntu-latest
