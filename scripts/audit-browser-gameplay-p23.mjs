@@ -258,7 +258,9 @@ const runCandidate = async (page, profile, id) => {
     await page.locator('[data-p19-dialog="pause"]').getByRole('button', { name: /^RESUME \(ESC\)$/i }).click();
     await page.waitForFunction(() => {
       const stage = document.querySelector('[data-p18-stage]');
-      return Boolean(stage && document.activeElement === stage);
+      const textEntry = stage?.querySelector('input[type="text"], input:not([type]), textarea, [contenteditable="true"], [contenteditable=""]');
+      const preferred = textEntry ?? stage;
+      return Boolean(preferred && document.activeElement === preferred);
     }, null, { timeout: 1500 });
 
     await page.locator('#game-restart-btn').click();
