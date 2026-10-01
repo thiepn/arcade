@@ -67,6 +67,8 @@ for (const record of P23_PROMOTIONS) {
 assert(getP23ExtendedClarityProfile('pulse').sourceControls.includes('A/D') && getP23ExtendedClarityProfile('pulse').sourceControls.includes('Sync Wager'), 'Pulse P23 sourceControls must teach path choice and Sync Wager');
 
 const p15 = read('docs/P15_ROSTER_AUDIT.md');
+const p22Report = read('docs/P22_MID_A_PROMOTION_CERTIFICATION.md');
+const report = read('docs/P23_B_RANK_TRANSFORMATION_CERTIFICATION.md');
 for (const token of [
   '| 26 | Type Rush | B | 8 | 8 | 9 | 8 | 7 | 8 | 48 |',
   '| 27 | Perfect Stop | B | 8 | 7 | 9 | 8 | 8 | 8 | 48 |',
@@ -135,9 +137,24 @@ for (const token of ['getStackTravelSpeed(', 'TOWER BLUEPRINT', 'classifyStackPl
 
 const main = read('src/main.tsx');
 const p23Runtime = read('src/lib/p23TransformationRuntime.ts');
+const typeRushGame = read('src/games/TypeRushGame.tsx');
+const perfectStopGame = read('src/games/PerfectStopGame.tsx');
+const reactionGame = read('src/games/ReactionGame.tsx');
 assert(main.includes('installP23TransformationRuntime') && main.includes("import './p23-b-rank-transformation.css'"), 'P23 runtime/style install missing');
 assert(p23Runtime.includes('GAMES_REGISTRY') && p23Runtime.includes('Next Groove Path') && p23Runtime.includes('data.p23Teaching') === false, 'P23 runtime registry/teaching wiring malformed');
 assert(p23Runtime.includes('p23Teaching') && p23Runtime.includes('p23-pause-extension'), 'P23 pause teaching extension missing');
+
+// Current P23 hardening: transformed depth must remain discrete, stateful and owned by current settings.
+assert(typeRushGame.includes('event.repeat') && typeRushGame.includes('event.ctrlKey') && typeRushGame.includes('event.metaKey') && typeRushGame.includes('event.isComposing'), 'Type Rush can still accept held/modifier/composition input as typing progress');
+assert(perfectStopGame.includes('event.repeat || event.altKey || event.ctrlKey || event.metaKey') && perfectStopGame.includes('aria-keyshortcuts="Space Enter"'), 'Perfect Stop stop/advance input is not discrete and explicitly exposed');
+assert(reactionGame.includes('isPausedRef.current || event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.isComposing'), 'Reaction keyboard input can still be contaminated by modifiers/repeat/composition');
+assert(reactionGame.includes('role="group" aria-label="Choose Reaction Circuit"') && reactionGame.includes('aria-label="Choose Speed Circuit"') && reactionGame.includes('aria-label="Choose Control Circuit"'), 'Reaction circuit choice is not exposed as actual semantic controls');
+assert(pulseGame.includes('e.repeat || e.altKey || e.ctrlKey || e.metaKey || e.isComposing'), 'Pulse path/wager/hit input still accepts held-key repeat');
+assert(pulseGame.includes('aria-label="Queue left Groove Path"') && pulseGame.includes('aria-label="Queue right Groove Path"') && pulseGame.includes('aria-pressed={wagerHud.armed}') && pulseGame.includes('aria-keyshortcuts="F Shift"'), 'Pulse transformation controls lack explicit path/wager semantics');
+assert(laserGame.includes('const soundEnabledRef = useRef(soundEnabled);') && laserGame.includes('aria-pressed={hudState.redlineActive}') && laserGame.includes('aria-keyshortcuts="F Shift"'), 'Laser Rope live Sound/Redline state semantics are missing');
+assert(aeroGame.includes('const soundEnabledRef = useRef(soundEnabled);') && aeroGame.includes('aria-pressed={hudState.flowActive}') && aeroGame.includes('aria-keyshortcuts="F Shift"'), 'Aero live Sound/Flow state semantics are missing');
+assert(stackGame.includes('const soundEnabledRef = useRef(soundEnabled);') && stackGame.includes('e.repeat || e.altKey || e.ctrlKey || e.metaKey || e.isComposing') && stackGame.includes('aria-pressed={focusHud.armed}') && stackGame.includes('aria-keyshortcuts="F Shift"'), 'Stack live Sound/discrete Focus semantics are missing');
+assert(p22Report.includes('## 2026-10-01 identity-preserving depth hardening') && p22Report.includes('25 S / 0 A / 7 B'), 'P23 continuity does not include the hardened P22 baseline');
 
 for (const [path, marker] of [
   ['src/games/TypeRushGame.tsx', 'DIRECTIVE RELAY'],
@@ -164,7 +181,25 @@ const ci = read('.github/workflows/ci.yml');
 assert(ci.includes('quality:gameplay-p23') && ci.includes('quality:browser-p23') && ci.includes('P23_CHROME_PATH'), 'CI missing permanent P23 source/browser gates');
 const release = read('scripts/audit-release-32.ts');
 assert(release.includes('quality:gameplay-p23') && release.includes('quality:browser-p23') && release.includes('P23'), 'release32 does not extend through P23');
-assert(read('docs/P23_B_RANK_TRANSFORMATION_CERTIFICATION.md').includes('P24 boundary'), 'P23 certification doc missing explicit P24 boundary');
+assert(report.includes('P24 boundary'), 'P23 certification doc missing explicit P24 boundary');
+for (const marker of [
+  '## 2026-10-01 B-rank transformation hardening',
+  'The original seven P23 promotion scorecards remain frozen.',
+  'held Space/Enter can no longer stop a round and then auto-advance',
+  'No category receives another rating point from this hardening pass.',
+]) assert(report.includes(marker), `P23 report missing hardening evidence: ${marker}`);
+
+const browserAudit = read('scripts/audit-browser-gameplay-p23.mjs');
+for (const marker of [
+  'assertTransformationControlSemantics',
+  'Type Rush held-letter repeat advanced typing progress',
+  'Perfect Stop repeated Space prematurely stopped the marker',
+  'Pulse repeated path key changed Groove Path state',
+  'Stack repeated F key armed Focus',
+  'Laser real F input did not activate Redline',
+  'Aero real F input did not activate Flow Boost',
+  'document.activeElement === stage',
+]) assert(browserAudit.includes(marker), `P23 browser audit missing transformation hardening check: ${marker}`);
 
 if (errors.length) {
   console.error('P23 B-RANK TRANSFORMATION CERTIFICATION — FAIL');
