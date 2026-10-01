@@ -84,6 +84,31 @@ for (const token of [
 const p15Rows = [...p15.matchAll(/^\|\s*\d+\s*\|\s*[^|]+\|\s*[SABCDF]\s*\|/gm)];
 assert(p15Rows.length === 32, `immutable P15 ranking must still contain 32 rows, found ${p15Rows.length}`);
 
+const p20Report = read('docs/P20_NEAR_S_PROMOTION_CERTIFICATION.md');
+const p21Report = read('docs/P21_STRONG_A_PROMOTION_CERTIFICATION.md');
+const p22Report = read('docs/P22_MID_A_PROMOTION_CERTIFICATION.md');
+const p23Report = read('docs/P23_B_RANK_TRANSFORMATION_CERTIFICATION.md');
+for (const [phase, report, marker] of [
+  ['P20', p20Report, '## 2026-09-30 flagship hardening addendum'],
+  ['P21', p21Report, '## 2026-09-30 distinctive-depth hardening addendum'],
+  ['P22', p22Report, '## 2026-10-01 identity-preserving depth hardening'],
+  ['P23', p23Report, '## 2026-10-01 B-rank transformation hardening'],
+] as const) assert(report.includes(marker), `P24 current certification is missing the hardened ${phase} evidence baseline`);
+
+const pinball = read('src/games/PinballGame.tsx');
+const vanguard = read('src/games/VanguardGame.tsx');
+const astro = read('src/games/AstroBlasterGame.tsx');
+const blockDrop = read('src/games/BlockDropGame.tsx');
+const rhythm = read('src/games/RhythmGame.tsx');
+assert(pinball.includes("window.addEventListener('blur', releaseFlippers)") && pinball.includes('aria-pressed={leftFlipperActive}') && pinball.includes('aria-pressed={rightFlipperActive}'), 'P24 Pinball incumbent input ownership/state semantics are missing');
+assert(vanguard.includes("!e.repeat && (e.key === ' '") && vanguard.includes("window.addEventListener('blur', releaseKeyboardInput)") && vanguard.includes('aria-keyshortcuts="Space E B"'), 'P24 Vanguard discrete Nova/blur semantics are missing');
+assert(astro.includes('isPausedRef.current || !gameStateRef.current.isAlive') && astro.includes("!e.repeat && (e.key === 'Shift'") && astro.includes("window.addEventListener('blur', releaseKeyboardInput)") && astro.includes('onPointerCancel={() => {'), 'P24 Astro pause/repeat/focus/pointer ownership is not hardened');
+assert(blockDrop.includes('const soundEnabledRef = useRef(soundEnabled);') && blockDrop.includes('aria-keyshortcuts="C Shift"') && blockDrop.includes('aria-keyshortcuts="Space"'), 'P24 Block Drop live Sound/control semantics are missing');
+assert(rhythm.includes('aria-label={`Rhythm lane ${label}`}') && rhythm.includes('aria-pressed={isPressed}') && rhythm.includes("window.addEventListener('blur', clearHeldLanes)"), 'P24 Rhythm lane state/focus-loss semantics are missing');
+
+const p25Audit = read('scripts/audit-gameplay-p25.ts');
+assert(p25Audit.includes('assert.equal(Object.keys(coverage).length, 32);') && p25Audit.includes('Leaderboard comparability is intentional: no P25 helper awards points.'), 'Current post-P24 deep-polish layer is not explicitly 32-game/non-scoring');
+
 const registry = read('src/data/games.ts');
 const registryIds = [...registry.matchAll(/^\s{4}id:\s*'([a-z0-9-]+)',/gm)].map((match) => match[1]);
 assert(registryIds.length === 32 && new Set(registryIds).size === 32, `game registry must still contain 32 unique entries, found ${registryIds.length}`);
@@ -106,20 +131,35 @@ for (const path of [
   'docs/P24_DEFINITIVE_32_S_CERTIFICATION.md',
   'scripts/p24-definitive-scorecards.ts',
   'scripts/audit-browser-gameplay-p24.mjs',
+  'scripts/audit-browser-p24-incumbents.mjs',
 ]) assert(existsSync(join(root, path)), `P24 dependency is missing: ${path}`);
 
 const p24Doc = read('docs/P24_DEFINITIVE_32_S_CERTIFICATION.md');
 for (const token of [
   'Baseline: `994bcab64950c452bd887ed42fcef5486fe0665b`',
+  'Current hardening baseline: `72adc8101ff0db19c2927ed56e2896adcb434139`',
   '**32 S / 0 A / 0 B**',
   'certification-only',
   '96 game/profile sessions',
+  '15 P15-incumbent/profile sentinel sessions',
+  'No scorecard receives another point from this hardening pass.',
   'Automation cannot prove',
 ]) assert(p24Doc.includes(token), `P24 certification document is missing required boundary text: ${token}`);
 
 const p24Browser = read('scripts/audit-browser-gameplay-p24.mjs');
 assert(p24Browser.includes('audit-browser-gameplay-p19.mjs'), 'P24 browser gate must rerun the canonical all-32 P19 browser contract');
+assert(p24Browser.includes('audit-browser-p24-incumbents.mjs'), 'P24 browser gate must directly exercise the five original P15 S incumbents');
+assert(p24Browser.includes('15 P15-incumbent/profile sentinel sessions'), 'P24 browser gate does not report the incumbent provenance coverage');
 assert(p24Browser.includes('P24_CHROME_PATH') && p24Browser.includes('P24_BASE_URL'), 'P24 browser gate does not expose P24 environment controls');
+
+const incumbentBrowser = read('scripts/audit-browser-p24-incumbents.mjs');
+for (const marker of [
+  'Pinball left flipper should begin released',
+  'Vanguard repeated Space consumed a Nova bomb',
+  'Block Drop repeated C consumed Hold',
+  'Rhythm lane D should begin released',
+  'document.activeElement === document.querySelector',
+]) assert(incumbentBrowser.includes(marker), `P24 incumbent browser sentinel missing: ${marker}`);
 
 if (errors.length) {
   console.error('P24 DEFINITIVE 32/32 S-RANK CERTIFICATION — FAIL');
