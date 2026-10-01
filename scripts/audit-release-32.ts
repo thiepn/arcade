@@ -63,8 +63,8 @@ const requiredQualityGates = [
   'quality:gameplay-p6','quality:gameplay-p7','quality:gameplay-p8','quality:gameplay-p9','quality:gameplay-p10',
   'quality:gameplay-p11','quality:gameplay-p12','quality:gameplay-p13','quality:gameplay-p14','quality:gameplay-p15',
   'quality:gameplay-p16','quality:gameplay-p17','quality:gameplay-p18','quality:gameplay-p19','quality:gameplay-p20',
-  'quality:gameplay-p21','quality:gameplay-p22','quality:gameplay-p23','quality:gameplay-p24','quality:gameplay-p25',
-  'quality:browser-p3','quality:browser-p17','quality:browser-p18','quality:browser-p19','quality:browser-p20','quality:browser-p21','quality:browser-p22','quality:browser-p23','quality:browser-p24',
+  'quality:gameplay-p21','quality:gameplay-p22','quality:gameplay-p23','quality:gameplay-p24','quality:gameplay-p25','quality:gameplay-p26',
+  'quality:browser-p3','quality:browser-p17','quality:browser-p18','quality:browser-p19','quality:browser-p20','quality:browser-p21','quality:browser-p22','quality:browser-p23','quality:browser-p24','quality:browser-p26','quality:production-p26',
   'quality:lifecycle','quality:mobile','quality:rope','quality:rope-feedback','quality:rope-phase-c','quality:blockdrop','quality:knife','quality:puck','quality:rail',
   'quality:release32','quality:hardening',
 ] as const;
@@ -84,8 +84,8 @@ const requiredAuditFiles = [
   'scripts/audit-gameplay-p0.ts','scripts/audit-gameplay-p1.ts','scripts/audit-gameplay-p2.ts',
   'scripts/audit-gameplay-p4.ts','scripts/audit-gameplay-p5.ts','scripts/audit-gameplay-p6.ts','scripts/audit-gameplay-p7.ts','scripts/audit-gameplay-p8.ts','scripts/audit-gameplay-p9.ts',
   'scripts/audit-gameplay-p10.ts','scripts/audit-gameplay-p11.ts','scripts/audit-gameplay-p12.ts','scripts/audit-gameplay-p13.ts','scripts/audit-gameplay-p14.ts','scripts/audit-gameplay-p15.ts',
-  'scripts/audit-gameplay-p16.ts','scripts/audit-gameplay-p17.ts','scripts/audit-gameplay-p18.ts','scripts/audit-gameplay-p19.ts','scripts/audit-gameplay-p20.ts','scripts/audit-gameplay-p21.ts','scripts/audit-gameplay-p22.ts','scripts/audit-gameplay-p23.ts','scripts/audit-gameplay-p24.ts','scripts/audit-gameplay-p25.ts',
-  'scripts/audit-browser-gameplay-p3.mjs','scripts/audit-browser-gameplay-p17.mjs','scripts/audit-browser-gameplay-p18.mjs','scripts/audit-browser-gameplay-p19.mjs','scripts/audit-browser-gameplay-p20.mjs','scripts/audit-browser-gameplay-p21.mjs','scripts/audit-browser-gameplay-p22.mjs','scripts/audit-browser-gameplay-p23.mjs','scripts/audit-browser-gameplay-p24.mjs','scripts/audit-browser-p24-incumbents.mjs',
+  'scripts/audit-gameplay-p16.ts','scripts/audit-gameplay-p17.ts','scripts/audit-gameplay-p18.ts','scripts/audit-gameplay-p19.ts','scripts/audit-gameplay-p20.ts','scripts/audit-gameplay-p21.ts','scripts/audit-gameplay-p22.ts','scripts/audit-gameplay-p23.ts','scripts/audit-gameplay-p24.ts','scripts/audit-gameplay-p25.ts','scripts/audit-gameplay-p26.ts',
+  'scripts/audit-browser-gameplay-p3.mjs','scripts/audit-browser-gameplay-p17.mjs','scripts/audit-browser-gameplay-p18.mjs','scripts/audit-browser-gameplay-p19.mjs','scripts/audit-browser-gameplay-p20.mjs','scripts/audit-browser-gameplay-p21.mjs','scripts/audit-browser-gameplay-p22.mjs','scripts/audit-browser-gameplay-p23.mjs','scripts/audit-browser-gameplay-p24.mjs','scripts/audit-browser-p24-incumbents.mjs','scripts/audit-browser-gameplay-p26.mjs','scripts/audit-production-p26.mjs',
 ];
 for (const path of requiredAuditFiles) assert(existsSync(join(root, path)), `missing permanent regression audit ${path}`);
 
@@ -112,10 +112,11 @@ const phaseFiles = [
   ['docs/P23_B_RANK_TRANSFORMATION_CERTIFICATION.md','P23 certification document'],['scripts/p23-promotion-scorecards.ts','P23 transformation scorecard ledger'],['src/lib/p23TransformationRuntime.ts','P23 teaching/control extension runtime'],['src/lib/p23ClarityProfileExtensions.ts','P23 clarity profile extensions'],['src/p23-b-rank-transformation.css','P23 transformation stylesheet'],
   ['docs/P24_DEFINITIVE_32_S_CERTIFICATION.md','P24 definitive certification document'],['scripts/p24-definitive-scorecards.ts','P24 definitive scorecard ledger'],
   ['docs/P25_DEEP_GAME_POLISH.md','P25 deep gameplay polish certification'],['src/lib/gamePolishBalance.ts','P25 shared balance envelope module'],
+  ['docs/P26_PRODUCTION_CERTIFICATION.md','P26 production certification'],['src/lib/replacementGameBalance.ts','P26 replacement balance contract'],
 ] as const;
 for (const [path, label] of phaseFiles) assert(existsSync(join(root, path)), `${label} is missing`);
 
-assert(ci.includes('Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23 / P24'), 'CI browser chain is not extended through P24');
+assert(ci.includes('Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23 / P24 / P26'), 'CI browser chain is not extended through P26');
 
 if (errors.length) {
   console.error('FINAL 32-GAME RELEASE / REGRESSION AUDIT — FAIL');
@@ -125,4 +126,4 @@ if (errors.length) {
 
 console.log('FINAL 32-GAME RELEASE / REGRESSION AUDIT — PASS');
 console.log('32 source modules / 32 lazy registry entries / 32 Worker rules are in exact parity.');
-console.log('All game contracts, permanent regression gates through P24, repository hardening, roster metadata, mobile/MA4 counts, and cleanup constraints are certified.');
+console.log('All game contracts, permanent regression gates through P26, production-resolved replacement evidence, repository hardening, roster metadata, mobile/MA4 counts, and cleanup constraints are certified.');
