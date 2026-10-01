@@ -94,7 +94,7 @@ It verifies:
 - interrupted Vector drag ownership cannot become a shot;
 - Hex Capture repeat-safe Space behavior;
 - Hex directional pressed state and blur cleanup;
-- pause/resume focus restoration;
+- pause/resume restoration to the preferred gameplay focus owner (the Type Rush text-entry input when present, otherwise the gameplay stage);
 - repeated replacement restarts leave exactly one shell and one live engine;
 - page/console error cleanliness.
 
