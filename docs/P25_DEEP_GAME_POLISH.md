@@ -54,11 +54,12 @@ P25 is a full-roster gameplay-quality pass over all 32 Micro Arcade games. It in
 
 ## 2026-10-01 all-game balance hardening addendum
 
-The original P25 balance decisions remain frozen. The current-source audit found that the actual gameplay integrations were still present, but the permanent P25 test mostly checked isolated sample values and whether a marker string existed somewhere in a file. That was too weak for an all-game balance certification.
+The original P25 balance envelopes remain frozen. The current-source audit found that the actual gameplay integrations were still present, but the permanent P25 test mostly checked isolated sample values and whether a marker string existed somewhere in a file. That was too weak for an all-game balance certification. It also found one driver-level inconsistency in Laser Blade: the bounded cadence curve was still keyed to raw score even though raw score includes precision/combo bonuses.
 
-The hardening pass therefore strengthens **evidence**, not difficulty:
+The hardening pass strengthens the evidence and corrects that one progression-driver mismatch without changing any scoring formula:
 
 - all continuous P25 curves are now sampled across their real progression domain for monotonicity and hard bounds;
+- Laser Blade cadence now follows authored wave count instead of raw score, so precision/combo/multi-cut bonuses cannot secretly accelerate spawn pressure; the same 65→50 frame envelope is preserved;
 - Type Rush is checked with the actual BOOT/SURGE/OVERCLOCK/REDLINE multipliers rather than only a `1.0x` synthetic multiplier;
 - Vanguard certifies all five ordinary enemy kinds plus diminishing boss growth;
 - Cyber Crosser certifies the four explicit district traffic-speed bands;
