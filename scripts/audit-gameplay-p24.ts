@@ -135,7 +135,12 @@ const ci = read('.github/workflows/ci.yml');
 assert(ci.includes('bun run quality:gameplay-p24'), 'CI does not run quality:gameplay-p24');
 assert(ci.includes('bun run quality:gameplay-p25'), 'CI does not enforce the current non-scoring deep-polish layer');
 assert(ci.includes('P24_CHROME_PATH="$chrome" bun run quality:browser-p24'), 'CI does not run the P24 browser gate with the certified Chrome binary');
-assert(ci.includes('Browser gameplay certification — P3 / P17 / P18 / P19 / P20 / P21 / P22 / P23 / P24'), 'CI browser chain is not extended through P24');
+assert(
+  ci.includes('legacy-browser-regression:') &&
+  ci.includes('phase: [p3, p17, p18, p19, p20, p21, p22, p23, p24]') &&
+  ci.includes('Browser gameplay certification — ${{ matrix.phase }}'),
+  'CI browser phase matrix is not extended through P24',
+);
 
 for (const path of [
   'docs/P20_NEAR_S_PROMOTION_CERTIFICATION.md',
