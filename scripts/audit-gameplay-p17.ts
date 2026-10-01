@@ -209,6 +209,11 @@ assert(
   browserAudit.includes("document.querySelector('[data-p18-dialog=\"pause\"]')"),
   'P17 overlap-timer probe is not isolated from live gameplay feedback',
 );
+assert(
+  browserAudit.includes('P17 overlap probe lost both pause and committed result recovery paths') &&
+  browserAudit.includes("page.locator('#btn-play-again')"),
+  'P17 overlap-timer cleanup cannot recover from a committed game-over result',
+);
 assert(browserAudit.includes('exit leaked P17 shell/layer'), 'P17 browser audit does not certify exit cleanup');
 
 // Permanent gate wiring.
