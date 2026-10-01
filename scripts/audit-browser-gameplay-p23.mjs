@@ -84,18 +84,45 @@ const waitForNativeReady = async (page, id) => {
     await page.getByText('WAIT FOR THE SIGNAL', { exact: true }).waitFor({ state: 'visible', timeout: 5000 });
   } else if (id === 'pulse') {
     await page.getByText(/SYNC WAGER/, { exact: false }).first().waitFor({ state: 'visible', timeout: 5000 });
-    await page.getByRole('button', { name: /D\s*\/\s*→\s*PATH/i }).waitFor({ state: 'visible', timeout: 5000 });
+    await page.getByRole('button', { name: 'Queue right Groove Path' }).waitFor({ state: 'visible', timeout: 5000 });
   } else if (id === 'laserrope') {
     await page.getByRole('button', { name: 'Jump / Double Jump' }).waitFor({ state: 'visible', timeout: 5000 });
-    await page.getByRole('button', { name: 'Activate Redline' }).waitFor({ state: 'visible', timeout: 5000 });
+    await page.getByRole('button', { name: /^Redline,/i }).waitFor({ state: 'visible', timeout: 5000 });
   } else if (id === 'flappyaero') {
     await page.locator('#flappy-aero-container canvas').waitFor({ state: 'visible', timeout: 5000 });
-    await page.getByRole('button', { name: /FLOW BOOST/i }).waitFor({ state: 'visible', timeout: 5000 });
+    await page.getByRole('button', { name: /^Flow Boost,/i }).waitFor({ state: 'visible', timeout: 5000 });
   } else if (id === 'stack') {
     await page.locator('.game-shell canvas').waitFor({ state: 'visible', timeout: 5000 });
-    await page.getByRole('button', { name: /ARM FOCUS/i }).waitFor({ state: 'visible', timeout: 5000 });
+    await page.getByRole('button', { name: /^Focus,/i }).waitFor({ state: 'visible', timeout: 5000 });
   }
   await marker(page, id).waitFor({ state: 'visible', timeout: 5000 });
+};
+
+const assertTransformationControlSemantics = async (page, id) => {
+  if (id === 'perfectstop') {
+    const root = page.locator('.game-shell main [aria-keyshortcuts="Space Enter"]').first();
+    assert(await root.count() === 1, 'Perfect Stop does not expose Space/Enter timing controls');
+  } else if (id === 'pulse') {
+    assert(await page.getByRole('button', { name: 'Queue left Groove Path' }).getAttribute('aria-keyshortcuts') === 'A ArrowLeft', 'Pulse left path shortcuts missing');
+    assert(await page.getByRole('button', { name: 'Queue right Groove Path' }).getAttribute('aria-keyshortcuts') === 'D ArrowRight', 'Pulse right path shortcuts missing');
+    const wager = page.getByRole('button', { name: /^Sync Wager,/i });
+    assert(await wager.getAttribute('aria-keyshortcuts') === 'F Shift', 'Pulse Sync Wager shortcuts missing');
+    assert(['true','false'].includes(await wager.getAttribute('aria-pressed')), 'Pulse Sync Wager state missing');
+  } else if (id === 'laserrope') {
+    const redline = page.getByRole('button', { name: /^Redline,/i });
+    assert(await redline.getAttribute('aria-keyshortcuts') === 'F Shift', 'Laser Redline shortcuts missing');
+    assert(['true','false'].includes(await redline.getAttribute('aria-pressed')), 'Laser Redline state missing');
+    assert(await page.getByRole('button', { name: 'Jump / Double Jump' }).getAttribute('aria-keyshortcuts') === 'Space ArrowUp W', 'Laser jump shortcuts missing');
+    assert(await page.getByRole('button', { name: 'Slide / Duck' }).getAttribute('aria-keyshortcuts') === 'ArrowDown S', 'Laser slide shortcuts missing');
+  } else if (id === 'flappyaero') {
+    const flow = page.getByRole('button', { name: /^Flow Boost,/i });
+    assert(await flow.getAttribute('aria-keyshortcuts') === 'F Shift', 'Aero Flow shortcuts missing');
+    assert(['true','false'].includes(await flow.getAttribute('aria-pressed')), 'Aero Flow state missing');
+  } else if (id === 'stack') {
+    const focus = page.getByRole('button', { name: /^Focus,/i });
+    assert(await focus.getAttribute('aria-keyshortcuts') === 'F Shift', 'Stack Focus shortcuts missing');
+    assert(['true','false'].includes(await focus.getAttribute('aria-pressed')), 'Stack Focus state missing');
+  }
 };
 
 const exercise = async (page, id) => {
@@ -109,6 +136,10 @@ const exercise = async (page, id) => {
     const word = String(label || '').replace(/^Target\s+/, '').trim();
     assert(word.length > 0, 'Type Rush target word missing from aria-label');
     await target.click();
+    const typedBefore = await target.locator('span > span').first().innerText();
+    await page.evaluate((key) => window.dispatchEvent(new KeyboardEvent('keydown', { key, code: `Key${key.toUpperCase()}`, repeat: true, bubbles: true })), word[0]);
+    await page.waitForTimeout(30);
+    assert(await target.locator('span > span').first().innerText() === typedBefore, 'Type Rush held-letter repeat advanced typing progress');
     await page.keyboard.type(word);
     await page.waitForFunction((oldText) => {
       const node = document.querySelector('[data-p23-transform="DIRECTIVE RELAY"]');
@@ -117,6 +148,9 @@ const exercise = async (page, id) => {
   } else if (id === 'perfectstop') {
     const gameRoot = page.locator('.game-shell main [tabindex="0"]').first();
     await page.waitForTimeout(250);
+    await gameRoot.evaluate((root) => root.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', repeat: true, bubbles: true })));
+    await page.waitForTimeout(30);
+    assert(await gameRoot.getByText(/^(PERFECT|GREAT|GOOD|MISS)\s*•\s*\+/).count() === 0, 'Perfect Stop repeated Space prematurely stopped the marker');
     await gameRoot.click({ position: { x: 12, y: 12 } });
     await gameRoot.getByText(/^(PERFECT|GREAT|GOOD|MISS)\s*•\s*\+/).waitFor({ state: 'visible', timeout: 2500 });
     await gameRoot.getByText(/^TAP FOR\s+/).waitFor({ state: 'visible', timeout: 2500 });
@@ -124,26 +158,39 @@ const exercise = async (page, id) => {
     await page.keyboard.press('Space');
     await page.getByText('FALSE START', { exact: true }).waitFor({ state: 'visible', timeout: 2500 });
   } else if (id === 'pulse') {
+    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight', repeat: true, bubbles: true })));
+    await page.waitForTimeout(30);
+    assert((await hud.innerText()).trim() === before, 'Pulse repeated path key changed Groove Path state');
     await page.keyboard.press('ArrowRight');
     await page.waitForFunction((oldText) => {
       const node = document.querySelector('[data-p23-transform="GROOVE PATH"]');
       const text = node?.textContent ?? '';
       return text !== oldText && text.includes('NEXT:');
     }, before, { timeout: 1200 });
+    const wager = page.getByRole('button', { name: /^Sync Wager,/i });
     await page.keyboard.press('f');
-    await page.waitForFunction(() => Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.includes('SYNC WAGER ARMED')), null, { timeout: 1200 });
-    await page.keyboard.press('Space');
+    await page.waitForFunction(() => document.querySelector('button[aria-label^="Sync Wager,"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 1200 });
+    assert(await wager.getAttribute('aria-pressed') === 'true', 'Pulse real F input did not arm Sync Wager');
   } else if (id === 'laserrope') {
+    const redline = page.getByRole('button', { name: /^Redline,/i });
     await page.keyboard.press('f');
-    await page.waitForFunction(() => document.querySelector('button[aria-label="Activate Redline"]')?.textContent?.includes('REDLINE') ?? false, null, { timeout: 1200 });
+    await page.waitForFunction(() => document.querySelector('button[aria-label^="Redline,"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 1200 });
+    assert(await redline.getAttribute('aria-pressed') === 'true', 'Laser real F input did not activate Redline');
     await page.keyboard.press('Space');
   } else if (id === 'flappyaero') {
+    const flow = page.getByRole('button', { name: /^Flow Boost,/i });
     await page.keyboard.press('f');
-    await page.waitForFunction(() => Array.from(document.querySelectorAll('#flappy-aero-container button')).some((button) => button.textContent?.includes('FLOW BOOST ACTIVE')), null, { timeout: 1200 });
+    await page.waitForFunction(() => document.querySelector('button[aria-label^="Flow Boost,"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 1200 });
+    assert(await flow.getAttribute('aria-pressed') === 'true', 'Aero real F input did not activate Flow Boost');
     await page.keyboard.press('Space');
   } else if (id === 'stack') {
+    const focus = page.getByRole('button', { name: /^Focus,/i });
+    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', code: 'KeyF', repeat: true, bubbles: true })));
+    await page.waitForTimeout(30);
+    assert(await focus.getAttribute('aria-pressed') === 'false', 'Stack repeated F key armed Focus');
     await page.keyboard.press('f');
-    await page.waitForFunction(() => Array.from(document.querySelectorAll('.game-shell button')).some((button) => button.textContent?.includes('FOCUS ARMED')), null, { timeout: 1200 });
+    await page.waitForFunction(() => document.querySelector('button[aria-label^="Focus,"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 1200 });
+    assert(await focus.getAttribute('aria-pressed') === 'true', 'Stack real F input did not arm Focus');
     await page.keyboard.press('Space');
     await page.waitForTimeout(120);
   }
@@ -156,6 +203,7 @@ const runCandidate = async (page, profile, id) => {
   try {
     await launch(page, id);
     await waitForNativeReady(page, id);
+    await assertTransformationControlSemantics(page, id);
 
     const shellState = await page.evaluate(() => {
       const shell = document.querySelector('.game-shell');
@@ -192,6 +240,10 @@ const runCandidate = async (page, profile, id) => {
     assert(pauseText.includes(transforms[id]), `${id} pause missing P23 transformation teaching`);
     if (id === 'pulse') assert(pauseText.includes('A/D') && pauseText.includes('SYNC WAGER'), 'Pulse pause missing new path-choice/source control parity');
     await page.locator('[data-p19-dialog="pause"]').getByRole('button', { name: /^RESUME \(ESC\)$/i }).click();
+    await page.waitForFunction(() => {
+      const stage = document.querySelector('[data-p18-stage]');
+      return Boolean(stage && document.activeElement === stage);
+    }, null, { timeout: 1500 });
 
     await page.locator('#game-restart-btn').click();
     await page.waitForTimeout(180);
