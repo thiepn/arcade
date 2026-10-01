@@ -1,7 +1,9 @@
 export const GRAVITY_PHYSICS_HZ = 60;
 export const GRAVITY_FIXED_STEP_SEC = 1 / GRAVITY_PHYSICS_HZ;
 export const GRAVITY_MAX_FRAME_SEC = 0.05;
-export const GRAVITY_MAX_STEPS_PER_FRAME = 6;
+// The 50 ms frame clamp plus a 60 Hz fixed step can request at most three
+// simulation steps. Keep the explicit catch-up cap aligned with that real bound.
+export const GRAVITY_MAX_STEPS_PER_FRAME = 3;
 
 export const getGravityPhysicsStepBatch = (accumulatorSec: number, deltaSec: number) => {
   const totalSec = Math.max(0, accumulatorSec) + Math.min(Math.max(0, deltaSec), GRAVITY_MAX_FRAME_SEC);
