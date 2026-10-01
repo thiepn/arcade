@@ -63,7 +63,7 @@ const requiredQualityGates = [
   'quality:gameplay-p6','quality:gameplay-p7','quality:gameplay-p8','quality:gameplay-p9','quality:gameplay-p10',
   'quality:gameplay-p11','quality:gameplay-p12','quality:gameplay-p13','quality:gameplay-p14','quality:gameplay-p15',
   'quality:gameplay-p16','quality:gameplay-p17','quality:gameplay-p18','quality:gameplay-p19','quality:gameplay-p20',
-  'quality:gameplay-p21','quality:gameplay-p22','quality:gameplay-p23','quality:gameplay-p24',
+  'quality:gameplay-p21','quality:gameplay-p22','quality:gameplay-p23','quality:gameplay-p24','quality:gameplay-p25',
   'quality:browser-p3','quality:browser-p17','quality:browser-p18','quality:browser-p19','quality:browser-p20','quality:browser-p21','quality:browser-p22','quality:browser-p23','quality:browser-p24',
   'quality:lifecycle','quality:mobile','quality:rope','quality:rope-feedback','quality:rope-phase-c','quality:blockdrop','quality:knife','quality:puck','quality:rail',
   'quality:release32','quality:hardening',
@@ -84,8 +84,8 @@ const requiredAuditFiles = [
   'scripts/audit-gameplay-p0.ts','scripts/audit-gameplay-p1.ts','scripts/audit-gameplay-p2.ts',
   'scripts/audit-gameplay-p4.ts','scripts/audit-gameplay-p5.ts','scripts/audit-gameplay-p6.ts','scripts/audit-gameplay-p7.ts','scripts/audit-gameplay-p8.ts','scripts/audit-gameplay-p9.ts',
   'scripts/audit-gameplay-p10.ts','scripts/audit-gameplay-p11.ts','scripts/audit-gameplay-p12.ts','scripts/audit-gameplay-p13.ts','scripts/audit-gameplay-p14.ts','scripts/audit-gameplay-p15.ts',
-  'scripts/audit-gameplay-p16.ts','scripts/audit-gameplay-p17.ts','scripts/audit-gameplay-p18.ts','scripts/audit-gameplay-p19.ts','scripts/audit-gameplay-p20.ts','scripts/audit-gameplay-p21.ts','scripts/audit-gameplay-p22.ts','scripts/audit-gameplay-p23.ts','scripts/audit-gameplay-p24.ts',
-  'scripts/audit-browser-gameplay-p3.mjs','scripts/audit-browser-gameplay-p17.mjs','scripts/audit-browser-gameplay-p18.mjs','scripts/audit-browser-gameplay-p19.mjs','scripts/audit-browser-gameplay-p20.mjs','scripts/audit-browser-gameplay-p21.mjs','scripts/audit-browser-gameplay-p22.mjs','scripts/audit-browser-gameplay-p23.mjs','scripts/audit-browser-gameplay-p24.mjs',
+  'scripts/audit-gameplay-p16.ts','scripts/audit-gameplay-p17.ts','scripts/audit-gameplay-p18.ts','scripts/audit-gameplay-p19.ts','scripts/audit-gameplay-p20.ts','scripts/audit-gameplay-p21.ts','scripts/audit-gameplay-p22.ts','scripts/audit-gameplay-p23.ts','scripts/audit-gameplay-p24.ts','scripts/audit-gameplay-p25.ts',
+  'scripts/audit-browser-gameplay-p3.mjs','scripts/audit-browser-gameplay-p17.mjs','scripts/audit-browser-gameplay-p18.mjs','scripts/audit-browser-gameplay-p19.mjs','scripts/audit-browser-gameplay-p20.mjs','scripts/audit-browser-gameplay-p21.mjs','scripts/audit-browser-gameplay-p22.mjs','scripts/audit-browser-gameplay-p23.mjs','scripts/audit-browser-gameplay-p24.mjs','scripts/audit-browser-p24-incumbents.mjs',
 ];
 for (const path of requiredAuditFiles) assert(existsSync(join(root, path)), `missing permanent regression audit ${path}`);
 
