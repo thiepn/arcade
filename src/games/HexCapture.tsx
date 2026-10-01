@@ -83,6 +83,7 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
   const gameOverSent = useRef(false);
   const [message, setMessage] = useState('PRESS SPACE — LEAVE SAFETY — RECONNECT');
   const [hud, setHud] = useState<Hud>({ lives: 3, score: 0, chain: 0, percent: 0, armed: false, hunters: 1 });
+  const [heldDirection, setHeldDirection] = useState<Dir | null>(null);
 
   useLogicalCanvas(canvasRef, W, H);
 
@@ -95,6 +96,7 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
     const st = stateRef.current;
     if (st.finished || gameOverSent.current) return;
     heldDir.current = null;
+    setHeldDirection(null);
     st.finished = true;
     if (won) st.score += 8000 + st.lives * 1200;
     onScoreUpdate(st.score);
@@ -114,6 +116,7 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
     const now = performance.now();
     if (st.finished || now < st.hitCooldown) return;
     heldDir.current = null;
+    setHeldDirection(null);
     st.hitCooldown = now + 650;
     clearTrail();
     st.drawing = false;
@@ -271,7 +274,10 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
       if (code === 'ArrowRight' || code === 'KeyD') return 'right';
       return null;
     };
-    const clearHeld = () => { heldDir.current = null; };
+    const clearHeld = () => {
+      heldDir.current = null;
+      setHeldDirection(null);
+    };
     const down = (event: KeyboardEvent) => {
       const st = stateRef.current;
       if (event.repeat && event.code === 'Space') return;
@@ -280,6 +286,7 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
       if (dir) {
         event.preventDefault();
         heldDir.current = dir;
+        setHeldDirection(dir);
         if (!event.repeat) {
           st.lastStep = performance.now();
           moveStep(dir);
@@ -291,7 +298,10 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
     };
     const up = (event: KeyboardEvent) => {
       const dir = keyToDir(event.code);
-      if (dir && heldDir.current === dir) heldDir.current = null;
+      if (dir && heldDir.current === dir) {
+        heldDir.current = null;
+        setHeldDirection(null);
+      }
     };
     const visibility = () => { if (document.hidden) clearHeld(); };
     window.addEventListener('keydown', down, { capture: true });
@@ -428,10 +438,16 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
     const st = stateRef.current;
     if (isPaused || st.finished) return;
     heldDir.current = dir;
+    setHeldDirection(dir);
     st.lastStep = performance.now();
     moveStep(dir);
   };
-  const releaseDir = (dir: Dir) => { if (heldDir.current === dir) heldDir.current = null; };
+  const releaseDir = (dir: Dir) => {
+    if (heldDir.current === dir) {
+      heldDir.current = null;
+      setHeldDirection(null);
+    }
+  };
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#090812] text-white" data-replacement-game="hex-capture">
@@ -458,14 +474,14 @@ export const HexCapture: React.FC<GameComponentProps> = ({ onGameOver, onScoreUp
         <div className="hidden text-[10px] font-mono-arcade text-slate-400 sm:block">WASD / ARROWS • SPACE CAPTURE</div>
         <div className="grid grid-cols-3 grid-rows-2 gap-1" aria-label="Touch direction controls">
           <span />
-          <button type="button" aria-label="Move up" onPointerDown={() => pressDir('up')} onPointerUp={() => releaseDir('up')} onPointerCancel={() => releaseDir('up')} className="h-9 w-10 rounded-lg border border-violet-400/25 bg-violet-500/10 text-sm text-violet-100 active:bg-violet-500/30">▲</button>
+          <button type="button" aria-label="Move up" aria-pressed={heldDirection === 'up'} aria-keyshortcuts="W ArrowUp" onPointerDown={() => pressDir('up')} onPointerUp={() => releaseDir('up')} onPointerCancel={() => releaseDir('up')} className="h-9 w-10 rounded-lg border border-violet-400/25 bg-violet-500/10 text-sm text-violet-100 active:bg-violet-500/30">▲</button>
           <span />
-          <button type="button" aria-label="Move left" onPointerDown={() => pressDir('left')} onPointerUp={() => releaseDir('left')} onPointerCancel={() => releaseDir('left')} className="h-9 w-10 rounded-lg border border-violet-400/25 bg-violet-500/10 text-sm text-violet-100 active:bg-violet-500/30">◀</button>
-          <button type="button" aria-label="Move down" onPointerDown={() => pressDir('down')} onPointerUp={() => releaseDir('down')} onPointerCancel={() => releaseDir('down')} className="h-9 w-10 rounded-lg border border-violet-400/25 bg-violet-500/10 text-sm text-violet-100 active:bg-violet-500/30">▼</button>
-          <button type="button" aria-label="Move right" onPointerDown={() => pressDir('right')} onPointerUp={() => releaseDir('right')} onPointerCancel={() => releaseDir('right')} className="h-9 w-10 rounded-lg border border-violet-400/25 bg-violet-500/10 text-sm text-violet-100 active:bg-violet-500/30">▶</button>
+          <button type="button" aria-label="Move left" aria-pressed={heldDirection === 'left'} aria-keyshortcuts="A ArrowLeft" onPointerDown={() => pressDir('left')} onPointerUp={() => releaseDir('left')} onPointerCancel={() => releaseDir('left')} className="h-9 w-10 rounded-lg border border-violet-400/25 bg-violet-500/10 text-sm text-violet-100 active:bg-violet-500/30">◀</button>
+          <button type="button" aria-label="Move down" aria-pressed={heldDirection === 'down'} aria-keyshortcuts="S ArrowDown" onPointerDown={() => pressDir('down')} onPointerUp={() => releaseDir('down')} onPointerCancel={() => releaseDir('down')} className="h-9 w-10 rounded-lg border border-violet-400/25 bg-violet-500/10 text-sm text-violet-100 active:bg-violet-500/30">▼</button>
+          <button type="button" aria-label="Move right" aria-pressed={heldDirection === 'right'} aria-keyshortcuts="D ArrowRight" onPointerDown={() => pressDir('right')} onPointerUp={() => releaseDir('right')} onPointerCancel={() => releaseDir('right')} className="h-9 w-10 rounded-lg border border-violet-400/25 bg-violet-500/10 text-sm text-violet-100 active:bg-violet-500/30">▶</button>
         </div>
         <div className="flex justify-end">
-          <button type="button" onClick={toggleCapture} aria-pressed={hud.armed} aria-label="Arm capture route" className={`min-h-10 rounded-xl border px-3 py-2 text-[10px] font-mono-arcade font-bold sm:text-xs ${hud.armed ? 'border-amber-300 bg-amber-400/20 text-amber-100' : 'border-cyan-300/30 bg-cyan-400/10 text-cyan-100'}`}>
+          <button type="button" onClick={toggleCapture} aria-pressed={hud.armed} aria-label="Arm capture route" aria-keyshortcuts="Space" className={`min-h-10 rounded-xl border px-3 py-2 text-[10px] font-mono-arcade font-bold sm:text-xs ${hud.armed ? 'border-amber-300 bg-amber-400/20 text-amber-100' : 'border-cyan-300/30 bg-cyan-400/10 text-cyan-100'}`}>
             {hud.armed ? 'CAPTURE ARMED' : 'CAPTURE'}
           </button>
         </div>
