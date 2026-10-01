@@ -52,12 +52,25 @@ export const HEX_STEP_MS = 82;
 export const HEX_START_LIVES = 3;
 export const HEX_SECOND_HUNTER_PERCENT = 34;
 export const HEX_MAX_CHAIN_BONUS = 6;
+export const HEX_INTERIOR_CELLS = 28 * 18;
+export const HEX_BASE_POINTS_PER_CELL = 80;
+export const HEX_CHAIN_POINTS_PER_CELL = 4;
 
 export const getHexClosureBonus = (claimedCells: number, chain: number): number => {
   const claimed = Math.max(0, Math.floor(claimedCells));
   const safeChain = Math.min(HEX_MAX_CHAIN_BONUS, Math.max(0, Math.floor(chain)));
-  return claimed * 90 + Math.floor(Math.sqrt(claimed) * 140) + safeChain * 420;
+  return claimed * (HEX_BASE_POINTS_PER_CELL + safeChain * HEX_CHAIN_POINTS_PER_CELL);
 };
 
 export const getHexWinBonus = (lives: number): number =>
   8000 + Math.max(0, Math.floor(lives)) * 1200;
+
+/**
+ * Conservative whole-board upper bound: every interior cell is valued as if it
+ * were claimed at the maximum chain rate, then the three-life clear bonus is
+ * added. Because claimed cells become permanently safe, splitting a route into
+ * many tiny closures cannot exceed this bound.
+ */
+export const getHexTheoreticalMaxScore = (): number =>
+  getHexClosureBonus(HEX_INTERIOR_CELLS, HEX_MAX_CHAIN_BONUS) +
+  getHexWinBonus(HEX_START_LIVES);
