@@ -991,6 +991,9 @@ export const RhythmGame: React.FC<GameComponentProps> = ({
                   return next;
                 });
               }}
+              aria-label={`Rhythm lane ${label}`}
+              aria-pressed={isPressed}
+              aria-keyshortcuts={idx === 0 ? 'D 1 ArrowLeft' : idx === 1 ? 'F 2 ArrowDown' : idx === 2 ? 'J 3 ArrowUp' : 'K 4 ArrowRight'}
               className="py-3.5 rounded-xl border text-center font-mono font-black text-sm uppercase transition-transform active:scale-95 cursor-pointer backdrop-blur-md"
               style={{
                 backgroundColor: isPressed ? `${color}44` : 'rgba(18, 18, 24, 0.85)',
