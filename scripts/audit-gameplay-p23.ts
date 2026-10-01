@@ -201,7 +201,8 @@ for (const marker of [
   'Stack repeated F key armed Focus',
   'Laser real F input did not activate Redline',
   'Aero real F input did not activate Flow Boost',
-  'document.activeElement === stage',
+  'const preferred = textEntry ?? stage',
+  'document.activeElement === preferred',
 ]) assert(browserAudit.includes(marker), `P23 browser audit missing transformation hardening check: ${marker}`);
 
 if (errors.length) {
