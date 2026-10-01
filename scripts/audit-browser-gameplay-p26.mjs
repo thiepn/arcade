@@ -273,7 +273,12 @@ const pauseResume = async (page, id, profile) => {
     .getByRole('button', { name: /^RESUME \(ESC\)$/i })
     .click();
   await page.waitForFunction(
-    () => document.activeElement === document.querySelector('[data-p18-stage]'),
+    () => {
+      const stage = document.querySelector('[data-p18-stage]');
+      const textEntry = stage?.querySelector('input[type="text"], input:not([type]), textarea, [contenteditable="true"], [contenteditable=""]');
+      const preferred = textEntry ?? stage;
+      return Boolean(preferred && document.activeElement === preferred);
+    },
     null,
     { timeout: 3000 },
   );
