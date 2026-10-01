@@ -80,6 +80,15 @@ The three numeric columns are **native engine counters**. Native **Score** and n
 | Neon Puck Smash | timed | 1,500 | 7,000 | 20,000 | 60-second match. Goal rewards already scale Casual 1x, Pro 1.75x, Master 2.5x. [`AirHockeyGame.tsx`](../src/games/AirHockeyGame.tsx) |
 | Neon Rail Shift | endless | 10,000 | 40,000 | 110,000 | Active survival, coins, phase cores and optional faster Surge routes. [`NeonRailShiftGame.tsx`](../src/games/NeonRailShiftGame.tsx) |
 
+### Production replacement epoch note — 2026-09-11 / P26 qualification
+
+The calibration table above records the scoring-v2 engines that existed when those anchors were established. Production later replaced two engines while deliberately retaining their compatibility ids and AP anchors:
+
+- `gravity:standard` now runs **Vector Golf**. P26 bounds its six-hole theoretical native maximum at **32,820**, below the deployed 33,000 hard rejection ceiling.
+- `astroblaster:standard` now runs **Hex Capture**. P26 removes micro-capture farming and bounds the conservative whole-board score at **64,016**, below the retained 65,000 mastery anchor.
+
+The old Gravity/Astro rows remain historical calibration provenance; they are not claims that those retired engines still ship. The replacement epoch sanitation prevents pre-cutover native records from being treated as replacement personal bests. P26 changes neither AP anchors, score version nor policy id.
+
 Native rules and risk modifiers not among the five reductions remain intact: route/orb precision, stage clears, voluntary Overclock, Apex, Surge, Redline, Hunt Rush, Focus, contracts, Fever and similar earned gameplay states still increase native performance under their existing conditions. Because the AP map is monotone, they continue to improve the result. They do not create extra cabinet slots in overall ranking. Existing permanent game audits cover their lifecycle, reward and input contracts; this release does not claim to have run a factorial human trial of every optional-state combination.
 
 ### Selected difficulty modes
