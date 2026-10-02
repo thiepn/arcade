@@ -23,6 +23,15 @@
 
 ## Unreleased
 
+### P28 production SLOs / alerting / incident automation — 2026-10-02
+- Add a 30-day, 99% synthetic scheduled-checkpoint SLO over P27 burn-in history with an explicit error budget and a 12-checkpoint warm-up floor.
+- Run a fresh P27 production contract sample before every P28 evaluation and keep GitHub-runner latency diagnostic rather than misrepresenting it as player latency.
+- Correlate reliability state with the latest successful production workflow SHA and run.
+- Add one deduplicated GitHub incident issue for fresh hard production failures or established rolling-SLO breaches; update it in place instead of creating repeated alerts.
+- Require a healthy fresh probe plus two successful scheduled P27 checkpoints before automated incident closure.
+- Retain P28 reliability evidence for 90 days while keeping the P27 six-hour sentinel and its read-only permissions unchanged.
+- Keep incident automation limited to evidence and issue lifecycle: no automatic redeploys, credential rotation, scoring changes, Supabase mutation, leaderboard repair or player telemetry.
+- Add permanent P28 CI/release32 contracts for permissions, SLO policy, recovery gating, deployment correlation and no-player-telemetry boundaries.
 ### P27 post-release burn-in / production telemetry / operational reliability — 2026-10-02
 - Add synthetic-only production probes for the live shell, 32-game asset manifest, versioned service worker, PWA manifest, leaderboard CORS, health, overall ranking and weekly ranking surfaces.
 - Record per-probe HTTP status, retry recovery and latency into machine-readable JSON plus a GitHub Actions summary without collecting player/session telemetry.
