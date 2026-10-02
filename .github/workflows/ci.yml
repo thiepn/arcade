@@ -80,6 +80,7 @@ jobs:
       - run: bun run quality:gameplay-p25
       - run: bun run quality:gameplay-p26
       - run: bun run quality:gameplay-p27
+      - run: bun run quality:gameplay-p28
       - run: bun run quality:lifecycle
       - run: bun run quality:mobile
       - run: bun run quality:rope

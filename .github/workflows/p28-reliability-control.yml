@@ -1,0 +1,64 @@
+name: P28 Reliability Control
+
+on:
+  workflow_run:
+    workflows: ["P27 Production Burn-In"]
+    types: [completed]
+  schedule:
+    - cron: '47 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: p28-production-reliability
+  cancel-in-progress: false
+
+env:
+  P27_SITE_URL: https://thiepn.dev/arcade/
+  P27_API_URL: https://hycegznamzjhwinegaai.supabase.co/functions/v1/micro-arcade-leaderboards
+  P27_PRODUCTION_ORIGIN: https://thiepn.dev
+  P27_POLICY_HASH: b467b52542b31e2a942c7af0dfe11eb4598cbf56c50096278a8be1b1a1a79057
+  P28_WINDOW_DAYS: '30'
+  P28_SLO_TARGET: '99'
+  P28_MIN_CHECKPOINTS: '12'
+  P28_RECOVERY_STREAK: '2'
+
+jobs:
+  reliability-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - name: Fresh synthetic production probe
+        continue-on-error: true
+        run: bun run quality:production-p27
+        env:
+          P27_SAMPLES: '1'
+          P27_ATTEMPTS: '2'
+          P27_TIMEOUT_MS: '8000'
+          P27_REPORT_DIR: p28-input
+      - name: Evaluate rolling SLO and maintain incident lifecycle
+        run: bun run quality:production-p28
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          P28_P27_REPORT: p28-input/production-telemetry.json
+          P28_REPORT_DIR: p28-report
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: p28-reliability-${{ github.run_number }}
+          path: |
+            p28-input
+            p28-report
+          retention-days: 90
+          if-no-files-found: warn
