@@ -23,6 +23,15 @@
 
 ## Unreleased
 
+### P27 post-release burn-in / production telemetry / operational reliability — 2026-10-02
+- Add synthetic-only production probes for the live shell, 32-game asset manifest, versioned service worker, PWA manifest, leaderboard CORS, health, overall ranking and weekly ranking surfaces.
+- Record per-probe HTTP status, retry recovery and latency into machine-readable JSON plus a GitHub Actions summary without collecting player/session telemetry.
+- Classify runs as healthy/degraded/unhealthy; contract and availability failures are hard failures while GitHub-runner latency excursions remain observational by default.
+- Run a read-only scheduled production burn-in every six hours with three samples per checkpoint and 30-day evidence retention.
+- Define the initial 72-hour qualification as 12 clean scheduled checkpoints while keeping the same workflow as a continuing low-frequency production sentinel.
+- Add P27 to the post-deploy Pages certification chain so every newly deployed release proves the exact live artifact and leaderboard contracts.
+- Add a permanent CI contract that forbids browser/session tracking primitives in the P27 probe and preserves P26 gameplay, scoring, policy and compatibility boundaries.
+
 ### P26 real-device readiness / long-run balance / production certification — 2026-10-01
 - Make certification production-resolved: the `gravity` slot ships Vector Golf and the `astroblaster` slot ships Hex Capture; retired Gravity/Astro sources remain historical regression material rather than being mistaken for shipped engines.
 - Replace Vector Golf's hidden historical FLIGHT CONTRACT test marker with a real semantic Aim Guide control and release interrupted drag ownership on blur/backgrounding.

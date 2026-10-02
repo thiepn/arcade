@@ -121,6 +121,10 @@ jobs:
           P3_QUICK: '1'
           P26_BASE_URL: ${{ needs.deploy.outputs.page_url }}
           P26_QUICK: '1'
+          P27_SITE_URL: ${{ needs.deploy.outputs.page_url }}
+          P27_API_URL: ${{ env.LEADERBOARD_API_URL }}
+          P27_PRODUCTION_ORIGIN: ${{ env.PRODUCTION_ORIGIN }}
+          P27_SAMPLES: '1'
         run: |
           set -euo pipefail
           chrome="$(command -v google-chrome || command -v google-chrome-stable || true)"
@@ -131,3 +135,4 @@ jobs:
           HEADER_CHROME_PATH="$chrome" bun scripts/audit-responsive-header.mjs
           P3_CHROME_PATH="$chrome" bun run quality:browser-p3
           P26_CHROME_PATH="$chrome" bun run quality:browser-p26
+          bun run quality:production-p27
