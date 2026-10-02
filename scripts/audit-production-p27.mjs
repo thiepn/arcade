@@ -185,8 +185,10 @@ async function runSample(sampleNumber) {
       const payload = parseJson('api-weekly', body);
       assert(Array.isArray(payload.entries), 'api-weekly: entries is not an array');
       assert(Number.isFinite(payload.totalCompetitors), 'api-weekly: totalCompetitors is missing/non-numeric');
-      assert(typeof payload.weekStart === 'string' && payload.weekStart.length > 0, 'api-weekly: weekStart missing');
-      assert(typeof payload.weekEnd === 'string' && payload.weekEnd.length > 0, 'api-weekly: weekEnd missing');
+      assert(Number.isFinite(payload.weekStart), 'api-weekly: weekStart missing/non-numeric');
+      assert(Number.isFinite(payload.weekEnd), 'api-weekly: weekEnd missing/non-numeric');
+      assert(payload.weekEnd > payload.weekStart, 'api-weekly: weekEnd must be after weekStart');
+      assert(payload.weekEnd - payload.weekStart === 604_800_000, 'api-weekly: weekly window must span exactly seven days');
     },
   });
 
