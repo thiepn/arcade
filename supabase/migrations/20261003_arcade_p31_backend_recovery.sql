@@ -312,7 +312,7 @@ BEGIN
 
   verification:=public.micro_arcade_p31_verify_snapshot(snapshot_id);
   IF coalesce((verification->>'ok')::boolean,false) IS NOT TRUE THEN
-    RAISE EXCEPTION 'P31 snapshot verification failed';
+    RAISE EXCEPTION 'P31 snapshot verification failed: %', verification;
   END IF;
 
   DELETE FROM private.micro_arcade_recovery_snapshots
