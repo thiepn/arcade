@@ -1,4 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { deployedSha, runTimestamp } from './p30-recovery-core.mjs';
 
 const repo = process.env.GITHUB_REPOSITORY || 'thiepn/arcade';
 const apiBase = process.env.GITHUB_API_URL || 'https://api.github.com';
@@ -180,10 +181,13 @@ const errorBudgetRemaining = Math.max(0, errorBudgetAllowed - failures);
 const recoverySlice = scheduled.slice(0, recoveryStreakRequired);
 const scheduledRecovery = recoverySlice.length >= recoveryStreakRequired && recoverySlice.every((run) => run.conclusion === 'success');
 
-const pagesRuns = await listWorkflowRuns('pages.yml');
-const latestDeployment = pagesRuns
-  .filter((run) => run.conclusion === 'success' && run.head_branch === 'main')
-  .sort((a, b) => Date.parse(b.completed_at || b.updated_at || b.created_at) - Date.parse(a.completed_at || a.updated_at || a.created_at))[0];
+const [pagesRuns, rollbackRuns] = await Promise.all([
+  listWorkflowRuns('pages.yml'),
+  listWorkflowRuns('p30-guarded-rollback.yml'),
+]);
+const latestDeployment = [...pagesRuns, ...rollbackRuns]
+  .filter((run) => run.conclusion === 'success' && run.head_branch === 'main' && deployedSha(run))
+  .sort((a, b) => runTimestamp(b) - runTimestamp(a))[0];
 
 const currentUnhealthy = currentProbe.status === 'unhealthy' || currentProbe.failures?.length > 0;
 const failureClasses = classifyFailures(currentProbe.failures || []);
@@ -221,7 +225,7 @@ const report = {
     scheduledRecovery,
   },
   deployment: {
-    sha: latestDeployment?.head_sha || null,
+    sha: deployedSha(latestDeployment) || null,
     url: latestDeployment?.html_url || null,
     completedAt: latestDeployment?.completed_at || null,
     runId: latestDeployment?.id || null,
