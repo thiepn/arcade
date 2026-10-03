@@ -13,7 +13,8 @@ const shaA = 'a'.repeat(40);
 const shaB = 'b'.repeat(40);
 const shaC = 'c'.repeat(40);
 const run = (sha, minutesAgo, conclusion = 'success', name = 'Deploy Production') => ({
-  head_sha: sha,
+  head_sha: name === 'P30 Guarded Rollback' ? 'e'.repeat(40) : sha,
+  display_title: name === 'P30 Guarded Rollback' ? 'P30 Rollback → ' + sha : name,
   conclusion,
   name,
   completed_at: new Date(now - minutesAgo * 60_000).toISOString(),
@@ -26,8 +27,8 @@ const deployments = [
   run(shaC, 120, 'failure'),
 ];
 const selected = selectRollbackCandidate(deployments);
-assert(selected.current?.head_sha === shaA, 'latest successful deployment must be current production');
-assert(selected.candidate?.head_sha === shaB, 'candidate must be previous distinct successful production SHA');
+assert(selected.current?.deployed_sha === shaA, 'latest successful deployment must be current production');
+assert(selected.candidate?.deployed_sha === shaB, 'candidate must be previous distinct successful production SHA');
 assert(uniqueDeploymentHistory(deployments).length === 2, 'duplicate SHA deployments and failed runs must not inflate history');
 
 const ciRuns = [
