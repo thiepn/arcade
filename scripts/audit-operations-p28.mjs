@@ -18,6 +18,8 @@ for (const marker of [
   'syntheticOnly: true',
   "listWorkflowRuns('p27-production-burnin.yml')",
   "listWorkflowRuns('pages.yml')",
+  "listWorkflowRuns('p30-guarded-rollback.yml')",
+  'deployedSha(latestDeployment)',
   "run.event === 'schedule'",
   "incidentMarker = '<!-- p28-production-slo-incident -->'",
   "action: 'ready-for-p29-verification'",
