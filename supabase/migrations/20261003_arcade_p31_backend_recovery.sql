@@ -152,7 +152,7 @@ AS $$
 DECLARE
   s private.micro_arcade_recovery_snapshots%ROWTYPE;
   calculated_hash text;
-  current_schema text;
+  current_schema_hash text;
   keys_ok boolean;
   relationships_ok boolean;
   session_scope_ok boolean;
@@ -166,7 +166,7 @@ BEGIN
     RETURN jsonb_build_object('ok',false,'code','snapshot_not_found');
   END IF;
 
-  current_schema:=private.micro_arcade_p31_schema_sha256();
+  current_schema_hash:=private.micro_arcade_p31_schema_sha256();
   calculated_hash:=encode(
     extensions.digest(pg_catalog.convert_to(s.payload::text,'UTF8'),'sha256'),
     'hex'
@@ -250,7 +250,7 @@ BEGIN
         AND counts_ok
         AND relationships_ok
         AND session_scope_ok
-        AND s.schema_sha256=current_schema
+        AND s.schema_sha256=current_schema_hash
         AND s.payload_sha256=calculated_hash
       ),
       verification=jsonb_build_object(
@@ -258,7 +258,7 @@ BEGIN
         'countsOk',counts_ok,
         'relationshipsOk',relationships_ok,
         'sessionScopeOk',session_scope_ok,
-        'schemaMatches',s.schema_sha256=current_schema,
+        'schemaMatches',s.schema_sha256=current_schema_hash,
         'payloadHashMatches',s.payload_sha256=calculated_hash,
         'verifiedAt',now()
       )
@@ -266,9 +266,9 @@ BEGIN
 
   RETURN jsonb_build_object(
     'ok',keys_ok AND counts_ok AND relationships_ok AND session_scope_ok
-         AND s.schema_sha256=current_schema AND s.payload_sha256=calculated_hash,
+         AND s.schema_sha256=current_schema_hash AND s.payload_sha256=calculated_hash,
     'snapshotId',s.id,
-    'schemaSha256',current_schema,
+    'schemaSha256',current_schema_hash,
     'rowCounts',s.row_counts
   );
 END
