@@ -1,11 +1,12 @@
-import { PRODUCTION_WORKFLOWS } from './p30-recovery-core.mjs';
+import { PRODUCTION_WORKFLOWS, deploymentWasPublished } from './p30-recovery-core.mjs';
 
 async function deployJobSucceeded(github, run) {
-  if (run?.conclusion === 'success') return true;
+  if (deploymentWasPublished(run)) return true;
   if (!run?.id) return false;
   const body = await github('/repos/' + run.repository_full_name + '/actions/runs/' + run.id + '/jobs?per_page=100');
   const jobs = Array.isArray(body?.jobs) ? body.jobs : [];
-  return jobs.some((job) => job.name === 'deploy' && job.conclusion === 'success');
+  const deploy = jobs.find((job) => job.name === 'deploy');
+  return deploymentWasPublished(run, deploy?.conclusion || null);
 }
 
 export async function resolveProductionDeploymentRuns({
