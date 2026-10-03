@@ -269,7 +269,13 @@ BEGIN
          AND s.schema_sha256=current_schema_hash AND s.payload_sha256=calculated_hash,
     'snapshotId',s.id,
     'schemaSha256',current_schema_hash,
-    'rowCounts',s.row_counts
+    'rowCounts',s.row_counts,
+    'keysOk',keys_ok,
+    'countsOk',counts_ok,
+    'relationshipsOk',relationships_ok,
+    'sessionScopeOk',session_scope_ok,
+    'schemaMatches',s.schema_sha256=current_schema_hash,
+    'payloadHashMatches',s.payload_sha256=calculated_hash
   );
 END
 $$;
