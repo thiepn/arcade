@@ -63,7 +63,7 @@ const requiredQualityGates = [
   'quality:gameplay-p6','quality:gameplay-p7','quality:gameplay-p8','quality:gameplay-p9','quality:gameplay-p10',
   'quality:gameplay-p11','quality:gameplay-p12','quality:gameplay-p13','quality:gameplay-p14','quality:gameplay-p15',
   'quality:gameplay-p16','quality:gameplay-p17','quality:gameplay-p18','quality:gameplay-p19','quality:gameplay-p20',
-  'quality:gameplay-p21','quality:gameplay-p22','quality:gameplay-p23','quality:gameplay-p24','quality:gameplay-p25','quality:gameplay-p26','quality:gameplay-p27','quality:gameplay-p28','quality:gameplay-p29','quality:gameplay-p30',
+  'quality:gameplay-p21','quality:gameplay-p22','quality:gameplay-p23','quality:gameplay-p24','quality:gameplay-p25','quality:gameplay-p26','quality:gameplay-p27','quality:gameplay-p28','quality:gameplay-p29','quality:gameplay-p30','quality:gameplay-p31','quality:backend-p31',
   'quality:browser-p3','quality:browser-p17','quality:browser-p18','quality:browser-p19','quality:browser-p20','quality:browser-p21','quality:browser-p22','quality:browser-p23','quality:browser-p24','quality:browser-p26','quality:production-p26',
   'quality:lifecycle','quality:mobile','quality:rope','quality:rope-feedback','quality:rope-phase-c','quality:blockdrop','quality:knife','quality:puck','quality:rail',
   'quality:release32','quality:hardening',
@@ -85,12 +85,12 @@ const requiredAuditFiles = [
   'scripts/audit-gameplay-p4.ts','scripts/audit-gameplay-p5.ts','scripts/audit-gameplay-p6.ts','scripts/audit-gameplay-p7.ts','scripts/audit-gameplay-p8.ts','scripts/audit-gameplay-p9.ts',
   'scripts/audit-gameplay-p10.ts','scripts/audit-gameplay-p11.ts','scripts/audit-gameplay-p12.ts','scripts/audit-gameplay-p13.ts','scripts/audit-gameplay-p14.ts','scripts/audit-gameplay-p15.ts',
   'scripts/audit-gameplay-p16.ts','scripts/audit-gameplay-p17.ts','scripts/audit-gameplay-p18.ts','scripts/audit-gameplay-p19.ts','scripts/audit-gameplay-p20.ts','scripts/audit-gameplay-p21.ts','scripts/audit-gameplay-p22.ts','scripts/audit-gameplay-p23.ts','scripts/audit-gameplay-p24.ts','scripts/audit-gameplay-p25.ts','scripts/audit-gameplay-p26.ts',
-  'scripts/audit-browser-gameplay-p3.mjs','scripts/audit-browser-gameplay-p17.mjs','scripts/audit-browser-gameplay-p18.mjs','scripts/audit-browser-gameplay-p19.mjs','scripts/audit-browser-gameplay-p20.mjs','scripts/audit-browser-gameplay-p21.mjs','scripts/audit-browser-gameplay-p22.mjs','scripts/audit-browser-gameplay-p23.mjs','scripts/audit-browser-gameplay-p24.mjs','scripts/audit-browser-p24-incumbents.mjs','scripts/audit-browser-gameplay-p26.mjs','scripts/audit-production-p26.mjs','scripts/audit-operations-p27.mjs','scripts/audit-production-p27.mjs','scripts/audit-operations-p28.mjs','scripts/audit-reliability-p28.mjs','scripts/audit-operations-p29.mjs','scripts/audit-incident-p29.mjs','scripts/p29-incident-core.mjs','scripts/test-incident-diagnostics-p29.mjs','scripts/audit-operations-p30.mjs','scripts/p30-recovery-core.mjs','scripts/p30-github-deployments.mjs','scripts/test-disaster-recovery-p30.mjs','scripts/select-rollback-candidate-p30.mjs','scripts/authorize-rollback-p30.mjs','scripts/audit-continuity-p30.mjs',
+  'scripts/audit-browser-gameplay-p3.mjs','scripts/audit-browser-gameplay-p17.mjs','scripts/audit-browser-gameplay-p18.mjs','scripts/audit-browser-gameplay-p19.mjs','scripts/audit-browser-gameplay-p20.mjs','scripts/audit-browser-gameplay-p21.mjs','scripts/audit-browser-gameplay-p22.mjs','scripts/audit-browser-gameplay-p23.mjs','scripts/audit-browser-gameplay-p24.mjs','scripts/audit-browser-p24-incumbents.mjs','scripts/audit-browser-gameplay-p26.mjs','scripts/audit-production-p26.mjs','scripts/audit-operations-p27.mjs','scripts/audit-production-p27.mjs','scripts/audit-operations-p28.mjs','scripts/audit-reliability-p28.mjs','scripts/audit-operations-p29.mjs','scripts/audit-incident-p29.mjs','scripts/p29-incident-core.mjs','scripts/test-incident-diagnostics-p29.mjs','scripts/audit-operations-p30.mjs','scripts/p30-recovery-core.mjs','scripts/p30-github-deployments.mjs','scripts/test-disaster-recovery-p30.mjs','scripts/select-rollback-candidate-p30.mjs','scripts/authorize-rollback-p30.mjs','scripts/audit-continuity-p30.mjs','scripts/audit-operations-p31.mjs','scripts/p31-backup-readiness.mjs','scripts/p31-verify-offsite.py','scripts/p31-decrypt-backup.sh',
 ];
 for (const path of requiredAuditFiles) assert(existsSync(join(root, path)), `missing permanent regression audit ${path}`);
 
 const workflowFiles = readdirSync(join(root, '.github', 'workflows')).sort();
-assert(workflowFiles.length === 7 && workflowFiles[0] === 'ci.yml' && workflowFiles[1] === 'p27-production-burnin.yml' && workflowFiles[2] === 'p28-reliability-control.yml' && workflowFiles[3] === 'p29-operational-readiness.yml' && workflowFiles[4] === 'p30-continuity-drill.yml' && workflowFiles[5] === 'p30-guarded-rollback.yml' && workflowFiles[6] === 'pages.yml', `temporary/unexpected workflows remain: ${workflowFiles.join(', ')}`);
+assert(workflowFiles.length === 8 && workflowFiles[0] === 'ci.yml' && workflowFiles[1] === 'p27-production-burnin.yml' && workflowFiles[2] === 'p28-reliability-control.yml' && workflowFiles[3] === 'p29-operational-readiness.yml' && workflowFiles[4] === 'p30-continuity-drill.yml' && workflowFiles[5] === 'p30-guarded-rollback.yml' && workflowFiles[6] === 'p31-offsite-backup.yml' && workflowFiles[7] === 'pages.yml', `temporary/unexpected workflows remain: ${workflowFiles.join(', ')}`);
 const temporaryScripts = readdirSync(join(root, 'scripts')).filter((name) => /^(migrate|patch)-/i.test(name));
 assert(temporaryScripts.length === 0, `temporary migration/patch scripts remain: ${temporaryScripts.join(', ')}`);
 
@@ -117,6 +117,11 @@ const phaseFiles = [
   ['docs/P28_PRODUCTION_SLOS_INCIDENT_AUTOMATION.md','P28 production SLO and incident automation certification'],
   ['docs/P29_INCIDENT_RUNBOOKS.md','P29 incident runbooks and operational readiness certification'],
   ['docs/P30_DISASTER_RECOVERY.md','P30 disaster recovery and rollback certification'],
+  ['docs/P31_BACKEND_DATA_RESILIENCE.md','P31 backend data resilience certification'],
+  ['supabase/migrations/20261003_arcade_p31_backend_recovery.sql','P31 backend recovery migration'],
+  ['supabase/functions/micro-arcade-p31-backup-export/index.ts','P31 OIDC backup export function'],
+  ['ops/p31-backup-recovery-cert.pem','P31 public recovery certificate'],
+  ['tests/p31-backup-postgres.mjs','P31 real PostgreSQL restore-readiness test'],
 ] as const;
 for (const [path, label] of phaseFiles) assert(existsSync(join(root, path)), `${label} is missing`);
 
@@ -137,4 +142,4 @@ if (errors.length) {
 
 console.log('FINAL 32-GAME RELEASE / REGRESSION AUDIT — PASS');
 console.log('32 source modules / 32 lazy registry entries / 32 Worker rules are in exact parity.');
-console.log('All game contracts, permanent regression gates through P30, production-resolved replacement evidence, burn-in/SLO/diagnostic/disaster-recovery wiring, repository hardening, roster metadata, mobile/MA4 counts, and cleanup constraints are certified.');
+console.log('All game contracts, permanent regression gates through P31, production-resolved replacement evidence, burn-in/SLO/frontend-DR/backend-data-recovery wiring, repository hardening, roster metadata, mobile/MA4 counts, and cleanup constraints are certified.');

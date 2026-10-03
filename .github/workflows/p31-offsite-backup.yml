@@ -1,0 +1,123 @@
+name: P31 Encrypted Offsite Backup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20261003_arcade_p31_backend_recovery.sql'
+      - 'supabase/functions/micro-arcade-p31-backup-export/**'
+      - 'ops/p31-backup-recovery-cert.pem'
+      - 'scripts/p31-verify-offsite.py'
+      - 'scripts/p31-decrypt-backup.sh'
+      - 'scripts/p31-backup-readiness.mjs'
+      - 'tests/p31-*'
+      - 'docs/P31_BACKEND_DATA_RESILIENCE.md'
+      - '.github/workflows/p31-offsite-backup.yml'
+  schedule:
+    - cron: '37 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+
+concurrency:
+  group: p31-encrypted-offsite-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+
+      - name: Fetch verified P31 export with GitHub OIDC
+        id: export
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}"
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}"
+          oidc_url="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=arcade-p31-backup"
+          response="$(curl --fail-with-body --silent --show-error             -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"             "${oidc_url}")"
+          token="$(python -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<<"$response")"
+          echo "::add-mask::$token"
+          curl --fail-with-body --silent --show-error             -X POST             -H "Authorization: Bearer $token"             -H "Content-Type: application/json"             -o p31-backup.json             "https://hycegznamzjhwinegaai.supabase.co/functions/v1/micro-arcade-p31-backup-export"
+          python scripts/p31-verify-offsite.py p31-backup.json
+
+      - name: Encrypt verified backup
+        id: encrypt
+        if: steps.export.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p p31-offsite
+          stamp="$(date -u +'%Y%m%dT%H%M%SZ')"
+          artifact="p31-offsite/arcade-p31-${stamp}-run-${GITHUB_RUN_ID}.cms"
+          summary="$(python scripts/p31-verify-offsite.py p31-backup.json)"
+          plaintext_sha="$(sha256sum p31-backup.json | awk '{print $1}')"
+          openssl cms -encrypt -binary -aes-256-gcm             -in p31-backup.json             -outform DER             -out "$artifact"             ops/p31-backup-recovery-cert.pem
+          openssl cms -cmsout -inform DER -in "$artifact" -noout
+          ciphertext_sha="$(sha256sum "$artifact" | awk '{print $1}')"
+          cert_fingerprint="$(openssl x509 -in ops/p31-backup-recovery-cert.pem -noout -fingerprint -sha256 | cut -d= -f2)"
+          python - "$summary" "$plaintext_sha" "$ciphertext_sha" "$cert_fingerprint" "$artifact" <<'PY'
+          import json,sys,datetime,pathlib,os
+          s=json.loads(sys.argv[1])
+          evidence={
+            "format":"arcade-p31-offsite-evidence-v1",
+            "created_at":datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "run_id":os.environ["GITHUB_RUN_ID"],
+            "run_attempt":os.environ["GITHUB_RUN_ATTEMPT"],
+            "commit":os.environ["GITHUB_SHA"],
+            "backup_file":pathlib.Path(sys.argv[5]).name,
+            "plaintext_sha256":sys.argv[2],
+            "ciphertext_sha256":sys.argv[3],
+            "certificate_sha256_fingerprint":sys.argv[4],
+            "snapshot_id":s["snapshot_id"],
+            "captured_at":s["captured_at"],
+            "schema_sha256":s["schema_sha256"],
+            "payload_sha256":s["payload_sha256"],
+            "payload_bytes":s["payload_bytes"],
+            "transport_bytes":s["transport_bytes"],
+            "total_rows":s["total_rows"],
+            "row_counts":s["row_counts"],
+            "excluded_transient":s["excluded_transient"],
+            "verification_ok":s["ok"] and s["restore_drill_ok"],
+          }
+          pathlib.Path("p31-offsite/manifest.json").write_text(json.dumps(evidence,indent=2)+"\n")
+          PY
+          shred -u p31-backup.json 2>/dev/null || rm -f p31-backup.json
+          test ! -e p31-backup.json
+
+      - name: Backup readiness issue lifecycle
+        if: always()
+        run: bun scripts/p31-backup-readiness.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          P31_EXPORT_OUTCOME: ${{ steps.export.outcome }}
+          P31_ENCRYPT_OUTCOME: ${{ steps.encrypt.outcome }}
+          P31_MANIFEST: p31-offsite/manifest.json
+
+      - name: Upload encrypted backup only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: arcade-p31-offsite-${{ github.run_id }}
+          path: |
+            p31-offsite/*.cms
+            p31-offsite/manifest.json
+          if-no-files-found: warn
+          retention-days: 90
