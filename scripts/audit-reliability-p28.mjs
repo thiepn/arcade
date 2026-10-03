@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { deployedSha, runTimestamp } from './p30-recovery-core.mjs';
+import { resolveProductionDeploymentRuns } from './p30-github-deployments.mjs';
 
 const repo = process.env.GITHUB_REPOSITORY || 'thiepn/arcade';
 const apiBase = process.env.GITHUB_API_URL || 'https://api.github.com';
@@ -181,12 +182,9 @@ const errorBudgetRemaining = Math.max(0, errorBudgetAllowed - failures);
 const recoverySlice = scheduled.slice(0, recoveryStreakRequired);
 const scheduledRecovery = recoverySlice.length >= recoveryStreakRequired && recoverySlice.every((run) => run.conclusion === 'success');
 
-const [pagesRuns, rollbackRuns] = await Promise.all([
-  listWorkflowRuns('pages.yml'),
-  listWorkflowRuns('p30-guarded-rollback.yml'),
-]);
-const latestDeployment = [...pagesRuns, ...rollbackRuns]
-  .filter((run) => run.conclusion === 'success' && run.head_branch === 'main' && deployedSha(run))
+const productionDeploymentRuns = await resolveProductionDeploymentRuns({ repo, github, workflowRuns: listWorkflowRuns });
+const latestDeployment = productionDeploymentRuns
+  .filter((run) => run.head_branch === 'main' && deployedSha(run))
   .sort((a, b) => runTimestamp(b) - runTimestamp(a))[0];
 
 const currentUnhealthy = currentProbe.status === 'unhealthy' || currentProbe.failures?.length > 0;
