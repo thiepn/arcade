@@ -120,36 +120,6 @@ function fingerprintPayload(report) {
   });
 }
 
-function diagnosticComment(report, fingerprint) {
-  const runbookLines = report.diagnostics.runbooks.flatMap((item) => [
-    '- **' + item.classification + '** → `' + item.path + '` (' + item.owner + ')',
-    ...item.firstActions.map((action) => '  - ' + action),
-  ]);
-  const recentP27 = report.timeline.p27Scheduled.slice(0, 6).map((run) =>
-    '- ' + (run.completedAt || 'unknown') + ' — **' + (run.conclusion || 'unknown') + '** — `' + shortSha(run.headSha) + '`'
-  );
-  return [
-    diagnosticPrefix + fingerprint + ' -->',
-    '## P29 automated diagnostics',
-    '',
-    'This diagnostic is synthetic and read-only. It does not redeploy, rotate credentials, change scoring, or mutate production data.',
-    '',
-    '- Independent P27 verification: **' + report.independentProbe.status.toUpperCase() + '** across ' + report.independentProbe.sampleCount + ' sample(s)',
-    '- Incident reason: **' + report.incident.reason + '**',
-    '- Failure classes: ' + (report.diagnostics.failureClasses.join(', ') || 'none'),
-    '- 30-day checkpoint SLO: ' + (report.slo.successPct === null ? 'n/a' : report.slo.successPct + '%') + ' / ' + report.slo.targetPct + '%',
-    '- P27 scheduled evidence fresh: ' + (report.controlPlane.p27Fresh ? 'yes' : 'no'),
-    '- P28 control evidence fresh: ' + (report.controlPlane.p28Fresh ? 'yes' : 'no'),
-    '- Latest successful/observed production deployment SHA: `' + shortSha(report.deployment.latest?.headSha) + '`',
-    '- Deployment-adjacent correlation: ' + (report.deployment.deploymentAdjacent ? 'yes (correlation only; not proof of cause)' : 'no'),
-    '',
-    '### Runbook routing',
-    '',
-    ...(diagnosticCommentRunbooks(diagnosticPrefix, report.diagnostics.runbooks, diagnosticComment) || diagnosticComment),
-    '',
-  ];
-}
-
 function diagnosticCommentRunbooks(_prefix, runbooks, _self) {
   return runbooks.flatMap((item) => [
     '- **' + item.classification + '** → `' + item.path + '` (' + item.owner + ')',
@@ -246,6 +216,7 @@ async function maintainIncident(report) {
     slo: report.slo.raw,
     latestP28: report.controlPlane.latestP28Raw,
     latestDeployment: report.deployment.latestRaw,
+    controlPlaneFresh: report.controlPlane.p27Fresh && report.controlPlane.p28Fresh,
   });
 
   if (recovery.verified) {
@@ -341,9 +312,11 @@ const incidentActive = independentHardFailure || sloRaw.breach || controlPlaneSt
 
 const diagnosticClasses = failureClasses.length
   ? failureClasses
-  : incidentActive
-    ? ['unknown-production-contract']
-    : [];
+  : activeReason === 'operational-control-plane-stale'
+    ? ['control-plane-stale']
+    : incidentActive
+      ? ['unknown-production-contract']
+      : [];
 
 const report = {
   schemaVersion: 1,
