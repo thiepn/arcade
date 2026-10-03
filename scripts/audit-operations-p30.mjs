@@ -26,7 +26,16 @@ for (const marker of [
   'confirmSha',
   'hasSuccessfulCi',
   'assessContinuity',
+  'deploymentWasPublished',
 ]) need(corePath, core, marker);
+
+const resolverPath = 'scripts/p30-github-deployments.mjs';
+const resolver = read(resolverPath);
+for (const marker of [
+  'resolveProductionDeploymentRuns',
+  "job.name === 'deploy'",
+  'deploymentWasPublished',
+]) need(resolverPath, resolver, marker);
 
 const selector = read('scripts/select-rollback-candidate-p30.mjs');
 for (const marker of [
@@ -89,11 +98,11 @@ const onBlock = rollback.slice(rollback.indexOf('on:'), rollback.indexOf('permis
 for (const marker of ['schedule:', 'workflow_run:', 'push:', 'pull_request:']) forbid(rollbackPath + ' trigger block', onBlock, marker);
 
 const p28 = read('scripts/audit-reliability-p28.mjs');
-need('scripts/audit-reliability-p28.mjs', p28, "listWorkflowRuns('p30-guarded-rollback.yml')");
+need('scripts/audit-reliability-p28.mjs', p28, 'resolveProductionDeploymentRuns');
 need('scripts/audit-reliability-p28.mjs', p28, 'deployedSha(latestDeployment)');
 
 const p29 = read('scripts/audit-incident-p29.mjs');
-need('scripts/audit-incident-p29.mjs', p29, "listWorkflowRuns('p30-guarded-rollback.yml')");
+need('scripts/audit-incident-p29.mjs', p29, 'resolveProductionDeploymentRuns');
 need('scripts/audit-incident-p29.mjs', p29, 'deployedSha(run)');
 
 const p29Workflow = read('.github/workflows/p29-operational-readiness.yml');
