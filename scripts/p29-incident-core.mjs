@@ -35,6 +35,15 @@ export const RUNBOOKS = Object.freeze({
       'Preserve immutable score history and avoid destructive resets.',
     ],
   },
+  'control-plane-stale': {
+    path: 'docs/runbooks/P29_CONTROL_PLANE.md',
+    owner: 'GitHub Actions monitoring control plane',
+    firstActions: [
+      'Inspect the latest P27 and P28 scheduled workflow conclusions and timestamps.',
+      'Confirm the scheduled workflows still exist on main and are not disabled or permission-blocked.',
+      'Restore monitoring evidence before declaring application recovery.',
+    ],
+  },
   'unknown-production-contract': {
     path: 'docs/runbooks/P29_UNKNOWN_CONTRACT.md',
     owner: 'Unclassified production contract',
@@ -144,6 +153,7 @@ export function assessRecovery({
   slo,
   latestP28,
   latestDeployment,
+  controlPlaneFresh = true,
 }) {
   const probeHealthy =
     independentProbe?.phase === 'P27' &&
@@ -160,7 +170,8 @@ export function assessRecovery({
     !slo.breach &&
     slo.scheduledRecovery &&
     latestP28?.conclusion === 'success' &&
-    latestDeployment?.conclusion === 'success'
+    latestDeployment?.conclusion === 'success' &&
+    controlPlaneFresh
   );
 
   return {
@@ -170,5 +181,6 @@ export function assessRecovery({
     scheduledRecovery: Boolean(slo?.scheduledRecovery),
     latestP28Healthy: latestP28?.conclusion === 'success',
     latestDeploymentHealthy: latestDeployment?.conclusion === 'success',
+    controlPlaneFresh: Boolean(controlPlaneFresh),
   };
 }
