@@ -23,6 +23,17 @@
 
 ## Unreleased
 
+### P30 disaster recovery / rollback certification / continuity drills — 2026-10-03
+- Add a non-destructive continuity drill that identifies the previous distinct successful production SHA, verifies successful main CI provenance, rebuilds it separately, and certifies scoring, leaderboard, P26, MA3 and MA4 without Pages write permission.
+- Add a manual-only guarded rollback workflow requiring the exact 40-character target SHA to be entered twice before any production write can occur.
+- Reject rollback targets that are currently deployed, were never successfully deployed, lack successful main push CI evidence, or cannot satisfy the current P26/P27-era production certification contract.
+- Rebuild and re-certify the historical target before deployment, then verify the rolled-back live site with quick P3/P26 browser smoke plus three P27 production samples.
+- Track the actual deployed rollback target via the workflow run name so P28/P29 deployment correlation does not confuse the rollback workflow's main head SHA with the artifact that is live.
+- Trigger P29 after guarded rollbacks and merge normal/rollback deployment history into P28/P29 operational evidence.
+- Add dedicated disaster-recovery readiness issue automation for failed non-destructive drills while keeping production reliability incidents under P29.
+- Preserve backend/player data structurally: rollback automation contains no Supabase mutation, data reset, scoring-policy rewrite, credential rotation, automatic rollback or chained auto-remediation.
+- Retain continuity/rollback evidence for 90 days and add deterministic selection/authorization tests plus permanent CI/release32 enforcement.
+
 ### P29 incident runbooks / diagnostics / recovery verification — 2026-10-03
 - Add deterministic failure classification for Pages/artifact, CORS, backend health, leaderboard read-path, stale control-plane and unknown production-contract incidents.
 - Add dedicated operational runbooks with explicit first-response, non-destructive boundaries and recovery proof for every P29 classification.

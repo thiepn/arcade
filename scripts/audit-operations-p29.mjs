@@ -33,7 +33,8 @@ for (const marker of [
   'syntheticOnly: true',
   "listWorkflowRuns('p27-production-burnin.yml')",
   "listWorkflowRuns('p28-reliability-control.yml')",
-  "listWorkflowRuns('pages.yml')",
+  'resolveProductionDeploymentRuns',
+  'deployedSha(run)',
   "listWorkflowRuns('ci.yml')",
   "const diagnosticPrefix = '<!-- p29-diagnostic:'",
   "const recoveryMarker = '<!-- p29-recovery-verification -->'",
@@ -60,7 +61,7 @@ const workflow = read(workflowPath);
 for (const marker of [
   'name: P29 Operational Readiness',
   'workflow_run:',
-  'workflows: ["P28 Reliability Control", "Deploy Production"]',
+  'workflows: ["P28 Reliability Control", "Deploy Production", "P30 Guarded Rollback"]',
   "cron: '23 4 * * 1'",
   'contents: read',
   'actions: read',

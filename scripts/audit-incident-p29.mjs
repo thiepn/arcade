@@ -10,6 +10,8 @@ import {
   latestRun,
   runTimestamp,
 } from './p29-incident-core.mjs';
+import { deployedSha } from './p30-recovery-core.mjs';
+import { resolveProductionDeploymentRuns } from './p30-github-deployments.mjs';
 
 const repo = process.env.GITHUB_REPOSITORY || 'thiepn/arcade';
 const apiBase = process.env.GITHUB_API_URL || 'https://api.github.com';
@@ -99,7 +101,7 @@ function runView(run) {
     name: run.name || null,
     event: run.event || null,
     conclusion: run.conclusion || null,
-    headSha: run.head_sha || null,
+    headSha: deployedSha(run) || run.head_sha || null,
     completedAt: run.completed_at || run.updated_at || run.created_at || null,
     url: run.html_url || null,
   };
@@ -279,7 +281,7 @@ const nowMs = Date.now();
 const [p27Runs, p28Runs, deploymentRuns, ciRuns] = await Promise.all([
   listWorkflowRuns('p27-production-burnin.yml'),
   listWorkflowRuns('p28-reliability-control.yml'),
-  listWorkflowRuns('pages.yml'),
+  resolveProductionDeploymentRuns({ repo, github, workflowRuns: listWorkflowRuns }),
   listWorkflowRuns('ci.yml'),
 ]);
 

@@ -105,7 +105,10 @@
     "quality:production-p28": "bun scripts/audit-reliability-p28.mjs",
     "quality:gameplay-p29": "bun scripts/audit-operations-p29.mjs && bun scripts/test-incident-diagnostics-p29.mjs",
     "quality:operations-p29": "bun scripts/audit-operations-p29.mjs && bun scripts/test-incident-diagnostics-p29.mjs",
-    "quality:production-p29": "bun scripts/audit-incident-p29.mjs"
+    "quality:production-p29": "bun scripts/audit-incident-p29.mjs",
+    "quality:gameplay-p30": "bun scripts/audit-operations-p30.mjs && bun scripts/test-disaster-recovery-p30.mjs",
+    "quality:operations-p30": "bun scripts/audit-operations-p30.mjs && bun scripts/test-disaster-recovery-p30.mjs",
+    "quality:production-p30": "bun scripts/audit-continuity-p30.mjs"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
