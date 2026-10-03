@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
-import { PRODUCTION_WORKFLOWS, hasSuccessfulCi, selectRollbackCandidate } from './p30-recovery-core.mjs';
+import { hasSuccessfulCi, selectRollbackCandidate } from './p30-recovery-core.mjs';
+import { resolveProductionDeploymentRuns } from './p30-github-deployments.mjs';
 
 const repo = process.env.GITHUB_REPOSITORY || 'thiepn/arcade';
 const apiBase = process.env.GITHUB_API_URL || 'https://api.github.com';
@@ -32,9 +33,11 @@ async function workflowRuns(file) {
   return runs;
 }
 
-const deploymentSets = await Promise.all(PRODUCTION_WORKFLOWS.map(workflowRuns));
-const ciRuns = await workflowRuns('ci.yml');
-const selection = selectRollbackCandidate(deploymentSets.flat());
+const [deploymentRuns, ciRuns] = await Promise.all([
+  resolveProductionDeploymentRuns({ repo, github, workflowRuns }),
+  workflowRuns('ci.yml'),
+]);
+const selection = selectRollbackCandidate(deploymentRuns);
 
 if (!selection.current) throw new Error('P30 could not identify a successful current production deployment');
 if (!selection.candidate) throw new Error('P30 could not identify a previous distinct successful production deployment');
