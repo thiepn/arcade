@@ -108,7 +108,10 @@
     "quality:production-p29": "bun scripts/audit-incident-p29.mjs",
     "quality:gameplay-p30": "bun scripts/audit-operations-p30.mjs && bun scripts/test-disaster-recovery-p30.mjs",
     "quality:operations-p30": "bun scripts/audit-operations-p30.mjs && bun scripts/test-disaster-recovery-p30.mjs",
-    "quality:production-p30": "bun scripts/audit-continuity-p30.mjs"
+    "quality:production-p30": "bun scripts/audit-continuity-p30.mjs",
+    "quality:gameplay-p31": "bun scripts/audit-operations-p31.mjs",
+    "quality:operations-p31": "bun scripts/audit-operations-p31.mjs",
+    "quality:backend-p31": "bun tests/p31-backup-postgres.mjs"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
