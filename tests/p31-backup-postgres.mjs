@@ -53,7 +53,7 @@ try {
   await db`INSERT INTO public.micro_arcade_lb_sessions(id,player_id,request_id,game_id,mode_id,policy_id,issued_at,expires_at,used_at)
     VALUES(${unusedLb},${player},${crypto.randomUUID()},'stack','standard',${policy},${now},${now+21600000},NULL)`;
   await db`INSERT INTO public.micro_arcade_lb_runs(id,session_id,player_id,game_id,mode_id,policy_id,source_version,raw_score,duration_ms,active_ms,ap_micros,contribution_micros,completed_at,created_at,status,code,provenance)
-    VALUES(${runId},${historicalLb},${player},'stack','standard',${policy},2,45,10000,9000,3000000000,3000000000,${now-10000},${now-10000},'ranked','ok','p31-test')`;
+    VALUES(${runId},${historicalLb},${player},'stack','standard',${policy},2,45,10000,9000,3000000000,3000000000,${now-10000},${now-10000},'ranked','ok','v3')`;
   await db`INSERT INTO public.micro_arcade_lb_reviews(run_id,previous_status,new_status,reason,reviewed_at)
     VALUES(${runId},'ranked','ranked','P31 recovery fixture',${now})`;
   await db`INSERT INTO public.micro_arcade_rate_limits(scope,bucket_key,bucket_start,request_count)
