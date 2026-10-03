@@ -17,7 +17,7 @@ export function deployedSha(run) {
 }
 
 export function deploymentWasPublished(run, deployJobConclusion = null) {
-  if (!run || run.conclusion === 'skipped' || run.conclusion === 'cancelled') return false;
+  if (!run) return false;
   if (run.conclusion === 'success') return true;
   return deployJobConclusion === 'success';
 }
