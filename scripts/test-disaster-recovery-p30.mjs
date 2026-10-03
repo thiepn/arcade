@@ -33,7 +33,7 @@ assert(selected.candidate?.deployed_sha === shaB, 'candidate must be previous di
 assert(uniqueDeploymentHistory(deployments).length === 2, 'duplicate SHA deployments and failed runs must not inflate history');
 assert(deploymentWasPublished({ conclusion: 'failure' }, 'success'), 'failed workflow with successful deploy job must count as published production');
 assert(!deploymentWasPublished({ conclusion: 'failure' }, 'failure'), 'failure before/at deploy must not count as published production');
-assert(!deploymentWasPublished({ conclusion: 'cancelled' }, 'success'), 'cancelled workflow must not be treated as a completed publication');
+assert(deploymentWasPublished({ conclusion: 'cancelled' }, 'success'), 'cancelled workflow after a successful deploy job still changed production');
 
 const ciRuns = [
   { head_sha: shaA, event: 'push', conclusion: 'success' },
