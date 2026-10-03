@@ -2,7 +2,7 @@ name: P29 Operational Readiness
 
 on:
   workflow_run:
-    workflows: ["P28 Reliability Control", "Deploy Production"]
+    workflows: ["P28 Reliability Control", "Deploy Production", "P30 Guarded Rollback"]
     types: [completed]
   schedule:
     - cron: '23 4 * * 1'
