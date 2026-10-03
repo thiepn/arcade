@@ -16,6 +16,12 @@ export function deployedSha(run) {
     : null;
 }
 
+export function deploymentWasPublished(run, deployJobConclusion = null) {
+  if (!run || run.conclusion === 'skipped' || run.conclusion === 'cancelled') return false;
+  if (run.conclusion === 'success') return true;
+  return deployJobConclusion === 'success';
+}
+
 export function successfulDeployments(runs = []) {
   return runs
     .map((run) => ({ ...run, deployed_sha: deployedSha(run) }))
