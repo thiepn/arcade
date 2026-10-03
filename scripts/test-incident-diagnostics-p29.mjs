@@ -67,6 +67,7 @@ const recovery = assessRecovery({
   slo: greenSlo,
   latestP28: { conclusion: 'success' },
   latestDeployment: { conclusion: 'success' },
+  controlPlaneFresh: true,
 });
 assert(recovery.verified, 'healthy 3-sample probe + green streak + healthy controls must verify recovery');
 
@@ -76,8 +77,19 @@ const degradedRecovery = assessRecovery({
   slo: greenSlo,
   latestP28: { conclusion: 'success' },
   latestDeployment: { conclusion: 'success' },
+  controlPlaneFresh: true,
 });
 assert(!degradedRecovery.verified, 'degraded independent probe must not close an incident');
+
+const staleRecovery = assessRecovery({
+  openIncident: { number: 42 },
+  independentProbe: probe,
+  slo: greenSlo,
+  latestP28: { conclusion: 'success' },
+  latestDeployment: { conclusion: 'success' },
+  controlPlaneFresh: false,
+});
+assert(!staleRecovery.verified, 'stale monitoring evidence must block automated recovery closure');
 
 if (errors.length) {
   console.error('P29 INCIDENT DIAGNOSTIC CORE TEST — FAIL');
