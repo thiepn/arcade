@@ -23,6 +23,16 @@
 
 ## Unreleased
 
+### P29 incident runbooks / diagnostics / recovery verification — 2026-10-03
+- Add deterministic failure classification for Pages/artifact, CORS, backend health, leaderboard read-path, stale control-plane and unknown production-contract incidents.
+- Add dedicated operational runbooks with explicit first-response, non-destructive boundaries and recovery proof for every P29 classification.
+- Add an independent three-sample production verification after P28 controls and production deployments, plus a weekly readiness backstop.
+- Record recent P27, P28, production deployment and CI timelines, SLO/error-budget state, control-plane freshness and deployment-adjacent correlation without claiming causation.
+- Deduplicate diagnostic issue comments by state fingerprint and provide a P29 backstop if a hard condition exists without the expected P28 incident surface.
+- Move final automated incident closure from P28 to P29; closure requires a healthy warning-free three-sample probe, two green scheduled P27 checkpoints, no rolling SLO breach, green P28 and deployment state, and fresh monitoring evidence.
+- Keep all P29 behavior synthetic and non-remediating: no player/session telemetry, redeploys, credential rotation, Supabase mutation, leaderboard repair, scoring changes or rollback commits.
+- Retain P29 operational evidence for 90 days and add permanent CI/release32 contracts plus deterministic diagnostic-core tests.
+
 ### P28 production SLOs / alerting / incident automation — 2026-10-02
 - Add a 30-day, 99% synthetic scheduled-checkpoint SLO over P27 burn-in history with an explicit error budget and a 12-checkpoint warm-up floor.
 - Run a fresh P27 production contract sample before every P28 evaluation and keep GitHub-runner latency diagnostic rather than misrepresenting it as player latency.

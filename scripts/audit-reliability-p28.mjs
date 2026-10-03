@@ -128,15 +128,11 @@ async function maintainIncident(report) {
     return { action: 'opened', issueNumber: created.number, issueUrl: created.html_url };
   }
   if (existing && report.incident.recoveryReady) {
-    await github('/repos/' + repo + '/issues/' + existing.number + '/comments', {
-      method: 'POST',
-      body: JSON.stringify({ body: 'P28 recovery confirmed: the fresh production probe is healthy and the required scheduled-checkpoint recovery streak has passed. Closing the automated incident.' }),
-    });
-    const closed = await github('/repos/' + repo + '/issues/' + existing.number, {
-      method: 'PATCH',
-      body: JSON.stringify({ state: 'closed', state_reason: 'completed' }),
-    });
-    return { action: 'closed', issueNumber: closed.number, issueUrl: closed.html_url };
+    return {
+      action: 'ready-for-p29-verification',
+      issueNumber: existing.number,
+      issueUrl: existing.html_url,
+    };
   }
   if (existing) return { action: 'recovering', issueNumber: existing.number, issueUrl: existing.html_url };
   return { action: 'none', issueNumber: null, issueUrl: null };

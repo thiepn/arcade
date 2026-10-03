@@ -46,7 +46,7 @@ P28 does not close an incident after one isolated green probe. Recovery requires
 2. no active rolling SLO breach; and
 3. the latest **two successful** scheduled P27 checkpoints to satisfy the configured two-checkpoint recovery streak.
 
-Only then does P28 add a recovery note and close the automated GitHub issue. Until that condition is met, a previously opened incident remains open in a recovering state.
+At that point P28 marks the incident **ready for P29 verification** but does not close it. P29 performs an independent three-sample production verification plus control-plane/deployment checks before adding the recovery note and closing the issue. Until P29 verifies recovery, the incident remains open.
 
 ## What P28 will not do
 
@@ -70,4 +70,4 @@ The static CI gate also verifies that the original P27 burn-in workflow stays re
 
 P28 implementation is complete when the source contract passes, the reliability-control workflow exists on `main`, its fresh P27 probe and rolling evaluator can run with GitHub-native permissions, and production deployment remains unchanged.
 
-Long-term SLO attainment is time-based evidence, not something implementation can manufacture immediately. Until 12 scheduled P27 checkpoints have accumulated, the rolling SLO must be reported as warming rather than certified.
+Long-term SLO attainment is time-based evidence, not something implementation can manufacture immediately. Until 12 scheduled P27 checkpoints have accumulated, the rolling SLO must be reported as warming rather than certified. Final automated incident closure is delegated to the independent P29 recovery verifier.
