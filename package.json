@@ -102,7 +102,10 @@
     "quality:leaderboard-browser": "bun tests/leaderboard/browser.mjs",
     "quality:gameplay-p28": "bun scripts/audit-operations-p28.mjs",
     "quality:operations-p28": "bun scripts/audit-operations-p28.mjs",
-    "quality:production-p28": "bun scripts/audit-reliability-p28.mjs"
+    "quality:production-p28": "bun scripts/audit-reliability-p28.mjs",
+    "quality:gameplay-p29": "bun scripts/audit-operations-p29.mjs && bun scripts/test-incident-diagnostics-p29.mjs",
+    "quality:operations-p29": "bun scripts/audit-operations-p29.mjs && bun scripts/test-incident-diagnostics-p29.mjs",
+    "quality:production-p29": "bun scripts/audit-incident-p29.mjs"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
