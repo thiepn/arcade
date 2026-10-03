@@ -50,7 +50,7 @@ jobs:
           P30_TARGET_SHA: ${{ inputs.target_sha }}
           P30_CONFIRM_SHA: ${{ inputs.confirm_sha }}
           P30_REPORT_DIR: p30-authorization
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
           name: p30-rollback-authorization-${{ github.run_number }}
@@ -140,7 +140,7 @@ jobs:
           P3_CHROME_PATH="$chrome" bun run quality:browser-p3
           P26_CHROME_PATH="$chrome" bun run quality:browser-p26
           bun run quality:production-p27
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
           name: p30-rollback-live-${{ github.run_number }}
