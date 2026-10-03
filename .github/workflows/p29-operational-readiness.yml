@@ -57,7 +57,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           P29_P27_REPORT: p29-input/production-telemetry.json
           P29_REPORT_DIR: p29-report
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
           name: p29-operational-readiness-${{ github.run_number }}
