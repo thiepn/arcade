@@ -172,7 +172,7 @@ BEGIN
     'hex'
   );
 
-  SELECT array_agg(k ORDER BY k)=ARRAY[
+  SELECT array_agg(key ORDER BY key)=ARRAY[
     'micro_arcade_best_scores',
     'micro_arcade_lb_policy',
     'micro_arcade_lb_reviews',
@@ -184,7 +184,7 @@ BEGIN
     'micro_arcade_scoring_profiles'
   ]::text[]
   INTO keys_ok
-  FROM jsonb_object_keys(s.payload) k;
+  FROM jsonb_object_keys(s.payload) AS x(key);
 
   counts_ok:=s.row_counts=private.micro_arcade_p31_row_counts(s.payload);
 
