@@ -49,7 +49,7 @@ try {
 
   const policy = (await db`SELECT payload->>'policyId' AS id FROM public.micro_arcade_lb_policy WHERE version=3`)[0].id;
   await db`INSERT INTO public.micro_arcade_lb_sessions(id,player_id,request_id,game_id,mode_id,policy_id,issued_at,expires_at,used_at)
-    VALUES(${historicalLb},${player},${crypto.randomUUID()},'stack','standard',${policy},${now-20000},${now+10000},${now-10000})`;
+    VALUES(${historicalLb},${player},${crypto.randomUUID()},'stack','standard',${policy},${now-20000},${now-20000+21600000},${now-10000})`;
   await db`INSERT INTO public.micro_arcade_lb_sessions(id,player_id,request_id,game_id,mode_id,policy_id,issued_at,expires_at,used_at)
     VALUES(${unusedLb},${player},${crypto.randomUUID()},'stack','standard',${policy},${now},${now+21600000},NULL)`;
   await db`INSERT INTO public.micro_arcade_lb_runs(id,session_id,player_id,game_id,mode_id,policy_id,source_version,raw_score,duration_ms,active_ms,ap_micros,contribution_micros,completed_at,created_at,status,code,provenance)
