@@ -22,7 +22,6 @@ export async function resolveProductionDeploymentRuns({
   const candidates = sets.flat();
   const resolved = [];
   for (const run of candidates) {
-    if (run?.conclusion === 'skipped' || run?.conclusion === 'cancelled') continue;
     if (await deployJobSucceeded(github, run)) {
       resolved.push({
         ...run,
