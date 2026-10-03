@@ -1,0 +1,98 @@
+name: P30 Continuity Drill
+
+on:
+  workflow_run:
+    workflows: ["Deploy Production", "P30 Guarded Rollback"]
+    types: [completed]
+  schedule:
+    - cron: '41 3 * * 3'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: p30-continuity-drill
+  cancel-in-progress: false
+
+env:
+  P27_SITE_URL: https://thiepn.dev/arcade/
+  P27_API_URL: https://hycegznamzjhwinegaai.supabase.co/functions/v1/micro-arcade-leaderboards
+  P27_PRODUCTION_ORIGIN: https://thiepn.dev
+  P27_POLICY_HASH: b467b52542b31e2a942c7af0dfe11eb4598cbf56c50096278a8be1b1a1a79057
+
+jobs:
+  continuity-drill:
+    if: ${{ github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+
+      - name: Select previous known-good production deployment
+        id: selection
+        run: bun scripts/select-rollback-candidate-p30.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          P30_REPORT_DIR: p30-report
+
+      - name: Checkout rollback candidate without changing production
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ steps.selection.outputs.candidate_sha }}
+          path: rollback-candidate
+          persist-credentials: false
+
+      - name: Rebuild and certify rollback candidate
+        id: candidate
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd rollback-candidate
+          bun install --frozen-lockfile
+          bun run quality:scoring
+          bun run quality:leaderboard
+          VITE_LEADERBOARD_API_URL="${P27_API_URL}" bun run build:pages
+          P26_EXPECT_BASE=/arcade/ bun run quality:production-p26
+          MA3_EXPECT_BASE=/arcade/ bun run quality:ma3
+          MA4_EXPECT_BASE=/arcade/ bun run quality:ma4
+
+      - name: Verify current production remains healthy
+        id: live
+        continue-on-error: true
+        run: bun run quality:production-p27
+        env:
+          P27_SAMPLES: '3'
+          P27_SAMPLE_DELAY_MS: '750'
+          P27_ATTEMPTS: '2'
+          P27_TIMEOUT_MS: '8000'
+          P27_REPORT_DIR: p30-live
+
+      - name: Evaluate disaster recovery readiness
+        if: always()
+        run: bun run quality:production-p30
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          P30_SELECTION: p30-report/selection.json
+          P30_LIVE_REPORT: p30-live/production-telemetry.json
+          P30_OUTPUT_DIR: p30-report
+          P30_CANDIDATE_BUILD_OUTCOME: ${{ steps.candidate.outcome }}
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: p30-continuity-${{ github.run_number }}
+          path: |
+            p30-report
+            p30-live
+          retention-days: 90
+          if-no-files-found: warn
