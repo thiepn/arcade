@@ -172,17 +172,18 @@ BEGIN
     'hex'
   );
 
-  SELECT array_agg(key ORDER BY key)=ARRAY[
-    'micro_arcade_best_scores',
-    'micro_arcade_lb_policy',
-    'micro_arcade_lb_reviews',
-    'micro_arcade_lb_runs',
-    'micro_arcade_lb_sessions',
-    'micro_arcade_play_sessions',
-    'micro_arcade_players',
-    'micro_arcade_score_submissions',
-    'micro_arcade_scoring_profiles'
-  ]::text[]
+  SELECT count(*)=9
+    AND bool_and(key = ANY (ARRAY[
+      'micro_arcade_best_scores',
+      'micro_arcade_lb_policy',
+      'micro_arcade_lb_reviews',
+      'micro_arcade_lb_runs',
+      'micro_arcade_lb_sessions',
+      'micro_arcade_play_sessions',
+      'micro_arcade_players',
+      'micro_arcade_score_submissions',
+      'micro_arcade_scoring_profiles'
+    ]::text[]))
   INTO keys_ok
   FROM jsonb_object_keys(s.payload) AS x(key);
 
