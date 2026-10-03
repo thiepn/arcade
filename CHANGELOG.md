@@ -23,6 +23,17 @@
 
 ## Unreleased
 
+### P31 backend data resilience / backup verification / restore readiness — 2026-10-03
+- Add private verified Arcade recovery snapshots for durable identity, score history, moderation evidence, scoring profiles/policy, and only the historical session rows required by preserved evidence.
+- Deliberately exclude rate-limit buckets and unused one-time play/leaderboard sessions from disaster recovery so stale tokens and throttling state are not resurrected.
+- Fingerprint the protected schema and snapshot payload with SHA-256, record exact table counts, verify parent/child relationships, and retain daily/monthly/offsite recovery layers with bounded retention.
+- Add a transaction-scoped restore drill that reconstructs every protected table into temporary Postgres tables using current live types and proves production rows are not overwritten.
+- Add an exact GitHub-OIDC-gated Supabase Edge Function for backup export; no database password or service-role key is stored in GitHub.
+- Encrypt off-site backup JSON with AES-256-GCM CMS to the existing offline THIEPN recovery certificate, shred plaintext, and retain only ciphertext plus a non-sensitive manifest for 90 days.
+- Add one deduplicated P31 backup-readiness issue for export/verification/encryption failures.
+- Add a real PostgreSQL 17 integration test covering the migration, snapshot verification, session scoping, restore reconstruction, browser-role denial, and off-site RPC contract.
+- Keep production restoration operator-controlled: P31 adds no automatic destructive database restore endpoint and does not claim paid Supabase PITR/daily-backup guarantees on the Free plan.
+
 ### P30 disaster recovery / rollback certification / continuity drills — 2026-10-03
 - Add a non-destructive continuity drill that identifies the previous distinct successful production SHA, verifies successful main CI provenance, rebuilds it separately, and certifies scoring, leaderboard, P26, MA3 and MA4 without Pages write permission.
 - Add a manual-only guarded rollback workflow requiring the exact 40-character target SHA to be entered twice before any production write can occur.
