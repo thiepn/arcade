@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
-import { PRODUCTION_WORKFLOWS, validateRollbackAuthorization } from './p30-recovery-core.mjs';
+import { validateRollbackAuthorization } from './p30-recovery-core.mjs';
+import { resolveProductionDeploymentRuns } from './p30-github-deployments.mjs';
 
 const repo = process.env.GITHUB_REPOSITORY || 'thiepn/arcade';
 const apiBase = process.env.GITHUB_API_URL || 'https://api.github.com';
@@ -34,15 +35,15 @@ async function workflowRuns(file) {
   return runs;
 }
 
-const [ciRuns, ...deploymentSets] = await Promise.all([
+const [ciRuns, deploymentRuns] = await Promise.all([
   workflowRuns('ci.yml'),
-  ...PRODUCTION_WORKFLOWS.map(workflowRuns),
+  resolveProductionDeploymentRuns({ repo, github, workflowRuns }),
 ]);
 
 const result = validateRollbackAuthorization({
   targetSha,
   confirmSha,
-  deploymentRuns: deploymentSets.flat(),
+  deploymentRuns,
   ciRuns,
 });
 
