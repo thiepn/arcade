@@ -20,7 +20,7 @@ for (const marker of [
   "listWorkflowRuns('pages.yml')",
   "run.event === 'schedule'",
   "incidentMarker = '<!-- p28-production-slo-incident -->'",
-  "state: 'closed'",
+  "action: 'ready-for-p29-verification'",
   'errorBudgetRemaining',
   'scheduledRecovery',
 ]) need(controllerPath, controller, marker);
@@ -55,7 +55,7 @@ need('.github/workflows/ci.yml', ci, 'bun run quality:gameplay-p28');
 
 const docsPath = 'docs/P28_PRODUCTION_SLOS_INCIDENT_AUTOMATION.md';
 const docs = read(docsPath).toLowerCase();
-for (const marker of ['30-day', '99%', '12 checkpoints', 'two successful', 'synthetic', 'no player', 'error budget', 'github issue', 'does not redeploy', 'p27']) need(docsPath, docs, marker);
+for (const marker of ['30-day', '99%', '12 checkpoints', 'two successful', 'synthetic', 'no player', 'error budget', 'github issue', 'does not redeploy', 'p27', 'p29']) need(docsPath, docs, marker);
 
 if (errors.length) {
   console.error('P28 SLO / INCIDENT AUTOMATION CONTRACT — FAIL');
@@ -64,4 +64,4 @@ if (errors.length) {
 }
 
 console.log('P28 SLO / INCIDENT AUTOMATION CONTRACT — PASS');
-console.log('Rolling synthetic SLOs, deployment correlation, deduplicated incident lifecycle, recovery gating and no-player-telemetry boundaries are wired permanently.');
+console.log('Rolling synthetic SLOs, deployment correlation, deduplicated incident lifecycle, P29-delegated recovery gating and no-player-telemetry boundaries are wired permanently.');
