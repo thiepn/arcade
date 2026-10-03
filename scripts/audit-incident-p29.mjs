@@ -11,6 +11,7 @@ import {
   runTimestamp,
 } from './p29-incident-core.mjs';
 import { deployedSha } from './p30-recovery-core.mjs';
+import { resolveProductionDeploymentRuns } from './p30-github-deployments.mjs';
 
 const repo = process.env.GITHUB_REPOSITORY || 'thiepn/arcade';
 const apiBase = process.env.GITHUB_API_URL || 'https://api.github.com';
@@ -277,14 +278,12 @@ if (independentProbeRaw.phase !== 'P27' || independentProbeRaw.syntheticOnly !==
 }
 
 const nowMs = Date.now();
-const [p27Runs, p28Runs, pagesRuns, rollbackRuns, ciRuns] = await Promise.all([
+const [p27Runs, p28Runs, deploymentRuns, ciRuns] = await Promise.all([
   listWorkflowRuns('p27-production-burnin.yml'),
   listWorkflowRuns('p28-reliability-control.yml'),
-  listWorkflowRuns('pages.yml'),
-  listWorkflowRuns('p30-guarded-rollback.yml'),
+  resolveProductionDeploymentRuns({ repo, github, workflowRuns: listWorkflowRuns }),
   listWorkflowRuns('ci.yml'),
 ]);
-const deploymentRuns = [...pagesRuns, ...rollbackRuns];
 
 const sloRaw = computeSlo(p27Runs, nowMs, {
   windowDays,
