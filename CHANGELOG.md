@@ -24,6 +24,7 @@
 ## Unreleased
 
 ### P33 offline-key recovery / encrypted-backup restore / long-term DR assurance — 2026-10-04
+- Bind the signed `privateKeyPublicSha256` evidence to the committed recovery certificate's actual SPKI SHA-256 during GitHub verification, rejecting attestations that claim any different public key.
 - Add a local offline-key ceremony that verifies the retained P31 ciphertext, proves the private key matches the committed recovery certificate, decrypts locally, runs the P31 verifier, restores into a disposable P32-compatible PostgreSQL target, and removes plaintext on exit.
 - Produce a non-sensitive RSA-SHA256 signed attestation containing only source/restored hashes, row counts, safety booleans, certificate/public-key evidence and measured decrypt/restore timings.
 - Add a manual GitHub attestation workflow that accepts only Base64 attestation/signature data, verifies the offline signature, downloads the exact retained P31 artifact itself, binds hashes/counts/run metadata, and persists a signed evidence ledger without receiving the private key or plaintext backup.
