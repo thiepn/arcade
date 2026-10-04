@@ -27,6 +27,8 @@ P33 does not add a GitHub secret containing the private key.
 
 The committed recovery certificate is the only public-key material GitHub needs. GitHub verifies the offline signature using that certificate.
 
+GitHub also derives the certificate's SPKI public-key SHA-256 and requires it to equal the signed `privateKeyPublicSha256` field. The signed evidence therefore cannot claim a different recovery key while merely carrying a valid signature.
+
 If the private key is passphrase-protected, the local ceremony supports `P33_KEY_PASS_FILE`. The passphrase file is read locally and is never part of the attestation or submission.
 
 ## Preparing a ceremony kit
