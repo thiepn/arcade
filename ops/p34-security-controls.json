@@ -1,0 +1,436 @@
+{
+  "phase": "P34",
+  "title": "Security Control Mapping, Continuous Assurance & External Audit Readiness",
+  "version": 1,
+  "effectiveDate": "2026-10-04",
+  "scope": "Arcade repository, CI/CD, production synthetic reliability controls, incident/recovery controls, backend backup and disaster-recovery evidence.",
+  "assuranceBoundary": "Internal control evidence and readiness mapping only. This catalog does not certify compliance with NIST CSF, SOC 2, ISO 27001, or any external standard.",
+  "frameworks": {
+    "nistCsf20": "Readiness crosswalk to selected NIST Cybersecurity Framework 2.0 categories; not a certification.",
+    "soc2": "Readiness crosswalk to selected AICPA Trust Services Criteria references; not an audit opinion or attestation."
+  },
+  "controls": [
+    {
+      "id": "SC-01",
+      "title": "Least-privilege automation permissions",
+      "objective": "GitHub workflows use explicit, minimal permissions and do not use write-all defaults.",
+      "mode": "automated",
+      "nist": [
+        "GV.PO",
+        "PR.AA"
+      ],
+      "soc2": [
+        "CC6.1",
+        "CC6.3"
+      ],
+      "evidence": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/pages.yml",
+        "scripts/audit-repository-hardening.ts"
+      ],
+      "workflowEvidence": [],
+      "issueMarkers": []
+    },
+    {
+      "id": "SC-02",
+      "title": "Immutable CI action provenance",
+      "objective": "Third-party GitHub Actions used by release-critical workflows are pinned to immutable commit SHAs.",
+      "mode": "automated",
+      "nist": [
+        "PR.PS"
+      ],
+      "soc2": [
+        "CC8.1"
+      ],
+      "evidence": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/pages.yml",
+        "scripts/audit-repository-hardening.ts"
+      ],
+      "workflowEvidence": [],
+      "issueMarkers": []
+    },
+    {
+      "id": "SC-03",
+      "title": "Reproducible dependency installation",
+      "objective": "CI installs dependencies from the committed Bun lockfile without floating resolution.",
+      "mode": "automated",
+      "nist": [
+        "PR.PS"
+      ],
+      "soc2": [
+        "CC8.1"
+      ],
+      "evidence": [
+        "bun.lock",
+        "package.json",
+        ".github/workflows/ci.yml"
+      ],
+      "workflowEvidence": [],
+      "issueMarkers": []
+    },
+    {
+      "id": "SC-04",
+      "title": "Mandatory build and regression gates",
+      "objective": "Type checking, gameplay, scoring, leaderboard, browser and hardening gates execute before production deployment.",
+      "mode": "automated",
+      "nist": [
+        "PR.PS",
+        "ID.IM"
+      ],
+      "soc2": [
+        "CC8.1",
+        "CC7.1"
+      ],
+      "evidence": [
+        "package.json",
+        ".github/workflows/ci.yml",
+        "scripts/audit-release-32.ts"
+      ],
+      "workflowEvidence": [],
+      "issueMarkers": []
+    },
+    {
+      "id": "SC-05",
+      "title": "Release artifact provenance",
+      "objective": "Production is built from the successful main CI head SHA and certified built artifacts are used for release.",
+      "mode": "automated",
+      "nist": [
+        "PR.PS"
+      ],
+      "soc2": [
+        "CC8.1"
+      ],
+      "evidence": [
+        ".github/workflows/pages.yml",
+        "docs/P26_PRODUCTION_CERTIFICATION.md"
+      ],
+      "workflowEvidence": [],
+      "issueMarkers": []
+    },
+    {
+      "id": "SC-06",
+      "title": "Post-deploy production verification",
+      "objective": "The live shell, PWA assets, game manifest and leaderboard contracts are independently re-verified after deployment.",
+      "mode": "automated",
+      "nist": [
+        "DE.CM",
+        "DE.AE"
+      ],
+      "soc2": [
+        "CC7.2"
+      ],
+      "evidence": [
+        "docs/P27_POST_RELEASE_BURN_IN.md",
+        "scripts/audit-production-p27.mjs"
+      ],
+      "workflowEvidence": [
+        {
+          "workflow": "p27-production-burnin.yml",
+          "maxAgeHours": 10
+        }
+      ],
+      "issueMarkers": []
+    },
+    {
+      "id": "SC-07",
+      "title": "Synthetic availability monitoring",
+      "objective": "Read-only synthetic checks continuously test production availability without collecting player telemetry.",
+      "mode": "automated",
+      "nist": [
+        "DE.CM"
+      ],
+      "soc2": [
+        "A1.2",
+        "CC7.2"
+      ],
+      "evidence": [
+        ".github/workflows/p27-production-burnin.yml",
+        "docs/P27_POST_RELEASE_BURN_IN.md"
+      ],
+      "workflowEvidence": [
+        {
+          "workflow": "p27-production-burnin.yml",
+          "maxAgeHours": 10
+        }
+      ],
+      "issueMarkers": []
+    },
+    {
+      "id": "SC-08",
+      "title": "SLO and incident automation",
+      "objective": "A defined rolling synthetic SLO and error budget creates and maintains a deduplicated incident surface.",
+      "mode": "automated",
+      "nist": [
+        "DE.AE",
+        "RS.MA"
+      ],
+      "soc2": [
+        "CC7.3",
+        "A1.2"
+      ],
+      "evidence": [
+        ".github/workflows/p28-reliability-control.yml",
+        "docs/P28_PRODUCTION_SLOS_INCIDENT_AUTOMATION.md"
+      ],
+      "workflowEvidence": [
+        {
+          "workflow": "p28-reliability-control.yml",
+          "maxAgeHours": 10
+        }
+      ],
+      "issueMarkers": [
+        "<!-- p28-production-slo-incident -->"
+      ]
+    },
+    {
+      "id": "SC-09",
+      "title": "Incident diagnosis and recovery verification",
+      "objective": "Classified runbooks and independent recovery checks are required before automated incident closure.",
+      "mode": "automated",
+      "nist": [
+        "RS.AN",
+        "RS.MI"
+      ],
+      "soc2": [
+        "CC7.4",
+        "CC7.5"
+      ],
+      "evidence": [
+        ".github/workflows/p29-operational-readiness.yml",
+        "docs/P29_INCIDENT_RUNBOOKS.md"
+      ],
+      "workflowEvidence": [
+        {
+          "workflow": "p29-operational-readiness.yml",
+          "maxAgeHours": 192
+        }
+      ],
+      "issueMarkers": []
+    },
+    {
+      "id": "SC-10",
+      "title": "Guarded rollback and continuity readiness",
+      "objective": "Rollback targets are provenance-checked, manually authorized and non-destructively rehearsed.",
+      "mode": "hybrid",
+      "nist": [
+        "RC.RP",
+        "PR.IR"
+      ],
+      "soc2": [
+        "A1.3",
+        "CC7.5"
+      ],
+      "evidence": [
+        ".github/workflows/p30-continuity-drill.yml",
+        ".github/workflows/p30-guarded-rollback.yml",
+        "docs/P30_DISASTER_RECOVERY.md"
+      ],
+      "workflowEvidence": [
+        {
+          "workflow": "p30-continuity-drill.yml",
+          "maxAgeHours": 192
+        }
+      ],
+      "issueMarkers": [
+        "<!-- p30-disaster-recovery-readiness -->"
+      ]
+    },
+    {
+      "id": "SC-11",
+      "title": "Encrypted off-site backup integrity",
+      "objective": "Durable backend state is exported through constrained OIDC, verified, encrypted to the offline recovery certificate and retained without plaintext.",
+      "mode": "automated",
+      "nist": [
+        "PR.DS",
+        "RC.RP"
+      ],
+      "soc2": [
+        "CC6.7",
+        "A1.2"
+      ],
+      "evidence": [
+        ".github/workflows/p31-offsite-backup.yml",
+        "docs/P31_BACKEND_DATA_RESILIENCE.md",
+        "ops/p31-backup-recovery-cert.pem"
+      ],
+      "workflowEvidence": [
+        {
+          "workflow": "p31-offsite-backup.yml",
+          "maxAgeHours": 30
+        }
+      ],
+      "issueMarkers": [
+        "<!-- p31-backend-backup-readiness -->"
+      ]
+    },
+    {
+      "id": "SC-12",
+      "title": "Full-stack cold restore verification",
+      "objective": "A fresh isolated database, production handler and real frontend are recovered and checked without production traffic switching.",
+      "mode": "automated",
+      "nist": [
+        "RC.RP",
+        "RC.CO"
+      ],
+      "soc2": [
+        "A1.3"
+      ],
+      "evidence": [
+        ".github/workflows/p32-cold-recovery.yml",
+        "docs/P32_FULL_STACK_DISASTER_RECOVERY.md",
+        "tests/p32-cold-restore-postgres.mjs"
+      ],
+      "workflowEvidence": [
+        {
+          "workflow": "p32-cold-recovery.yml",
+          "maxAgeHours": 192
+        }
+      ],
+      "issueMarkers": [
+        "<!-- p32-fullstack-recovery-readiness -->"
+      ]
+    },
+    {
+      "id": "SC-13",
+      "title": "Offline recovery-key decryptability",
+      "objective": "The real retained encrypted backup is periodically decrypted and restored using an offline key, with signed non-sensitive evidence.",
+      "mode": "hybrid",
+      "nist": [
+        "PR.DS",
+        "RC.RP"
+      ],
+      "soc2": [
+        "CC6.1",
+        "A1.3"
+      ],
+      "evidence": [
+        ".github/workflows/p33-offline-attestation.yml",
+        "docs/P33_OFFLINE_KEY_RECOVERY.md",
+        "scripts/p33-offline-ceremony.sh"
+      ],
+      "workflowEvidence": [
+        {
+          "workflow": "p33-long-term-assurance.yml",
+          "maxAgeHours": 30
+        }
+      ],
+      "issueMarkers": [
+        "<!-- p33-long-term-dr-assurance -->"
+      ]
+    },
+    {
+      "id": "SC-14",
+      "title": "Recovery-key separation",
+      "objective": "The production recovery private key remains outside GitHub, Supabase and automation while the public certificate is committed for verification.",
+      "mode": "hybrid",
+      "nist": [
+        "PR.AA",
+        "PR.DS"
+      ],
+      "soc2": [
+        "CC6.1",
+        "CC6.7"
+      ],
+      "evidence": [
+        "docs/P33_OFFLINE_KEY_RECOVERY.md",
+        "ops/p31-backup-recovery-cert.pem",
+        "scripts/audit-operations-p33.mjs"
+      ],
+      "workflowEvidence": [],
+      "issueMarkers": []
+    },
+    {
+      "id": "SC-15",
+      "title": "Recovery data minimization",
+      "objective": "Backups exclude transient throttling and unused token state, and P33 evidence excludes recovered row contents.",
+      "mode": "automated",
+      "nist": [
+        "PR.DS"
+      ],
+      "soc2": [
+        "CC6.5",
+        "CC6.7"
+      ],
+      "evidence": [
+        "docs/P31_BACKEND_DATA_RESILIENCE.md",
+        "docs/P33_OFFLINE_KEY_RECOVERY.md",
+        "scripts/audit-operations-p31.mjs"
+      ],
+      "workflowEvidence": [],
+      "issueMarkers": []
+    },
+    {
+      "id": "SC-16",
+      "title": "Server-side authorization and scoring trust boundary",
+      "objective": "Leaderboard writes, sessions and scoring policy are server-validated rather than trusted from the browser.",
+      "mode": "automated",
+      "nist": [
+        "PR.AA",
+        "PR.PS"
+      ],
+      "soc2": [
+        "CC6.1",
+        "CC6.6"
+      ],
+      "evidence": [
+        "docs/leaderboard/RELEASE.md",
+        "shared/scoringProtocol.ts",
+        "tests/leaderboard/postgres.mjs"
+      ],
+      "workflowEvidence": [],
+      "issueMarkers": []
+    },
+    {
+      "id": "SC-17",
+      "title": "Security reporting and operating documentation",
+      "objective": "Security contact, runbooks, recovery procedures and release contracts are maintained in version control.",
+      "mode": "manual",
+      "nist": [
+        "GV.PO",
+        "RS.CO"
+      ],
+      "soc2": [
+        "CC2.2",
+        "CC7.4"
+      ],
+      "evidence": [
+        "SECURITY.md",
+        "docs/P29_INCIDENT_RUNBOOKS.md",
+        "docs/P30_DISASTER_RECOVERY.md",
+        "docs/P33_OFFLINE_KEY_RECOVERY.md"
+      ],
+      "workflowEvidence": [],
+      "issueMarkers": []
+    },
+    {
+      "id": "SC-18",
+      "title": "Continuous assurance and deficiency ledger",
+      "objective": "Control evidence is re-evaluated on a schedule, deficiencies are deduplicated, and audit-ready evidence packs are retained.",
+      "mode": "automated",
+      "nist": [
+        "GV.OV",
+        "ID.IM"
+      ],
+      "soc2": [
+        "CC4.1",
+        "CC4.2"
+      ],
+      "evidence": [
+        "ops/p34-security-controls.json",
+        "scripts/p34-control-assurance.mjs",
+        ".github/workflows/p34-continuous-assurance.yml",
+        "docs/P34_SECURITY_CONTROL_ASSURANCE.md"
+      ],
+      "workflowEvidence": [
+        {
+          "workflow": "p34-continuous-assurance.yml",
+          "maxAgeHours": 30
+        }
+      ],
+      "issueMarkers": [
+        "<!-- p34-security-assurance-deficiency -->"
+      ]
+    }
+  ]
+}
