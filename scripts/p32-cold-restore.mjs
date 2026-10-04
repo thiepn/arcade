@@ -9,7 +9,8 @@ const parsed=new URL(dbUrl);
 if(!['127.0.0.1','localhost'].includes(parsed.hostname) || !/p32|recovery/i.test(parsed.pathname)) {
   throw new Error('P32 cold restore refuses any non-local/non-recovery database target');
 }
-const source=JSON.parse(await readFile(sourcePath,'utf8'));
+const sourceText=await readFile(sourcePath,'utf8');
+const source=JSON.parse(sourceText);
 if(source?.format!=='arcade-p31-offsite-v1'||source?.snapshot?.verified!==true||source?.restore_drill?.ok!==true) {
   throw new Error('P32 source must be a verified P31 export with a successful restore drill');
 }
@@ -54,15 +55,16 @@ try {
     if(!Array.isArray(payload[table]))throw new Error('protected payload '+table+' must be a JSON array');
   }
 
-  await db`INSERT INTO public.micro_arcade_players SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_players,${JSON.stringify(payload.micro_arcade_players)}::text::jsonb)`;
-  await db`INSERT INTO public.micro_arcade_play_sessions SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_play_sessions,${JSON.stringify(payload.micro_arcade_play_sessions)}::text::jsonb)`;
-  await db`INSERT INTO public.micro_arcade_score_submissions SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_score_submissions,${JSON.stringify(payload.micro_arcade_score_submissions)}::text::jsonb)`;
-  await db`INSERT INTO public.micro_arcade_best_scores SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_best_scores,${JSON.stringify(payload.micro_arcade_best_scores)}::text::jsonb)`;
-  await db`INSERT INTO public.micro_arcade_scoring_profiles SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_scoring_profiles,${JSON.stringify(payload.micro_arcade_scoring_profiles)}::text::jsonb)`;
-  await db`INSERT INTO public.micro_arcade_lb_policy SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_lb_policy,${JSON.stringify(payload.micro_arcade_lb_policy)}::text::jsonb)`;
-  await db`INSERT INTO public.micro_arcade_lb_sessions SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_lb_sessions,${JSON.stringify(payload.micro_arcade_lb_sessions)}::text::jsonb)`;
-  await db`INSERT INTO public.micro_arcade_lb_runs SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_lb_runs,${JSON.stringify(payload.micro_arcade_lb_runs)}::text::jsonb)`;
-  await db`INSERT INTO public.micro_arcade_lb_reviews OVERRIDING SYSTEM VALUE SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_lb_reviews,${JSON.stringify(payload.micro_arcade_lb_reviews)}::text::jsonb)`;
+  const sourceJson=sourceText;
+  await db`INSERT INTO public.micro_arcade_players SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_players,(${sourceJson}::text::jsonb #> '{snapshot,payload,micro_arcade_players}'))`;
+  await db`INSERT INTO public.micro_arcade_play_sessions SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_play_sessions,(${sourceJson}::text::jsonb #> '{snapshot,payload,micro_arcade_play_sessions}'))`;
+  await db`INSERT INTO public.micro_arcade_score_submissions SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_score_submissions,(${sourceJson}::text::jsonb #> '{snapshot,payload,micro_arcade_score_submissions}'))`;
+  await db`INSERT INTO public.micro_arcade_best_scores SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_best_scores,(${sourceJson}::text::jsonb #> '{snapshot,payload,micro_arcade_best_scores}'))`;
+  await db`INSERT INTO public.micro_arcade_scoring_profiles SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_scoring_profiles,(${sourceJson}::text::jsonb #> '{snapshot,payload,micro_arcade_scoring_profiles}'))`;
+  await db`INSERT INTO public.micro_arcade_lb_policy SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_lb_policy,(${sourceJson}::text::jsonb #> '{snapshot,payload,micro_arcade_lb_policy}'))`;
+  await db`INSERT INTO public.micro_arcade_lb_sessions SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_lb_sessions,(${sourceJson}::text::jsonb #> '{snapshot,payload,micro_arcade_lb_sessions}'))`;
+  await db`INSERT INTO public.micro_arcade_lb_runs SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_lb_runs,(${sourceJson}::text::jsonb #> '{snapshot,payload,micro_arcade_lb_runs}'))`;
+  await db`INSERT INTO public.micro_arcade_lb_reviews OVERRIDING SYSTEM VALUE SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_lb_reviews,(${sourceJson}::text::jsonb #> '{snapshot,payload,micro_arcade_lb_reviews}'))`;
 
   await db.unsafe(`SELECT setval(
     pg_get_serial_sequence('public.micro_arcade_lb_reviews','id'),
