@@ -12,6 +12,21 @@ if(pkg.scripts?.['quality:operations-p32']!==staticCmd)errors.push('package.json
 if(pkg.scripts?.['quality:backend-p32']!=='bun tests/p32-cold-restore-postgres.mjs')errors.push('package.json: quality:backend-p32 mismatch');
 if(pkg.scripts?.['quality:production-p32']!=='bun scripts/p32-finalize.mjs')errors.push('package.json: quality:production-p32 mismatch');
 
+const baselinePath='supabase/migrations/20260908_micro_arcade_base.sql';
+const baseline=read(baselinePath);
+for(const marker of [
+  'credential_hash text NOT NULL UNIQUE',
+  'CHECK(country_code ~',
+  'REFERENCES public.micro_arcade_players(id) ON DELETE CASCADE',
+  'REFERENCES public.micro_arcade_play_sessions(id) ON DELETE RESTRICT',
+  'CHECK(submissions>0)',
+  'idx_micro_arcade_sessions_expiry',
+  'idx_micro_arcade_sessions_player',
+  'idx_micro_arcade_submissions_game',
+  'idx_micro_arcade_submissions_player',
+  'idx_micro_arcade_submissions_weekly',
+  'idx_micro_arcade_best_rank',
+])need(baselinePath,baseline,marker);
 const corePath='scripts/p32-recovery-core.mjs';
 const core=read(corePath);
 for(const marker of [
