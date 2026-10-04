@@ -47,6 +47,22 @@ P32 does **not** upload that private key to GitHub to make the exercise more aut
 
 This boundary is reported explicitly as `encryptedArtifactDecryptedInAutomation=false` rather than hidden.
 
+## Fresh-install production-schema parity
+
+The first production P32 exercise intentionally failed before restore because the repository's reconstructed `20260908_micro_arcade_base.sql` fresh-install baseline did not encode several constraints and indexes that already existed in hosted production.
+
+P32 treats that as a recovery defect rather than ignoring the mismatch. The fresh-install baseline is therefore permanently required to reproduce the current production physical schema for the protected Arcade tables, including:
+
+- unique guest credential hashes;
+- the two-letter country-code check;
+- production foreign-key delete behavior;
+- positive best-score submission counts;
+- session/submission/ranking indexes used by the deployed schema.
+
+This reconciliation changes only how a **new** database is created from the repository. It does not rewrite the existing production tables.
+
+The P32 static contract now pins those markers so a future cleanup cannot silently make cold restores diverge from production again.
+
 ## Cold database reconstruction
 
 `scripts/p32-cold-restore.mjs` has a hard safety guard: it refuses database hosts other than `localhost`/`127.0.0.1` and requires the database name to contain `p32` or `recovery`.
