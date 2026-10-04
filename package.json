@@ -119,7 +119,10 @@
     "quality:gameplay-p33": "bun scripts/audit-operations-p33.mjs && bun scripts/test-offline-recovery-p33.mjs",
     "quality:operations-p33": "bun scripts/audit-operations-p33.mjs && bun scripts/test-offline-recovery-p33.mjs",
     "quality:backend-p33": "bun tests/p33-offline-ceremony-postgres.mjs",
-    "quality:assurance-p33": "bun scripts/p33-long-term-assurance.mjs"
+    "quality:assurance-p33": "bun scripts/p33-long-term-assurance.mjs",
+    "quality:gameplay-p34": "bun scripts/audit-operations-p34.mjs && P34_LIVE=0 bun scripts/p34-control-assurance.mjs",
+    "quality:operations-p34": "bun scripts/audit-operations-p34.mjs && P34_LIVE=0 bun scripts/p34-control-assurance.mjs",
+    "quality:assurance-p34": "bun scripts/p34-control-assurance.mjs"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
