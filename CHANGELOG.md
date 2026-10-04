@@ -23,6 +23,15 @@
 
 ## Unreleased
 
+### P33 offline-key recovery / encrypted-backup restore / long-term DR assurance — 2026-10-04
+- Add a local offline-key ceremony that verifies the retained P31 ciphertext, proves the private key matches the committed recovery certificate, decrypts locally, runs the P31 verifier, restores into a disposable P32-compatible PostgreSQL target, and removes plaintext on exit.
+- Produce a non-sensitive RSA-SHA256 signed attestation containing only source/restored hashes, row counts, safety booleans, certificate/public-key evidence and measured decrypt/restore timings.
+- Add a manual GitHub attestation workflow that accepts only Base64 attestation/signature data, verifies the offline signature, downloads the exact retained P31 artifact itself, binds hashes/counts/run metadata, and persists a signed evidence ledger without receiving the private key or plaintext backup.
+- Add daily long-term assurance requiring P31 backup freshness <=30h, P32 full-stack cold-recovery freshness <=8d, signed P33 offline ceremony freshness <=90d, and >=180d recovery-certificate validity.
+- Report PENDING_OFFLINE_CEREMONY until the first real production recovery key ceremony is accepted; do not substitute a CI key for that operational proof.
+- Add an ephemeral CI-only RSA/CMS integration covering real P31 export format, AES-256-GCM CMS decrypt, certificate/private-key matching, brand-new PostgreSQL restore, exact schema/payload fingerprints, offline signing and retained-ciphertext binding.
+- Recommend real offline-key ceremonies every 60–75 days to retain margin beneath the hard 90-day assurance ceiling.
+
 ### P32 full-stack disaster recovery / cold restore / failover certification — 2026-10-04
 - Sequence the recovered-stack browser drill through the real modal lifecycle: certify the leaderboard modal, close it via Escape, then mount Orbit, preventing the modal overlay from invalidating the gameplay-shell check.
 - Reconcile the repository fresh-install Arcade schema with already-deployed Supabase constraints/indexes after the first live P32 drill correctly detected a protected-schema fingerprint mismatch; production tables remain unchanged.

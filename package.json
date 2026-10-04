@@ -115,7 +115,11 @@
     "quality:gameplay-p32": "bun scripts/audit-operations-p32.mjs && bun scripts/test-fullstack-recovery-p32.mjs",
     "quality:operations-p32": "bun scripts/audit-operations-p32.mjs && bun scripts/test-fullstack-recovery-p32.mjs",
     "quality:backend-p32": "bun tests/p32-cold-restore-postgres.mjs",
-    "quality:production-p32": "bun scripts/p32-finalize.mjs"
+    "quality:production-p32": "bun scripts/p32-finalize.mjs",
+    "quality:gameplay-p33": "bun scripts/audit-operations-p33.mjs && bun scripts/test-offline-recovery-p33.mjs",
+    "quality:operations-p33": "bun scripts/audit-operations-p33.mjs && bun scripts/test-offline-recovery-p33.mjs",
+    "quality:backend-p33": "bun tests/p33-offline-ceremony-postgres.mjs",
+    "quality:assurance-p33": "bun scripts/p33-long-term-assurance.mjs"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
