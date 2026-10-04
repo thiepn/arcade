@@ -13,7 +13,7 @@ if(pkg.scripts?.['quality:backend-p33']!=='bun tests/p33-offline-ceremony-postgr
 if(pkg.scripts?.['quality:assurance-p33']!=='bun scripts/p33-long-term-assurance.mjs')errors.push('package.json: quality:assurance-p33 mismatch');
 
 const core=read('scripts/p33-recovery-core.mjs');
-for(const marker of ['P33_ASSURANCE_MAX_CEREMONY_AGE_MS','90 * 24 * 60 * 60 * 1000','P33_MAX_BACKUP_AGE_MS','30 * 60 * 60 * 1000','P33_MAX_P32_AGE_MS','8 * 24 * 60 * 60 * 1000','verifyAttestationSignature','PENDING_OFFLINE_CEREMONY'])need('scripts/p33-recovery-core.mjs',core,marker);
+for(const marker of ['P33_ASSURANCE_MAX_CEREMONY_AGE_MS','90 * 24 * 60 * 60 * 1000','P33_MAX_BACKUP_AGE_MS','30 * 60 * 60 * 1000','P33_MAX_P32_AGE_MS','8 * 24 * 60 * 60 * 1000','verifyAttestationSignature','certificatePublicKeySha256','private-key public SHA-256 mismatch','PENDING_OFFLINE_CEREMONY'])need('scripts/p33-recovery-core.mjs',core,marker);
 
 const ceremony=read('scripts/p33-offline-ceremony.sh');
 for(const marker of ['P33_KEY_PASS_FILE','openssl cms -decrypt','cmp -s "$tmp/cert-public.der" "$tmp/key-public.der"','scripts/p31-verify-offsite.py','scripts/p32-cold-restore.mjs','openssl dgst -sha256 -sign','scripts/p33-verify-attestation.mjs','submit-command.txt'])need('scripts/p33-offline-ceremony.sh',ceremony,marker);
