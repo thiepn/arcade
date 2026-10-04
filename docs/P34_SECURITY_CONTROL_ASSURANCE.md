@@ -70,6 +70,7 @@ CI also runs P34 assurance in static mode. Static mode proves the control design
 The live assessment:
 
 - verifies every repository evidence path;
+- reads GitHub's live `main.protected` state for SC-01;
 - fetches the newest successful run for mapped P27–P34 workflows;
 - applies explicit freshness ceilings;
 - reads open GitHub issues for mapped P28/P30/P31/P32/P33/P34 deficiency markers;
