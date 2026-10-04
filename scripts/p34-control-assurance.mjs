@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 
-const root=resolve(import.meta.dirname,'..');
+const root=resolve(process.cwd());
 const catalog=JSON.parse(readFileSync(join(root,'ops/p34-security-controls.json'),'utf8'));
 const reportDir=resolve(root,process.env.P34_REPORT_DIR||'p34-report');
 const live=process.env.P34_LIVE!=='0' && Boolean(process.env.GITHUB_TOKEN&&process.env.GITHUB_REPOSITORY);
