@@ -30,7 +30,7 @@ const attestation={
   relationshipsOk:restore.relationshipsOk===true,
   transientRateLimits:Number(restore.transientRateLimits),
   coldTarget:restore.coldTarget===true,
-  productionMutated:restore.productionMutated===false,
+  productionMutated:restore.productionMutated,
   offlinePrivateKeyUsed:true,
   recoveryCertificateFingerprint:certificateFingerprint(certPem),
   privateKeyPublicSha256,
