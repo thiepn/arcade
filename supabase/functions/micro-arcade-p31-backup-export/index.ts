@@ -162,7 +162,13 @@ async function exportVerifiedBackup() {
   });
   if (!response.ok) throw new Error(`backup_export_failed_${response.status}`);
 
-  const payload = await response.json();
+  const raw = await response.text();
+  let payload: any;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    throw new Error("backup_export_invalid_json");
+  }
   if (
     payload?.format !== "arcade-p31-offsite-v1" ||
     payload?.project_ref !== "hycegznamzjhwinegaai" ||
@@ -172,7 +178,7 @@ async function exportVerifiedBackup() {
   ) {
     throw new Error("backup_export_contract_invalid");
   }
-  return payload;
+  return { raw, payload };
 }
 
 Deno.serve(async (request: Request) => {
@@ -202,7 +208,7 @@ Deno.serve(async (request: Request) => {
   }
 
   try {
-    const payload = await exportVerifiedBackup();
+    const { raw, payload } = await exportVerifiedBackup();
     console.log(JSON.stringify({
       event: "arcade_p31_backup_export",
       run_id: claims.run_id ?? null,
@@ -210,8 +216,15 @@ Deno.serve(async (request: Request) => {
       snapshot_id: payload.snapshot?.id ?? null,
       payload_bytes: payload.snapshot?.payload_bytes ?? null,
     }));
-    return jsonResponse(200, payload, {
-      "X-Arcade-P31-Run-Id": String(claims.run_id ?? ""),
+    return new Response(raw, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store, max-age=0",
+        "Pragma": "no-cache",
+        "X-Content-Type-Options": "nosniff",
+        "X-Arcade-P31-Run-Id": String(claims.run_id ?? ""),
+      },
     });
   } catch (error) {
     console.error("P31 backup export failed", error instanceof Error ? error.message : "unknown");
