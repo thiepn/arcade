@@ -36,9 +36,14 @@ function ageHours(value){
 }
 
 let openIssues=[];
+let mainProtected=null;
 if(live){
-  const response=await github('/repos/'+repo+'/issues?state=open&per_page=100');
-  openIssues=(Array.isArray(response)?response:[]).filter(issue=>!issue.pull_request);
+  const [issueResponse,mainBranch]=await Promise.all([
+    github('/repos/'+repo+'/issues?state=open&per_page=100'),
+    github('/repos/'+repo+'/branches/main'),
+  ]);
+  openIssues=(Array.isArray(issueResponse)?issueResponse:[]).filter(issue=>!issue.pull_request);
+  mainProtected=Boolean(mainBranch?.protected);
 }
 
 const controls=[];
@@ -63,9 +68,12 @@ for(const control of catalog.controls){
     }
   }
   const blockingIssues=openIssues.filter(issue=>(control.issueMarkers||[]).some(marker=>typeof issue.body==='string'&&issue.body.includes(marker))).map(issue=>({number:issue.number,title:issue.title,url:issue.html_url}));
+  const repositoryChecks=[];
+  if(live&&control.id==='SC-01') repositoryChecks.push({check:'main-protected',pass:mainProtected===true,observed:mainProtected});
+  const repositoryDeficiencies=repositoryChecks.filter(check=>!check.pass).map(check=>'Repository check failed: '+check.check);
   const stale=workflowChecks.filter(check=>!check.fresh);
   let status='DESIGNED';
-  if(missing.length||blockingIssues.length||stale.length) status='DEFICIENT';
+  if(missing.length||blockingIssues.length||stale.length||repositoryDeficiencies.length) status='DEFICIENT';
   else if(live) status='OPERATING';
   controls.push({
     id:control.id,
@@ -75,8 +83,10 @@ for(const control of catalog.controls){
     evidence,
     workflowChecks,
     blockingIssues,
+    repositoryChecks,
     deficiencies:[
       ...missing.map(path=>'Missing repository evidence: '+path),
+      ...repositoryDeficiencies,
       ...stale.map(check=>'Workflow evidence stale/missing: '+check.workflow+' (max '+check.maxAgeHours+'h)'),
       ...blockingIssues.map(issue=>'Open control-specific issue #'+issue.number+': '+issue.title),
     ],
