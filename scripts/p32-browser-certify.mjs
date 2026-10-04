@@ -47,6 +47,11 @@ try{
   if(weekly.status!==200||weekly.body?.policyId!==POLICY_ID||!Array.isArray(weekly.body?.entries))throw new Error('cold weekly leaderboard contract failed in browser origin');
   if(!coldRequests.some(u=>u.includes('/v3/leaderboards/overall')))throw new Error('application did not issue leaderboard request to cold API');
 
+  await page.locator('#play-btn-orbit').click();
+  await page.locator('.game-shell').waitFor({state:'visible',timeout:15000});
+  const gameShellVisible=await page.locator('.game-shell').isVisible();
+  if(!gameShellVisible)throw new Error('real game shell did not mount against cold failover frontend');
+
   const report={
     schemaVersion:1,
     phase:'P32',
@@ -57,6 +62,8 @@ try{
       brandVisible:true,
       leaderboardEntrypoint:true,
       leaderboardRequestObserved:true,
+      gameShellVisible,
+      readOnlyFailoverMode:true,
       coldApiRequestCount:coldRequests.length,
     },
     api:{
