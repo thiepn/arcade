@@ -17,7 +17,7 @@ P34 is deliberately governance/evidence work. It changes no gameplay, scoring, l
 
 `ops/p34-security-controls.json` defines **18 internal controls** across:
 
-- CI/CD least privilege and immutable action provenance;
+- protected-main/change governance, CI/CD least privilege and immutable action provenance;
 - reproducible dependency installation and regression gates;
 - release/prod verification;
 - synthetic monitoring, SLOs and incident response;
@@ -99,7 +99,7 @@ A control becomes DEFICIENT when one or more of these are true:
 - required successful workflow evidence is absent or older than its maximum age;
 - a mapped readiness/incident issue remains open.
 
-The source control remains owned by its underlying phase. P34 does not “repair” P27–P33. It records the deficiency and points back to the source control so remediation stays within the existing operational boundary.
+Existing repository-governance deficiencies are also mapped. In particular, issue #20 remains a blocking SC-01 deficiency until GitHub reports `main` protected by branch protection or an equivalent ruleset.\n\nThe source control remains owned by its underlying phase. P34 does not “repair” P27–P33. It records the deficiency and points back to the source control so remediation stays within the existing operational boundary.
 
 ## External-audit readiness
 
