@@ -34,6 +34,7 @@ assert(workflow.includes('actions/upload-artifact@ea165f8d65b6e75b540449e92b4886
 
 const assurance=read('scripts/p34-control-assurance.mjs');
 assert(assurance.includes('p34-security-assurance-deficiency'),'P34 deficiency marker is missing');
+assert(assurance.includes("/branches/main")&&assurance.includes("main-protected"),'P34 must directly verify server-side main protection');
 assert(assurance.includes('does not constitute a SOC 2 report'),'P34 audit pack disclaimer is missing');
 assert(!/SUPABASE_SERVICE_ROLE_KEY|privateKeyPem|recoveryPrivateKey/i.test(assurance),'P34 must not ingest backend or recovery private-key secrets');
 
