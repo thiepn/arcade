@@ -75,6 +75,8 @@ for(const marker of [
   '#play-btn-orbit',
   '.game-shell',
   'readOnlyFailoverMode:true',
+  "page.keyboard.press('Escape')",
+  'aria-label="Overall leaderboards"',
 ])need(browserPath,browser,marker);
 
 const offsitePath='scripts/p32-offsite-reference.mjs';
