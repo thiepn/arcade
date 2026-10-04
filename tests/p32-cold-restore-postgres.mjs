@@ -17,11 +17,12 @@ const sourcePath='/tmp/arcade-p32-source.json';
 const reportDir='/tmp/arcade-p32-report';
 
 try{
-  const exported=(await sourceDb`SELECT public.micro_arcade_p31_offsite_export() AS result`)[0].result;
+  const exportedText=(await sourceDb`SELECT public.micro_arcade_p31_offsite_export()::text AS result`)[0].result;
+  const exported=JSON.parse(exportedText);
   assert.equal(exported.format,'arcade-p31-offsite-v1');
   assert.equal(exported.snapshot.verified,true);
   assert.equal(exported.restore_drill.ok,true);
-  await writeFile(sourcePath,JSON.stringify(exported));
+  await writeFile(sourcePath,exportedText);
 
   await adminDb.unsafe('DROP DATABASE IF EXISTS arcade_p32_test WITH (FORCE)').simple();
   await adminDb.unsafe('CREATE DATABASE arcade_p32_test').simple();
