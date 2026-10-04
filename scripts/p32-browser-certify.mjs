@@ -47,6 +47,11 @@ try{
   if(weekly.status!==200||weekly.body?.policyId!==POLICY_ID||!Array.isArray(weekly.body?.entries))throw new Error('cold weekly leaderboard contract failed in browser origin');
   if(!coldRequests.some(u=>u.includes('/v3/leaderboards/overall')))throw new Error('application did not issue leaderboard request to cold API');
 
+  const leaderboardModal=page.locator('[role="dialog"][aria-label="Overall leaderboards"]');
+  await leaderboardModal.waitFor({state:'visible',timeout:10000});
+  await page.keyboard.press('Escape');
+  await leaderboardModal.waitFor({state:'hidden',timeout:10000});
+
   await page.locator('#play-btn-orbit').click();
   await page.locator('.game-shell').waitFor({state:'visible',timeout:15000});
   const gameShellVisible=await page.locator('.game-shell').isVisible();
