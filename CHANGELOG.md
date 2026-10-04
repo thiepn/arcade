@@ -24,6 +24,7 @@
 ## Unreleased
 
 ### P32 full-stack disaster recovery / cold restore / failover certification — 2026-10-04
+- Reconcile the repository fresh-install Arcade schema with already-deployed Supabase constraints/indexes after the first live P32 drill correctly detected a protected-schema fingerprint mismatch; production tables remain unchanged.
 - Add a weekly and on-change isolated full-stack recovery exercise that certifies production health before/after while never switching production traffic.
 - Verify the latest retained P31 encrypted artifact and its ciphertext SHA-256, while preserving the offline recovery-private-key boundary instead of copying the key into GitHub.
 - Extend the P31 export Edge Function with a second exact GitHub OIDC policy for the named P32 workflow and dedicated `arcade-p32-recovery` audience; no reusable Supabase credential is added.
