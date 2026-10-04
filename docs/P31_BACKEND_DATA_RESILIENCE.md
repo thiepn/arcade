@@ -132,6 +132,8 @@ Instead, POST access requires a short-lived GitHub Actions OIDC token. The funct
 
 Only after those checks does the Edge Function use the Supabase runtime service role internally to call the service-role-only export RPC.
 
+P32 adds a second exact workflow identity (`P32 Cold Recovery Exercise`) with its own `arcade-p32-recovery` audience. The exporter still rejects every workflow not present in its explicit policy map; P31 and P32 do not share a generic repository-wide audience.
+
 No Supabase database password or service-role key is stored in GitHub.
 
 ## Encrypted off-site artifact
