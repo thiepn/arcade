@@ -1,0 +1,50 @@
+name: P33 Long-Term DR Assurance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/p33-*'
+      - 'tests/p33-*'
+      - 'docs/P33_OFFLINE_KEY_RECOVERY.md'
+      - '.github/workflows/p33-offline-attestation.yml'
+      - '.github/workflows/p33-long-term-assurance.yml'
+      - 'ops/p31-backup-recovery-cert.pem'
+  schedule:
+    - cron: '11 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: p33-long-term-dr-assurance
+  cancel-in-progress: false
+
+jobs:
+  assurance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+      - name: Evaluate P31 + P32 + signed P33 evidence freshness
+        run: bun scripts/p33-long-term-assurance.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          P33_REPORT_DIR: p33-report
+      - name: Upload assurance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: p33-long-term-assurance-${{ github.run_id }}
+          path: p33-report
+          retention-days: 90
+          if-no-files-found: warn
