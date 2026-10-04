@@ -85,6 +85,7 @@ jobs:
       - run: bun run quality:gameplay-p30
       - run: bun run quality:gameplay-p31
       - run: bun run quality:gameplay-p32
+      - run: bun run quality:gameplay-p33
       - run: bun run quality:lifecycle
       - run: bun run quality:mobile
       - run: bun run quality:rope
@@ -338,6 +339,11 @@ jobs:
           LB_TEST_RESET: '1'
       - name: P32 brand-new cold database restore integration
         run: bun run quality:backend-p32
+        env:
+          LB_TEST_DATABASE_URL: postgres://postgres:local-test-only@127.0.0.1:55432/leaderboard_test
+          LB_TEST_RESET: '1'
+      - name: P33 offline-key crypto and cold restore integration
+        run: bun run quality:backend-p33
         env:
           LB_TEST_DATABASE_URL: postgres://postgres:local-test-only@127.0.0.1:55432/leaderboard_test
           LB_TEST_RESET: '1'
