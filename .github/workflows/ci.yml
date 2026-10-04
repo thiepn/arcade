@@ -84,6 +84,7 @@ jobs:
       - run: bun run quality:gameplay-p29
       - run: bun run quality:gameplay-p30
       - run: bun run quality:gameplay-p31
+      - run: bun run quality:gameplay-p32
       - run: bun run quality:lifecycle
       - run: bun run quality:mobile
       - run: bun run quality:rope
@@ -332,6 +333,11 @@ jobs:
           LB_TEST_RESET: '1'
       - name: P31 backup and restore-readiness PostgreSQL integration
         run: bun run quality:backend-p31
+        env:
+          LB_TEST_DATABASE_URL: postgres://postgres:local-test-only@127.0.0.1:55432/leaderboard_test
+          LB_TEST_RESET: '1'
+      - name: P32 brand-new cold database restore integration
+        run: bun run quality:backend-p32
         env:
           LB_TEST_DATABASE_URL: postgres://postgres:local-test-only@127.0.0.1:55432/leaderboard_test
           LB_TEST_RESET: '1'

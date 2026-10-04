@@ -1,14 +1,21 @@
 const ISSUER = "https://token.actions.githubusercontent.com";
-const EXPECTED_AUDIENCE = "arcade-p31-backup";
 const EXPECTED_REPOSITORY = "thiepn/arcade";
 const EXPECTED_REPOSITORY_ID = "1347223890";
 const EXPECTED_OWNER = "thiepn";
 const EXPECTED_OWNER_ID = "229373572";
 const EXPECTED_REF = "refs/heads/main";
-const EXPECTED_WORKFLOW_REF =
-  "thiepn/arcade/.github/workflows/p31-offsite-backup.yml@refs/heads/main";
-const EXPECTED_WORKFLOW_NAME = "P31 Encrypted Offsite Backup";
-const ALLOWED_EVENTS = new Set(["schedule", "workflow_dispatch", "push"]);
+const WORKFLOW_POLICIES = new Map([
+  ["P31 Encrypted Offsite Backup", {
+    audience: "arcade-p31-backup",
+    workflowRef: "thiepn/arcade/.github/workflows/p31-offsite-backup.yml@refs/heads/main",
+    events: new Set(["schedule", "workflow_dispatch", "push"]),
+  }],
+  ["P32 Cold Recovery Exercise", {
+    audience: "arcade-p32-recovery",
+    workflowRef: "thiepn/arcade/.github/workflows/p32-cold-recovery.yml@refs/heads/main",
+    events: new Set(["schedule", "workflow_dispatch", "push"]),
+  }],
+]);
 
 type Claims = Record<string, unknown> & {
   iss?: string;
@@ -115,7 +122,10 @@ async function verifyGithubToken(token: string): Promise<Claims> {
 
   const now = Math.floor(Date.now() / 1000);
   if (claims.iss !== ISSUER) throw new Error("invalid_issuer");
-  if (!audienceIncludes(claims.aud, EXPECTED_AUDIENCE)) throw new Error("invalid_audience");
+  const workflowName = String(claims.workflow ?? "");
+  const workflowPolicy = WORKFLOW_POLICIES.get(workflowName);
+  if (!workflowPolicy) throw new Error("invalid_workflow_name");
+  if (!audienceIncludes(claims.aud, workflowPolicy.audience)) throw new Error("invalid_audience");
   if (typeof claims.exp !== "number" || claims.exp < now - 15) throw new Error("expired_token");
   if (typeof claims.nbf === "number" && claims.nbf > now + 30) throw new Error("token_not_yet_valid");
   if (typeof claims.iat !== "number" || claims.iat > now + 30 || claims.iat < now - 900) {
@@ -127,10 +137,9 @@ async function verifyGithubToken(token: string): Promise<Claims> {
   if (String(claims.repository_owner_id ?? "") !== EXPECTED_OWNER_ID) throw new Error("invalid_repository_owner_id");
   if (claims.repository_visibility !== "public") throw new Error("invalid_repository_visibility");
   if (claims.ref !== EXPECTED_REF) throw new Error("invalid_ref");
-  if (claims.workflow_ref !== EXPECTED_WORKFLOW_REF) throw new Error("invalid_workflow_ref");
-  if (claims.workflow !== EXPECTED_WORKFLOW_NAME) throw new Error("invalid_workflow_name");
+  if (claims.workflow_ref !== workflowPolicy.workflowRef) throw new Error("invalid_workflow_ref");
   if (claims.runner_environment !== "github-hosted") throw new Error("invalid_runner_environment");
-  if (!ALLOWED_EVENTS.has(String(claims.event_name ?? ""))) throw new Error("invalid_event");
+  if (!workflowPolicy.events.has(String(claims.event_name ?? ""))) throw new Error("invalid_event");
   if (!validSubject(claims.sub)) throw new Error("invalid_subject");
 
   return claims;
@@ -153,7 +162,13 @@ async function exportVerifiedBackup() {
   });
   if (!response.ok) throw new Error(`backup_export_failed_${response.status}`);
 
-  const payload = await response.json();
+  const raw = await response.text();
+  let payload: any;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    throw new Error("backup_export_invalid_json");
+  }
   if (
     payload?.format !== "arcade-p31-offsite-v1" ||
     payload?.project_ref !== "hycegznamzjhwinegaai" ||
@@ -163,7 +178,7 @@ async function exportVerifiedBackup() {
   ) {
     throw new Error("backup_export_contract_invalid");
   }
-  return payload;
+  return { raw, payload };
 }
 
 Deno.serve(async (request: Request) => {
@@ -193,7 +208,7 @@ Deno.serve(async (request: Request) => {
   }
 
   try {
-    const payload = await exportVerifiedBackup();
+    const { raw, payload } = await exportVerifiedBackup();
     console.log(JSON.stringify({
       event: "arcade_p31_backup_export",
       run_id: claims.run_id ?? null,
@@ -201,8 +216,15 @@ Deno.serve(async (request: Request) => {
       snapshot_id: payload.snapshot?.id ?? null,
       payload_bytes: payload.snapshot?.payload_bytes ?? null,
     }));
-    return jsonResponse(200, payload, {
-      "X-Arcade-P31-Run-Id": String(claims.run_id ?? ""),
+    return new Response(raw, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store, max-age=0",
+        "Pragma": "no-cache",
+        "X-Content-Type-Options": "nosniff",
+        "X-Arcade-P31-Run-Id": String(claims.run_id ?? ""),
+      },
     });
   } catch (error) {
     console.error("P31 backup export failed", error instanceof Error ? error.message : "unknown");

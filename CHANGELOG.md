@@ -23,6 +23,18 @@
 
 ## Unreleased
 
+### P32 full-stack disaster recovery / cold restore / failover certification — 2026-10-04
+- Add a weekly and on-change isolated full-stack recovery exercise that certifies production health before/after while never switching production traffic.
+- Verify the latest retained P31 encrypted artifact and its ciphertext SHA-256, while preserving the offline recovery-private-key boundary instead of copying the key into GitHub.
+- Extend the P31 export Edge Function with a second exact GitHub OIDC policy for the named P32 workflow and dedicated `arcade-p32-recovery` audience; no reusable Supabase credential is added.
+- Restore a fresh verified P31 logical payload into a brand-new local PostgreSQL 17 database, apply every repository migration, and require exact protected-schema hash, payload hash, row counts, relationships and transient-state exclusions.
+- Start the repository's exact `createLeaderboardHandler` against the recovered PostgreSQL target in read-only failover mode rather than implementing a parallel test API.
+- Build the real frontend against that cold API and certify browser-origin health, overall/weekly leaderboards, CORS, real leaderboard UI network routing and a mounted Orbit game shell.
+- Measure ordered production-precheck, artifact-reference, export, restore, API-ready, frontend-build, browser-certification and production-postcheck durations; report observed cold-restore-to-API, cold-restore-to-browser and full-exercise times without claiming a contractual RTO/RPO.
+- Add one deduplicated P32 recovery-readiness issue and retain only non-sensitive P32 evidence for 90 days; plaintext recovery payloads are shredded and never uploaded.
+- Add a second real PostgreSQL CI exercise that creates a brand-new database and executes the exact P32 cold-restore script before P32 can merge.
+- Keep P32 non-destructive and non-promoting: no Pages write, content write, deployment write, automatic production restore, paid Supabase branch, PITR action or real traffic cutover.
+
 ### P31 backend data resilience / backup verification / restore readiness — 2026-10-03
 - Add private verified Arcade recovery snapshots for durable identity, score history, moderation evidence, scoring profiles/policy, and only the historical session rows required by preserved evidence.
 - Deliberately exclude rate-limit buckets and unused one-time play/leaderboard sessions from disaster recovery so stale tokens and throttling state are not resurrected.
