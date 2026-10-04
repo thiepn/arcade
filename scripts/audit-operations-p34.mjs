@@ -13,6 +13,7 @@ assert(catalog.controls.length===18,'P34 must define exactly 18 controls');
 assert(new Set(ids).size===18,'P34 control IDs must be unique');
 assert(ids.every((id,index)=>id==='SC-'+String(index+1).padStart(2,'0')),'P34 control IDs must be contiguous SC-01..SC-18');
 assert(/does not certify compliance/i.test(catalog.assuranceBoundary),'catalog must explicitly deny external certification claims');
+assert((catalog.controls.find(control=>control.id==='SC-18')?.workflowEvidence||[]).length===0,'SC-18 must not recursively require a previously completed P34 run');
 
 for(const control of catalog.controls){
   assert(Array.isArray(control.nist)&&control.nist.length>0,control.id+' missing NIST readiness mapping');
