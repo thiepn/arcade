@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { assessLongTermAssurance, validateAttestation, verifyAttestationSignature } from './p33-recovery-core.mjs';
+import { assessLongTermAssurance, certificatePublicKeySha256, validateAttestation, verifyAttestationSignature } from './p33-recovery-core.mjs';
 
 const dir=mkdtempSync(join(tmpdir(),'p33-core-'));
 const key=join(dir,'key.pem'),cert=join(dir,'cert.pem');
@@ -18,10 +18,11 @@ const base={
   sourceTotalRows:10,decryptedTransportSha256:'d'.repeat(64),restoredPayloadSha256:'b'.repeat(64),restoredSchemaSha256:'c'.repeat(64),
   restoredTotalRows:10,countsMatch:true,relationshipsOk:true,transientRateLimits:0,coldTarget:true,productionMutated:false,
   offlinePrivateKeyUsed:true,recoveryCertificateFingerprint:new X509Certificate(certPem).fingerprint256,
-  privateKeyPublicSha256:'e'.repeat(64),decryptDurationMs:10,restoreDurationMs:20,fullCeremonyMs:40,
+  privateKeyPublicSha256:certificatePublicKeySha256(certPem),decryptDurationMs:10,restoreDurationMs:20,fullCeremonyMs:40,
 };
 assert.equal(validateAttestation(base,{certPem,now}).ok,true);
 assert.equal(validateAttestation({...base,productionMutated:true},{certPem,now}).ok,false);
+assert.equal(validateAttestation({...base,privateKeyPublicSha256:'e'.repeat(64)},{certPem,now}).ok,false);
 const bytes=Buffer.from(JSON.stringify(base));
 const sig=execFileSync('openssl',['dgst','-sha256','-sign',key],{input:bytes});
 assert.equal(verifyAttestationSignature(bytes,sig,certPem),true);
