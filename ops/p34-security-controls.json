@@ -424,12 +424,7 @@
         ".github/workflows/p34-continuous-assurance.yml",
         "docs/P34_SECURITY_CONTROL_ASSURANCE.md"
       ],
-      "workflowEvidence": [
-        {
-          "workflow": "p34-continuous-assurance.yml",
-          "maxAgeHours": 30
-        }
-      ],
+      "workflowEvidence": [],
       "issueMarkers": []
     }
   ]

@@ -67,6 +67,8 @@ CI also runs P34 assurance in static mode. Static mode proves the control design
 
 `P34 Continuous Security Assurance` runs daily at 06:29 UTC, on P34 control changes, and manually.
 
+The live assessment does not make SC-18 depend on a previously successful P34 run; doing so would create a false deficiency during first-run/bootstrap execution. The current run itself produces the SC-18 evidence pack.
+
 The live assessment:
 
 - verifies every repository evidence path;
