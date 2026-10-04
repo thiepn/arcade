@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-const root=resolve(import.meta.dirname,'..');
+const root=resolve(process.cwd());
 const errors=[];
 const assert=(condition,message)=>{if(!condition) errors.push(message);};
 const read=(path)=>readFileSync(join(root,path),'utf8');
