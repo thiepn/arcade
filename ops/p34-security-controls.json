@@ -428,9 +428,7 @@
           "maxAgeHours": 30
         }
       ],
-      "issueMarkers": [
-        "<!-- p34-security-assurance-deficiency -->"
-      ]
+      "issueMarkers": []
     }
   ]
 }
