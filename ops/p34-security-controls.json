@@ -12,8 +12,8 @@
   "controls": [
     {
       "id": "SC-01",
-      "title": "Least-privilege automation permissions",
-      "objective": "GitHub workflows use explicit, minimal permissions and do not use write-all defaults.",
+      "title": "Protected change path and least-privilege automation",
+      "objective": "Main is protected by server-side pull-request policy or an equivalent ruleset, while GitHub workflows use explicit minimal permissions.",
       "mode": "automated",
       "nist": [
         "GV.PO",
@@ -29,7 +29,9 @@
         "scripts/audit-repository-hardening.ts"
       ],
       "workflowEvidence": [],
-      "issueMarkers": []
+      "issueMarkers": [
+        "<!-- p34-main-protection-deficiency -->"
+      ]
     },
     {
       "id": "SC-02",
