@@ -1,27 +1,35 @@
 -- Reproducible fresh-install baseline. Existing deployed tables are left untouched.
+-- Keep this physical schema aligned with the already-deployed Supabase Arcade tables:
+-- P32 cold restores depend on the P31 protected-schema fingerprint matching exactly.
 BEGIN;
 CREATE TABLE IF NOT EXISTS public.micro_arcade_players (
- id uuid PRIMARY KEY, credential_hash text NOT NULL, display_name text NOT NULL,
- country_code text NOT NULL DEFAULT 'XX', created_at bigint NOT NULL, last_seen_at bigint NOT NULL
+ id uuid PRIMARY KEY, credential_hash text NOT NULL UNIQUE, display_name text NOT NULL,
+ country_code text NOT NULL DEFAULT 'XX' CHECK(country_code ~ '^[A-Z]{2}$'), created_at bigint NOT NULL, last_seen_at bigint NOT NULL
 );
 CREATE TABLE IF NOT EXISTS public.micro_arcade_play_sessions (
- id uuid PRIMARY KEY, player_id uuid NOT NULL REFERENCES public.micro_arcade_players(id),
+ id uuid PRIMARY KEY, player_id uuid NOT NULL REFERENCES public.micro_arcade_players(id) ON DELETE CASCADE,
  game_id text NOT NULL, issued_at bigint NOT NULL, expires_at bigint NOT NULL, used_at bigint
 );
 CREATE TABLE IF NOT EXISTS public.micro_arcade_score_submissions (
- id uuid PRIMARY KEY, session_id uuid UNIQUE NOT NULL REFERENCES public.micro_arcade_play_sessions(id),
- player_id uuid NOT NULL REFERENCES public.micro_arcade_players(id), game_id text NOT NULL,
+ id uuid PRIMARY KEY, session_id uuid UNIQUE NOT NULL REFERENCES public.micro_arcade_play_sessions(id) ON DELETE RESTRICT,
+ player_id uuid NOT NULL REFERENCES public.micro_arcade_players(id) ON DELETE CASCADE, game_id text NOT NULL,
  score bigint NOT NULL CHECK(score>=0), duration_ms bigint NOT NULL CHECK(duration_ms>=0), created_at bigint NOT NULL
 );
 CREATE TABLE IF NOT EXISTS public.micro_arcade_best_scores (
- game_id text NOT NULL, player_id uuid NOT NULL REFERENCES public.micro_arcade_players(id),
- score bigint NOT NULL CHECK(score>=0), achieved_at bigint NOT NULL, submissions integer NOT NULL DEFAULT 1,
+ game_id text NOT NULL, player_id uuid NOT NULL REFERENCES public.micro_arcade_players(id) ON DELETE CASCADE,
+ score bigint NOT NULL CHECK(score>=0), achieved_at bigint NOT NULL, submissions integer NOT NULL DEFAULT 1 CHECK(submissions>0),
  PRIMARY KEY(game_id,player_id)
 );
 CREATE TABLE IF NOT EXISTS public.micro_arcade_rate_limits (
  scope text NOT NULL,bucket_key text NOT NULL,bucket_start bigint NOT NULL,request_count integer NOT NULL DEFAULT 1,
  PRIMARY KEY(scope,bucket_key,bucket_start)
 );
+CREATE INDEX IF NOT EXISTS idx_micro_arcade_sessions_expiry ON public.micro_arcade_play_sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_micro_arcade_sessions_player ON public.micro_arcade_play_sessions(player_id,issued_at DESC);
+CREATE INDEX IF NOT EXISTS idx_micro_arcade_submissions_game ON public.micro_arcade_score_submissions(game_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_micro_arcade_submissions_player ON public.micro_arcade_score_submissions(player_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_micro_arcade_submissions_weekly ON public.micro_arcade_score_submissions(created_at,player_id,game_id,score DESC);
+CREATE INDEX IF NOT EXISTS idx_micro_arcade_best_rank ON public.micro_arcade_best_scores(game_id,score DESC,achieved_at,player_id);
 DO $$ DECLARE t text; BEGIN
  FOREACH t IN ARRAY ARRAY['micro_arcade_players','micro_arcade_play_sessions','micro_arcade_score_submissions','micro_arcade_best_scores','micro_arcade_rate_limits'] LOOP
   EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY',t);
