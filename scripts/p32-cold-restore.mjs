@@ -50,16 +50,19 @@ try {
   const payload=source.snapshot.payload;
   const exactKeys=Object.keys(payload).sort();
   if(JSON.stringify(exactKeys)!==JSON.stringify([...P32_PROTECTED_TABLES].sort())) throw new Error('unexpected protected-table set in source');
+  for(const table of P32_PROTECTED_TABLES){
+    if(!Array.isArray(payload[table]))throw new Error('protected payload '+table+' must be a JSON array');
+  }
 
-  await db`INSERT INTO public.micro_arcade_players SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_players,${JSON.stringify(payload.micro_arcade_players)}::jsonb)`;
-  await db`INSERT INTO public.micro_arcade_play_sessions SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_play_sessions,${JSON.stringify(payload.micro_arcade_play_sessions)}::jsonb)`;
-  await db`INSERT INTO public.micro_arcade_score_submissions SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_score_submissions,${JSON.stringify(payload.micro_arcade_score_submissions)}::jsonb)`;
-  await db`INSERT INTO public.micro_arcade_best_scores SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_best_scores,${JSON.stringify(payload.micro_arcade_best_scores)}::jsonb)`;
-  await db`INSERT INTO public.micro_arcade_scoring_profiles SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_scoring_profiles,${JSON.stringify(payload.micro_arcade_scoring_profiles)}::jsonb)`;
-  await db`INSERT INTO public.micro_arcade_lb_policy SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_lb_policy,${JSON.stringify(payload.micro_arcade_lb_policy)}::jsonb)`;
-  await db`INSERT INTO public.micro_arcade_lb_sessions SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_lb_sessions,${JSON.stringify(payload.micro_arcade_lb_sessions)}::jsonb)`;
-  await db`INSERT INTO public.micro_arcade_lb_runs SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_lb_runs,${JSON.stringify(payload.micro_arcade_lb_runs)}::jsonb)`;
-  await db`INSERT INTO public.micro_arcade_lb_reviews OVERRIDING SYSTEM VALUE SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_lb_reviews,${JSON.stringify(payload.micro_arcade_lb_reviews)}::jsonb)`;
+  await db`INSERT INTO public.micro_arcade_players SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_players,${JSON.stringify(payload.micro_arcade_players)}::text::jsonb)`;
+  await db`INSERT INTO public.micro_arcade_play_sessions SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_play_sessions,${JSON.stringify(payload.micro_arcade_play_sessions)}::text::jsonb)`;
+  await db`INSERT INTO public.micro_arcade_score_submissions SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_score_submissions,${JSON.stringify(payload.micro_arcade_score_submissions)}::text::jsonb)`;
+  await db`INSERT INTO public.micro_arcade_best_scores SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_best_scores,${JSON.stringify(payload.micro_arcade_best_scores)}::text::jsonb)`;
+  await db`INSERT INTO public.micro_arcade_scoring_profiles SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_scoring_profiles,${JSON.stringify(payload.micro_arcade_scoring_profiles)}::text::jsonb)`;
+  await db`INSERT INTO public.micro_arcade_lb_policy SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_lb_policy,${JSON.stringify(payload.micro_arcade_lb_policy)}::text::jsonb)`;
+  await db`INSERT INTO public.micro_arcade_lb_sessions SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_lb_sessions,${JSON.stringify(payload.micro_arcade_lb_sessions)}::text::jsonb)`;
+  await db`INSERT INTO public.micro_arcade_lb_runs SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_lb_runs,${JSON.stringify(payload.micro_arcade_lb_runs)}::text::jsonb)`;
+  await db`INSERT INTO public.micro_arcade_lb_reviews OVERRIDING SYSTEM VALUE SELECT * FROM jsonb_populate_recordset(NULL::public.micro_arcade_lb_reviews,${JSON.stringify(payload.micro_arcade_lb_reviews)}::text::jsonb)`;
 
   await db.unsafe(`SELECT setval(
     pg_get_serial_sequence('public.micro_arcade_lb_reviews','id'),
