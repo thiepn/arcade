@@ -1,0 +1,89 @@
+name: P33 Offline Ceremony Attestation
+
+on:
+  workflow_dispatch:
+    inputs:
+      attestation_b64:
+        description: Base64 of the exact signed P33 attestation.json bytes
+        required: true
+        type: string
+      signature_b64:
+        description: Base64 RSA-SHA256 signature produced by the offline recovery key
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: p33-offline-ceremony-attestation
+  cancel-in-progress: false
+
+jobs:
+  verify-offline-ceremony:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+
+      - name: Decode signed ceremony evidence
+        shell: bash
+        env:
+          P33_ATTESTATION_B64: ${{ inputs.attestation_b64 }}
+          P33_SIGNATURE_B64: ${{ inputs.signature_b64 }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,os,pathlib
+          pathlib.Path('p33-attestation.json').write_bytes(base64.b64decode(os.environ['P33_ATTESTATION_B64'],validate=True))
+          sig=base64.b64decode(os.environ['P33_SIGNATURE_B64'],validate=True)
+          pathlib.Path('p33-attestation.sig.b64').write_text(base64.b64encode(sig).decode()+'\n')
+          PY
+
+      - name: Verify offline-key signature and attestation contract
+        id: verify
+        run: bun scripts/p33-verify-attestation.mjs p33-attestation.json p33-attestation.sig.b64
+
+      - name: Download the exact retained P31 ciphertext used by the ceremony
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: arcade-p31-offsite-${{ steps.verify.outputs.source_run_id }}
+          path: p33-source
+          repository: thiepn/arcade
+          run-id: ${{ steps.verify.outputs.source_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Bind signature to retained P31 artifact and successful source workflow
+        run: bun scripts/p33-verify-retained-artifact.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          P33_ATTESTATION: p33-attestation.json
+          P33_SOURCE_DIR: p33-source
+          P33_REPORT_DIR: p33-report
+
+      - name: Persist durable signed ceremony evidence
+        run: bun scripts/p33-persist-evidence.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          P33_ATTESTATION: p33-attestation.json
+          P33_SIGNATURE: p33-attestation.sig.b64
+
+      - name: Upload non-sensitive ceremony evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: p33-offline-ceremony-${{ github.run_id }}
+          path: |
+            p33-attestation.json
+            p33-attestation.sig.b64
+            p33-report/retained-artifact.json
+          retention-days: 90
+          if-no-files-found: error
