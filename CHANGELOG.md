@@ -23,6 +23,14 @@
 
 ## Unreleased
 
+### P34 security control mapping / continuous assurance / audit readiness — 2026-10-04
+- Add an 18-control internal security/availability catalog spanning CI/CD, release provenance, monitoring/SLOs, incident response, rollback, backups, cold recovery, offline-key assurance, authorization boundaries and evidence governance.
+- Map each control to selected NIST CSF 2.0 categories and SOC 2 Trust Services Criteria for readiness context only; explicitly do not claim external certification, compliance or an audit opinion.
+- Add static CI enforcement for control IDs, evidence paths, workflow wiring, least-privilege permissions, immutable action pins, retention policy and the non-certification boundary.
+- Add daily live assurance that checks required workflow freshness plus mapped open readiness/incident markers, emits machine-readable snapshots and a human-readable audit evidence pack, and maintains one deduplicated P34 deficiency issue.
+- Retain P34 evidence packs for 90 days while excluding player records, backup plaintext, credentials, service-role secrets and offline recovery private keys.
+- Keep P34 read-only with respect to gameplay, scoring, leaderboard data, production traffic, backups and recovery mechanisms; deficiencies remain owned by their source P27–P33 controls.
+
 ### P33 offline-key recovery / encrypted-backup restore / long-term DR assurance — 2026-10-04
 - Bind the signed `privateKeyPublicSha256` evidence to the committed recovery certificate's actual SPKI SHA-256 during GitHub verification, rejecting attestations that claim any different public key.
 - Add a local offline-key ceremony that verifies the retained P31 ciphertext, proves the private key matches the committed recovery certificate, decrypts locally, runs the P31 verifier, restores into a disposable P32-compatible PostgreSQL target, and removes plaintext on exit.
