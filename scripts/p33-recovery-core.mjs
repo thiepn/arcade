@@ -15,6 +15,10 @@ export function sha256Hex(bytes) {
 export function certificateFingerprint(certPem) {
   return normalizeFingerprint(new X509Certificate(certPem).fingerprint256);
 }
+export function certificatePublicKeySha256(certPem) {
+  const der=new X509Certificate(certPem).publicKey.export({type:'spki',format:'der'});
+  return sha256Hex(der);
+}
 export function certificateValidUntil(certPem) {
   return Date.parse(new X509Certificate(certPem).validTo);
 }
@@ -61,6 +65,7 @@ export function validateAttestation(attestation,{certPem,now=Date.now(),maxAgeMs
   }
   if(certPem){
     need(normalizeFingerprint(attestation?.recoveryCertificateFingerprint)===certificateFingerprint(certPem),'recovery certificate fingerprint mismatch');
+    need(attestation?.privateKeyPublicSha256===certificatePublicKeySha256(certPem),'private-key public SHA-256 mismatch');
   }
   return {ok:errors.length===0,errors};
 }
