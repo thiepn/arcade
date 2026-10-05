@@ -23,6 +23,17 @@
 
 ## Unreleased
 
+### P36 observation epoch integrity / baseline freeze / change-control governance — 2026-10-05
+- Add an explicit cryptographic control-plane boundary spanning P27–P36 workflows, assurance/recovery engines, control policies, recovery trust anchor, and server-side scoring/leaderboard boundaries while excluding ordinary gameplay/presentation code.
+- Compute a deterministic SHA-256 manifest with per-file hashes and one aggregate control-plane fingerprint.
+- Bind every future P35 observation epoch to the exact fingerprint, per-file manifest, starting main SHA and qualifying successful CI run.
+- Require a successful CI run for the current main head before a new/replacement P35 epoch can start, without invalidating an existing epoch merely because a normal product commit has CI in progress.
+- Invalidate an active P35 epoch when the control-plane fingerprint changes, record the changed paths, forbid same-run restart, and require the replacement baseline to qualify again.
+- Bind every P35 clean checkpoint to the frozen fingerprint and add a deterministic SHA-256 checkpoint chain for P36 evidence-integrity review.
+- Add daily/on-change P36 integrity assessment with WAITING_FOR_EPOCH, OBSERVING_STABLE_BASELINE, EVIDENCE_INTEGRITY_DEFICIENT, DRIFT_DETECTED and EPOCH_CERTIFIED_STABLE states plus one deduplicated readiness issue.
+- Retain non-sensitive P36 manifest/change-control evidence for 90 days and explicitly avoid any external audit/certification claim.
+- Add deterministic integrity tests and permanently extend CI/release32 through P36.
+
 ### P35 control remediation / operating-effectiveness evidence / audit dry-run — 2026-10-05
 - Add explicit remediation verification for the two current P34 blockers: server-side main protection and the real P33 offline-key recovery ceremony; P35 verifies rather than fabricates either control.
 - Start no observation clock until main is protected, P33 is healthy, and P34 has no open deficiency; any later blocking deficiency invalidates the active epoch and prevents backdating.
