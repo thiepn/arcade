@@ -115,7 +115,7 @@ function checkpointFromComment(comment){
 
 async function maintainReadinessIssue(issues,status,remediation,period,populations,checkpointAssessment){
   if(!mutate)return {action:'disabled'};
-  let existing=findOpenIssue(issues,readinessMarker);
+  let existing=findAnyIssue(issues,readinessMarker);
   const body=[
     readinessMarker,
     '# P35 operating-effectiveness / audit dry-run readiness',
