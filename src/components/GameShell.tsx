@@ -3,7 +3,7 @@ import { OUTBOX_EVENT, getUploadHistory, flushUploads, uploadsAreDurable, type P
 import { RunClock } from '../lib/runClock';
 import { SCORE_VERSION, SCORING_PROFILES, defaultScoreMode, isScoreMode, toArcadePoints } from '../../shared/scoring';
 import type { ScoreDetails } from '../types';
-import type { LeaderboardRankDelta, ResultMetaSummary } from '../lib/resultMeta';
+import { buildResultMeta, type LeaderboardRankDelta, type ResultMetaSummary } from '../lib/resultMeta';
 import React, { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GameEntry } from '../data/games';
 import { sounds } from '../lib/sound';
@@ -41,7 +41,7 @@ interface GameShellProps {
   onBackToArcade: () => void;
   onPlayNextRandom: () => void;
   onPlayRecommended?: (gameId: string) => void;
-  onSaveScore: (gameId: string, score: number, details?: ScoreDetails) => { isNewHighScore: boolean; meta: ResultMetaSummary };
+  onSaveScore: (gameId: string, score: number, details?: ScoreDetails) => { isNewHighScore: boolean; meta?: ResultMetaSummary };
   onViewLeaderboard?: (gameId: string) => void;
   obscured?: boolean;
 }
@@ -274,7 +274,12 @@ export const GameShell: React.FC<GameShellProps> = ({
       const runMode = modeId ?? scoringMode;
       const arcadePoints = toArcadePoints(game.id, rawScore, runMode);
       rankBeforeSubmitRef.current = getGlobalLeaderboardForGame(game.id).userRank;
-      const { isNewHighScore, meta } = onSaveScore(game.id, arcadePoints, { rawScore, modeId: runMode, scoreVersion: SCORE_VERSION });
+      const savedResult = onSaveScore(game.id, arcadePoints, { rawScore, modeId: runMode, scoreVersion: SCORE_VERSION });
+      const { isNewHighScore } = savedResult;
+      const meta = savedResult.meta ?? (() => {
+        const currentStats = getStoredStats();
+        return buildResultMeta(currentStats, currentStats, game.id, { isPersonalBest: isNewHighScore });
+      })();
       setCurrentRawScore(rawScore);
       setCurrentArcadePoints(arcadePoints);
       const newBestArcadePoints = Math.max(bestScore, arcadePoints);
