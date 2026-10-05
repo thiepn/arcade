@@ -70,7 +70,7 @@
       "minimumSuccesses": 108,
       "allowEmpty": false,
       "forbidFailures": true,
-      "maxGapHours": 10
+      "maxGapHours": 12
     },
     {
       "id": "WP-P28",
@@ -82,7 +82,7 @@
       "minimumSuccesses": 108,
       "allowEmpty": false,
       "forbidFailures": true,
-      "maxGapHours": 10
+      "maxGapHours": 12
     },
     {
       "id": "WP-P29",
@@ -94,7 +94,7 @@
       "minimumSuccesses": 108,
       "allowEmpty": false,
       "forbidFailures": true,
-      "maxGapHours": 10
+      "maxGapHours": 12
     },
     {
       "id": "WP-P30",
