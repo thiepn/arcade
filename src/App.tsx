@@ -32,10 +32,12 @@ import { Hero } from './components/Hero';
 import { FilterBar } from './components/FilterBar';
 import { GameCard } from './components/GameCard';
 import { RecentlyPlayedSection } from './components/RecentlyPlayedSection';
+import { DailyChallengeCard } from './components/DailyChallengeCard';
 import { PwaStatus } from './components/PwaStatus';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AnimatePresence, motion } from "motion/react";
 import { Sparkles, Gamepad2, Shuffle, Heart, BarChart2, Globe, Trophy, Medal, Activity, UserRound } from 'lucide-react';
+import { getDailyChallengeSummary, getUtcDayKey } from './lib/dailyChallenge';
 
 
 const GameShell = lazy(() => import('./components/GameShell').then(({ GameShell }) => ({ default: GameShell })));
@@ -62,6 +64,7 @@ export default function App() {
   useEffect(startLeaderboardSync, []);
   useEffect(()=>{const refresh=(e:StorageEvent)=>{if(e.key==='micro_arcade_stats_v3')setStats(getStoredStats());};window.addEventListener('storage',refresh);return()=>window.removeEventListener('storage',refresh);},[]);
   const [stats, setStats] = useState<UserStats>(() => getStoredStats());
+  const [dailyDayKey, setDailyDayKey] = useState(() => getUtcDayKey());
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'favorites' | 'recent'>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -84,6 +87,24 @@ export default function App() {
     const handleLeaderboardUpdate = () => setHomeLeaderboardTick((tick) => tick + 1);
     window.addEventListener(LEADERBOARD_UPDATED_EVENT, handleLeaderboardUpdate);
     return () => window.removeEventListener(LEADERBOARD_UPDATED_EVENT, handleLeaderboardUpdate);
+  }, []);
+
+  useEffect(() => {
+    const refreshDailyDay = () => {
+      const next = getUtcDayKey();
+      setDailyDayKey((current) => current === next ? current : next);
+    };
+    const timer = window.setInterval(refreshDailyDay, 60_000);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') refreshDailyDay();
+    };
+    window.addEventListener('focus', refreshDailyDay);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refreshDailyDay);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   // Keep the home library's per-game AP/rank summary current without fetching all 32 boards.
@@ -306,6 +327,15 @@ export default function App() {
       .filter((g): g is GameEntry => Boolean(g));
   }, [stats.recentlyPlayed]);
 
+  const dailyChallenge = useMemo(
+    () => getDailyChallengeSummary(stats, dailyDayKey),
+    [stats, dailyDayKey]
+  );
+  const dailyChallengeGame = useMemo(
+    () => GAMES_REGISTRY.find((game) => game.id === dailyChallenge.definition.gameId),
+    [dailyChallenge.definition.gameId]
+  );
+
   // Filtered games collection
   const filteredGames = useMemo(() => {
     return GAMES_REGISTRY.filter((game) => {
@@ -421,6 +451,14 @@ export default function App() {
             onPlayRandom={handlePlayRandomGame}
             onBrowseGames={scrollToLibrary}
             totalGames={GAMES_REGISTRY.length}
+          />
+        )}
+
+        {activeTab === 'all' && !searchQuery && dailyChallengeGame && (
+          <DailyChallengeCard
+            game={dailyChallengeGame}
+            summary={dailyChallenge}
+            onPlay={() => handleLaunchGame(dailyChallengeGame.id)}
           />
         )}
 
