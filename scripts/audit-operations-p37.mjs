@@ -46,6 +46,7 @@ for(const marker of ['p33-offline-attestation.yml','p33-long-term-assurance.yml'
 assert(policy.p35?.ledgerMarker==='<!-- p35-operating-effectiveness-ledger -->','P37 policy must bind the canonical P35 ledger marker');
 assert(qualification.includes('p35LedgerMarker'),'P37 qualification must consume the P35 ledger marker from policy');
 assert(qualification.includes('state_reason')&&qualification.includes('mainProtectionIssue'),'P37 must close the SC-01 tracker only after verification');
+assert(qualification.includes('duplicateP37Issues')&&qualification.includes('p37Canonical'),'P37 must canonicalize and deduplicate its readiness tracker');
 assert(qualification.includes('P37_REQUIRE_EPOCH'),'P37 must fail if attempted activation creates no epoch');
 assert(!/SUPABASE_SERVICE_ROLE_KEY|privateKeyPem|recoveryPrivateKey|DATABASE_URL/i.test(qualification),'P37 qualification must not ingest backend or recovery secrets');
 
@@ -58,6 +59,10 @@ assert(!/SUPABASE_SERVICE_ROLE_KEY|privateKeyPem|recoveryPrivateKey|DATABASE_URL
 const workflow=read('.github/workflows/p37-remediation-activation.yml');
 assert(workflow.includes("cron: '17 */6 * * *'"),'P37 six-hour fallback schedule is missing');
 assert(workflow.includes('P33 Offline Ceremony Attestation'),'P37 must react to accepted ceremony workflow completion');
+assert(workflow.includes('      - CI'),'P37 must immediately requalify after main CI completion');
+assert(workflow.includes('Refresh P37 readiness issue'),'P37 must have one final readiness refresh step');
+assert((workflow.match(/P37_MUTATE_ISSUES: '1'/g)||[]).length===1,'P37 must mutate readiness issues exactly once per workflow run');
+assert((workflow.match(/P37_MUTATE_ISSUES: '0'/g)||[]).length>=4,'P37 intermediate qualification passes must be read-only');
 assert(workflow.includes('contents: read')&&workflow.includes('actions: write')&&workflow.includes('issues: write'),'P37 permissions are not explicit');
 assert(!workflow.includes('write-all'),'P37 workflow must not request write-all');
 for(const name of [
