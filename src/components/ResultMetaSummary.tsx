@@ -15,7 +15,7 @@ export const ResultMetaSummaryPanel: React.FC<ResultMetaSummaryProps> = ({
   accentColor,
   onPlayRecommended,
 }) => {
-  const rankImprovement = rankDelta?.before !== null && rankDelta
+  const rankImprovement = rankDelta && rankDelta.before !== null
     ? Math.max(0, rankDelta.before - rankDelta.after)
     : 0;
 
