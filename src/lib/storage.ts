@@ -1,6 +1,7 @@
 import { currentGameBests } from './localCompetition';
 import { AP_SCALE, apMicros, getPolicy } from '../../shared/leaderboard/domain';
 import { SCORE_VERSION, toArcadePoints, isScoreMode } from '../../shared/scoring';
+import { mergeDailyChallengeProgress, normalizeDailyChallengeProgress, recordDailyChallengeScore } from './dailyChallenge';
 import { UserStats, AppTheme, ScoreDetails } from '../types';
 
 const STORAGE_KEY = 'micro_arcade_stats_v3';
@@ -35,9 +36,10 @@ const defaultStats: UserStats = {
   hapticsEnabled: true,
   volume: 0.8,
   theme: 'default',
+  dailyChallenge: { days: {} },
 };
 
-const freshStats = (): UserStats => ({ ...defaultStats, modeBests: {}, legacyHighScores: {}, bestScoreDetails: {}, rawHighScores: {}, highScores: {}, playCounts: {}, totalPlayTimeSeconds: {}, favorites: [], recentlyPlayed: [] });
+const freshStats = (): UserStats => ({ ...defaultStats, modeBests: {}, legacyHighScores: {}, bestScoreDetails: {}, rawHighScores: {}, highScores: {}, playCounts: {}, totalPlayTimeSeconds: {}, favorites: [], recentlyPlayed: [], dailyChallenge: { days: {} } });
 let memoryStats = freshStats();
 let unsavedMemory = false;
 let replaceRecordsPending = false;
@@ -102,6 +104,7 @@ function normalizeStats(value: unknown): UserStats {
     hapticsEnabled: typeof parsed.hapticsEnabled === 'boolean' ? parsed.hapticsEnabled : true,
     volume: typeof parsed.volume === 'number' && Number.isFinite(parsed.volume) ? Math.max(0, Math.min(1, parsed.volume)) : 0.8,
     theme: themes.includes(parsed.theme as AppTheme) ? parsed.theme as AppTheme : 'default',
+    dailyChallenge: normalizeDailyChallengeProgress(parsed.dailyChallenge),
   };
 }
 
@@ -175,6 +178,7 @@ function mergeStoredRecords(target: UserStats, previous: UserStats): UserStats {
     for(const [id,n] of Object.entries(previous[key]??{}))map[id]=Math.max(map[id]??0,n);
     merged[key]=map;
   }
+  merged.dailyChallenge = mergeDailyChallengeProgress(merged.dailyChallenge, previous.dailyChallenge);
   return normalizeStats(merged);
 }
 
@@ -341,7 +345,8 @@ export function recordScore(gameId: string, score: number, details?: ScoreDetail
     if(!old||details.rawScore>old.rawScore)modeBests[key]={...details,apMicros:apMicros(gameId,details.rawScore,details.modeId),achievedAt:Date.now()};
   }
   const updated: UserStats = { ...current, highScores, rawHighScores, bestScoreDetails,modeBests };
-  saveStats(updated);
+  const challenge = recordDailyChallengeScore(updated, gameId, score);
+  saveStats(challenge.stats);
   return { isNewHighScore, stats: getStoredStats() };
 }
 
