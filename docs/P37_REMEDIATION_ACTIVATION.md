@@ -75,6 +75,12 @@ bash p33-ceremony-kit/evidence/submit-command.txt
 
 That command submits only the non-sensitive signed attestation and signature. It does not upload the recovery private key or decrypted backup.
 
+## Scheduler-evidence calibration
+
+GitHub scheduled workflows are best-effort and recent successful P27 intervals have approached nine hours despite a nominal six-hour cadence. Before the first P35 epoch, P37 standardizes P29/P34/P35 monitoring-evidence freshness and gap ceilings at **12 hours**.
+
+This is an evidence-scheduler tolerance only. The P27 live production checks, P28 99% rolling SLO, P35 minimum run counts, and recovery controls are unchanged. A monitoring interruption beyond 12 hours remains deficient.
+
 ## Automated reconciliation chain
 
 After the operator completes the two manual remediations, P37 automatically performs the remaining sequence.
