@@ -67,7 +67,7 @@ try{
  }
  // Bounded ties use ONLY contribution, not uncapped AP; paging has stable snapshot and ranks.
  for(let i=0;i<25;i++){
-  const id=crypto.randomUUID();await store.rpc('micro_arcade_lb_guest',{p_id:id,p_hash:String(i+1).padStart(64,'c'),p_country:'XX'});
+  const id=crypto.randomUUID();await store.rpc('micro_arcade_lb_guest',{p_id:id,p_hash:'c'.repeat(64),p_country:'XX'});
   const s=await store.rpc('micro_arcade_lb_start',{p_player:id,p_request:crypto.randomUUID(),p_game:'stack',p_mode:'standard',p_policy:POLICY_ID});await rewind(s.session.id,60000);
   await store.rpc('micro_arcade_lb_finish',{p_player:id,p_session:s.session.id,p_raw:i%2?480:600,p_duration:60000,p_active:60000,p_mode:'standard',p_policy:POLICY_ID,p_source:2});
  }
