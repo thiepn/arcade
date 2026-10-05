@@ -68,6 +68,8 @@ for (const marker of [
   'bun run quality:production-p30',
   'retention-days: 90',
 ]) need(continuityPath, continuity, marker);
+need(continuityPath, continuity, "github.event.workflow_run.conclusion == 'success'");
+need(continuityPath, continuity, "github.event.workflow_run.head_branch == 'main'");
 for (const marker of ['pages: write', 'id-token: write', 'actions/deploy-pages']) forbid(continuityPath, continuity, marker);
 
 const rollbackPath = '.github/workflows/p30-guarded-rollback.yml';
