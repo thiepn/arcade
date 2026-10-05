@@ -65,8 +65,10 @@ for(const name of [
   'Reconcile P34 security assurance',
   'Activate first P35 evidence epoch',
   'Verify first epoch with P36',
-  'Certify first-epoch activation',
+  'Publish final qualification and certify activation',
 ])assert(workflow.includes(name),'P37 workflow missing step '+name);
+assert((workflow.match(/P37_MUTATE_ISSUES: '1'/g)||[]).length===1,'P37 readiness publishing must mutate issues exactly once per workflow run');
+assert(workflow.includes('P37_REQUIRE_EPOCH: ${{ steps.activation.outputs.activation_ready }}'),'P37 final qualification must require an epoch only when activation was attempted');
 assert(workflow.includes('retention-days: 90'),'P37 evidence retention must be 90 days');
 assert(workflow.includes('actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'),'P37 checkout must remain immutable');
 assert(workflow.includes('oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6'),'P37 setup-bun must remain immutable');

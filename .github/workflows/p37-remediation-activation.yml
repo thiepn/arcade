@@ -48,7 +48,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           P37_LIVE: '1'
-          P37_MUTATE_ISSUES: '1'
+          P37_MUTATE_ISSUES: '0'
           P37_REPORT_DIR: p37-report
 
       - name: Reconcile P33 long-term assurance
@@ -64,7 +64,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           P37_LIVE: '1'
-          P37_MUTATE_ISSUES: '1'
+          P37_MUTATE_ISSUES: '0'
           P37_REPORT_DIR: p37-report
 
       - name: Reconcile P34 security assurance
@@ -80,7 +80,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           P37_LIVE: '1'
-          P37_MUTATE_ISSUES: '1'
+          P37_MUTATE_ISSUES: '0'
           P37_REPORT_DIR: p37-report
 
       - name: Activate first P35 evidence epoch
@@ -95,14 +95,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Certify first-epoch activation
-        if: steps.activation.outputs.activation_ready == 'true'
+      - name: Publish final qualification and certify activation
+        if: always() && steps.activation.conclusion == 'success'
         run: bun scripts/p37-remediation-qualification.mjs
         env:
           GITHUB_TOKEN: ${{ github.token }}
           P37_LIVE: '1'
           P37_MUTATE_ISSUES: '1'
-          P37_REQUIRE_EPOCH: '1'
+          P37_REQUIRE_EPOCH: ${{ steps.activation.outputs.activation_ready }}
           P37_REPORT_DIR: p37-report
 
       - name: Upload P37 remediation evidence
