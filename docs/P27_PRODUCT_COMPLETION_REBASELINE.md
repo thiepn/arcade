@@ -27,7 +27,7 @@ The restored product already has:
 - search and category filtering;
 - random play;
 - stats and per-game play history;
-- 48 achievements;
+- a mature achievement catalog;
 - XP derived from achievements and a 15-level progression ladder;
 - anonymous player profiles;
 - per-game global leaderboards;
@@ -128,7 +128,7 @@ No new server, cron job or account dependency.
 
 ### P29 — Progression Surfacing & Goal-Aware Home
 
-Bring the existing level/XP/achievement system onto the home experience. Add near-goal suggestions and explainable "Play next" recommendations using existing local data.
+Bring the existing level/XP/achievement system onto the home experience. Add near-goal suggestions and explainable "Play next" recommendations using existing local data. **Implemented in P29.**
 
 ### P30 — Results-to-Meta Integration & Replay Motivation
 
