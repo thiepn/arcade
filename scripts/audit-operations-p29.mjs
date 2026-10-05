@@ -70,7 +70,7 @@ for (const marker of [
   "P29_SLO_TARGET: '99'",
   "P29_MIN_CHECKPOINTS: '12'",
   "P29_RECOVERY_STREAK: '2'",
-  "P29_MAX_EVIDENCE_AGE_HOURS: '8'",
+  "P29_MAX_EVIDENCE_AGE_HOURS: '12'",
   "P27_SAMPLES: '3'",
   'bun run quality:production-p29',
   'retention-days: 90',
@@ -87,7 +87,7 @@ for (const marker of [
   'independent three-sample',
   'no player telemetry',
   'deployment-adjacent',
-  '8-hour',
+  '12-hour',
   'does not',
   'p28 no longer closes',
 ]) need('docs/P29_INCIDENT_RUNBOOKS.md', docs, marker);
