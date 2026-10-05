@@ -99,7 +99,7 @@ function normalizeStats(value: unknown): UserStats {
     totalPlayTimeSeconds: numberMap(parsed.totalPlayTimeSeconds),
     favorites: idList(parsed.favorites),
     recentlyPlayed: idList(parsed.recentlyPlayed, 5),
-    dailyChallenge: normalizeDailyChallengeState(parsed.dailyChallenge),
+    ...(isRecord(parsed.dailyChallenge) ? { dailyChallenge: normalizeDailyChallengeState(parsed.dailyChallenge) } : {}),
     soundEnabled: typeof parsed.soundEnabled === 'boolean' ? parsed.soundEnabled : true,
     hapticsEnabled: typeof parsed.hapticsEnabled === 'boolean' ? parsed.hapticsEnabled : true,
     volume: typeof parsed.volume === 'number' && Number.isFinite(parsed.volume) ? Math.max(0, Math.min(1, parsed.volume)) : 0.8,
