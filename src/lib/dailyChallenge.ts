@@ -113,8 +113,9 @@ export function mergeDailyChallengeProgress(
   for (const key of keys) {
     const a = left.days[key];
     const b = right.days[key];
-    if (!a) { merged[key] = b; continue; }
-    if (!b) { merged[key] = a; continue; }
+    if (!a && b) { merged[key] = b; continue; }
+    if (!b && a) { merged[key] = a; continue; }
+    if (!a || !b) continue;
 
     const preferred = b.bestAP > a.bestAP ? b : a;
     const completionTimes = [a.completedAt, b.completedAt].filter((v): v is number => typeof v === 'number');
