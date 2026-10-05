@@ -25,6 +25,7 @@ export interface ResultDailyProgress {
   targetAP: number;
   bestAP: number;
   progressPercent: number;
+  completed: boolean;
   justCompleted: boolean;
   currentStreak: number;
   bestStreak: number;
@@ -100,6 +101,7 @@ export function buildResultMeta(
         targetAP: afterDaily.definition.targetAP,
         bestAP: afterDaily.bestAP,
         progressPercent: afterDaily.progressPercent,
+        completed: afterDaily.completed,
         justCompleted: !beforeDaily.completed && afterDaily.completed,
         currentStreak: afterDaily.currentStreak,
         bestStreak: afterDaily.bestStreak,
