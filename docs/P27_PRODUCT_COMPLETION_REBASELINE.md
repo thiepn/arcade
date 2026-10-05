@@ -70,7 +70,7 @@ The next product feature should use the existing games, AP system and local stat
 
 ### 2. Existing progression is buried
 
-Arcade already has 48 achievements, XP and 15 player levels, but most of that value lives inside the statistics modal.
+Arcade already has a mature achievement catalog, XP and 15 player levels, but most of that value lives inside the statistics modal.
 
 The home screen should surface:
 
