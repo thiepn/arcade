@@ -759,7 +759,7 @@ export const GameShell: React.FC<GameShellProps> = ({
                         ? 'DAILY CHALLENGE COMPLETE'
                         : gameOverData.meta.celebration === 'achievement'
                           ? 'BADGE UNLOCKED'
-                          : 'NEW HIGH SCORE'}
+                          : 'NEW HIGH SCORE!'}
                     {gameOverData.meta.celebration === 'personal-best' && <span className="text-[9px] opacity-75">AP PB</span>}
                   </div>
                 ) : (
