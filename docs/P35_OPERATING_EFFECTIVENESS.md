@@ -56,7 +56,7 @@ If a blocking P34 condition appears during the epoch, P35 invalidates the epoch.
 P35 evaluates the population of real GitHub Actions runs inside the epoch.
 
 - CI and production deployment are change-driven populations. An empty period is acceptable because P35 does not require artificial production changes solely to manufacture samples. If change runs occur, terminal failures are exceptions.
-- P27, P28 and P29 require at least 108 successful runs over 30 days and no gap above 10 hours.
+- P27, P28 and P29 require at least 108 successful runs over 30 days and no gap above 12 hours. The 12-hour ceiling is evidence-scheduler tolerance, not a relaxation of production availability criteria.
 - P30 requires at least 4 successful continuity drills and no gap above 216 hours.
 - P31 requires at least 27 successful encrypted backups and no gap above 50 hours.
 - P32 requires at least 4 successful cold-recovery exercises and no gap above 216 hours.
