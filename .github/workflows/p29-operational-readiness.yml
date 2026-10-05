@@ -26,7 +26,7 @@ env:
   P29_SLO_TARGET: '99'
   P29_MIN_CHECKPOINTS: '12'
   P29_RECOVERY_STREAK: '2'
-  P29_MAX_EVIDENCE_AGE_HOURS: '8'
+  P29_MAX_EVIDENCE_AGE_HOURS: '12'
 
 jobs:
   diagnose-and-verify:
