@@ -114,7 +114,11 @@ const p33EvidenceIssue=findAnyIssue(issues,policy.p33.evidenceMarker);
 const p33Issue=findOpenIssue(issues,policy.p33.assuranceMarker);
 const p34Issue=findOpenIssue(issues,policy.p34.deficiencyMarker);
 const mainProtectionIssue=findOpenIssue(issues,policy.remediationIssueMarker);
-const p37Issue=findAnyIssue(issues,p37Marker);
+const p37Issues=issues
+  .filter(issue=>typeof issue.body==='string'&&issue.body.includes(p37Marker))
+  .sort((a,b)=>a.number-b.number);
+const p37Issue=p37Issues.find(issue=>issue.state==='open')||p37Issues[0]||null;
+const duplicateP37Issues=p37Issues.filter(issue=>issue.number!==p37Issue?.number&&issue.state==='open');
 const ledgerIssue=findAnyIssue(issues,p35LedgerMarker);
 const ledger=parseLedger(ledgerIssue?.body||'');
 const firstEpochEverActivated=Boolean(ledger.current||ledger.history.length);
@@ -199,6 +203,8 @@ const report={
     p33Evidence:p33EvidenceIssue?.number||null,
     p34Deficiency:p34Issue?.number||null,
     p35Ledger:ledgerIssue?.number||null,
+    p37Canonical:p37Issue?.number||null,
+    p37Duplicates:duplicateP37Issues.map(issue=>issue.number),
   },
   epoch:{
     current:ledger.current?{id:ledger.current.id,start:ledger.current.start,status:ledger.current.status,controlPlaneFingerprint:ledger.current.controlPlaneFingerprint||null}:null,
@@ -237,6 +243,17 @@ const summary=[
 writeFileSync(join(reportDir,'summary.md'),summary);
 
 if(mutate){
+  for(const duplicate of duplicateP37Issues){
+    await github('/repos/'+repo+'/issues/'+duplicate.number+'/comments',{
+      method:'POST',
+      body:JSON.stringify({body:'Closing duplicate P37 readiness tracker. Canonical issue: #'+(p37Issue?.number||'pending')+'.'}),
+    });
+    await github('/repos/'+repo+'/issues/'+duplicate.number,{
+      method:'PATCH',
+      body:JSON.stringify({state:'closed',state_reason:'not_planned'}),
+    });
+  }
+
   const issueBody=[
     p37Marker,
     '# P37 remediation / first-epoch activation',
