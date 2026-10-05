@@ -132,7 +132,7 @@ Bring the existing level/XP/achievement system onto the home experience. Add nea
 
 ### P30 — Results-to-Meta Integration & Replay Motivation
 
-Connect each result to PB, achievement, level, challenge and leaderboard movement. Improve next-action recommendations and celebration hierarchy without changing core game scoring.
+Connect each result to PB, achievement, level, challenge and leaderboard movement. Improve next-action recommendations and celebration hierarchy without changing core game scoring. **Implemented in P30.**
 
 ### P31 — Final Product UX, Motion, Audio & Real-Device Pass
 

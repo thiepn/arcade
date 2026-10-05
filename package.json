@@ -98,7 +98,8 @@
     "quality:leaderboard-db": "bun tests/leaderboard/postgres.mjs",
     "quality:leaderboard-browser": "bun tests/leaderboard/browser.mjs",
     "quality:gameplay-p28": "bun scripts/test-daily-challenge-p28.mjs && bun scripts/audit-gameplay-p28.ts",
-    "quality:gameplay-p29": "bun scripts/test-progression-home-p29.mjs && bun scripts/audit-gameplay-p29.ts"
+    "quality:gameplay-p29": "bun scripts/test-progression-home-p29.mjs && bun scripts/audit-gameplay-p29.ts",
+    "quality:gameplay-p30": "bun scripts/test-result-meta-p30.mjs && bun scripts/audit-gameplay-p30.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",

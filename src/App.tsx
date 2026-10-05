@@ -12,7 +12,7 @@ import {
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { Suspense, lazy, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { GAMES_REGISTRY, GameEntry } from './data/games';
 import { GameDefinition, UserStats, AppTheme } from './types';
 import {
@@ -39,6 +39,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { AnimatePresence, motion } from "motion/react";
 import { Sparkles, Gamepad2, Shuffle, Heart, BarChart2, Globe, Trophy, Medal, Activity, UserRound } from 'lucide-react';
 import { getDailyChallengeSummary, getUtcDayKey } from './lib/dailyChallenge';
+import { buildResultMeta } from './lib/resultMeta';
 
 
 const GameShell = lazy(() => import('./components/GameShell').then(({ GameShell }) => ({ default: GameShell })));
@@ -83,6 +84,7 @@ export default function App() {
   );
   const [rankUnavailableIds, setRankUnavailableIds] = useState<Set<string>>(new Set());
   const [rankSummaryUnavailable, setRankSummaryUnavailable] = useState(false);
+  const runBaselineRef = useRef<UserStats | null>(null);
 
   useEffect(() => {
     const handleLeaderboardUpdate = () => setHomeLeaderboardTick((tick) => tick + 1);
@@ -252,6 +254,7 @@ export default function App() {
   // Launch a game
   const handleLaunchGame = useCallback((gameId: string) => {
     haptics.click();
+    runBaselineRef.current = getStoredStats();
     const updated = recordGamePlay(gameId);
     setStats(updated);
     setActiveGameId(gameId);
@@ -310,9 +313,12 @@ export default function App() {
 
   // Save score from inside GameShell
   const handleSaveScore = useCallback((gameId: string, score: number, details?: import("./types").ScoreDetails) => {
+    const baseline = runBaselineRef.current ?? getStoredStats();
     const result = recordScore(gameId, score, details);
+    const meta = buildResultMeta(baseline, result.stats, gameId, { isPersonalBest: result.isNewHighScore });
+    runBaselineRef.current = result.stats;
     setStats(result.stats);
-    return { isNewHighScore: result.isNewHighScore };
+    return { isNewHighScore: result.isNewHighScore, meta };
   }, []);
 
   // Clear data
@@ -420,6 +426,7 @@ export default function App() {
               onToggleHaptics={handleToggleHaptics}
               onBackToArcade={() => setActiveGameId(null)}
               onPlayNextRandom={handlePlayRandomGame}
+              onPlayRecommended={handleLaunchGame}
               onSaveScore={handleSaveScore}
               onViewLeaderboard={(gameId) => handleOpenStats('leaderboards', gameId)}
             />

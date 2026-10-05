@@ -23,6 +23,14 @@
 
 ## Unreleased
 
+### P30 results-to-meta / replay motivation — 2026-10-06
+- Attribute each completed run against one pre-run baseline so session-driven play-count achievements, score achievements and daily progress are reported once and accurately.
+- Add a compact Run progress result surface for PB gain, newly unlocked badges, achievement-derived XP, level progress/level-up and daily challenge completion/streak.
+- Reuse P29's deterministic recommendation engine to offer one explainable next cabinet while excluding the finished cabinet and today's daily cabinet.
+- Refresh the accepted game's live leaderboard after publication and show real rank entry/upward movement when the backend returns it; local results remain complete when offline.
+- Replace competing celebration popups with a single result hierarchy: level-up → daily completion → achievement → PB → ordinary completion.
+- Add deterministic P30 core tests, structural audit, CI enforcement and release32 coverage.
+
 ### P29 progression surfacing / goal-aware home — 2026-10-05
 - Surface the existing achievement-derived XP and 15-level progression model directly on the arcade home page instead of leaving it buried in statistics/profile dialogs.
 - Add semantic level progress, total XP, dynamic unlocked-badge count and two near-complete local goals with visible XP rewards.
