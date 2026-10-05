@@ -3,13 +3,15 @@ import { OUTBOX_EVENT, getUploadHistory, flushUploads, uploadsAreDurable, type P
 import { RunClock } from '../lib/runClock';
 import { SCORE_VERSION, SCORING_PROFILES, defaultScoreMode, isScoreMode, toArcadePoints } from '../../shared/scoring';
 import type { ScoreDetails } from '../types';
+import type { LeaderboardRankDelta, ResultMetaSummary } from '../lib/resultMeta';
 import React, { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GameEntry } from '../data/games';
 import { sounds } from '../lib/sound';
 import { haptics } from '../lib/haptics';
-import { beginLeaderboardSession, submitLeaderboardScore, type LeaderboardPlaySession } from '../lib/leaderboards';
+import { beginLeaderboardSession, getGlobalLeaderboardForGame, refreshGameLeaderboard, submitLeaderboardScore, type LeaderboardPlaySession } from '../lib/leaderboards';
 import { useGamepadBridge } from '../hooks/useGamepadBridge';
 import { ErrorBoundary } from './ErrorBoundary';
+import { ResultMetaSummaryPanel } from './ResultMetaSummary';
 import { getStoredStats, isProgressSaved } from '../lib/storage';
 import {
   ArrowLeft,
@@ -38,7 +40,8 @@ interface GameShellProps {
   onToggleHaptics?: () => void;
   onBackToArcade: () => void;
   onPlayNextRandom: () => void;
-  onSaveScore: (gameId: string, score: number, details?: ScoreDetails) => { isNewHighScore: boolean };
+  onPlayRecommended?: (gameId: string) => void;
+  onSaveScore: (gameId: string, score: number, details?: ScoreDetails) => { isNewHighScore: boolean; meta: ResultMetaSummary };
   onViewLeaderboard?: (gameId: string) => void;
   obscured?: boolean;
 }
@@ -58,6 +61,7 @@ export const GameShell: React.FC<GameShellProps> = ({
   onToggleHaptics,
   onBackToArcade,
   onPlayNextRandom,
+  onPlayRecommended,
   onSaveScore,
   onViewLeaderboard,
   obscured = false,
@@ -80,6 +84,9 @@ export const GameShell: React.FC<GameShellProps> = ({
   const [submissionStatus, setSubmissionStatus] = useState<'local'|'pending'|'accepted'|'failed'|'review'|'rejected'|'expired'|'auth-required'>('local');
   const [submissionMessage,setSubmissionMessage]=useState('');
   const [submittedSessionId,setSubmittedSessionId]=useState<string|null>(null);
+  const [rankDelta, setRankDelta] = useState<LeaderboardRankDelta | null>(null);
+  const rankBeforeSubmitRef = useRef<number | null>(null);
+  const rankRefreshSessionRef = useRef<string | null>(null);
   const clockRef=useRef(new RunClock());
   const engineReadyRef=useRef(false);
   const clockRunningRef=useRef(true);
@@ -102,6 +109,20 @@ export const GameShell: React.FC<GameShellProps> = ({
     return()=>{cancelled=true;window.removeEventListener(OUTBOX_EVENT,update);};
   },[submittedSessionId]);
   useEffect(() => {
+    if (submissionStatus !== 'accepted' || !submittedSessionId || !gameOverData) return;
+    if (rankRefreshSessionRef.current === submittedSessionId) return;
+    rankRefreshSessionRef.current = submittedSessionId;
+    let cancelled = false;
+    void refreshGameLeaderboard(game.id, 'all')
+      .then((board) => {
+        if (!cancelled && board.userRank !== null) {
+          setRankDelta({ before: rankBeforeSubmitRef.current, after: board.userRank });
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [game.id, gameOverData, submissionStatus, submittedSessionId]);
+  useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
@@ -117,6 +138,7 @@ export const GameShell: React.FC<GameShellProps> = ({
     bestRawScore: number;
     bestArcadePoints: number;
     isNewHigh: boolean;
+    meta: ResultMetaSummary;
   } | null>(null);
 
   clockRunningRef.current=!isPaused&&!obscured&&!gameOverData;
@@ -195,7 +217,7 @@ export const GameShell: React.FC<GameShellProps> = ({
     setScoringMode(defaultScoreMode(game.id));
     prevArcadePointsRef.current = 0;
     setGameOverData(null);
-    setSubmissionStatus('local');setSubmissionMessage('');setSubmittedSessionId(null);
+    setSubmissionStatus('local');setSubmissionMessage('');setSubmittedSessionId(null);setRankDelta(null);rankRefreshSessionRef.current=null;
     clockRef.current=new RunClock();engineReadyRef.current=false;setEngineReadyState(false);
     setIsPaused(false);
     gameOverHandledRef.current = false;
@@ -213,7 +235,7 @@ export const GameShell: React.FC<GameShellProps> = ({
     setGameSessionKey(activeSessionKeyRef.current);
     setScoringMode(modeId);setCurrentRawScore(0);setCurrentArcadePoints(0);prevArcadePointsRef.current=0;
     setGameOverData(null);gameOverHandledRef.current=false;setIsPaused(false);
-    setSubmissionStatus('local');setSubmissionMessage('');setSubmittedSessionId(null);
+    setSubmissionStatus('local');setSubmissionMessage('');setSubmittedSessionId(null);setRankDelta(null);rankRefreshSessionRef.current=null;
     leaderboardSessionRef.current=null;leaderboardSessionPromiseRef.current=null;
     clockRef.current=new RunClock();engineReadyRef.current=false;setEngineReadyState(false);
   },[game.id,scoringMode]);
@@ -250,7 +272,8 @@ export const GameShell: React.FC<GameShellProps> = ({
       const rawScore = Number.isFinite(finalScore) ? Math.max(0, Math.floor(finalScore)) : 0;
       const runMode = modeId ?? scoringMode;
       const arcadePoints = toArcadePoints(game.id, rawScore, runMode);
-      const { isNewHighScore } = onSaveScore(game.id, arcadePoints, { rawScore, modeId: runMode, scoreVersion: SCORE_VERSION });
+      rankBeforeSubmitRef.current = getGlobalLeaderboardForGame(game.id).userRank;
+      const { isNewHighScore, meta } = onSaveScore(game.id, arcadePoints, { rawScore, modeId: runMode, scoreVersion: SCORE_VERSION });
       setCurrentRawScore(rawScore);
       setCurrentArcadePoints(arcadePoints);
       const newBestArcadePoints = Math.max(bestScore, arcadePoints);
@@ -279,15 +302,16 @@ export const GameShell: React.FC<GameShellProps> = ({
         bestRawScore: newBestRawScore,
         bestArcadePoints: newBestArcadePoints,
         isNewHigh: isNewHighScore,
+        meta,
       });
 
-      if (isNewHighScore && arcadePoints > 0) {
-        // High score celebratory vibration pattern
+      if (meta.celebration !== 'none' && arcadePoints > 0) {
+        // One restrained celebration hierarchy covers PB, badges, daily completion and level-up.
         haptics.highScore();
         void import('canvas-confetti')
           .then(({ default: confetti }) => {
             confetti({
-              particleCount: 75,
+              particleCount: meta.celebration === 'level-up' ? 95 : 75,
               spread: 60,
               origin: { y: 0.6 },
               colors: [game.accentColor, '#facc15', '#ffffff'],
@@ -720,9 +744,17 @@ export const GameShell: React.FC<GameShellProps> = ({
           {gameOverData && (
             <div className="absolute inset-0 bg-[#0A0A0B]/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
               <div className="w-full max-w-sm max-h-full overflow-y-auto p-4 sm:p-6 rounded-2xl bg-[#18181B] border border-[#27272A] shadow-2xl flex flex-col items-center text-center">
-                {gameOverData.isNewHigh ? (
+                {gameOverData.meta.celebration !== 'none' ? (
                   <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/50 text-amber-400 text-xs font-bold font-mono-arcade mb-3">
-                    <Sparkles className="w-3.5 h-3.5" /> NEW HIGH SCORE! <span className="text-[9px] opacity-75">AP PB</span>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {gameOverData.meta.celebration === 'level-up'
+                      ? `LEVEL UP · LV ${gameOverData.meta.levelAfter}`
+                      : gameOverData.meta.celebration === 'daily-challenge'
+                        ? 'DAILY CHALLENGE COMPLETE'
+                        : gameOverData.meta.celebration === 'achievement'
+                          ? 'BADGE UNLOCKED'
+                          : 'NEW HIGH SCORE'}
+                    {gameOverData.meta.celebration === 'personal-best' && <span className="text-[9px] opacity-75">AP PB</span>}
                   </div>
                 ) : (
                   <span className="text-[10px] font-mono-arcade text-[#71717A] tracking-widest uppercase mb-3 font-bold">
@@ -751,6 +783,13 @@ export const GameShell: React.FC<GameShellProps> = ({
                   <span className="text-zinc-500">MODE BEST SCORE <strong className="text-zinc-200">{gameOverData.bestRawScore.toLocaleString()}</strong></span>
                   <span className="text-amber-400/80"><Trophy className="w-3 h-3 inline mr-1" />GAME BEST AP <strong>{gameOverData.bestArcadePoints.toLocaleString()}</strong></span>
                 </div>
+
+                <ResultMetaSummaryPanel
+                  meta={gameOverData.meta}
+                  rankDelta={rankDelta}
+                  accentColor={game.accentColor}
+                  onPlayRecommended={onPlayRecommended}
+                />
 
                 {/* Action Buttons */}
                 <details className="mb-3 rounded-lg border border-zinc-700 p-3 text-left text-xs text-zinc-300" data-scoring-details>
