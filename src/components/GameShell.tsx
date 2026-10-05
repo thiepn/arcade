@@ -306,7 +306,7 @@ export const GameShell: React.FC<GameShellProps> = ({
         meta,
       });
 
-      if (meta.celebration !== 'none' && arcadePoints > 0) {
+      if (meta.celebration !== 'none') {
         // One restrained celebration hierarchy covers PB, badges, daily completion and level-up.
         haptics.highScore();
         void import('canvas-confetti')
