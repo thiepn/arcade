@@ -74,7 +74,7 @@ The live assessment:
 - verifies every repository evidence path;
 - reads GitHub's live `main.protected` state for SC-01;
 - fetches the newest successful run for mapped P27–P34 workflows;
-- applies explicit freshness ceilings;
+- applies explicit freshness ceilings, including a 12-hour freshness ceiling for the six-hour P27/P28 monitoring chain;
 - reads open GitHub issues for mapped P28/P30/P31/P32/P33/P34 deficiency markers;
 - marks each control OPERATING or DEFICIENT;
 - emits a machine-readable snapshot and deficiency register;
