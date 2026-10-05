@@ -24,7 +24,7 @@
 ## Unreleased
 
 ### P37 remediation execution / clean-baseline qualification / first evidence-epoch activation — 2026-10-05
-- Define a machine-verifiable main-branch ruleset contract: active enforcement, no bypass actors, PR path, review-thread resolution, deletion/force-push protection, strict up-to-date status checks and required `build`.
+- Define a machine-verifiable effective-main rules contract: active repository ruleset, PR path, review-thread resolution, deletion/force-push protection, strict up-to-date status checks and required `build`; keep no-bypass as an explicit operator requirement because GitHub withholds that field from the normal Actions token.
 - Keep the two irreducible operator actions explicit: repository ruleset creation in GitHub and the real P33 offline-key ceremony on a trusted machine; P37 never imports the recovery private key or fabricates either control.
 - Add deterministic qualification states from WAITING_MAIN_PROTECTION through FIRST_EPOCH_ACTIVATED and retain exact failed checks in a single readiness issue.
 - Automatically close the historical SC-01 tracking issue only after GitHub reports main protected and the active ruleset passes the P37 contract.
