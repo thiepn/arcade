@@ -3,6 +3,7 @@ import { OUTBOX_EVENT, getUploadHistory, flushUploads, uploadsAreDurable, type P
 import { RunClock } from '../lib/runClock';
 import { SCORE_VERSION, SCORING_PROFILES, defaultScoreMode, isScoreMode, toArcadePoints } from '../../shared/scoring';
 import type { ScoreDetails } from '../types';
+import { DAILY_CHALLENGE_STRONG_AP, type DailyChallengeRunResult } from '../lib/dailyChallenge';
 import React, { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GameEntry } from '../data/games';
 import { sounds } from '../lib/sound';
@@ -26,6 +27,9 @@ import {
   Globe,
   Smartphone,
   Gamepad2,
+  Flame,
+  CheckCircle2,
+  Target,
 } from 'lucide-react';
 
 interface GameShellProps {
@@ -38,7 +42,7 @@ interface GameShellProps {
   onToggleHaptics?: () => void;
   onBackToArcade: () => void;
   onPlayNextRandom: () => void;
-  onSaveScore: (gameId: string, score: number, details?: ScoreDetails) => { isNewHighScore: boolean };
+  onSaveScore: (gameId: string, score: number, details?: ScoreDetails) => { isNewHighScore: boolean; dailyChallenge?: DailyChallengeRunResult };
   onViewLeaderboard?: (gameId: string) => void;
   obscured?: boolean;
 }
@@ -117,6 +121,7 @@ export const GameShell: React.FC<GameShellProps> = ({
     bestRawScore: number;
     bestArcadePoints: number;
     isNewHigh: boolean;
+    dailyChallenge?: DailyChallengeRunResult;
   } | null>(null);
 
   clockRunningRef.current=!isPaused&&!obscured&&!gameOverData;
@@ -250,7 +255,7 @@ export const GameShell: React.FC<GameShellProps> = ({
       const rawScore = Number.isFinite(finalScore) ? Math.max(0, Math.floor(finalScore)) : 0;
       const runMode = modeId ?? scoringMode;
       const arcadePoints = toArcadePoints(game.id, rawScore, runMode);
-      const { isNewHighScore } = onSaveScore(game.id, arcadePoints, { rawScore, modeId: runMode, scoreVersion: SCORE_VERSION });
+      const { isNewHighScore, dailyChallenge } = onSaveScore(game.id, arcadePoints, { rawScore, modeId: runMode, scoreVersion: SCORE_VERSION });
       setCurrentRawScore(rawScore);
       setCurrentArcadePoints(arcadePoints);
       const newBestArcadePoints = Math.max(bestScore, arcadePoints);
@@ -279,6 +284,7 @@ export const GameShell: React.FC<GameShellProps> = ({
         bestRawScore: newBestRawScore,
         bestArcadePoints: newBestArcadePoints,
         isNewHigh: isNewHighScore,
+        dailyChallenge: dailyChallenge?.wasDailyChallenge ? dailyChallenge : undefined,
       });
 
       if (isNewHighScore && arcadePoints > 0) {
@@ -291,6 +297,19 @@ export const GameShell: React.FC<GameShellProps> = ({
               spread: 60,
               origin: { y: 0.6 },
               colors: [game.accentColor, '#facc15', '#ffffff'],
+              disableForReducedMotion: true,
+            });
+          })
+          .catch(() => {});
+      } else if (dailyChallenge?.justCompleted) {
+        haptics.combo();
+        void import('canvas-confetti')
+          .then(({ default: confetti }) => {
+            confetti({
+              particleCount: 42,
+              spread: 52,
+              origin: { y: 0.65 },
+              colors: [game.accentColor, '#22d3ee', '#ffffff'],
               disableForReducedMotion: true,
             });
           })
@@ -751,6 +770,38 @@ export const GameShell: React.FC<GameShellProps> = ({
                   <span className="text-zinc-500">MODE BEST SCORE <strong className="text-zinc-200">{gameOverData.bestRawScore.toLocaleString()}</strong></span>
                   <span className="text-amber-400/80"><Trophy className="w-3 h-3 inline mr-1" />GAME BEST AP <strong>{gameOverData.bestArcadePoints.toLocaleString()}</strong></span>
                 </div>
+
+                {gameOverData.dailyChallenge?.wasDailyChallenge && (
+                  <div
+                    className="mb-4 w-full rounded-xl border border-cyan-500/25 bg-cyan-500/[0.06] p-3 text-left"
+                    data-daily-challenge-result={gameOverData.dailyChallenge.view.dayKey}
+                  >
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        {gameOverData.dailyChallenge.justCompleted ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+                        ) : (
+                          <Target className="h-4 w-4 text-cyan-300" />
+                        )}
+                        <span className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">
+                          {gameOverData.dailyChallenge.justCompleted ? 'Daily challenge complete' : 'Daily challenge run'}
+                        </span>
+                      </div>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-orange-300">
+                        <Flame className="h-3.5 w-3.5" />
+                        {gameOverData.dailyChallenge.view.currentStreak} day streak
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 text-[10px] font-mono-arcade text-zinc-400">
+                      <span>Today best <strong className="text-white">{gameOverData.dailyChallenge.view.bestAP.toLocaleString()} AP</strong></span>
+                      <span className={gameOverData.dailyChallenge.view.strongGoalReached ? 'text-emerald-300' : 'text-zinc-500'}>
+                        {gameOverData.dailyChallenge.view.strongGoalReached
+                          ? 'STRONG RUN ✓'
+                          : DAILY_CHALLENGE_STRONG_AP.toLocaleString() + ' AP strong goal'}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Action Buttons */}
                 <details className="mb-3 rounded-lg border border-zinc-700 p-3 text-left text-xs text-zinc-300" data-scoring-details>

@@ -96,7 +96,8 @@
     "quality:scoring-migrations": "python3 scripts/generate-scoring-migrations.py && git diff --exit-code -- supabase/migrations/20260909_scoring_v2.sql worker/migrations/0003_scoring_v2.sql scripts/scoring-postgres-parity.sql",
     "quality:leaderboard": "python3 tools/leaderboard/generate.py --check && bun tests/leaderboard/domain-and-queue.mjs && bun tests/leaderboard/http.mjs",
     "quality:leaderboard-db": "bun tests/leaderboard/postgres.mjs",
-    "quality:leaderboard-browser": "bun tests/leaderboard/browser.mjs"
+    "quality:leaderboard-browser": "bun tests/leaderboard/browser.mjs",
+    "quality:daily-challenge": "bun tests/daily-challenge.mjs"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",

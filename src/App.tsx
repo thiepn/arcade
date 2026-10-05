@@ -19,6 +19,7 @@ import {
   getStoredStats,
   recordGamePlay,
   recordScore,
+  recordDailyChallengeRun,
   toggleFavoriteGame,
   updateSoundPreference,
   updateHapticsPreference,
@@ -32,11 +33,15 @@ import { Hero } from './components/Hero';
 import { FilterBar } from './components/FilterBar';
 import { GameCard } from './components/GameCard';
 import { RecentlyPlayedSection } from './components/RecentlyPlayedSection';
+import { DailyChallengeCard } from './components/DailyChallengeCard';
 import { PwaStatus } from './components/PwaStatus';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AnimatePresence, motion } from "motion/react";
 import { Sparkles, Gamepad2, Shuffle, Heart, BarChart2, Globe, Trophy, Medal, Activity, UserRound } from 'lucide-react';
+import { getDailyChallengeView, millisecondsUntilNextUtcDay, utcDayKey } from './lib/dailyChallenge';
 
+
+const DAILY_CHALLENGE_GAME_IDS = GAMES_REGISTRY.map((game) => game.id).sort();
 
 const GameShell = lazy(() => import('./components/GameShell').then(({ GameShell }) => ({ default: GameShell })));
 const StatsModal = lazy(() => import('./components/StatsModal').then(({ StatsModal }) => ({ default: StatsModal })));
@@ -62,6 +67,7 @@ export default function App() {
   useEffect(startLeaderboardSync, []);
   useEffect(()=>{const refresh=(e:StorageEvent)=>{if(e.key==='micro_arcade_stats_v3')setStats(getStoredStats());};window.addEventListener('storage',refresh);return()=>window.removeEventListener('storage',refresh);},[]);
   const [stats, setStats] = useState<UserStats>(() => getStoredStats());
+  const [dailyDayKey, setDailyDayKey] = useState(() => utcDayKey());
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'favorites' | 'recent'>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -79,6 +85,21 @@ export default function App() {
   );
   const [rankUnavailableIds, setRankUnavailableIds] = useState<Set<string>>(new Set());
   const [rankSummaryUnavailable, setRankSummaryUnavailable] = useState(false);
+
+  useEffect(() => {
+    const refreshDay = () => setDailyDayKey(utcDayKey());
+    const timer = window.setTimeout(refreshDay, millisecondsUntilNextUtcDay());
+    const handleVisibility = () => {
+      if (!document.hidden) refreshDay();
+    };
+    window.addEventListener('focus', refreshDay);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('focus', refreshDay);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [dailyDayKey]);
 
   useEffect(() => {
     const handleLeaderboardUpdate = () => setHomeLeaderboardTick((tick) => tick + 1);
@@ -289,8 +310,9 @@ export default function App() {
   // Save score from inside GameShell
   const handleSaveScore = useCallback((gameId: string, score: number, details?: import("./types").ScoreDetails) => {
     const result = recordScore(gameId, score, details);
-    setStats(result.stats);
-    return { isNewHighScore: result.isNewHighScore };
+    const dailyChallenge = recordDailyChallengeRun(gameId, score, DAILY_CHALLENGE_GAME_IDS);
+    setStats(dailyChallenge.stats);
+    return { isNewHighScore: result.isNewHighScore, dailyChallenge };
   }, []);
 
   // Clear data
@@ -298,6 +320,19 @@ export default function App() {
     const fresh = clearAllStats();
     setStats(fresh);
   }, []);
+
+  const dailyChallenge = useMemo(
+    () => getDailyChallengeView(
+      stats.dailyChallenge,
+      DAILY_CHALLENGE_GAME_IDS,
+      Date.parse(dailyDayKey + 'T12:00:00.000Z'),
+    ),
+    [stats.dailyChallenge, dailyDayKey],
+  );
+  const dailyChallengeGame = useMemo(
+    () => GAMES_REGISTRY.find((game) => game.id === dailyChallenge.gameId) ?? GAMES_REGISTRY[0],
+    [dailyChallenge.gameId],
+  );
 
   // Recently played game objects
   const recentGameDefs = useMemo(() => {
@@ -421,6 +456,14 @@ export default function App() {
             onPlayRandom={handlePlayRandomGame}
             onBrowseGames={scrollToLibrary}
             totalGames={GAMES_REGISTRY.length}
+          />
+        )}
+
+        {activeTab === 'all' && !searchQuery && dailyChallengeGame && (
+          <DailyChallengeCard
+            game={dailyChallengeGame}
+            challenge={dailyChallenge}
+            onPlay={handleLaunchGame}
           />
         )}
 
