@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { appendFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { buildControlPlaneManifest } from './p36-control-plane-core.mjs';
-import { ageHours, selectQualifyingRuleset, evaluateQualification } from './p37-remediation-core.mjs';
+import { ageHours, evaluateEffectiveMainRules, evaluateQualification } from './p37-remediation-core.mjs';
 
 const root=resolve(process.cwd());
 const policy=JSON.parse(readFileSync(join(root,'ops/p37-remediation-activation-policy.json'),'utf8'));
@@ -89,24 +89,26 @@ if(!live){
 let issues=await github('/repos/'+repo+'/issues?state=all&per_page=100');
 issues=(Array.isArray(issues)?issues:[]).filter(issue=>!issue.pull_request);
 
-const [mainBranch,rulesetList,ciRun,p33Attestation,p33Assurance,p34Assurance]=await Promise.all([
+const [mainBranch,rulesetList,effectiveMainRules,ciRun,p33Attestation,p33Assurance,p34Assurance]=await Promise.all([
   github('/repos/'+repo+'/branches/main'),
   github('/repos/'+repo+'/rulesets'),
+  github('/repos/'+repo+'/rules/branches/main'),
   latestSuccess('ci.yml'),
   latestSuccess('p33-offline-attestation.yml'),
   latestSuccess('p33-long-term-assurance.yml'),
   latestSuccess('p34-continuous-assurance.yml'),
 ]);
 
-const rulesetDetails=[];
-for(const item of Array.isArray(rulesetList)?rulesetList:[]){
-  try{
-    rulesetDetails.push(await github('/repos/'+repo+'/rulesets/'+item.id));
-  }catch(error){
-    rulesetDetails.push({...item,rules:[],detailError:String(error)});
-  }
-}
-const rulesetAssessment=selectQualifyingRuleset(rulesetDetails,policy.mainProtection.requiredStatusCheck);
+const activeRepositoryRulesets=(Array.isArray(rulesetList)?rulesetList:[])
+  .filter(item=>item.enforcement==='active');
+const effectiveRulesAssessment=evaluateEffectiveMainRules(effectiveMainRules,policy.mainProtection.requiredStatusCheck);
+const rulesetAssessment={
+  pass:activeRepositoryRulesets.length>0&&effectiveRulesAssessment.pass,
+  selected:activeRepositoryRulesets[0]?{id:activeRepositoryRulesets[0].id||null,name:activeRepositoryRulesets[0].name||null}:null,
+  activeRulesets:activeRepositoryRulesets.map(item=>({id:item.id||null,name:item.name||null,enforcement:item.enforcement||null})),
+  effectiveRules:effectiveRulesAssessment,
+  bypassActorsMachineVerified:false,
+};
 
 const p33EvidenceIssue=findAnyIssue(issues,policy.p33.evidenceMarker);
 const p33Issue=findOpenIssue(issues,policy.p33.assuranceMarker);
@@ -181,7 +183,9 @@ const report={
     sha:currentHeadSha,
     protected:mainProtected,
     qualifyingRuleset:rulesetAssessment.selected,
-    rulesetAssessments:rulesetAssessment.assessments,
+    activeRulesets:rulesetAssessment.activeRulesets,
+    effectiveRules:rulesetAssessment.effectiveRules,
+    bypassActorsMachineVerified:false,
   },
   workflows:{
     ci:workflowSummary(ciRun),
