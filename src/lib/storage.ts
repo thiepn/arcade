@@ -2,6 +2,7 @@ import { currentGameBests } from './localCompetition';
 import { AP_SCALE, apMicros, getPolicy } from '../../shared/leaderboard/domain';
 import { SCORE_VERSION, toArcadePoints, isScoreMode } from '../../shared/scoring';
 import { UserStats, AppTheme, ScoreDetails } from '../types';
+import { applyDailyChallengeRun, normalizeDailyChallengeState, type DailyChallengeRunResult } from './dailyChallenge';
 
 const STORAGE_KEY = 'micro_arcade_stats_v3';
 const SESSION_STORAGE_KEY = 'micro_arcade_stats_v3_session_fallback';
@@ -98,6 +99,7 @@ function normalizeStats(value: unknown): UserStats {
     totalPlayTimeSeconds: numberMap(parsed.totalPlayTimeSeconds),
     favorites: idList(parsed.favorites),
     recentlyPlayed: idList(parsed.recentlyPlayed, 5),
+    dailyChallenge: normalizeDailyChallengeState(parsed.dailyChallenge),
     soundEnabled: typeof parsed.soundEnabled === 'boolean' ? parsed.soundEnabled : true,
     hapticsEnabled: typeof parsed.hapticsEnabled === 'boolean' ? parsed.hapticsEnabled : true,
     volume: typeof parsed.volume === 'number' && Number.isFinite(parsed.volume) ? Math.max(0, Math.min(1, parsed.volume)) : 0.8,
@@ -343,6 +345,21 @@ export function recordScore(gameId: string, score: number, details?: ScoreDetail
   const updated: UserStats = { ...current, highScores, rawHighScores, bestScoreDetails,modeBests };
   saveStats(updated);
   return { isNewHighScore, stats: getStoredStats() };
+}
+
+export function recordDailyChallengeRun(
+  gameId: string,
+  arcadePoints: number,
+  eligibleGameIds: readonly string[],
+  now: number | Date = Date.now(),
+): DailyChallengeRunResult & { stats: UserStats } {
+  const current = getStoredStats();
+  const result = applyDailyChallengeRun(current.dailyChallenge, eligibleGameIds, gameId, arcadePoints, now);
+  if (!result.wasDailyChallenge) return { ...result, stats: current };
+
+  const updated: UserStats = { ...current, dailyChallenge: result.state };
+  saveStats(updated);
+  return { ...result, stats: getStoredStats() };
 }
 
 export function toggleFavoriteGame(gameId: string): UserStats {
