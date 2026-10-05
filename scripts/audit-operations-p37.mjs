@@ -17,6 +17,22 @@ assert(policy.mainProtection?.requireReviewThreadResolution===true,'P37 must req
 assert(policy.p33?.attestationMaxAgeHours===2160,'P37 P33 attestation ceiling must remain 90 days');
 assert(policy.p33?.assuranceMaxAgeHours===30,'P37 P33 assurance freshness must remain 30 hours');
 assert(policy.p34?.assuranceMaxAgeHours===30,'P37 P34 assurance freshness must remain 30 hours');
+assert(policy.schedulerEvidence?.nominalP27CadenceHours===6,'P37 nominal P27 cadence must remain six hours');
+assert(policy.schedulerEvidence?.maxFreshnessOrGapHours===12,'P37 scheduler-evidence ceiling must remain twelve hours');
+
+const p29Workflow=read('.github/workflows/p29-operational-readiness.yml');
+assert(p29Workflow.includes("P29_MAX_EVIDENCE_AGE_HOURS: '12'"),'P29 must use the P37 twelve-hour evidence freshness ceiling');
+const p34Catalog=JSON.parse(read('ops/p34-security-controls.json'));
+for(const id of ['SC-06','SC-07','SC-08']){
+  const control=p34Catalog.controls.find(item=>item.id===id);
+  assert((control?.workflowEvidence||[]).every(item=>item.maxAgeHours===12),id+' must match the P37 twelve-hour evidence ceiling');
+}
+const p35Policy=JSON.parse(read('ops/p35-operating-effectiveness-policy.json'));
+for(const id of ['WP-P27','WP-P28','WP-P29']){
+  const population=p35Policy.workflowPopulations.find(item=>item.id===id);
+  assert(population?.maxGapHours===12,id+' must match the P37 twelve-hour evidence ceiling');
+  assert(population?.minimumSuccesses===108,id+' must preserve the 108-success evidence floor');
+}
 assert(Array.isArray(policy.workflowChain)&&policy.workflowChain.join(',')==='p33-long-term-assurance.yml,p34-continuous-assurance.yml,p35-operating-effectiveness.yml,p36-observation-integrity.yml','P37 workflow chain is incorrect');
 assert(policy.evidenceRetentionDays===90,'P37 evidence retention must remain 90 days');
 assert(/cannot create the offline recovery-key proof or repository administration policy itself/i.test(policy.assuranceBoundary),'P37 assurance boundary is missing');
