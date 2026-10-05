@@ -124,10 +124,10 @@ for (const marker of [
 ]) assert(css.includes(marker), `P19 stylesheet missing ${marker}`);
 assert(css.includes('min-height: 2.75rem'), 'P19 canonical actions do not retain a 44px practical touch target');
 
-// No replay platform or new retention/meta platform may enter application code in P19.
+// P19 itself did not introduce a replay or retention/meta platform. Later phase-owned product extensions may exist only when their own permanent gate is present.
 const forbiddenIdentifiers = [
   'ReplayPlayer', 'ReplayRecorder', 'ReplayViewer', 'GhostRun', 'RunRecording', 'PlaybackTimeline',
-  'InputRecording', 'RunHistory', 'ReplayExport', 'DailyChallenge', 'WeeklyChallenge', 'BattlePass',
+  'InputRecording', 'RunHistory', 'ReplayExport', 'WeeklyChallenge', 'BattlePass',
   'CurrencyWallet', 'XpSystem', 'XPSystem', 'LoginReward', 'RewardCalendar',
 ];
 const applicationFiles = [
@@ -148,6 +148,13 @@ const applicationFiles = [
 for (const path of applicationFiles) {
   const source = read(path);
   for (const identifier of forbiddenIdentifiers) assert(!source.includes(identifier), `${path} introduces prohibited P19 system ${identifier}`);
+}
+
+if (app.includes('DailyChallenge')) {
+  assert(existsSync(join(root, 'src', 'lib', 'dailyChallenge.ts')), 'later DailyChallenge UI exists without its phase-owned core');
+  assert(existsSync(join(root, 'docs', 'P28_DAILY_CHALLENGE_RETURN_LOOP.md')), 'later DailyChallenge UI exists without P28 product documentation');
+  assert(pkg.scripts?.['quality:gameplay-p28']?.includes('audit-gameplay-p28.ts') === true, 'later DailyChallenge UI exists without the permanent P28 product gate');
+  assert(release.includes("'quality:gameplay-p28'"), 'later DailyChallenge UI exists without P28 release32 ownership');
 }
 
 // P19 must not grow the dependency surface just to achieve cohesion.
@@ -235,4 +242,4 @@ if (errors.length) {
 
 console.log('P19 ARCADE COHESION CERTIFICATION — PASS');
 console.log('32/32 games retain one canonical shell/card/pause/result product contract while game simulation remains isolated from P19.');
-console.log('No replay, challenge, currency or new retention platform is introduced; subjective aesthetic cohesion remains a manual acceptance activity.');
+console.log('P19 introduces no replay, currency or retention platform; later product extensions must be owned by their own permanent phase gate.');
