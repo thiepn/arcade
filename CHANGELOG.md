@@ -23,6 +23,12 @@
 
 ## Unreleased
 
+### P37 scheduler-evidence calibration — 2026-10-05
+- Calibrate P29 monitoring-evidence freshness from 8 to 12 hours after live GitHub scheduled-run history showed successful six-hour P27 checkpoints can be delayed close to nine hours.
+- Align P34 P27/P28 freshness and P35 P27/P28/P29 maximum evidence gaps to the same 12-hour ceiling while preserving P35's 108-success population floor.
+- Keep live production probes, P28's 99% rolling SLO, backup/recovery criteria and actual service-health contracts unchanged; this tolerance applies only to GitHub scheduler evidence continuity.
+- Add deterministic 11-hour/13-hour boundary coverage and permanent P29/P34/P35/P37 cross-phase assertions.
+
 ### P37 exact-head CI requalification — 2026-10-05
 - Trigger P37 when the main CI workflow completes so the exact-current-head CI prerequisite is refreshed immediately after merge instead of remaining stale until the six-hour fallback.
 - Preserve PR #119's single-writer/deduplicated P37 readiness lifecycle; no remediation or activation criterion is weakened.
