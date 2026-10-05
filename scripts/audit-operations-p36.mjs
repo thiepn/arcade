@@ -18,7 +18,7 @@ assert(policy.rules?.forbidSameRunRestartAfterDetectedDrift===true,'P36 must for
 assert(policy.rules?.requireFingerprintOnP35Checkpoints===true,'P36 must bind P35 checkpoints to the fingerprint');
 assert(policy.rules?.evidenceRetentionDays===90,'P36 evidence retention must be 90 days');
 assert(/does not make the P35 evidence period an independent audit/i.test(policy.assuranceBoundary),'P36 assurance boundary is missing');
-assert(Array.isArray(policy.controlPlanePaths)&&policy.controlPlanePaths.length>=70,'P36 control plane is unexpectedly small');
+assert(Array.isArray(policy.controlPlanePaths)&&policy.controlPlanePaths.length>=78,'P36 control plane is unexpectedly small');
 assert(new Set(policy.controlPlanePaths).size===policy.controlPlanePaths.length,'P36 control-plane paths must be unique');
 
 for(const required of [
@@ -39,6 +39,13 @@ for(const required of [
   'worker/src/index.ts',
   'supabase/functions/micro-arcade-leaderboards/index.ts',
   'supabase/functions/micro-arcade-p31-backup-export/index.ts',
+  '.github/workflows/p37-remediation-activation.yml',
+  'ops/p37-remediation-activation-policy.json',
+  'scripts/p37-remediation-core.mjs',
+  'scripts/p37-remediation-qualification.mjs',
+  'scripts/p37-dispatch-workflow.mjs',
+  'scripts/audit-operations-p37.mjs',
+  'scripts/test-remediation-activation-p37.mjs',
 ]){
   assert(policy.controlPlanePaths.includes(required),'P36 control plane missing required path '+required);
 }
