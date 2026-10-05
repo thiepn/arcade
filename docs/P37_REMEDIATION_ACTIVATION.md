@@ -36,7 +36,7 @@ Configure all of the following:
 
 Approval count may remain zero for a single-owner repository; the control objective is that changes enter `main` through the PR/CI path, not that another human must approve every change.
 
-P37 machine-verifies the active ruleset, its target, bypass list, rule types, strict status checks and `build` requirement. GitHub must also report `main.protected = true`.
+P37 machine-verifies that GitHub reports `main.protected = true`, that at least one active repository ruleset exists, and that the **effective rules applied to `main`** contain the PR, deletion, non-fast-forward, review-thread-resolution, strict status-check and `build` requirements. GitHub intentionally withholds `bypass_actors` from tokens that do not have ruleset write access, so the normal Actions token cannot prove the bypass list. **No bypass actors remains an explicit operator requirement and P37 does not claim to have observed that field.**
 
 Once those conditions are verified, P37 closes issue #20 automatically.
 
@@ -95,7 +95,7 @@ P34 must close its own deficiency issue before P37 can proceed.
 
 P37 then requires all of these simultaneously:
 
-- active qualifying `main` ruleset;
+- active qualifying `main` ruleset and effective main rules;
 - `main.protected = true`;
 - recent successful P33 signed-attestation workflow;
 - durable P33 signed-evidence ledger;
