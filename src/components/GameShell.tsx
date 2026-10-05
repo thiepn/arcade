@@ -109,20 +109,6 @@ export const GameShell: React.FC<GameShellProps> = ({
     return()=>{cancelled=true;window.removeEventListener(OUTBOX_EVENT,update);};
   },[submittedSessionId]);
   useEffect(() => {
-    if (submissionStatus !== 'accepted' || !submittedSessionId || !gameOverData) return;
-    if (rankRefreshSessionRef.current === submittedSessionId) return;
-    rankRefreshSessionRef.current = submittedSessionId;
-    let cancelled = false;
-    void refreshGameLeaderboard(game.id, 'all')
-      .then((board) => {
-        if (!cancelled && board.userRank !== null) {
-          setRankDelta({ before: rankBeforeSubmitRef.current, after: board.userRank });
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [game.id, gameOverData, submissionStatus, submittedSessionId]);
-  useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
@@ -140,6 +126,21 @@ export const GameShell: React.FC<GameShellProps> = ({
     isNewHigh: boolean;
     meta: ResultMetaSummary;
   } | null>(null);
+
+  useEffect(() => {
+    if (submissionStatus !== 'accepted' || !submittedSessionId || !gameOverData) return;
+    if (rankRefreshSessionRef.current === submittedSessionId) return;
+    rankRefreshSessionRef.current = submittedSessionId;
+    let cancelled = false;
+    void refreshGameLeaderboard(game.id, 'all')
+      .then((board) => {
+        if (!cancelled && board.userRank !== null) {
+          setRankDelta({ before: rankBeforeSubmitRef.current, after: board.userRank });
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [game.id, gameOverData, submissionStatus, submittedSessionId]);
 
   clockRunningRef.current=!isPaused&&!obscured&&!gameOverData;
   useEffect(()=>{clockRef.current.setActive(engineReadyRef.current&&clockRunningRef.current);},[isPaused,obscured,gameOverData]);
