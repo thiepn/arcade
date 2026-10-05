@@ -23,6 +23,14 @@
 
 ## Unreleased
 
+### P29 progression surfacing / goal-aware home — 2026-10-05
+- Surface the existing achievement-derived XP and 15-level progression model directly on the arcade home page instead of leaving it buried in statistics/profile dialogs.
+- Add semantic level progress, total XP, dynamic unlocked-badge count and two near-complete local goals with visible XP rewards.
+- Add deterministic, explainable Play next recommendations using existing achievement progress, catalog exploration, favorites, recent play, play counts and AP records.
+- Route game-specific and category/coverage achievements into honest next-cabinet actions while leaving non-actionable goals linked to the achievements view.
+- Exclude the P28 daily cabinet from Play next to avoid duplicate calls to action, and keep the recommendation core offline/local with no AI, new persistence or server dependency.
+- Add deterministic P29 core tests, structural product audit, CI enforcement and release32 coverage.
+
 ### P28 daily challenge / streak / return loop — 2026-10-05
 - Add one deterministic UTC daily cabinet challenge using the existing normalized AP economy, rotating through all 32 games without consecutive repeats.
 - Add offline-first completion history, bounded persistence, current/best streak derivation and safe storage-recovery merging.
