@@ -97,7 +97,8 @@
     "quality:leaderboard": "python3 tools/leaderboard/generate.py --check && bun tests/leaderboard/domain-and-queue.mjs && bun tests/leaderboard/http.mjs",
     "quality:leaderboard-db": "bun tests/leaderboard/postgres.mjs",
     "quality:leaderboard-browser": "bun tests/leaderboard/browser.mjs",
-    "quality:gameplay-p28": "bun scripts/test-daily-challenge-p28.mjs && bun scripts/audit-gameplay-p28.ts"
+    "quality:gameplay-p28": "bun scripts/test-daily-challenge-p28.mjs && bun scripts/audit-gameplay-p28.ts",
+    "quality:gameplay-p29": "bun scripts/test-progression-home-p29.mjs && bun scripts/audit-gameplay-p29.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
