@@ -131,7 +131,7 @@ export function deploymentCorrelation(probeGeneratedAt, deploymentRuns, threshol
   };
 }
 
-export function assessControlPlaneFreshness({ nowMs, p27Runs, p28Runs, maxAgeMs = 8 * 60 * 60 * 1000 }) {
+export function assessControlPlaneFreshness({ nowMs, p27Runs, p28Runs, maxAgeMs = 12 * 60 * 60 * 1000 }) {
   const latestP27 = latestRun(p27Runs, (run) => run.event === 'schedule');
   const latestP28 = latestRun(p28Runs);
   const p27AgeMs = latestP27 ? nowMs - runTimestamp(latestP27) : null;
