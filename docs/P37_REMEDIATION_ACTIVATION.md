@@ -143,11 +143,14 @@ A single GitHub issue mirrors the current state and exact failed checks.
 P37 runs:
 
 - every six hours;
-- after the P33 attestation/assurance and P34 assurance workflows complete;
+- after the current main CI completes, so exact-head qualification is refreshed immediately;
+- after the P33 offline-attestation workflow completes;
 - on relevant P37/control-plane changes;
 - manually through `workflow_dispatch`.
 
 After configuring the ruleset and completing the offline ceremony, manually running **P37 Remediation Qualification & Activation** gives the fastest activation path; the scheduled run provides a fallback.
+
+P37 mutates its readiness tracker only once per workflow run, after all reconciliation/activation attempts finish. Intermediate qualification passes are read-only. If historical duplicate P37 trackers exist, the final reconciliation keeps one canonical tracker and closes the duplicates.
 
 ## Assurance boundary
 
