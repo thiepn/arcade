@@ -25,6 +25,7 @@ const blankGoals = getNearAchievementGoals(blankStats, 3);
 assert.equal(blankGoals.length, 3);
 assert.ok(blankGoals.every((goal) => goal.progressPercent >= 0 && goal.progressPercent < 100));
 assert.ok(blankGoals.every((goal) => goal.xpReward > 0));
+assert.ok(blankGoals[0].target <= blankGoals[blankGoals.length - 1].target, 'zero-progress onboarding goals should prefer smaller reachable targets over distant endgame XP');
 assert.ok(blankGoals.every((goal) => {
   const source = ACHIEVEMENTS_REGISTRY.find((achievement) => achievement.id === goal.id);
   return source?.category !== 'competitive';
@@ -67,6 +68,21 @@ assert.equal(
   achievementActionGame(omni, scoreStats),
   GAMES_REGISTRY[0].id,
   'cross-cabinet score goal should point to the closest unfinished score target',
+);
+
+const polymath = ACHIEVEMENTS_REGISTRY.find((achievement) => achievement.id === 'variety_genre_maestro');
+assert.ok(polymath);
+const categoryStats = {
+  ...blankStats,
+  highScores: { orbit: 1000, dodge: 500, slingshot: 9000, pinball: 8000 },
+  playCounts: { orbit: 3, dodge: 1, slingshot: 6, pinball: 5 },
+};
+const polymathGame = achievementActionGame(polymath, categoryStats);
+assert.ok(polymathGame);
+assert.equal(
+  GAMES_REGISTRY.find((game) => game.id === polymathGame)?.category,
+  'Reflex',
+  'Polymath should route toward the weaker Reflex/Physics category',
 );
 
 console.log('P29 PROGRESSION HOME CORE — PASS');
