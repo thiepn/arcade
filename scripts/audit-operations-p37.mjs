@@ -39,9 +39,11 @@ assert(core.includes("bypass_actors"),'P37 ruleset check must inspect bypass act
 assert(core.includes("non_fast_forward")&&core.includes("deletion")&&core.includes("pull_request")&&core.includes("required_status_checks"),'P37 ruleset check is incomplete');
 
 const qualification=read('scripts/p37-remediation-qualification.mjs');
-for(const marker of ['p33-offline-attestation.yml','p33-long-term-assurance.yml','p34-continuous-assurance.yml','ci.yml','p35-operating-effectiveness-ledger','rulesets']){
+for(const marker of ['p33-offline-attestation.yml','p33-long-term-assurance.yml','p34-continuous-assurance.yml','ci.yml','rulesets']){
   assert(qualification.includes(marker),'P37 qualification missing '+marker);
 }
+assert(policy.p35?.ledgerMarker==='<!-- p35-operating-effectiveness-ledger -->','P37 policy must bind the canonical P35 ledger marker');
+assert(qualification.includes('p35LedgerMarker'),'P37 qualification must consume the P35 ledger marker from policy');
 assert(qualification.includes('state_reason')&&qualification.includes('mainProtectionIssue'),'P37 must close the SC-01 tracker only after verification');
 assert(qualification.includes('P37_REQUIRE_EPOCH'),'P37 must fail if attempted activation creates no epoch');
 assert(!/SUPABASE_SERVICE_ROLE_KEY|privateKeyPem|recoveryPrivateKey|DATABASE_URL/i.test(qualification),'P37 qualification must not ingest backend or recovery secrets');
