@@ -128,7 +128,10 @@
     "quality:assurance-p35": "bun scripts/p35-operating-effectiveness.mjs",
     "quality:gameplay-p36": "bun scripts/audit-operations-p36.mjs && bun scripts/test-observation-integrity-p36.mjs && P36_LIVE=0 bun scripts/p36-observation-integrity.mjs",
     "quality:operations-p36": "bun scripts/audit-operations-p36.mjs && bun scripts/test-observation-integrity-p36.mjs && P36_LIVE=0 bun scripts/p36-observation-integrity.mjs",
-    "quality:integrity-p36": "bun scripts/p36-observation-integrity.mjs"
+    "quality:integrity-p36": "bun scripts/p36-observation-integrity.mjs",
+    "quality:gameplay-p37": "bun scripts/audit-operations-p37.mjs && bun scripts/test-remediation-activation-p37.mjs && P37_LIVE=0 bun scripts/p37-remediation-qualification.mjs",
+    "quality:operations-p37": "bun scripts/audit-operations-p37.mjs && bun scripts/test-remediation-activation-p37.mjs && P37_LIVE=0 bun scripts/p37-remediation-qualification.mjs",
+    "quality:qualification-p37": "bun scripts/p37-remediation-qualification.mjs"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",

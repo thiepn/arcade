@@ -10,16 +10,17 @@ P36 therefore binds every future P35 epoch to a cryptographic fingerprint of the
 
 ## Control-plane boundary
 
-`ops/p36-observation-integrity-policy.json` explicitly lists the files that define or materially implement P27–P36 production assurance, including:
+`ops/p36-observation-integrity-policy.json` explicitly lists the files that define or materially implement P27–P37 production assurance, including:
 
 - CI and production deployment workflows;
 - P27–P36 assurance/recovery workflows;
 - P34 and P35 policies;
 - incident, continuity, backup and recovery engines;
 - the offline recovery certificate;
-- P34/P35/P36 audit and state-machine code;
+- P34/P35/P36/P37 audit, state-machine and remediation-activation code;
 - server-side leaderboard/scoring authorization boundaries;
-- the P31 backup-export function.
+- the P31 backup-export function;
+- the P37 remediation qualification and first-epoch activation workflow.
 
 The list intentionally excludes ordinary game components, presentation CSS, copy and other product code that does not change the assurance control plane.
 

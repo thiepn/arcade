@@ -23,6 +23,17 @@
 
 ## Unreleased
 
+### P37 remediation execution / clean-baseline qualification / first evidence-epoch activation — 2026-10-05
+- Define a machine-verifiable effective-main rules contract: active repository ruleset, PR path, review-thread resolution, deletion/force-push protection, strict up-to-date status checks and required `build`; keep no-bypass as an explicit operator requirement because GitHub withholds that field from the normal Actions token.
+- Keep the two irreducible operator actions explicit: repository ruleset creation in GitHub and the real P33 offline-key ceremony on a trusted machine; P37 never imports the recovery private key or fabricates either control.
+- Add deterministic qualification states from WAITING_MAIN_PROTECTION through FIRST_EPOCH_ACTIVATED and retain exact failed checks in a single readiness issue.
+- Automatically close the historical SC-01 tracking issue only after GitHub reports main protected and the active ruleset passes the P37 contract.
+- After a successful signed P33 attestation, sequence the canonical P33 long-term assurance and P34 continuous-assurance workflows, waiting for each real workflow run to succeed.
+- Require a successful CI run for the exact current main SHA plus a complete P36 control plane before activation.
+- Activate the first observation epoch only by dispatching the canonical P35 workflow, then immediately dispatch P36 and require the P35 ledger to prove an epoch was actually created.
+- Hand ongoing epoch ownership back to P35/P36 after the first-ever activation so P37 cannot become an automatic restart bypass.
+- Add six-hour fallback qualification, immediate reaction to P33 attestation completion, 90-day non-sensitive remediation evidence, deterministic tests and permanent CI/release32 enforcement through P37.
+
 ### P36 observation epoch integrity / baseline freeze / change-control governance — 2026-10-05
 - Add an explicit cryptographic control-plane boundary spanning P27–P36 workflows, assurance/recovery engines, control policies, recovery trust anchor, and server-side scoring/leaderboard boundaries while excluding ordinary gameplay/presentation code.
 - Compute a deterministic SHA-256 manifest with per-file hashes and one aggregate control-plane fingerprint.

@@ -1,0 +1,115 @@
+name: P37 Remediation Qualification & Activation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ops/p37-remediation-activation-policy.json'
+      - 'scripts/p37-*'
+      - 'scripts/audit-operations-p37.mjs'
+      - 'docs/P37_REMEDIATION_ACTIVATION.md'
+      - '.github/workflows/p37-remediation-activation.yml'
+  workflow_run:
+    workflows:
+      - P33 Offline Ceremony Attestation
+    types: [completed]
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+  issues: write
+
+concurrency:
+  group: p37-remediation-qualification
+  cancel-in-progress: false
+
+jobs:
+  qualify-and-activate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+
+      - name: Verify P37 static contract
+        run: bun scripts/audit-operations-p37.mjs
+
+      - name: Initial remediation qualification
+        id: initial
+        run: bun scripts/p37-remediation-qualification.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          P37_LIVE: '1'
+          P37_MUTATE_ISSUES: '1'
+          P37_REPORT_DIR: p37-report
+
+      - name: Reconcile P33 long-term assurance
+        if: steps.initial.outputs.dispatch_p33_assurance == 'true'
+        run: bun scripts/p37-dispatch-workflow.mjs p33-long-term-assurance.yml
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Requalify after P33
+        id: after-p33
+        if: always() && steps.initial.conclusion == 'success'
+        run: bun scripts/p37-remediation-qualification.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          P37_LIVE: '1'
+          P37_MUTATE_ISSUES: '1'
+          P37_REPORT_DIR: p37-report
+
+      - name: Reconcile P34 security assurance
+        if: steps.after-p33.outputs.dispatch_p34 == 'true'
+        run: bun scripts/p37-dispatch-workflow.mjs p34-continuous-assurance.yml
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Qualify clean activation baseline
+        id: activation
+        if: always() && steps.after-p33.conclusion == 'success'
+        run: bun scripts/p37-remediation-qualification.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          P37_LIVE: '1'
+          P37_MUTATE_ISSUES: '1'
+          P37_REPORT_DIR: p37-report
+
+      - name: Activate first P35 evidence epoch
+        if: steps.activation.outputs.activation_ready == 'true'
+        run: bun scripts/p37-dispatch-workflow.mjs p35-operating-effectiveness.yml
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Verify first epoch with P36
+        if: steps.activation.outputs.activation_ready == 'true'
+        run: bun scripts/p37-dispatch-workflow.mjs p36-observation-integrity.yml
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Certify first-epoch activation
+        if: steps.activation.outputs.activation_ready == 'true'
+        run: bun scripts/p37-remediation-qualification.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          P37_LIVE: '1'
+          P37_MUTATE_ISSUES: '1'
+          P37_REQUIRE_EPOCH: '1'
+          P37_REPORT_DIR: p37-report
+
+      - name: Upload P37 remediation evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: p37-remediation-qualification-${{ github.run_id }}
+          path: p37-report
+          retention-days: 90
+          if-no-files-found: warn
