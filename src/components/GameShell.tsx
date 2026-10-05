@@ -42,7 +42,7 @@ interface GameShellProps {
   onToggleHaptics?: () => void;
   onBackToArcade: () => void;
   onPlayNextRandom: () => void;
-  onSaveScore: (gameId: string, score: number, details?: ScoreDetails) => { isNewHighScore: boolean; dailyChallenge: DailyChallengeRunResult };
+  onSaveScore: (gameId: string, score: number, details?: ScoreDetails) => { isNewHighScore: boolean; dailyChallenge?: DailyChallengeRunResult };
   onViewLeaderboard?: (gameId: string) => void;
   obscured?: boolean;
 }
@@ -284,7 +284,7 @@ export const GameShell: React.FC<GameShellProps> = ({
         bestRawScore: newBestRawScore,
         bestArcadePoints: newBestArcadePoints,
         isNewHigh: isNewHighScore,
-        dailyChallenge: dailyChallenge.wasDailyChallenge ? dailyChallenge : undefined,
+        dailyChallenge: dailyChallenge?.wasDailyChallenge ? dailyChallenge : undefined,
       });
 
       if (isNewHighScore && arcadePoints > 0) {
@@ -301,7 +301,7 @@ export const GameShell: React.FC<GameShellProps> = ({
             });
           })
           .catch(() => {});
-      } else if (dailyChallenge.justCompleted) {
+      } else if (dailyChallenge?.justCompleted) {
         haptics.combo();
         void import('canvas-confetti')
           .then(({ default: confetti }) => {
