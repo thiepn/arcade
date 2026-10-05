@@ -48,10 +48,17 @@ assert(correlation.deploymentAdjacent, 'deployment one hour before probe should 
 
 const freshness = assessControlPlaneFreshness({
   nowMs: now,
-  p27Runs: [makeRun(6)],
-  p28Runs: [{ conclusion: 'success', completed_at: new Date(now - 5 * 3_600_000).toISOString() }],
+  p27Runs: [makeRun(11)],
+  p28Runs: [{ conclusion: 'success', completed_at: new Date(now - 11 * 3_600_000).toISOString() }],
 });
-assert(freshness.p27Fresh && freshness.p28Fresh, 'six-hour control-plane evidence must be fresh inside eight-hour guardrail');
+assert(freshness.p27Fresh && freshness.p28Fresh, 'eleven-hour control-plane evidence must remain fresh inside the twelve-hour guardrail');
+
+const staleFreshness = assessControlPlaneFreshness({
+  nowMs: now,
+  p27Runs: [makeRun(13)],
+  p28Runs: [{ conclusion: 'success', completed_at: new Date(now - 13 * 3_600_000).toISOString() }],
+});
+assert(!staleFreshness.p27Fresh && !staleFreshness.p28Fresh, 'thirteen-hour control-plane evidence must be stale beyond the twelve-hour guardrail');
 
 const probe = {
   phase: 'P27',
