@@ -23,6 +23,14 @@
 
 ## Unreleased
 
+### P28 daily challenge / streak return loop — 2026-10-05
+- Add a deterministic offline-first UTC daily cabinet rotation across the existing game roster, with no backend or account dependency.
+- Complete the daily challenge with one positive-AP run; track current/best streaks and total completed days while preventing same-day duplicate increments.
+- Add an optional 3,000 AP Strong Run goal that rewards skill without gating the daily streak.
+- Surface today's challenge directly below the hero with progress, streaks, completion state and one-tap launch/replay.
+- Connect game-over results to daily completion, streak and Strong Run feedback, including celebration for first completion.
+- Persist daily state through the existing resilient local storage path and add one deterministic product test to normal CI.
+
 ### P27 product completion rebaseline — 2026-10-05
 - Remove the P27–P37 operations/governance detour and restore P26 as the active product/release baseline.
 - Keep the already-applied P31 migration file only as database migration history; it is no longer an active quality gate or roadmap dependency.
