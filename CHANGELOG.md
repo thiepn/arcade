@@ -23,6 +23,11 @@
 
 ## Unreleased
 
+### P37 live lifecycle correction — 2026-10-05
+- Make intermediate P37 qualification passes read-only and mutate the readiness tracker exactly once at the end of each workflow run, preventing duplicate issue creation under rapid sequential GitHub API writes.
+- Canonicalize historical P37 readiness trackers and automatically close duplicate open trackers while retaining one stable issue.
+- Trigger P37 after CI completion so exact-current-head CI qualification refreshes immediately after merge rather than waiting for the six-hour fallback.
+
 ### P37 remediation execution / clean-baseline qualification / first evidence-epoch activation — 2026-10-05
 - Define a machine-verifiable effective-main rules contract: active repository ruleset, PR path, review-thread resolution, deletion/force-push protection, strict up-to-date status checks and required `build`; keep no-bypass as an explicit operator requirement because GitHub withholds that field from the normal Actions token.
 - Keep the two irreducible operator actions explicit: repository ruleset creation in GitHub and the real P33 offline-key ceremony on a trusted machine; P37 never imports the recovery private key or fabricates either control.
