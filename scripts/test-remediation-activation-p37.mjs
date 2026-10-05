@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { evaluateRuleset, selectQualifyingRuleset, evaluateQualification } from './p37-remediation-core.mjs';
+import { evaluateRuleset, selectQualifyingRuleset, evaluateEffectiveMainRules, evaluateQualification } from './p37-remediation-core.mjs';
 
 const good={
   id:1,name:'main protection',target:'branch',enforcement:'active',bypass_actors:[],
@@ -13,12 +13,14 @@ const good={
 };
 assert.equal(evaluateRuleset(good).pass,true);
 assert.equal(selectQualifyingRuleset([good]).pass,true);
+assert.equal(evaluateEffectiveMainRules(good.rules).pass,true);
 
 const bypass={...good,bypass_actors:[{actor_id:5,actor_type:'RepositoryRole'}]};
 assert.equal(evaluateRuleset(bypass).pass,false);
 
 const weak={...good,rules:good.rules.map(rule=>rule.type==='required_status_checks'?{...rule,parameters:{...rule.parameters,strict_required_status_checks_policy:false}}:rule)};
 assert.equal(evaluateRuleset(weak).pass,false);
+assert.equal(evaluateEffectiveMainRules(weak.rules).pass,false);
 
 const base={
   firstEpochEverActivated:false,mainProtected:true,rulesetQualified:true,
