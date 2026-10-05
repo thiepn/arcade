@@ -28,6 +28,18 @@ export interface ScoreDetails {
   scoreVersion: number;
 }
 
+export interface DailyChallengeState {
+  /** UTC day currently represented by bestAP/completed. */
+  dayKey?: string;
+  bestAP: number;
+  completed: boolean;
+  /** Most recent UTC day whose daily challenge was completed. */
+  lastCompletedDay?: string;
+  currentStreak: number;
+  bestStreak: number;
+  totalCompleted: number;
+}
+
 export interface UserStats {
   recordSchemaVersion?: 3;
   modeBests?: Record<string, ScoreDetails & { apMicros: number; achievedAt: number }>;
@@ -42,6 +54,7 @@ export interface UserStats {
   totalPlayTimeSeconds: Record<string, number>;
   favorites: string[];
   recentlyPlayed: string[];
+  dailyChallenge?: DailyChallengeState;
   soundEnabled: boolean;
   hapticsEnabled?: boolean;
   volume: number;
