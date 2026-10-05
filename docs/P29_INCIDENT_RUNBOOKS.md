@@ -46,7 +46,7 @@ P29 requires all of the following before automated closure:
 - the latest **2 scheduled P27 checkpoints** are successful;
 - the latest P28 control run completed successfully;
 - the latest production deployment workflow completed successfully;
-- both P27 and P28 control-plane evidence remain within the **8-hour** freshness guardrail.
+- both P27 and P28 control-plane evidence remain within the **12-hour** freshness guardrail.
 
 A single green request is therefore insufficient to close an incident.
 
@@ -71,7 +71,7 @@ P29 evidence is retained for 90 days by its workflow.
 
 `.github/workflows/p29-operational-readiness.yml` runs after each completed P28 control run, weekly as an independent backstop, and manually when required.
 
-A control-plane freshness failure is treated as an incident condition because monitoring that silently stops cannot establish production reliability. The guardrail is eight hours, intentionally wider than the six-hour P27 cadence.
+A control-plane freshness failure is treated as an incident condition because monitoring that silently stops cannot establish production reliability. The guardrail is twelve hours—two nominal six-hour P27 intervals. This tolerates bounded GitHub scheduled-workflow delay while still flagging a longer monitoring interruption. It does not relax the live production probe or the 99% rolling checkpoint SLO.
 
 ## Incident communication
 
