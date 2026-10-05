@@ -58,6 +58,7 @@ assert(!/SUPABASE_SERVICE_ROLE_KEY|privateKeyPem|recoveryPrivateKey|DATABASE_URL
 const workflow=read('.github/workflows/p37-remediation-activation.yml');
 assert(workflow.includes("cron: '17 */6 * * *'"),'P37 six-hour fallback schedule is missing');
 assert(workflow.includes('P33 Offline Ceremony Attestation'),'P37 must react to accepted ceremony workflow completion');
+assert(workflow.includes('      - CI'),'P37 must requalify immediately after main CI completion');
 assert(workflow.includes('contents: read')&&workflow.includes('actions: write')&&workflow.includes('issues: write'),'P37 permissions are not explicit');
 assert(!workflow.includes('write-all'),'P37 workflow must not request write-all');
 for(const name of [

@@ -143,7 +143,8 @@ A single GitHub issue mirrors the current state and exact failed checks.
 P37 runs:
 
 - every six hours;
-- after the P33 attestation/assurance and P34 assurance workflows complete;
+- after the current main CI completes, so exact-head qualification is refreshed immediately;
+- after the P33 offline-attestation workflow completes;
 - on relevant P37/control-plane changes;
 - manually through `workflow_dispatch`.
 

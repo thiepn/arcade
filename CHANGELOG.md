@@ -23,6 +23,10 @@
 
 ## Unreleased
 
+### P37 exact-head CI requalification — 2026-10-05
+- Trigger P37 when the main CI workflow completes so the exact-current-head CI prerequisite is refreshed immediately after merge instead of remaining stale until the six-hour fallback.
+- Preserve PR #119's single-writer/deduplicated P37 readiness lifecycle; no remediation or activation criterion is weakened.
+
 ### P37 remediation execution / clean-baseline qualification / first evidence-epoch activation — 2026-10-05
 - Define a machine-verifiable effective-main rules contract: active repository ruleset, PR path, review-thread resolution, deletion/force-push protection, strict up-to-date status checks and required `build`; keep no-bypass as an explicit operator requirement because GitHub withholds that field from the normal Actions token.
 - Keep the two irreducible operator actions explicit: repository ruleset creation in GitHub and the real P33 offline-key ceremony on a trusted machine; P37 never imports the recovery private key or fabricates either control.
