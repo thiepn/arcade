@@ -9,7 +9,6 @@
     "preferredMechanism": "repository-ruleset",
     "requireMainProtected": true,
     "requireActiveRuleset": true,
-    "requireNoBypassActors": true,
     "requiredRuleTypes": [
       "deletion",
       "non_fast_forward",
@@ -18,7 +17,10 @@
     ],
     "requiredStatusCheck": "build",
     "requireStrictStatusChecks": true,
-    "requireReviewThreadResolution": true
+    "requireReviewThreadResolution": true,
+    "operatorMustAvoidBypassActors": true,
+    "machineVerifiableBypassActors": false,
+    "verificationSource": "effective rules returned by GET /repos/{owner}/{repo}/rules/branches/main plus main.protected and an active repository ruleset"
   },
   "p33": {
     "attestationMaxAgeHours": 2160,
