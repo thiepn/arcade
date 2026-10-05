@@ -15,6 +15,11 @@ assert(Array.isArray(policy.remediation)&&policy.remediation.length===2,'P35 mus
 assert(policy.remediation.some(item=>item.controlId==='SC-01'),'P35 must map SC-01 remediation');
 assert(policy.remediation.some(item=>item.controlId==='SC-13'),'P35 must map SC-13 remediation');
 assert(Array.isArray(policy.workflowPopulations)&&policy.workflowPopulations.length===10,'P35 must define ten operating populations');
+for(const id of ['WP-P27','WP-P28','WP-P29']){
+  const population=policy.workflowPopulations.find(item=>item.id===id);
+  assert(population?.minimumSuccesses===108,id+' must keep the 108-success evidence floor');
+  assert(population?.maxGapHours===12,id+' must use the 12-hour scheduler-evidence gap ceiling');
+}
 assert(/not a SOC 2 report/i.test(policy.assuranceBoundary),'P35 assurance boundary is missing');
 
 for(const item of policy.workflowPopulations){
