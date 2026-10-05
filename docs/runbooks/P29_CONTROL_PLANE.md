@@ -1,6 +1,6 @@
 # P29 Runbook — Monitoring Control Plane Stale
 
-Use when scheduled P27 or P28 evidence is older than the eight-hour readiness guardrail.
+Use when scheduled P27 or P28 evidence is older than the twelve-hour readiness guardrail.
 
 ## First response
 
