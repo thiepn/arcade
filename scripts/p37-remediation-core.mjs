@@ -58,6 +58,29 @@ export function selectQualifyingRuleset(rulesets,requiredStatus='build'){
   };
 }
 
+
+export function evaluateEffectiveMainRules(rules,requiredStatus='build'){
+  const reasons=[];
+  const list=Array.isArray(rules)?rules:[];
+  const types=new Set(list.map(rule=>rule.type));
+  for(const type of ['deletion','non_fast_forward','pull_request','required_status_checks']){
+    if(!types.has(type))reasons.push('Missing effective main rule: '+type);
+  }
+  const pr=list.find(rule=>rule.type==='pull_request');
+  if(pr&&pr.parameters?.required_review_thread_resolution!==true){
+    reasons.push('Effective pull-request rule does not require review-thread resolution.');
+  }
+  const checks=list.find(rule=>rule.type==='required_status_checks');
+  if(checks){
+    const contexts=(checks.parameters?.required_status_checks||[]).map(item=>item.context||item);
+    if(!contexts.includes(requiredStatus))reasons.push('Effective required status check "'+requiredStatus+'" is missing.');
+    if(checks.parameters?.strict_required_status_checks_policy!==true){
+      reasons.push('Effective required status checks are not strict/up-to-date.');
+    }
+  }
+  return {pass:reasons.length===0,reasons,ruleTypes:[...types].sort()};
+}
+
 export function evaluateQualification(input){
   const {
     firstEpochEverActivated,
