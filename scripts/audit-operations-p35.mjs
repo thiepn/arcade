@@ -29,8 +29,12 @@ for(const path of [
 ])assert(existsSync(join(root,path)),'P35 artifact missing '+path);
 
 const source=read('scripts/p35-operating-effectiveness.mjs');
-for(const marker of ['p35-operating-effectiveness-ledger','p35-audit-dry-run-readiness','p35-checkpoint:','REMEDIATION_REQUIRED','OBSERVATION_WARMING','INTERNAL_DRY_RUN_PASS']){
+const core=read('scripts/p35-effectiveness-core.mjs');
+for(const marker of ['p35-operating-effectiveness-ledger','p35-audit-dry-run-readiness','p35-checkpoint:']){
   assert(source.includes(marker),'P35 engine missing '+marker);
+}
+for(const state of ['REMEDIATION_REQUIRED','OBSERVATION_STARTING','OBSERVATION_WARMING','OBSERVATION_INSUFFICIENT','INTERNAL_DRY_RUN_PASS']){
+  assert(core.includes(state),'P35 state machine missing '+state);
 }
 assert(source.includes("mainProtected")&&source.includes("p33-long-term-assurance.yml")&&source.includes("p34-continuous-assurance.yml"),'P35 baseline verification is incomplete');
 assert(!/SUPABASE_SERVICE_ROLE_KEY|privateKeyPem|recoveryPrivateKey|DATABASE_URL/i.test(source),'P35 must not ingest backend or recovery secrets');
@@ -47,7 +51,7 @@ assert(workflow.includes('actions/upload-artifact@ea165f8d65b6e75b540449e92b4886
 const doc=read('docs/P35_OPERATING_EFFECTIVENESS.md');
 assert(/does not constitute external certification/i.test(doc),'P35 documentation must deny external certification');
 assert(/30 consecutive days/i.test(doc),'P35 documentation must define the observation period');
-assert(/does not start while either condition remains unresolved/i.test(doc),'P35 documentation must forbid premature observation');
+assert(/does[^\n]*not[^\n]*start while either condition remains unresolved/i.test(doc.replace(/\*\*/g,'')),'P35 documentation must forbid premature observation');
 
 const pkg=JSON.parse(read('package.json'));
 assert(pkg.scripts?.['quality:gameplay-p35']?.includes('audit-operations-p35.mjs'),'quality:gameplay-p35 is missing');
