@@ -70,14 +70,14 @@ export const ResultMetaSummaryPanel: React.FC<ResultMetaSummaryProps> = ({
         )}
 
         {meta.dailyChallenge && (
-          <div className={`col-span-2 rounded-lg border p-2.5 ${meta.dailyChallenge.justCompleted ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-zinc-700 bg-black/20'}`}>
-            <div className={`flex items-center gap-1.5 font-bold ${meta.dailyChallenge.justCompleted ? 'text-emerald-200' : 'text-zinc-300'}`}>
+          <div className={`col-span-2 rounded-lg border p-2.5 ${meta.dailyChallenge.completed ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-zinc-700 bg-black/20'}`}>
+            <div className={`flex items-center gap-1.5 font-bold ${meta.dailyChallenge.completed ? 'text-emerald-200' : 'text-zinc-300'}`}>
               <Target className="h-3.5 w-3.5" aria-hidden="true" />
-              {meta.dailyChallenge.justCompleted ? 'Daily challenge complete' : `Daily challenge · ${meta.dailyChallenge.progressPercent}%`}
+              {meta.dailyChallenge.completed ? 'Daily challenge complete' : `Daily challenge · ${meta.dailyChallenge.progressPercent}%`}
             </div>
             <div className="mt-1 font-mono-arcade text-[10px] text-zinc-400">
               {meta.dailyChallenge.bestAP.toLocaleString()} / {meta.dailyChallenge.targetAP.toLocaleString()} AP
-              {meta.dailyChallenge.justCompleted ? ` · ${meta.dailyChallenge.currentStreak} day streak` : ''}
+              {meta.dailyChallenge.completed ? ` · ${meta.dailyChallenge.currentStreak} day streak` : ''}
             </div>
           </div>
         )}
