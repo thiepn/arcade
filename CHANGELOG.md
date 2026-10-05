@@ -23,6 +23,15 @@
 
 ## Unreleased
 
+### P35 control remediation / operating-effectiveness evidence / audit dry-run — 2026-10-05
+- Add explicit remediation verification for the two current P34 blockers: server-side main protection and the real P33 offline-key recovery ceremony; P35 verifies rather than fabricates either control.
+- Start no observation clock until main is protected, P33 is healthy, and P34 has no open deficiency; any later blocking deficiency invalidates the active epoch and prevents backdating.
+- Add a consecutive 30-day operating-effectiveness policy with at least 28 clean daily P35 checkpoints, control-specific workflow population floors, bounded evidence gaps, and terminal-failure exception tracking.
+- Treat CI/deployment as change-driven populations so a quiet period does not require artificial production changes solely to manufacture audit samples.
+- Add deterministic first/middle/last sampling, a durable epoch/checkpoint ledger, a deduplicated audit-readiness issue, and 90-day non-sensitive evidence packages.
+- Generate an internal audit dry-run narrative, simulated evidence-request list, exception register and machine-readable internal certification result; never represent this as SOC 2, NIST, ISO 27001 or independent external assurance.
+- Add pure deterministic state/population tests and permanently extend CI/release32 through P35.
+
 ### P34 security control mapping / continuous assurance / audit readiness — 2026-10-04
 - Add an 18-control internal security/availability catalog spanning CI/CD, release provenance, monitoring/SLOs, incident response, rollback, backups, cold recovery, offline-key assurance, authorization boundaries and evidence governance.
 - Map each control to selected NIST CSF 2.0 categories and SOC 2 Trust Services Criteria for readiness context only; explicitly do not claim external certification, compliance or an audit opinion.
