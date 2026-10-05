@@ -45,5 +45,10 @@
     "p35-operating-effectiveness.yml",
     "p36-observation-integrity.yml"
   ],
-  "evidenceRetentionDays": 90
+  "evidenceRetentionDays": 90,
+  "schedulerEvidence": {
+    "nominalP27CadenceHours": 6,
+    "maxFreshnessOrGapHours": 12,
+    "rationale": "GitHub scheduled workflows are best-effort. A twelve-hour ceiling equals two nominal P27 intervals, absorbs observed multi-hour scheduler delay without weakening live production probes or the 99% SLO, and still treats longer monitoring interruption as deficient."
+  }
 }
