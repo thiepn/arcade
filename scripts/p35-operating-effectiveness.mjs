@@ -1,10 +1,12 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { assessRunPopulation, assessCheckpoints, determineState, elapsedDays, epochId, MS_PER_DAY } from './p35-effectiveness-core.mjs';
+import { buildControlPlaneManifest, diffControlPlaneManifests } from './p36-control-plane-core.mjs';
 
 const root=resolve(process.cwd());
 const policy=JSON.parse(readFileSync(join(root,'ops/p35-operating-effectiveness-policy.json'),'utf8'));
-const p34Catalog=JSON.parse(readFileSync(join(root,'ops/p34-security-controls.json'),'utf8'));
+const p36Policy=JSON.parse(readFileSync(join(root,'ops/p36-observation-integrity-policy.json'),'utf8'));
+const currentControlPlane=buildControlPlaneManifest(root,p36Policy.controlPlanePaths);
 const reportDir=resolve(root,process.env.P35_REPORT_DIR||'p35-report');
 const live=process.env.P35_LIVE!=='0'&&Boolean(process.env.GITHUB_TOKEN&&process.env.GITHUB_REPOSITORY);
 const mutate=live&&process.env.P35_MUTATE_ISSUES!=='0';
@@ -244,10 +246,11 @@ if(!live){
 
 let issues=await github('/repos/'+repo+'/issues?state=all&per_page=100');
 issues=(Array.isArray(issues)?issues:[]).filter(issue=>!issue.pull_request);
-const [mainBranch,p33Run,p34Run]=await Promise.all([
+const [mainBranch,p33Run,p34Run,ciRun]=await Promise.all([
   github('/repos/'+repo+'/branches/main'),
   latestSuccessfulWorkflow('p33-long-term-assurance.yml'),
   latestSuccessfulWorkflow('p34-continuous-assurance.yml'),
+  latestSuccessfulWorkflow('ci.yml'),
 ]);
 
 const mainProtectionIssue=findOpenIssue(issues,mainProtectionMarker);
@@ -256,6 +259,8 @@ const p34Issue=findOpenIssue(issues,p34DeficiencyMarker);
 const mainProtected=Boolean(mainBranch?.protected);
 const p33Recent=Boolean(p33Run?.updated_at)&&ageHours(p33Run.updated_at)<=30;
 const p34Recent=Boolean(p34Run?.updated_at)&&ageHours(p34Run.updated_at)<=30;
+const mainHeadSha=mainBranch?.commit?.sha||null;
+const currentHeadCiReady=Boolean(ciRun?.head_sha)&&ciRun.head_sha===mainHeadSha;
 
 if(mainProtected&&mainProtectionIssue&&mutate){
   await github('/repos/'+repo+'/issues/'+mainProtectionIssue.number+'/comments',{method:'POST',body:JSON.stringify({body:'P35 direct verification now reports main.protected=true. The SC-01 remediation condition is satisfied, so this historical tracking issue is being closed.'})});
@@ -277,20 +282,31 @@ const remediation=[
   },
 ];
 
+const baselineHealthReady=mainProtected&&p33Recent&&!p33Issue&&p34Recent&&!p34Issue;
 const baseline={
   evaluated:true,
   mainProtected,
+  mainHeadSha,
+  currentHeadCiReady,
+  qualifyingCiRunId:currentHeadCiReady?ciRun?.id||null:null,
   p33Recent,
   p33IssueOpen:Boolean(p33Issue),
   p34Recent,
   p34DeficiencyIssueOpen:Boolean(p34Issue),
-  ready:mainProtected&&p33Recent&&!p33Issue&&p34Recent&&!p34Issue,
+  controlPlaneFingerprint:currentControlPlane.fingerprint,
+  controlPlaneMissing:currentControlPlane.missing,
+  ready:baselineHealthReady,
+  startReady:baselineHealthReady&&currentHeadCiReady&&currentControlPlane.missing.length===0,
   blockers:[
     ...(!mainProtected?['SC-01 main is not protected']:[]),
     ...(!p33Recent?['SC-13 no recent successful P33 assurance']:[]),
     ...(p33Issue?['SC-13 P33 assurance issue #'+p33Issue.number+' remains open']:[]),
     ...(!p34Recent?['P34 continuous-assurance evidence is stale or missing']:[]),
     ...(p34Issue?['P34 deficiency issue #'+p34Issue.number+' remains open']:[]),
+    ...(currentControlPlane.missing.length?['P36 control-plane manifest has missing files: '+currentControlPlane.missing.join(', ')]:[]),
+  ],
+  epochStartBlockers:[
+    ...(!currentHeadCiReady?['P36 epoch start requires a successful CI run for current main head '+(mainHeadSha||'unknown')]:[]),
   ],
 };
 
@@ -305,6 +321,38 @@ async function persistLedger(state,status){
   }else{
     const created=await github('/repos/'+repo+'/issues',{method:'POST',body:JSON.stringify({title:'P35 Operating-Effectiveness Ledger',body})});
     ledgerIssue=created;
+  }
+}
+
+let controlPlaneChangedThisRun=false;
+if(ledgerState.current){
+  const expectedFingerprint=ledgerState.current.controlPlaneFingerprint||null;
+  const fingerprintChanged=!expectedFingerprint||expectedFingerprint!==currentControlPlane.fingerprint;
+  if(fingerprintChanged){
+    const current=ledgerState.current;
+    const changes=diffControlPlaneManifests(current.controlPlaneManifest||{files:[]},currentControlPlane);
+    ledgerState.history.push({
+      ...current,
+      status:current.status==='CERTIFIED'?'CERTIFIED':'INVALIDATED',
+      endedAt:nowIso,
+      reason:'P36 control-plane fingerprint changed during observation',
+      replacementFingerprint:currentControlPlane.fingerprint,
+      changedPaths:changes.map(change=>change.path),
+    });
+    ledgerState.current=null;
+    controlPlaneChangedThisRun=true;
+    if(mutate){
+      await persistLedger(ledgerState,'OBSERVATION_STARTING');
+      await github('/repos/'+repo+'/issues/'+ledgerIssue.number+'/comments',{method:'POST',body:JSON.stringify({body:[
+        'P35 epoch **'+current.id+'** was invalidated at '+nowIso+' because the P36 control-plane fingerprint changed.',
+        '',
+        '- Previous fingerprint: '+(expectedFingerprint||'missing'),
+        '- Current fingerprint: '+currentControlPlane.fingerprint,
+        '- Changed paths: '+(changes.length?changes.map(change=>change.path).join(', '):'manifest baseline unavailable'),
+        '',
+        'A replacement epoch cannot start in this same run. The new baseline must first be represented by a successful CI run.',
+      ].join('\n')})});
+    }
   }
 }
 
@@ -323,8 +371,17 @@ if(!baseline.ready&&ledgerState.current){
   }
 }
 
-if(baseline.ready&&!ledgerState.current){
-  ledgerState.current={id:epochId(nowIso,process.env.GITHUB_RUN_ID||'p35'),start:nowIso,status:'ACTIVE',certifiedAt:null};
+if(baseline.startReady&&!ledgerState.current&&!controlPlaneChangedThisRun){
+  ledgerState.current={
+    id:epochId(nowIso,process.env.GITHUB_RUN_ID||'p35'),
+    start:nowIso,
+    status:'ACTIVE',
+    certifiedAt:null,
+    startMainSha:mainHeadSha,
+    startCiRunId:ciRun?.id||null,
+    controlPlaneFingerprint:currentControlPlane.fingerprint,
+    controlPlaneManifest:currentControlPlane,
+  };
   if(mutate)await persistLedger(ledgerState,'OBSERVATION_STARTING');
 }
 
@@ -348,13 +405,14 @@ if(baseline.ready&&currentEpoch&&currentEpoch.status==='ACTIVE'){
       '- main protected: '+mainProtected,
       '- P33 assurance run: '+(p33Run?.id||'none'),
       '- P34 assurance run: '+(p34Run?.id||'none'),
+      '- Control-plane fingerprint: '+currentEpoch.controlPlaneFingerprint,
       '- open P34 deficiency: '+Boolean(p34Issue),
     ].join('\n');
     if(mutate){
       const created=await github('/repos/'+repo+'/issues/'+ledgerIssue.number+'/comments',{method:'POST',body:JSON.stringify({body})});
-      checkpoints.push({epochId:currentEpoch.id,day,createdAt:created.created_at||nowIso,commentId:created.id,url:created.html_url||null});
+      checkpoints.push({epochId:currentEpoch.id,day,createdAt:created.created_at||nowIso,commentId:created.id,url:created.html_url||null,controlPlaneFingerprint:currentEpoch.controlPlaneFingerprint,p33RunId:p33Run?.id||null,p34RunId:p34Run?.id||null});
     }else{
-      checkpoints.push({epochId:currentEpoch.id,day,createdAt:nowIso,commentId:null,url:null});
+      checkpoints.push({epochId:currentEpoch.id,day,createdAt:nowIso,commentId:null,url:null,controlPlaneFingerprint:currentEpoch.controlPlaneFingerprint,p33RunId:p33Run?.id||null,p34RunId:p34Run?.id||null});
     }
   }
 }
@@ -405,6 +463,8 @@ let status=determineState({
 
 const exceptions=[
   ...baseline.blockers.map(item=>({type:'BASELINE_BLOCKER',detail:item})),
+  ...(!ledgerState.current&&!baseline.startReady&&baseline.ready?baseline.epochStartBlockers.map(item=>({type:'EPOCH_START_BLOCKER',detail:item})):[]),
+  ...(controlPlaneChangedThisRun?[{type:'CONTROL_PLANE_DRIFT',detail:'P36 control-plane fingerprint changed; prior epoch invalidated'}]:[]),
   ...populations.flatMap(item=>item.failures.map(failure=>({type:'WORKFLOW_FAILURE',population:item.id,workflow:item.workflow,...failure}))),
   ...populations.filter(item=>currentEpoch&&period.elapsedDays>=policy.observation.consecutiveDays&&!item.pass).map(item=>({type:'POPULATION_TEST_FAILURE',population:item.id,workflow:item.workflow,successCount:item.successCount,failureCount:item.failureCount,maxGapHours:item.maxGapHours})),
 ];
