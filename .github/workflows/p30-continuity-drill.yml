@@ -2,7 +2,7 @@ name: P30 Continuity Drill
 
 on:
   workflow_run:
-    workflows: ["Deploy Production", "P30 Guarded Rollback"]
+    workflows: ["Deploy Production", "P29 Operational Readiness", "P30 Guarded Rollback"]
     types: [completed]
   schedule:
     - cron: '41 3 * * 3'

@@ -172,3 +172,10 @@ P30 implementation is complete when:
 - a real continuity drill succeeds against production after deployment.
 
 **No real production rollback is required** to complete P30. Performing an outage-style rollback simply to prove the workflow would create unnecessary production risk.
+
+
+## Automatic readiness reconciliation
+
+The continuity drill also runs after a successful **P29 Operational Readiness** workflow. This is intentional: P30 consumes the latest P29 conclusion as part of its readiness decision, so a stale P30 failure must be re-evaluated automatically when P29 recovers.
+
+This trigger does not deploy a rollback. It performs the same non-destructive rollback-candidate certification, live production probe, and readiness evaluation. If P29 and the remaining continuity checks are green, the existing P30 readiness issue is closed automatically.

@@ -56,7 +56,7 @@ const continuityPath = '.github/workflows/p30-continuity-drill.yml';
 const continuity = read(continuityPath);
 for (const marker of [
   'name: P30 Continuity Drill',
-  'workflows: ["Deploy Production", "P30 Guarded Rollback"]',
+  'workflows: ["Deploy Production", "P29 Operational Readiness", "P30 Guarded Rollback"]',
   "cron: '41 3 * * 3'",
   'contents: read',
   'actions: read',
@@ -68,6 +68,8 @@ for (const marker of [
   'bun run quality:production-p30',
   'retention-days: 90',
 ]) need(continuityPath, continuity, marker);
+need(continuityPath, continuity, "github.event.workflow_run.conclusion == 'success'");
+need(continuityPath, continuity, "github.event.workflow_run.head_branch == 'main'");
 for (const marker of ['pages: write', 'id-token: write', 'actions/deploy-pages']) forbid(continuityPath, continuity, marker);
 
 const rollbackPath = '.github/workflows/p30-guarded-rollback.yml';

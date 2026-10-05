@@ -23,6 +23,10 @@
 
 ## Unreleased
 
+### P30/P37 readiness reconciliation — 2026-10-05
+- Run the non-destructive P30 continuity drill after successful P29 Operational Readiness so a transient/stale P30 readiness issue is automatically re-evaluated and closed after P29 recovery.
+- Preserve the existing safety boundary: this trigger never deploys a rollback and changes no player/backend data.
+
 ### P37 exact-head CI requalification — 2026-10-05
 - Trigger P37 when the main CI workflow completes so the exact-current-head CI prerequisite is refreshed immediately after merge instead of remaining stale until the six-hour fallback.
 - Preserve PR #119's single-writer/deduplicated P37 readiness lifecycle; no remediation or activation criterion is weakened.
