@@ -9,7 +9,8 @@ const read=path=>readFileSync(join(root,path),'utf8');
 const policy=JSON.parse(read('ops/p37-remediation-activation-policy.json'));
 assert(policy.phase==='P37','P37 policy phase must be P37');
 assert(policy.mainProtection?.requireActiveRuleset===true,'P37 must require an active ruleset');
-assert(policy.mainProtection?.requireNoBypassActors===true,'P37 must reject ruleset bypass actors');
+assert(policy.mainProtection?.operatorMustAvoidBypassActors===true,'P37 operator contract must forbid bypass actors');
+assert(policy.mainProtection?.machineVerifiableBypassActors===false,'P37 must not falsely claim Actions can inspect bypass actors');
 assert(policy.mainProtection?.requiredStatusCheck==='build','P37 must require the build status check');
 assert(policy.mainProtection?.requireStrictStatusChecks===true,'P37 must require strict/up-to-date status checks');
 assert(policy.mainProtection?.requireReviewThreadResolution===true,'P37 must require review-thread resolution');
@@ -35,11 +36,11 @@ for(const marker of ['WAITING_MAIN_PROTECTION','WAITING_OFFLINE_CEREMONY','WAITI
 }
 assert(core.includes("required_review_thread_resolution"),'P37 ruleset check must verify review-thread resolution');
 assert(core.includes("strict_required_status_checks_policy"),'P37 ruleset check must verify strict status checks');
-assert(core.includes("bypass_actors"),'P37 ruleset check must inspect bypass actors');
+assert(core.includes('evaluateEffectiveMainRules'),'P37 must evaluate the effective rules applied to main');
 assert(core.includes("non_fast_forward")&&core.includes("deletion")&&core.includes("pull_request")&&core.includes("required_status_checks"),'P37 ruleset check is incomplete');
 
 const qualification=read('scripts/p37-remediation-qualification.mjs');
-for(const marker of ['p33-offline-attestation.yml','p33-long-term-assurance.yml','p34-continuous-assurance.yml','ci.yml','rulesets']){
+for(const marker of ['p33-offline-attestation.yml','p33-long-term-assurance.yml','p34-continuous-assurance.yml','ci.yml','rulesets','/rules/branches/main']){
   assert(qualification.includes(marker),'P37 qualification missing '+marker);
 }
 assert(policy.p35?.ledgerMarker==='<!-- p35-operating-effectiveness-ledger -->','P37 policy must bind the canonical P35 ledger marker');
