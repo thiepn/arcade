@@ -23,6 +23,13 @@
 
 ## Unreleased
 
+### P28 daily challenge / streak / return loop — 2026-10-05
+- Add one deterministic UTC daily cabinet challenge using the existing normalized AP economy, rotating through all 32 games without consecutive repeats.
+- Add offline-first completion history, bounded persistence, current/best streak derivation and safe storage-recovery merging.
+- Surface a responsive home challenge card with target, best daily AP, semantic progress, streak state and direct Start/Continue/Replay action.
+- Refresh an open tab across UTC rollover without a server, cron job, account dependency, reward currency or push-notification system.
+- Add deterministic P28 core tests, structural product audit, CI enforcement and release32 coverage.
+
 ### P27 product completion rebaseline — 2026-10-05
 - Remove the P27–P37 operations/governance detour and restore P26 as the active product/release baseline.
 - Keep the already-applied P31 migration file only as database migration history; it is no longer an active quality gate or roadmap dependency.
