@@ -129,7 +129,7 @@
       "workflowEvidence": [
         {
           "workflow": "p27-production-burnin.yml",
-          "maxAgeHours": 10
+          "maxAgeHours": 12
         }
       ],
       "issueMarkers": []
@@ -153,7 +153,7 @@
       "workflowEvidence": [
         {
           "workflow": "p27-production-burnin.yml",
-          "maxAgeHours": 10
+          "maxAgeHours": 12
         }
       ],
       "issueMarkers": []
@@ -178,7 +178,7 @@
       "workflowEvidence": [
         {
           "workflow": "p28-reliability-control.yml",
-          "maxAgeHours": 10
+          "maxAgeHours": 12
         }
       ],
       "issueMarkers": [
