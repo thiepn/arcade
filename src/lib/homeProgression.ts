@@ -87,6 +87,31 @@ function choosePlayCountTarget(
     })[0]?.game.id ?? null;
 }
 
+function categoryTotal(stats: UserStats, category: GameCategory): number {
+  return GAMES_REGISTRY
+    .filter((game) => game.category === category)
+    .reduce((sum, game) => sum + (stats.highScores[game.id] || 0), 0);
+}
+
+function chooseFamiliarCategoryGame(
+  stats: UserStats,
+  category: GameCategory,
+  excluded = new Set<string>(),
+): string | null {
+  return GAMES_REGISTRY
+    .filter((game) => game.category === category && !excluded.has(game.id))
+    .map((game) => ({
+      game,
+      plays: stats.playCounts[game.id] || 0,
+      score: stats.highScores[game.id] || 0,
+    }))
+    .sort((a, b) =>
+      b.plays - a.plays ||
+      a.score - b.score ||
+      a.game.title.localeCompare(b.game.title)
+    )[0]?.game.id ?? null;
+}
+
 export function achievementActionGame(
   achievement: Achievement,
   stats: UserStats,
@@ -108,6 +133,13 @@ export function achievementActionGame(
   }
   if (achievement.id.startsWith('skill_puzzle_')) {
     return chooseClosestScoreTarget(stats, achievement.targetGoal, ['Puzzle', 'Strategy'], excluded);
+  }
+
+  if (achievement.id === 'variety_genre_maestro') {
+    const reflex = categoryTotal(stats, 'Reflex');
+    const physics = categoryTotal(stats, 'Physics');
+    const weaker: GameCategory = reflex <= physics ? 'Reflex' : 'Physics';
+    return chooseFamiliarCategoryGame(stats, weaker, excluded);
   }
 
   if (achievement.id === 'variety_omni_player') {
@@ -169,6 +201,7 @@ export function getNearAchievementGoals(stats: UserStats, limit = 2): NearAchiev
       const bStarted = b.current > 0 ? 1 : 0;
       if (aStarted !== bStarted) return bStarted - aStarted;
       if (a.progressPercent !== b.progressPercent) return b.progressPercent - a.progressPercent;
+      if (a.current === 0 && b.current === 0 && a.target !== b.target) return a.target - b.target;
       if (a.xpReward !== b.xpReward) return b.xpReward - a.xpReward;
       return a.title.localeCompare(b.title);
     })
