@@ -28,6 +28,17 @@ export interface ScoreDetails {
   scoreVersion: number;
 }
 
+export interface DailyChallengeRecord {
+  gameId: string;
+  targetAP: number;
+  bestAP: number;
+  completedAt?: number;
+}
+
+export interface DailyChallengeProgress {
+  days: Record<string, DailyChallengeRecord>;
+}
+
 export interface UserStats {
   recordSchemaVersion?: 3;
   modeBests?: Record<string, ScoreDetails & { apMicros: number; achievedAt: number }>;
@@ -46,6 +57,7 @@ export interface UserStats {
   hapticsEnabled?: boolean;
   volume: number;
   theme?: AppTheme;
+  dailyChallenge?: DailyChallengeProgress;
 }
 
 export interface GameComponentProps {
