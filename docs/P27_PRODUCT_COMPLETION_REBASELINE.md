@@ -27,7 +27,7 @@ The restored product already has:
 - search and category filtering;
 - random play;
 - stats and per-game play history;
-- 48 achievements;
+- a mature achievement catalog;
 - XP derived from achievements and a 15-level progression ladder;
 - anonymous player profiles;
 - per-game global leaderboards;
@@ -70,7 +70,7 @@ The next product feature should use the existing games, AP system and local stat
 
 ### 2. Existing progression is buried
 
-Arcade already has 48 achievements, XP and 15 player levels, but most of that value lives inside the statistics modal.
+Arcade already has a mature achievement catalog, XP and 15 player levels, but most of that value lives inside the statistics modal.
 
 The home screen should surface:
 
@@ -128,7 +128,7 @@ No new server, cron job or account dependency.
 
 ### P29 — Progression Surfacing & Goal-Aware Home
 
-Bring the existing level/XP/achievement system onto the home experience. Add near-goal suggestions and explainable "Play next" recommendations using existing local data.
+Bring the existing level/XP/achievement system onto the home experience. Add near-goal suggestions and explainable "Play next" recommendations using existing local data. **Implemented in P29.**
 
 ### P30 — Results-to-Meta Integration & Replay Motivation
 

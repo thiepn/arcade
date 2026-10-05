@@ -33,6 +33,7 @@ import { FilterBar } from './components/FilterBar';
 import { GameCard } from './components/GameCard';
 import { RecentlyPlayedSection } from './components/RecentlyPlayedSection';
 import { DailyChallengeCard } from './components/DailyChallengeCard';
+import { ProgressionHomeSection } from './components/ProgressionHomeSection';
 import { PwaStatus } from './components/PwaStatus';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AnimatePresence, motion } from "motion/react";
@@ -459,6 +460,15 @@ export default function App() {
             game={dailyChallengeGame}
             summary={dailyChallenge}
             onPlay={() => handleLaunchGame(dailyChallengeGame.id)}
+          />
+        )}
+
+        {activeTab === 'all' && !searchQuery && (
+          <ProgressionHomeSection
+            stats={stats}
+            excludedGameId={dailyChallenge.definition.gameId}
+            onPlayGame={handleLaunchGame}
+            onOpenAchievements={() => handleOpenStats('achievements')}
           />
         )}
 
