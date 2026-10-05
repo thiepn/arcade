@@ -1,0 +1,47 @@
+{
+  "phase": "P37",
+  "title": "Remediation Execution, Clean-Baseline Qualification & First Evidence-Epoch Activation",
+  "version": 1,
+  "effectiveDate": "2026-10-05",
+  "scheduleUtc": "17 */6 * * *",
+  "assuranceBoundary": "P37 automates verification and sequencing of remediation evidence. It cannot create the offline recovery-key proof or repository administration policy itself, and it does not constitute external certification or an independent audit opinion.",
+  "mainProtection": {
+    "preferredMechanism": "repository-ruleset",
+    "requireMainProtected": true,
+    "requireActiveRuleset": true,
+    "requireNoBypassActors": true,
+    "requiredRuleTypes": [
+      "deletion",
+      "non_fast_forward",
+      "pull_request",
+      "required_status_checks"
+    ],
+    "requiredStatusCheck": "build",
+    "requireStrictStatusChecks": true,
+    "requireReviewThreadResolution": true
+  },
+  "p33": {
+    "attestationMaxAgeHours": 2160,
+    "assuranceMaxAgeHours": 30,
+    "evidenceMarker": "<!-- p33-offline-ceremony-ledger -->",
+    "assuranceMarker": "<!-- p33-long-term-dr-assurance -->"
+  },
+  "p34": {
+    "assuranceMaxAgeHours": 30,
+    "deficiencyMarker": "<!-- p34-security-assurance-deficiency -->"
+  },
+  "p35": {
+    "ledgerMarker": "<!-- p35-operating-effectiveness-ledger -->",
+    "ledgerStatePattern": "<!-- p35-ledger-state-b64:",
+    "activationWorkflow": "p35-operating-effectiveness.yml"
+  },
+  "remediationIssueMarker": "<!-- p34-main-protection-deficiency -->",
+  "p37IssueMarker": "<!-- p37-first-epoch-activation -->",
+  "workflowChain": [
+    "p33-long-term-assurance.yml",
+    "p34-continuous-assurance.yml",
+    "p35-operating-effectiveness.yml",
+    "p36-observation-integrity.yml"
+  ],
+  "evidenceRetentionDays": 90
+}
