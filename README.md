@@ -15,7 +15,7 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-The arcade remains playable without a backend. Local statistics, high scores, favorites, achievements, settings, and game progress are stored in the browser.
+The arcade remains playable without a backend. Local statistics, high scores, favorites, achievements, settings, and game progress are stored in the browser. The home screen also includes an offline-first UTC daily challenge streak that rotates through the full 32-game cabinet.
 
 ## Production builds
 
