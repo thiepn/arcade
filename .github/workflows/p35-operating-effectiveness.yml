@@ -1,0 +1,53 @@
+name: P35 Operating Effectiveness
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ops/p35-operating-effectiveness-policy.json'
+      - 'scripts/p35-*'
+      - 'scripts/audit-operations-p35.mjs'
+      - 'docs/P35_OPERATING_EFFECTIVENESS.md'
+      - '.github/workflows/p35-operating-effectiveness.yml'
+  schedule:
+    - cron: '47 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: p35-operating-effectiveness
+  cancel-in-progress: false
+
+jobs:
+  effectiveness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+      - name: Verify P35 static contract
+        run: bun scripts/audit-operations-p35.mjs
+      - name: Run P35 operating-effectiveness assessment and audit dry-run
+        run: bun scripts/p35-operating-effectiveness.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          P35_REPORT_DIR: p35-report
+          P35_LIVE: '1'
+          P35_MUTATE_ISSUES: '1'
+      - name: Upload P35 evidence package
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: p35-operating-effectiveness-${{ github.run_id }}
+          path: p35-report
+          retention-days: 90
+          if-no-files-found: warn
