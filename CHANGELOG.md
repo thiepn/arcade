@@ -23,6 +23,12 @@
 
 ## Unreleased
 
+### P27 product completion rebaseline — 2026-10-05
+- Remove the P27–P37 operations/governance detour and restore P26 as the active product/release baseline.
+- Keep the already-applied P31 migration file only as database migration history; it is no longer an active quality gate or roadmap dependency.
+- Preserve the 32-game product, PWA/offline play, gamepad support, achievements/XP/levels, favorites/recent play, profiles, leaderboards, accessibility, normal CI/deploy and P26 production certification.
+- Reframe the remaining roadmap around replayability and visible product value: daily challenge/streak, progression surfacing, goal-aware discovery, results-to-meta feedback, final UX/device polish and release closure.
+
 ### P26 real-device readiness / long-run balance / production certification — 2026-10-01
 - Make certification production-resolved: the `gravity` slot ships Vector Golf and the `astroblaster` slot ships Hex Capture; retired Gravity/Astro sources remain historical regression material rather than being mistaken for shipped engines.
 - Replace Vector Golf's hidden historical FLIGHT CONTRACT test marker with a real semantic Aim Guide control and release interrupted drag ownership on blur/backgrounding.
