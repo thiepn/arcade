@@ -22,7 +22,7 @@ const windowDays = integerEnv('P29_WINDOW_DAYS', 7, 90, 30);
 const targetPct = numberEnv('P29_SLO_TARGET', 90, 100, 99);
 const minCheckpoints = integerEnv('P29_MIN_CHECKPOINTS', 1, 100, 12);
 const recoveryStreakRequired = integerEnv('P29_RECOVERY_STREAK', 1, 10, 2);
-const maxEvidenceAgeHours = integerEnv('P29_MAX_EVIDENCE_AGE_HOURS', 6, 24, 8);
+const maxEvidenceAgeHours = integerEnv('P29_MAX_EVIDENCE_AGE_HOURS', 6, 24, 12);
 const mutateIssues = process.env.P29_MUTATE_ISSUES !== '0';
 const incidentMarker = '<!-- p28-production-slo-incident -->';
 const diagnosticPrefix = '<!-- p29-diagnostic:';
