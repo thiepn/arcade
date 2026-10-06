@@ -1,6 +1,6 @@
 # Changelog
 
-## Leaderboard v3 — release candidate
+## Leaderboard v3 — production — 2026-10-06
 
 - Rebuilt immutable run storage, precise AP and bounded rating with shared ranks.
 - Added current-mode personal records, additive v2 migration and v1 history archive.
@@ -22,6 +22,17 @@
 - See [the complete audit and calibration limits](docs/SCORING_V2_AUDIT.md).
 
 ## Unreleased
+
+Maintenance mode. New entries should describe concrete fixes or requested features rather than automatic numbered phases.
+
+## 1.2.0 — 2026-10-06
+
+### P32 final release closure / maintenance mode
+- Freeze the completed P27–P32 product line as Micro Arcade 1.2.0 without changing the 32-game roster, scoring v2 or leaderboard protocol v3.
+- Correct release documentation so Supabase Edge Functions + PostgreSQL are unambiguously the production leaderboard v3 backend; retained Cloudflare/D1 code is legacy regression/reference only.
+- Add a permanent P32 closure audit covering release identity, backend truth, roadmap closure, maintenance-mode policy and live certification wiring.
+- Extend the production Pages certification to run the P31 desktop/phone/tablet reduced-motion and touch acceptance matrix against the deployed URL.
+- Close phase-driven development after P32. Future work requires a reproducible defect, compatibility/security requirement or concrete requested feature.
 
 ### P31 final product UX / motion / audio / device pass — 2026-10-06
 - Respect reduced-motion at the Motion runtime layer across the library, daily challenge, progression cards, progress bars and empty-state transitions; reduced-motion Browse All scrolling is now instant.

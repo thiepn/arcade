@@ -1,7 +1,7 @@
 {
   "name": "micro-arcade",
   "private": true,
-  "version": "1.1.1",
+  "version": "1.2.0",
   "type": "module",
   "packageManager": "bun@1.4.0",
   "scripts": {
@@ -101,7 +101,8 @@
     "quality:gameplay-p29": "bun scripts/test-progression-home-p29.mjs && bun scripts/audit-gameplay-p29.ts",
     "quality:gameplay-p30": "bun scripts/test-result-meta-p30.mjs && bun scripts/audit-gameplay-p30.ts",
     "quality:gameplay-p31": "bun scripts/audit-gameplay-p31.ts",
-    "quality:browser-p31": "bun scripts/audit-browser-p31.mjs"
+    "quality:browser-p31": "bun scripts/audit-browser-p31.mjs",
+    "quality:gameplay-p32": "bun scripts/audit-gameplay-p32.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
