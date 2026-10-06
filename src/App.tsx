@@ -534,9 +534,10 @@ export default function App() {
             </motion.div>
           ) : (
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
+              initial={reduceMotion ? false : { opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
+              exit={reduceMotion ? undefined : { opacity: 0, y: -12 }}
+              transition={{ duration: reduceMotion ? 0 : 0.2, ease: 'easeOut' }}
               className="w-full py-16 flex flex-col items-center justify-center text-center p-6 rounded-3xl bg-neutral-900/40 border border-neutral-800"
             >
               <Gamepad2 className="w-12 h-12 text-neutral-600 mb-3" />
