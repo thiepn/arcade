@@ -134,4 +134,4 @@ if (errors.length) {
 
 console.log('FINAL 32-GAME RELEASE / REGRESSION AUDIT — PASS');
 console.log('32 source modules / 32 lazy registry entries / 32 Worker rules are in exact parity.');
-console.log('All game contracts, permanent product/regression gates through P29, production-resolved replacement evidence, repository hardening, roster metadata, mobile/MA4 counts, and cleanup constraints are certified.');
+console.log('All game contracts, permanent product/regression gates through P31, production-resolved replacement evidence, repository hardening, roster metadata, mobile/MA4 counts, and cleanup constraints are certified.');
