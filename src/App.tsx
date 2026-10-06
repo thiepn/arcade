@@ -36,7 +36,7 @@ import { DailyChallengeCard } from './components/DailyChallengeCard';
 import { ProgressionHomeSection } from './components/ProgressionHomeSection';
 import { PwaStatus } from './components/PwaStatus';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Sparkles, Gamepad2, Shuffle, Heart, BarChart2, Globe, Trophy, Medal, Activity, UserRound } from 'lucide-react';
 import { getDailyChallengeSummary, getUtcDayKey } from './lib/dailyChallenge';
 import { buildResultMeta } from './lib/resultMeta';
@@ -63,6 +63,7 @@ const DeferredSurface: React.FC<{ label: string; fullscreen?: boolean }> = ({ la
 );
 
 export default function App() {
+  const reduceMotion = useReducedMotion() === true;
   useEffect(startLeaderboardSync, []);
   useEffect(()=>{const refresh=(e:StorageEvent)=>{if(e.key==='micro_arcade_stats_v3')setStats(getStoredStats());};window.addEventListener('storage',refresh);return()=>window.removeEventListener('storage',refresh);},[]);
   const [stats, setStats] = useState<UserStats>(() => getStoredStats());
@@ -396,12 +397,12 @@ export default function App() {
   const scrollToLibrary = () => {
     const el = document.getElementById('library-section');
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
+      el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
     }
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col justify-between selection:bg-cyan-500/30 selection:text-cyan-200"
+    <div data-p31-motion={reduceMotion ? 'reduced' : 'full'} className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col justify-between selection:bg-cyan-500/30 selection:text-cyan-200"
       onKeyDown={(event) => {
         const target = event.target instanceof HTMLElement ? event.target : null;
         const editing = target?.matches('input, textarea, select, [contenteditable="true"]');
@@ -502,8 +503,8 @@ export default function App() {
         {/* Game Cards Grid */}
         <main id="library-section" tabIndex={-1} aria-label="Game library" className="w-full max-w-6xl mx-auto px-4 py-4 flex-1 outline-none">
           {filteredGames.length > 0 ? (
-            <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              <AnimatePresence mode="popLayout">
+            <motion.div layout={!reduceMotion} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <AnimatePresence initial={!reduceMotion} mode={reduceMotion ? "sync" : "popLayout"}>
                 {filteredGames.map((game, index) => {
                   const competition = gameCompetition[game.id] ?? { ap: 0, rank: null };
                   const rankLoading =
