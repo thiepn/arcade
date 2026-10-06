@@ -1,6 +1,6 @@
 # Changelog
 
-## Leaderboard v3 — release candidate
+## Leaderboard v3 — production — 2026-10-06
 
 - Rebuilt immutable run storage, precise AP and bounded rating with shared ranks.
 - Added current-mode personal records, additive v2 migration and v1 history archive.
