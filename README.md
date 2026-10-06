@@ -4,7 +4,7 @@ The current competitive backend targets Supabase, not the retained legacy D1 Wor
 
 # Micro Arcade
 
-Micro Arcade is a browser-based collection of 32 instant-play mini-games built with React, TypeScript, Vite, Tailwind CSS, and an optional Cloudflare Worker + D1 leaderboard service.
+Micro Arcade is a browser-based collection of 32 instant-play mini-games built with React, TypeScript, Vite, Tailwind CSS, and an optional Supabase-backed leaderboard service.
 
 ## Local development
 
@@ -49,7 +49,7 @@ MA3 makes Micro Arcade an installable progressive web app.
 - Offline status is shown without blocking local gameplay.
 - Service-worker updates are explicit: a waiting update is offered on the arcade home screen and is never allowed to force-reload an active game session.
 
-Local storage remains authoritative for offline personal progress. Live leaderboard submissions/ranks require the configured Cloudflare Worker and network access.
+Local storage remains authoritative for offline personal progress. Live leaderboard submissions/ranks require the configured Supabase leaderboard v3 service and network access.
 
 ## Mobile experience
 
@@ -71,7 +71,7 @@ Gamepad support is additive: existing touch, mouse, keyboard, and on-screen cont
 
 ## Live leaderboard backend
 
-The repository includes a Cloudflare Worker + D1 backend with persistent anonymous guest identity, one-time play sessions, score validation, rate limiting, and real rankings.
+Production leaderboard v3 runs on Supabase Edge Functions + PostgreSQL. It provides persistent anonymous guest identity, one-time play sessions, server-side score validation, durable result receipts, rate limiting, recovery, and real rankings. The retained Cloudflare Worker/D1 code is legacy reference/regression material and is not the production v3 deployment target.
 
 Leaderboard surfaces include:
 
@@ -82,50 +82,45 @@ Leaderboard surfaces include:
 
 The weekly leaderboard is intentionally **overall-only**. There is no weekly leaderboard for individual games. Each player's best accepted score for each game during the current UTC week is combined using the same overall rating model as the permanent global leaderboard. The weekly board changes automatically at Monday 00:00 UTC; no destructive reset job is required.
 
-### Local Worker validation
+### Production Supabase validation
+
+Production deployment follows `docs/leaderboard/RELEASE.md`. CI validates the generated leaderboard policy, HTTP/client contracts, PostgreSQL integration, durable upload recovery and browser behavior before Pages deployment. The Pages workflow then checks the live Supabase v3 health/CORS/database reads before building the exact CI-certified commit.
+
+### Legacy Cloudflare/D1 reference
+
+The older Cloudflare Worker + D1 implementation remains in the repository for regression, historical compatibility and protocol-parity checks. It is not the production leaderboard v3 service, and `worker:deploy` intentionally prevents accidental legacy production deployment.
 
 ```bash
 bun run d1:migrate:local
 bun run worker:dev
 ```
 
-The permanent CI gate applies all D1 migrations, smoke-tests the Worker API, verifies frontend/Worker game parity, type-checks the applications, builds both root-hosted and GitHub Pages frontend variants, and runs MA3 PWA/offline/gamepad/mobile structural certification against both builds.
+Use the legacy Worker only for its existing local regression paths. Do not point the production frontend at it.
 
-### Cloudflare deployment
+## Version 1.2.0 release status
 
-The Micro Arcade database is provisioned and bound in `wrangler.jsonc`. The Worker runs at `https://micro-arcade-leaderboards.thiepn.workers.dev`. Its credential pepper is a Cloudflare secret. For another Cloudflare account, create a separate database and replace the binding UUID; never reuse or rotate the existing production pepper as part of a routine deployment.
-
-```bash
-bun run d1:migrate:remote
-bun run worker:deploy
-```
-
-Then configure the frontend with:
-
-```env
-VITE_LEADERBOARD_API_URL=https://micro-arcade-leaderboards.<your-subdomain>.workers.dev
-```
-
-Without `VITE_LEADERBOARD_API_URL`, the application never fabricates leaderboard competitors; live ranking/profile surfaces remain offline while local gameplay continues to work.
-
-## Version 1.1.1 release status
-
-Version 1.1.1 keeps the completed 32-game roster unchanged while hardening the repository/deployment path and modernizing the certified build dependency baseline.
+Version 1.2.0 is the completed P27–P32 product release. It keeps the 32-game roster and scoring v2 economy unchanged while adding the daily return loop, surfaced progression, goal-aware recommendations, results-to-meta feedback, final device/motion/audio polish, and release closure.
 
 - all 32 game implementations remain code-split and loaded only when opened
-- frontend registry and Cloudflare Worker accepted-game rules remain in exact 32-game parity
-- `quality:release32` and `quality:hardening` are permanent CI gates
+- frontend registry and retained scoring-protocol accepted-game rules remain in exact 32-game parity
+- `quality:release32`, `quality:hardening`, and the P32 closure audit are permanent CI gates
 - GitHub Pages deploys only after successful `main` CI and rebuilds the exact CI-certified commit SHA
 - GitHub Actions are full-SHA pinned; the checkout/configure/upload/deploy Pages stack uses the current Node-24-generation releases
 - the certified dependency baseline includes `@types/node` 26, Lucide 1.34, Motion 13.1, Vite 8.2, and `@vitejs/plugin-react` 6.1
 - the PWA build manifest lets the service worker cache every lazy game chunk for complete offline play
 - root and per-game error boundaries provide recoverable failure isolation
 - keyboard-operable game cards, skip navigation, visible focus, modal focus trapping, zoom support, reduced motion, and safe-area handling form the accessibility baseline
-- CI enforces game parity, targeted gameplay regressions, Worker behavior, root and Pages builds, PWA integrity, lazy-loading structure, accessibility structure, and the per-chunk size ceiling
+- CI enforces game parity, targeted gameplay regressions, current Supabase leaderboard contracts, retained legacy regression behavior, root and Pages builds, PWA integrity, lazy-loading structure, accessibility structure, and the per-chunk size ceiling
 
 The September 2026 release-candidate audit adds validated persistence with temporary-storage fallback, bounded leaderboard requests and honest submission feedback, isolated modal/game input, atomic score replay handling, safe JSON API errors, complete versioned offline caches, and a responsive header. See [the audit and game inventory](docs/RELEASE_CANDIDATE_AUDIT.md) for evidence and testing limits.
 
-Pages builds use the deployed Worker by default. Set the repository Actions variable `VITE_LEADERBOARD_API_URL` to override it. Local development stays local-only unless `.env.local` configures an API origin. Public API URLs are build-time configuration; credentials and the pepper must never use a `VITE_` variable.
+Pages production builds use the Supabase leaderboard v3 endpoint configured in `.github/workflows/pages.yml`. Local development stays local-only unless `.env.local` configures an API origin. Public API URLs are build-time configuration; server credentials must never use a `VITE_` variable.
+
+## Maintenance mode
+
+The P27–P32 roadmap is closed as of version 1.2.0. No P33 is scheduled.
+
+Future changes should be driven by a reproducible defect, a security/platform compatibility requirement, or a concrete requested feature with clear user value. Prefer focused PRs over inventing another numbered phase. Scoring v2, leaderboard protocol v3, historical certification ledgers, and the production Supabase backend must not be silently redefined during routine maintenance.
 
 New regression commands:
 
