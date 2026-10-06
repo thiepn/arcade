@@ -124,7 +124,7 @@ This phase. Remove the operational detour, restore P26 as the release baseline, 
 
 Add a deterministic offline-first daily cabinet challenge, lightweight streak tracking, completion state, clear rewards/progress feedback and a prominent but non-intrusive home entry point.
 
-No new server, cron job or account dependency.
+No new server, cron job or account dependency. **Implemented in P28.**
 
 ### P29 — Progression Surfacing & Goal-Aware Home
 
@@ -140,7 +140,9 @@ Audit the complete arcade on phone/tablet/desktop. Polish only visible inconsist
 
 ### P32 — Final Release Closure & Maintenance Mode
 
-Run the existing product CI/P26 production certification, fix real defects, update release documentation and stop phase-driven development. After P32, new work should require a concrete feature request or observed defect rather than another automatically invented phase.
+Run the existing product CI/P26 production certification, fix real defects, update release documentation and stop phase-driven development. After P32, new work should require a concrete feature request or observed defect rather than another automatically invented phase. **Completed in P32. Roadmap closed.**
+
+The P27–P32 completion roadmap ends here. No P33 is scheduled. Future Arcade work is defect-, compatibility-, security-, or concrete-feature-driven maintenance rather than automatic phase continuation.
 
 ## Explicit non-goals
 
