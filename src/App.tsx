@@ -436,7 +436,7 @@ export default function App() {
       )}
 
       {/* Main Arcade Homepage */}
-      <div className="flex-1 flex flex-col" inert={Boolean(activeGame) || statsModalOpen || overallLeaderboardOpen || profileOpen || stressTesterOpen}>
+      <div className="arcade-home-shell flex-1 flex flex-col" inert={Boolean(activeGame) || statsModalOpen || overallLeaderboardOpen || profileOpen || stressTesterOpen}>
         {/* Header */}
         <Header
           activeTab={activeTab}
