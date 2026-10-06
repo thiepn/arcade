@@ -24,6 +24,7 @@ jobs:
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
+      - run: bun run quality:platform-p10
       - run: bun run quality:scoring
       - run: bun run quality:leaderboard
       - name: Leaderboard mobile UI and durable upload recovery

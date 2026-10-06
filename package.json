@@ -102,7 +102,8 @@
     "quality:gameplay-p30": "bun scripts/test-result-meta-p30.mjs && bun scripts/audit-gameplay-p30.ts",
     "quality:gameplay-p31": "bun scripts/audit-gameplay-p31.ts",
     "quality:browser-p31": "bun scripts/audit-browser-p31.mjs",
-    "quality:gameplay-p32": "bun scripts/audit-gameplay-p32.ts"
+    "quality:gameplay-p32": "bun scripts/audit-gameplay-p32.ts",
+    "quality:platform-p10": "node scripts/validate-platform-p10.mjs"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
