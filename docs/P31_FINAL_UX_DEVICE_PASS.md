@@ -77,7 +77,9 @@ Reduced-motion is enabled for the touch profiles. The gate verifies:
 - touch-target floors on new progression surfaces;
 - sound-toggle interaction without runtime errors;
 - game launch/back flow and viewport containment;
-- P30 result panel containment/touch safety through the controlled scoring harness.
+- production game launch/back containment on every device profile.
+
+P30 result integration remains covered by the existing leaderboard/scoring browser harness, which uses the non-production controlled scoring fixture.
 
 This is automated device-class/browser qualification. It does not claim access to physical hardware sensors or vendor-specific native vibration hardware.
 
