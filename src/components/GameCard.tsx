@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { Heart, Play } from 'lucide-react';
 import { GameDefinition } from '../types';
 import { sounds } from '../lib/sound';
@@ -30,23 +30,25 @@ export const GameCard: React.FC<GameCardProps> = ({
   onToggleFavorite,
   index = 0,
 }) => {
+  const reduceMotion = useReducedMotion() === true;
   const titleId = `game-title-${game.id}`;
   const descriptionId = `game-description-${game.id}`;
 
   return (
     <motion.article
       id={`game-card-${game.id}`}
-      layout
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      layout={!reduceMotion}
+      initial={reduceMotion ? false : { opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 10, scale: 0.92, transition: { duration: 0.15, ease: 'easeOut' } }}
-      transition={{
+      exit={reduceMotion ? undefined : { opacity: 0, y: 10, scale: 0.92, transition: { duration: 0.15, ease: 'easeOut' } }}
+      transition={reduceMotion ? { duration: 0 } : {
         duration: 0.3,
         delay: Math.min(index * 0.035, 0.35),
         ease: [0.22, 1, 0.36, 1],
         layout: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
       }}
-      whileHover={{ y: -4, transition: { duration: 0.18, ease: 'easeOut' } }}
+      whileHover={reduceMotion ? undefined : { y: -4, transition: { duration: 0.18, ease: 'easeOut' } }}
+      data-p31-motion={reduceMotion ? 'reduced' : 'full'}
       className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-[#27272A] bg-[#18181B] p-4 transition-colors duration-200 hover:border-[#F43F5E] hover:shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
