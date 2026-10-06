@@ -295,7 +295,19 @@ body.game-active {
 }
 
 .pwa-status-safe {
+  right: max(0.75rem, env(safe-area-inset-right));
   bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+/* P31 — home/PWA cutout safety mirrors the established game-shell safe areas. */
+.arcade-home-shell {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.p19-home-header {
+  padding-top: env(safe-area-inset-top);
 }
 
 .gamepad-virtual-cursor {
