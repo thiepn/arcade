@@ -23,6 +23,15 @@
 
 ## Unreleased
 
+### P31 final product UX / motion / audio / device pass — 2026-10-06
+- Respect reduced-motion at the Motion runtime layer across the library, daily challenge, progression cards, progress bars and empty-state transitions; reduced-motion Browse All scrolling is now instant.
+- Align P28–P30 action audio with the established Arcade feedback language and retain existing haptic semantics.
+- Harden mobile Web Audio against closed/suspended contexts and rejected resume promises; disabling haptics cancels an active vibration pattern.
+- Extend safe-area handling from the game shell to the home/PWA shell, sticky header and PWA status surface.
+- Improve runtime error recovery with labelled alert semantics and focus transfer to the recovery heading.
+- Raise touch-target floors on the new progression controls.
+- Add a P31 structural gate plus production-preview desktop/phone portrait/phone landscape/tablet browser acceptance with reduced-motion, touch and launch/back containment checks; the existing scoring/leaderboard harness continues to own controlled result-flow regression.
+
 ### P30 results-to-meta / replay motivation — 2026-10-06
 - Attribute each completed run against one pre-run baseline so session-driven play-count achievements, score achievements and daily progress are reported once and accurately.
 - Add a compact Run progress result surface for PB gain, newly unlocked badges, achievement-derived XP, level progress/level-up and daily challenge completion/streak.

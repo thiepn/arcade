@@ -136,7 +136,7 @@ Connect each result to PB, achievement, level, challenge and leaderboard movemen
 
 ### P31 — Final Product UX, Motion, Audio & Real-Device Pass
 
-Audit the complete arcade on phone/tablet/desktop. Polish only visible inconsistencies, motion, sound/haptic feedback, loading/error states and performance issues that remain after P28–P30.
+Audit the complete arcade on phone/tablet/desktop. Polish only visible inconsistencies, motion, sound/haptic feedback, loading/error states and performance issues that remain after P28–P30. **Implemented in P31.**
 
 ### P32 — Final Release Closure & Maintenance Mode
 

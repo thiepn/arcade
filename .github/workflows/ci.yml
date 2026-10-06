@@ -82,6 +82,7 @@ jobs:
       - run: bun run quality:gameplay-p28
       - run: bun run quality:gameplay-p29
       - run: bun run quality:gameplay-p30
+      - run: bun run quality:gameplay-p31
       - run: bun run quality:lifecycle
       - run: bun run quality:mobile
       - run: bun run quality:rope
@@ -259,7 +260,13 @@ jobs:
           preview=$!
           trap 'kill "$preview" 2>/dev/null || true' EXIT
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4173 >/dev/null && break || sleep 1; done
-          UI_CHROME_PATH="$(command -v google-chrome)" UI_SCREENSHOTS=1 bun scripts/audit-ui-geometry.mjs
+          chrome="$(command -v google-chrome || command -v google-chrome-stable || true)"
+          if [ -z "$chrome" ]; then
+            echo 'Chrome executable not found on runner'
+            exit 1
+          fi
+          UI_CHROME_PATH="$chrome" UI_SCREENSHOTS=1 bun scripts/audit-ui-geometry.mjs
+          P31_CHROME_PATH="$chrome" P31_SCREENSHOTS=1 bun run quality:browser-p31
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

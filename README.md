@@ -55,7 +55,7 @@ Local storage remains authoritative for offline personal progress. Live leaderbo
 
 The game shell uses dynamic viewport units and safe-area insets for modern phones, including notched devices and standalone PWA mode. Active games suppress background page scrolling/overscroll, preserve game-stage touch isolation, and request a screen wake lock when supported. Backgrounding or locking the device still pauses an active run.
 
-The page no longer disables browser zoom globally. Reduced-motion preferences are also respected by the shell UI.
+The page no longer disables browser zoom globally. Reduced-motion preferences are respected by both CSS and JavaScript-driven Motion transitions. The home/PWA shell and sticky header also reserve display-cutout safe areas, matching the in-game shell.
 
 ## Gamepad support
 

@@ -1,8 +1,9 @@
 import React from 'react';
 import { CheckCircle2, Flame, Play, Target, Trophy } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import type { GameDefinition } from '../types';
 import type { DailyChallengeSummary } from '../lib/dailyChallenge';
+import { sounds } from '../lib/sound';
 
 interface DailyChallengeCardProps {
   game: GameDefinition;
@@ -11,6 +12,7 @@ interface DailyChallengeCardProps {
 }
 
 export const DailyChallengeCard: React.FC<DailyChallengeCardProps> = ({ game, summary, onPlay }) => {
+  const reduceMotion = useReducedMotion() === true;
   const remaining = Math.max(0, summary.definition.targetAP - summary.bestAP);
   const streakLabel = summary.currentStreak > 0
     ? `${summary.currentStreak} day${summary.currentStreak === 1 ? '' : 's'}`
@@ -18,10 +20,11 @@ export const DailyChallengeCard: React.FC<DailyChallengeCardProps> = ({ game, su
 
   return (
     <motion.section
-      initial={{ opacity: 0, y: 10 }}
+      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.28, ease: 'easeOut' }}
+      transition={{ duration: reduceMotion ? 0 : 0.28, ease: 'easeOut' }}
       aria-label="Daily challenge"
+      data-p31-motion={reduceMotion ? 'reduced' : 'full'}
       className="w-full max-w-6xl mx-auto px-4 sm:px-8 pb-3"
     >
       <div
@@ -96,7 +99,7 @@ export const DailyChallengeCard: React.FC<DailyChallengeCardProps> = ({ game, su
                   style={{ backgroundColor: summary.completed ? '#34D399' : game.accentColor }}
                   initial={false}
                   animate={{ width: `${summary.progressPercent}%` }}
-                  transition={{ duration: 0.35, ease: 'easeOut' }}
+                  transition={{ duration: reduceMotion ? 0 : 0.35, ease: 'easeOut' }}
                 />
               </div>
             </div>
@@ -105,7 +108,10 @@ export const DailyChallengeCard: React.FC<DailyChallengeCardProps> = ({ game, su
           <div className="flex shrink-0 flex-col items-stretch gap-2 lg:min-w-44">
             <button
               type="button"
-              onClick={onPlay}
+              onClick={() => {
+                sounds.playSuccess();
+                onPlay();
+              }}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-black text-black transition hover:bg-zinc-100 active:scale-[0.98]"
             >
               <Play className="h-4 w-4 fill-current" aria-hidden="true" />

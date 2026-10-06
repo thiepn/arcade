@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import { ArrowRight, Award, Sparkles, Target, Trophy, Zap } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { ACHIEVEMENTS_REGISTRY, getPlayerLevelInfo } from '../lib/achievements';
 import { getNearAchievementGoals, getPlayNextRecommendations } from '../lib/homeProgression';
 import { GAMES_REGISTRY } from '../data/games';
 import type { UserStats } from '../types';
+import { sounds } from '../lib/sound';
 
 interface ProgressionHomeSectionProps {
   stats: UserStats;
@@ -19,6 +20,7 @@ export const ProgressionHomeSection: React.FC<ProgressionHomeSectionProps> = ({
   onPlayGame,
   onOpenAchievements,
 }) => {
+  const reduceMotion = useReducedMotion() === true;
   const level = useMemo(() => getPlayerLevelInfo(stats), [stats]);
   const unlockedCount = useMemo(
     () => ACHIEVEMENTS_REGISTRY.filter((achievement) => achievement.isUnlocked(stats)).length,
@@ -38,12 +40,14 @@ export const ProgressionHomeSection: React.FC<ProgressionHomeSectionProps> = ({
   return (
     <section
       aria-label="Arcade progression"
+      data-p31-motion={reduceMotion ? 'reduced' : 'full'}
       className="w-full max-w-6xl mx-auto px-4 sm:px-8 pb-4"
     >
       <div className="grid gap-3 lg:grid-cols-[1.05fr_1.45fr]">
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.24, ease: 'easeOut' }}
           className="rounded-2xl border border-zinc-800 bg-[#111114] p-4 sm:p-5"
         >
           <div className="flex items-start justify-between gap-4">
@@ -68,8 +72,11 @@ export const ProgressionHomeSection: React.FC<ProgressionHomeSectionProps> = ({
 
             <button
               type="button"
-              onClick={onOpenAchievements}
-              className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-[10px] font-black uppercase tracking-wide text-zinc-300 transition hover:border-zinc-600 hover:text-white active:scale-[0.98]"
+              onClick={() => {
+                sounds.playPop();
+                onOpenAchievements();
+              }}
+              className="min-h-11 shrink-0 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-[10px] font-black uppercase tracking-wide text-zinc-300 transition hover:border-zinc-600 hover:text-white active:scale-[0.98]"
             >
               View badges
             </button>
@@ -95,7 +102,7 @@ export const ProgressionHomeSection: React.FC<ProgressionHomeSectionProps> = ({
                 style={{ backgroundColor: level.accentColor }}
                 initial={false}
                 animate={{ width: `${level.progressPercent}%` }}
-                transition={{ duration: 0.35, ease: 'easeOut' }}
+                transition={{ duration: reduceMotion ? 0 : 0.35, ease: 'easeOut' }}
               />
             </div>
           </div>
@@ -109,8 +116,16 @@ export const ProgressionHomeSection: React.FC<ProgressionHomeSectionProps> = ({
               <button
                 type="button"
                 key={goal.id}
-                onClick={() => goal.gameId ? onPlayGame(goal.gameId) : onOpenAchievements()}
-                className="group w-full rounded-xl border border-zinc-800 bg-black/20 p-3 text-left transition hover:border-zinc-700 hover:bg-black/30 active:scale-[0.995]"
+                onClick={() => {
+                  if (goal.gameId) {
+                    sounds.playClick();
+                    onPlayGame(goal.gameId);
+                  } else {
+                    sounds.playPop();
+                    onOpenAchievements();
+                  }
+                }}
+                className="group min-h-14 w-full rounded-xl border border-zinc-800 bg-black/20 p-3 text-left transition hover:border-zinc-700 hover:bg-black/30 active:scale-[0.995]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -137,9 +152,9 @@ export const ProgressionHomeSection: React.FC<ProgressionHomeSectionProps> = ({
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.04 }}
+          transition={{ duration: reduceMotion ? 0 : 0.24, delay: reduceMotion ? 0 : 0.04, ease: 'easeOut' }}
           className="rounded-2xl border border-zinc-800 bg-[#111114] p-4 sm:p-5"
         >
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -161,7 +176,10 @@ export const ProgressionHomeSection: React.FC<ProgressionHomeSectionProps> = ({
                 <button
                   type="button"
                   key={recommendation.gameId}
-                  onClick={() => onPlayGame(recommendation.gameId)}
+                  onClick={() => {
+                    sounds.playClick();
+                    onPlayGame(recommendation.gameId);
+                  }}
                   className="group flex min-h-36 flex-col justify-between rounded-xl border border-zinc-800 bg-black/20 p-3 text-left transition hover:-translate-y-0.5 hover:border-zinc-700 hover:bg-black/30 active:translate-y-0"
                 >
                   <div>
@@ -185,8 +203,11 @@ export const ProgressionHomeSection: React.FC<ProgressionHomeSectionProps> = ({
 
           <button
             type="button"
-            onClick={onOpenAchievements}
-            className="mt-3 inline-flex items-center gap-1.5 text-[10px] font-bold text-zinc-500 transition hover:text-amber-300"
+            onClick={() => {
+              sounds.playPop();
+              onOpenAchievements();
+            }}
+            className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-[10px] font-bold text-zinc-500 transition hover:text-amber-300"
           >
             <Award className="h-3.5 w-3.5" aria-hidden="true" />
             See all achievements and progression

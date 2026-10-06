@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowRight, Award, Flame, Target, TrendingUp, Trophy, Zap } from 'lucide-react';
 import type { LeaderboardRankDelta, ResultMetaSummary } from '../lib/resultMeta';
+import { sounds } from '../lib/sound';
 
 interface ResultMetaSummaryProps {
   meta: ResultMetaSummary;
@@ -121,7 +122,10 @@ export const ResultMetaSummaryPanel: React.FC<ResultMetaSummaryProps> = ({
       {meta.nextRecommendation && onPlayRecommended && (
         <button
           type="button"
-          onClick={() => onPlayRecommended(meta.nextRecommendation!.gameId)}
+          onClick={() => {
+            sounds.playClick();
+            onPlayRecommended(meta.nextRecommendation!.gameId);
+          }}
           className="mt-2.5 flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-left transition hover:border-zinc-600 hover:bg-zinc-800 active:scale-[0.995]"
           data-result-next-recommendation={meta.nextRecommendation.gameId}
         >
