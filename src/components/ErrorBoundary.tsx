@@ -1,4 +1,4 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Component, createRef, type ErrorInfo, type ReactNode } from 'react';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -10,6 +10,8 @@ interface ErrorBoundaryState {
 }
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  private recoveryHeadingRef = createRef<HTMLHeadingElement>();
+
   state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(): ErrorBoundaryState {
@@ -18,6 +20,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: unknown, info: ErrorInfo) {
     console.error('Micro Arcade runtime error:', error, info.componentStack);
+    requestAnimationFrame(() => this.recoveryHeadingRef.current?.focus());
   }
 
   private handleRetry = () => {
@@ -36,10 +39,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       <main className="min-h-screen w-full bg-[#0A0A0B] text-white flex items-center justify-center p-6">
         <section
           role="alert"
+          aria-labelledby="arcade-recovery-title"
+          aria-describedby="arcade-recovery-description"
+          data-p31-error-state
           className="w-full max-w-md rounded-2xl border border-rose-500/30 bg-[#111114] p-6 text-center shadow-2xl"
         >
-          <h1 className="text-lg font-black tracking-tight">ARCADE RECOVERED</h1>
-          <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+          <h1 id="arcade-recovery-title" ref={this.recoveryHeadingRef} tabIndex={-1} className="text-lg font-black tracking-tight outline-none">ARCADE RECOVERED</h1>
+          <p id="arcade-recovery-description" className="mt-2 text-sm leading-relaxed text-zinc-400">
             This screen hit an unexpected error. Your local scores and preferences are still stored.
           </p>
           <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
