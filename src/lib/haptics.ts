@@ -19,6 +19,13 @@ class HapticsEngine {
   }
 
   public setEnabled(enabled: boolean): void {
+    if (!enabled && this.enabled && this.isSupported()) {
+      try {
+        navigator.vibrate(0);
+      } catch {
+        // Some browsers expose vibrate but reject cancellation in restricted contexts.
+      }
+    }
     this.enabled = enabled;
   }
 
