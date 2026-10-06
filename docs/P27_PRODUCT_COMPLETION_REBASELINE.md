@@ -144,6 +144,10 @@ Run the existing product CI/P26 production certification, fix real defects, upda
 
 The P27–P32 completion roadmap ends here. No P33 is scheduled. Future Arcade work is defect-, compatibility-, security-, or concrete-feature-driven maintenance rather than automatic phase continuation.
 
+## Final state after P32
+
+The recovered roadmap is complete: P28, P29, P30, P31 and P32 are implemented/closed. Arcade is now maintained as a stable product rather than advanced through automatically numbered phases.
+
 ## Explicit non-goals
 
 Unless a real requirement appears, Arcade does not need:
