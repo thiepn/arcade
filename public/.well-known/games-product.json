@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "phase": "P10",
+  "contractId": "games-family-boundary-v1",
+  "product": "games",
+  "defaultModule": "home",
+  "registryState": "active",
+  "migrationMode": "federated-gradual",
+  "shell": {
+    "repo": "thiepn/arcade",
+    "module": "games/home",
+    "launchUrl": "https://thiepn.dev/arcade/",
+    "role": "family-home-and-arcade-provider",
+    "mayProxyExternalWrites": false
+  },
+  "compatibility": {
+    "preserveLegacyUrls": true,
+    "preserveLegacyStores": true,
+    "preserveLegacyIds": true,
+    "legacyAliases": {
+      "games": "games/home",
+      "arcade": "games/arcade",
+      "gomoku": "games/gomoku",
+      "wordstrike": "games/wordstrike"
+    }
+  },
+  "modules": [
+    {
+      "id": "home",
+      "canonicalRef": "games/home",
+      "registryState": "active",
+      "provider": {
+        "repo": "thiepn/arcade",
+        "launchUrl": "https://thiepn.dev/arcade/",
+        "runtime": "github-pages",
+        "storage": "provider-owned-local-first"
+      },
+      "owns": [
+        "game-library",
+        "family-progression-surface",
+        "daily-challenge",
+        "arcade-achievements"
+      ],
+      "writePolicy": "provider-only",
+      "migration": "retain-store"
+    },
+    {
+      "id": "arcade",
+      "canonicalRef": "games/arcade",
+      "registryState": "active",
+      "provider": {
+        "repo": "thiepn/arcade",
+        "launchUrl": "https://thiepn.dev/arcade/",
+        "runtime": "github-pages-plus-optional-leaderboard",
+        "storage": "provider-owned-local-first"
+      },
+      "owns": [
+        "micro-arcade-games",
+        "arcade-local-progress",
+        "arcade-scores",
+        "arcade-leaderboard-state"
+      ],
+      "writePolicy": "provider-only",
+      "migration": "retain-store"
+    },
+    {
+      "id": "gomoku",
+      "canonicalRef": "games/gomoku",
+      "registryState": "active",
+      "provider": {
+        "repo": "thiepn/gomoku",
+        "launchUrl": "https://thiepn.dev/gomoku/",
+        "runtime": "github-pages-plus-provider-backend",
+        "storage": "provider-owned"
+      },
+      "owns": [
+        "gomoku-game-state",
+        "gomoku-learning-state",
+        "gomoku-match-history",
+        "gomoku-online-state"
+      ],
+      "writePolicy": "provider-only",
+      "migration": "federate-first"
+    },
+    {
+      "id": "wordstrike",
+      "canonicalRef": "games/wordstrike",
+      "registryState": "active",
+      "provider": {
+        "repo": "thiepn/wordstrike",
+        "launchUrl": "https://thiepn.dev/wordstrike/",
+        "runtime": "github-pages-plus-optional-supabase",
+        "storage": "provider-owned-local-first"
+      },
+      "owns": [
+        "wordstrike-campaign-progress",
+        "wordstrike-records",
+        "typing-statistics",
+        "wordstrike-leaderboard-state"
+      ],
+      "writePolicy": "provider-only",
+      "migration": "federate-first"
+    }
+  ],
+  "progressionRule": {
+    "familyReadModelsAllowed": true,
+    "sharedAuthoritativeStore": false,
+    "crossGameWriteProxy": false,
+    "note": "The Games home may surface bounded progression summaries, but each game/provider remains authoritative for its saves, scores, matchmaking, profiles, leaderboards and migrations."
+  },
+  "nonGoals": [
+    "merge repositories",
+    "merge game save databases",
+    "replace provider leaderboards",
+    "move Gomoku matchmaking into Arcade",
+    "move WORDSTRIKE campaign data into Arcade",
+    "centralize game data in Core",
+    "rewrite existing production URLs",
+    "retire legacy project cards",
+    "force every THIEPN game into Games during P10"
+  ]
+}
