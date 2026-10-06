@@ -30,7 +30,7 @@
 - Extend safe-area handling from the game shell to the home/PWA shell, sticky header and PWA status surface.
 - Improve runtime error recovery with labelled alert semantics and focus transfer to the recovery heading.
 - Raise touch-target floors on the new progression controls.
-- Add a P31 structural gate plus desktop/phone portrait/phone landscape/tablet browser acceptance with reduced-motion, touch, launch/back and P30 result containment checks.
+- Add a P31 structural gate plus production-preview desktop/phone portrait/phone landscape/tablet browser acceptance with reduced-motion, touch and launch/back containment checks; the existing scoring/leaderboard harness continues to own controlled result-flow regression.
 
 ### P30 results-to-meta / replay motivation — 2026-10-06
 - Attribute each completed run against one pre-run baseline so session-driven play-count achievements, score achievements and daily progress are reported once and accurately.
