@@ -12,18 +12,31 @@ class SoundEngine {
   }
 
   private init() {
+    if (this.ctx?.state === 'closed') {
+      this.ctx = null;
+      this.masterGain = null;
+    }
+
     if (!this.ctx && typeof window !== 'undefined') {
       const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioContextClass) {
-        this.ctx = new AudioContextClass();
-        this.masterGain = this.ctx.createGain();
-        const initialGain = this.isMuted ? 0 : this.volume * 0.3;
-        this.masterGain.gain.setValueAtTime(initialGain, this.ctx.currentTime);
-        this.masterGain.connect(this.ctx.destination);
+        try {
+          this.ctx = new AudioContextClass();
+          this.masterGain = this.ctx.createGain();
+          const initialGain = this.isMuted ? 0 : this.volume * 0.3;
+          this.masterGain.gain.setValueAtTime(initialGain, this.ctx.currentTime);
+          this.masterGain.connect(this.ctx.destination);
+        } catch {
+          this.ctx = null;
+          this.masterGain = null;
+        }
       }
     }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+
+    if (this.ctx && this.ctx.state !== 'running') {
+      void this.ctx.resume().catch(() => {
+        // Mobile browsers may reject resume until the next user activation.
+      });
     }
   }
 
