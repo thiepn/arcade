@@ -34,6 +34,8 @@ assert(!readme.includes('Live leaderboard submissions/ranks require the configur
 assert(!readme.includes('Pages builds use the deployed Worker by default'), 'README still claims Pages defaults to the legacy Worker');
 assert(readme.includes('## Maintenance mode'), 'README maintenance-mode policy missing');
 
+assert(changelog.includes('## Leaderboard v3 — production — 2026-10-06'), 'changelog still treats production leaderboard v3 as a release candidate');
+assert(!changelog.includes('## Leaderboard v3 — release candidate'), 'stale leaderboard v3 release-candidate heading remains');
 assert(changelog.includes('## 1.2.0 — 2026-10-06'), 'changelog does not close the 1.2.0 release');
 assert(changelog.includes('### P32 final release closure / maintenance mode'), 'changelog missing P32 closure entry');
 assert(roadmap.includes('**Completed in P32. Roadmap closed.**'), 'P27 roadmap does not mark P32 complete');
