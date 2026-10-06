@@ -28,7 +28,7 @@ jobs:
       - run: bun run quality:leaderboard
       - name: Leaderboard mobile UI and durable upload recovery
         run: SCORING_CHROME_PATH="$(command -v google-chrome)" bun run quality:leaderboard-browser
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
           name: leaderboard-browser-evidence
@@ -267,7 +267,7 @@ jobs:
           fi
           UI_CHROME_PATH="$chrome" UI_SCREENSHOTS=1 bun scripts/audit-ui-geometry.mjs
           P31_CHROME_PATH="$chrome" P31_SCREENSHOTS=1 bun run quality:browser-p31
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
           name: responsive-ui-evidence
@@ -302,7 +302,7 @@ jobs:
           trap 'kill "$preview" 2>/dev/null || true' EXIT
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4173 >/dev/null && break || sleep 1; done
           bun scripts/audit-ui-cross-browser.mjs
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
           name: responsive-ui-${{ matrix.browser }}
